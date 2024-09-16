@@ -11,11 +11,14 @@ export default async function handler(
     try {
       const { nome, sku, quantidade, fornecedorId } = req.body;
       const novoProduto = await prisma.produto.create({
-        data: { nome, sku, quantidade, fornecedorId },
+        data: {
+          nome,
+          sku,
+        },
       });
       res.status(201).json(novoProduto);
     } catch (error) {
-      res.status(500).json({ error: "Erro ao criar produto" });
+      res.status(500).json({ error: "Erro ao cadastrar produto" });
     }
   } else if (req.method === "GET") {
     try {
@@ -24,26 +27,16 @@ export default async function handler(
     } catch (error) {
       res.status(500).json({ error: "Erro ao buscar produtos" });
     }
-  } else if (req.method === "PUT") {
-    try {
-      const { id, nome, sku, quantidade, fornecedorId } = req.body;
-      const produtoAtualizado = await prisma.produto.update({
-        where: { id: Number(id) },
-        data: { nome, sku, quantidade, fornecedorId },
-      });
-      res.status(200).json(produtoAtualizado);
-    } catch (error) {
-      res.status(500).json({ error: "Erro ao atualizar produto" });
-    }
   } else if (req.method === "DELETE") {
     try {
-      const { id } = req.body;
-      await prisma.produto.delete({
-        where: { id: Number(id) },
-      });
+      const { id } = req.query;
+      if (!id) {
+        return res.status(400).json({ error: "ID do produto é obrigatório" });
+      }
+      await prisma.produto.delete({ where: { id: Number(id) } });
       res.status(204).end();
     } catch (error) {
-      res.status(500).json({ error: "Erro ao remover produto" });
+      res.status(500).json({ error: "Erro ao deletar produto" });
     }
   } else {
     res.status(405).json({ error: "Método não permitido" });
