@@ -70,6 +70,15 @@ export default async function handler(
         });
       }
 
+      // Verifica se o pedido existe
+      const pedidoExistente = await prisma.pedidoCompra.findUnique({
+        where: { id: pedidoId },
+      });
+
+      if (!pedidoExistente) {
+        return res.status(404).json({ error: "Pedido não encontrado" });
+      }
+
       // Atualiza a quantidade de produtos no pedido
       await Promise.all(
         produtosRecebidos.map(async (produtoRecebido) => {
@@ -114,6 +123,7 @@ export default async function handler(
               where: { id: estoque.id },
               data: {
                 quantidade: estoque.quantidade + produtoRecebido.quantidade,
+                valorUnitario: produtoRecebido.valorUnitario,
               },
             });
           } else {
@@ -121,9 +131,8 @@ export default async function handler(
             await prisma.estoque.create({
               data: {
                 armazemId: armazemId,
-                produtoId: produtoRecebido.produtoId,
                 quantidade: produtoRecebido.quantidade,
-                valorUnitario: produtoRecebido.valorUnitario, // Assuming valorUnitario is part of produtoRecebido
+                valorUnitario: produtoRecebido.valorUnitario,
                 produto: {
                   connect: { id: produtoRecebido.produtoId },
                 },

@@ -51,7 +51,7 @@ model Estoque {
   produtoId     Int
   armazemId     Int // Consistência com o código
   quantidade    Int
-  valorUnitario Float // Novo campo para armazenar o valor unitário do produto
+  valorUnitario Float? // Novo campo para armazenar o valor unitário do produto
 }
 
 model Movimentacao {
