@@ -1,15 +1,22 @@
-import React, { ReactNode } from "react";
-import { Sidebar } from "./Sidebar";
+// components/Layout.tsx
+import { Sidebar } from "./Sidebar"; // Importar a Sidebar
+
+import { ReactNode } from "react";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children }) => {
+const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
+      {/* Sidebar à esquerda */}
       <Sidebar />
-      <main className="flex-1 p-4">{children}</main>
+
+      {/* Conteúdo principal */}
+      <main className="flex-grow p-6 bg-gray-100">
+        {children} {/* Renderiza o conteúdo da página aqui */}
+      </main>
     </div>
   );
 };
