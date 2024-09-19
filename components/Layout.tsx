@@ -1,6 +1,4 @@
-// components/Layout.tsx
-import { Sidebar } from "./Sidebar"; // Importar a Sidebar
-
+import { Sidebar } from "./Sidebar";
 import { ReactNode } from "react";
 
 interface LayoutProps {
@@ -9,14 +7,11 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar à esquerda */}
+    <div className="flex">
       <Sidebar />
-
-      {/* Conteúdo principal */}
-      <main className="flex-grow p-6 bg-gray-100">
-        {children} {/* Renderiza o conteúdo da página aqui */}
-      </main>
+      <div className="flex-grow p-6 bg-gray-100 dark:bg-gray-800">
+        {children}
+      </div>
     </div>
   );
 };

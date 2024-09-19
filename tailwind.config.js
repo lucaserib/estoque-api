@@ -1,10 +1,19 @@
+/** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: "class", // Ativando modo escuro
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx}", // Páginas do Next.js
-    "./components/**/*.{js,ts,jsx,tsx}", // Componentes do Next.js
+    "./pages/**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        blue: {
+          900: "#1e3a8a", // Azul mais forte
+          700: "#2563eb",
+        },
+      },
+    },
   },
   plugins: [],
 };

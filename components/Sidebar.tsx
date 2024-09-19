@@ -5,63 +5,78 @@ import {
   FaBox,
   FaTruck,
   FaWarehouse,
+  FaInfoCircle,
   FaSignOutAlt,
 } from "react-icons/fa";
+import DarkModeToggle from "./DarkModeToggle";
 
 export const Sidebar = () => {
   return (
-    <div className="w-64 h-screen bg-gray-900 text-white p-4">
-      <h2 className="text-2xl font-bold mb-6">Gestão de Estoque</h2>
-      <ul>
-        <li className="mb-4">
-          <Link href="/" legacyBehavior>
-            <a className="flex items-center py-2 px-4 rounded hover:bg-gray-700">
-              <FaHome className="mr-3" />
-              Home
-            </a>
-          </Link>
-        </li>
-        <li className="mb-4">
-          <Link href="/pedidos" legacyBehavior>
-            <a className="flex items-center py-2 px-4 rounded hover:bg-gray-700">
-              <FaClipboardList className="mr-3" />
-              Pedidos
-            </a>
-          </Link>
-        </li>
-        <li className="mb-4">
-          <Link href="/produtos" legacyBehavior>
-            <a className="flex items-center py-2 px-4 rounded hover:bg-gray-700">
-              <FaBox className="mr-3" />
-              Produtos
-            </a>
-          </Link>
-        </li>
-        <li className="mb-4">
-          <Link href="/fornecedores" legacyBehavior>
-            <a className="flex items-center py-2 px-4 rounded hover:bg-gray-700">
-              <FaTruck className="mr-3" />
-              Fornecedores
-            </a>
-          </Link>
-        </li>
-        <li className="mb-4">
-          <Link href="/estoque" legacyBehavior>
-            <a className="flex items-center py-2 px-4 rounded hover:bg-gray-700">
-              <FaWarehouse className="mr-3" />
-              Estoque
-            </a>
-          </Link>
-        </li>
-        <li className="mb-4">
-          <Link href="/saida" legacyBehavior>
-            <a className="flex items-center py-2 px-4 rounded hover:bg-gray-700">
-              <FaSignOutAlt className="mr-3" />
-              Saida
-            </a>
-          </Link>
-        </li>
-      </ul>
+    <div className="w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between">
+      <div>
+        <h2 className="text-3xl font-bold mb-8">Gestão de Estoque</h2>
+        <ul className="space-y-4">
+          <li>
+            <Link href="/" legacyBehavior>
+              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                <FaHome className="mr-3" />
+                Home
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/pedidos" legacyBehavior>
+              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                <FaClipboardList className="mr-3" />
+                Pedidos
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/produtos" legacyBehavior>
+              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                <FaBox className="mr-3" />
+                Produtos
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/fornecedores" legacyBehavior>
+              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                <FaTruck className="mr-3" />
+                Fornecedores
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/estoque" legacyBehavior>
+              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                <FaWarehouse className="mr-3" />
+                Estoque
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/saida" legacyBehavior>
+              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                <FaSignOutAlt className="mr-3" />
+                Saída
+              </a>
+            </Link>
+          </li>
+          <li>
+            <Link href="/about" legacyBehavior>
+              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                <FaInfoCircle className="mr-3" />
+                Sobre
+              </a>
+            </Link>
+          </li>
+        </ul>
+      </div>
+
+      {/* Dark Mode Toggle */}
+      <DarkModeToggle />
     </div>
   );
 };

@@ -2,10 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Estilos globais */
+html {
+  scroll-behavior: smooth;
+}
+
 body {
-  font-family: "Arial", sans-serif;
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-200 transition-colors duration-300;
+}
+
+a {
+  @apply text-neutral-300 dark:text-blue-400;
+}
+
+h1,
+h2 {
+  @apply font-bold;
+}
+
+input,
+textarea,
+select {
+  @apply bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500;
 }
