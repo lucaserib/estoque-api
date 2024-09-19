@@ -9,7 +9,7 @@ const Fornecedores = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const fornecedor = { nome, inscricaoEstadual, cnpj: cpfCnpj };
+    const fornecedor = { nome, inscricaoEstadual, cpfCnpj };
 
     try {
       const response = await fetch("/api/fornecedores", {
@@ -35,7 +35,7 @@ const Fornecedores = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white dark:bg-gray-800 rounded-md shadow-md">
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
         Cadastrar Fornecedor
       </h1>
@@ -48,7 +48,7 @@ const Fornecedores = () => {
             type="text"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             required
           />
         </div>
@@ -60,7 +60,7 @@ const Fornecedores = () => {
             type="text"
             value={inscricaoEstadual}
             onChange={(e) => setInscricaoEstadual(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             required
           />
         </div>
@@ -72,7 +72,7 @@ const Fornecedores = () => {
             type="text"
             value={cpfCnpj}
             onChange={(e) => setCpfCnpj(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-600 text-gray-900 dark:text-gray-100"
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
             required
           />
         </div>
