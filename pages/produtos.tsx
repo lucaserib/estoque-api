@@ -5,6 +5,7 @@ const Produtos = () => {
   const [nome, setNome] = useState("");
   const [sku, setSku] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,14 +23,17 @@ const Produtos = () => {
 
       if (response.ok) {
         setMessage("Produto cadastrado com sucesso!");
+        setMessageType("success");
         setNome("");
         setSku("");
       } else {
         setMessage("Erro ao cadastrar produto.");
+        setMessageType("error");
       }
     } catch (error) {
       console.error("Erro ao cadastrar produto:", error);
       setMessage("Erro ao cadastrar produto.");
+      setMessageType("error");
     }
   };
 
@@ -70,7 +74,15 @@ const Produtos = () => {
           Cadastrar Produto
         </button>
       </form>
-      {message && <p className="mt-4 text-center text-red-500">{message}</p>}
+      {message && (
+        <p
+          className={`mt-4 text-center ${
+            messageType === "success" ? "text-green-500" : "text-red-500"
+          }`}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 };

@@ -5,6 +5,7 @@ const Fornecedores = () => {
   const [inscricaoEstadual, setInscricaoEstadual] = useState("");
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error" | "">("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,20 +23,23 @@ const Fornecedores = () => {
 
       if (response.ok) {
         setMessage("Fornecedor cadastrado com sucesso!");
+        setMessageType("success");
         setNome("");
         setInscricaoEstadual("");
         setCpfCnpj("");
       } else {
         setMessage("Erro ao cadastrar fornecedor.");
+        setMessageType("error");
       }
     } catch (error) {
       console.error("Erro ao cadastrar fornecedor:", error);
       setMessage("Erro ao cadastrar fornecedor.");
+      setMessageType("error");
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white dark:bg-gray-800 rounded-md shadow-md">
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
         Cadastrar Fornecedor
       </h1>
@@ -83,7 +87,15 @@ const Fornecedores = () => {
           Cadastrar Fornecedor
         </button>
       </form>
-      {message && <p className="mt-4 text-center text-red-500">{message}</p>}
+      {message && (
+        <p
+          className={`mt-4 text-center ${
+            messageType === "success" ? "text-green-500" : "text-red-500"
+          }`}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 };

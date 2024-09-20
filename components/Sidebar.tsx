@@ -64,14 +64,6 @@ export const Sidebar = () => {
               </a>
             </Link>
           </li>
-          <li>
-            <Link href="/about" legacyBehavior>
-              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
-                <FaInfoCircle className="mr-3" />
-                Sobre
-              </a>
-            </Link>
-          </li>
         </ul>
       </div>
 
