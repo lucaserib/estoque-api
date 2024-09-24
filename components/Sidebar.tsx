@@ -1,3 +1,4 @@
+import { useState } from "react";
 import Link from "next/link";
 import {
   FaHome,
@@ -5,12 +6,19 @@ import {
   FaBox,
   FaTruck,
   FaWarehouse,
-  FaInfoCircle,
   FaSignOutAlt,
+  FaChevronDown,
+  FaChevronUp,
 } from "react-icons/fa";
 import DarkModeToggle from "./DarkModeToggle";
 
 export const Sidebar = () => {
+  const [isFornecedoresOpen, setIsFornecedoresOpen] = useState(false);
+
+  const toggleFornecedores = () => {
+    setIsFornecedoresOpen(!isFornecedoresOpen);
+  };
+
   return (
     <div className="w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between">
       <div>
@@ -41,12 +49,36 @@ export const Sidebar = () => {
             </Link>
           </li>
           <li>
-            <Link href="/fornecedores" legacyBehavior>
-              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
-                <FaTruck className="mr-3" />
-                Fornecedores
-              </a>
-            </Link>
+            <button
+              onClick={toggleFornecedores}
+              className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors w-full text-left"
+            >
+              <FaTruck className="mr-3" />
+              Fornecedores
+              {isFornecedoresOpen ? (
+                <FaChevronUp className="ml-auto" />
+              ) : (
+                <FaChevronDown className="ml-auto" />
+              )}
+            </button>
+            {isFornecedoresOpen && (
+              <ul className="pl-4">
+                <li>
+                  <Link href="/fornecedores/exibirFornecedores" legacyBehavior>
+                    <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                      Listar Fornecedores
+                    </a>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/fornecedores/fornecedores" legacyBehavior>
+                    <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                      Cadastrar Fornecedor
+                    </a>
+                  </Link>
+                </li>
+              </ul>
+            )}
           </li>
           <li>
             <Link href="/estoque" legacyBehavior>
