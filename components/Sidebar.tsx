@@ -14,13 +14,23 @@ import DarkModeToggle from "./DarkModeToggle";
 
 export const Sidebar = () => {
   const [isFornecedoresOpen, setIsFornecedoresOpen] = useState(false);
+  const [isPedidosOpen, setIsPedidosOpen] = useState(false);
+  const [isProdutosOpen, setIsProdutosOpen] = useState(false);
 
   const toggleFornecedores = () => {
     setIsFornecedoresOpen(!isFornecedoresOpen);
   };
 
+  const togglePedidos = () => {
+    setIsPedidosOpen(!isPedidosOpen);
+  };
+
+  const toggleProdutos = () => {
+    setIsProdutosOpen(!isProdutosOpen);
+  };
+
   return (
-    <div className="w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between">
+    <div className="w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between fixed">
       <div>
         <h2 className="text-3xl font-bold mb-8">Gestão de Estoque</h2>
         <ul className="space-y-4">
@@ -33,20 +43,43 @@ export const Sidebar = () => {
             </Link>
           </li>
           <li>
-            <Link href="/pedidos" legacyBehavior>
-              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
-                <FaClipboardList className="mr-3" />
-                Pedidos
-              </a>
-            </Link>
-          </li>
-          <li>
-            <Link href="/produtos" legacyBehavior>
-              <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
-                <FaBox className="mr-3" />
-                Produtos
-              </a>
-            </Link>
+            <button
+              onClick={togglePedidos}
+              className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors w-full text-left"
+            >
+              <FaClipboardList className="mr-3" />
+              Pedidos de Compra
+              {isPedidosOpen ? (
+                <FaChevronUp className="ml-auto" />
+              ) : (
+                <FaChevronDown className="ml-auto" />
+              )}
+            </button>
+            {isPedidosOpen && (
+              <ul className="pl-4">
+                <li>
+                  <Link href="/pedidos/novo" legacyBehavior>
+                    <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                      Novo Pedido
+                    </a>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/pedidos/pendentes" legacyBehavior>
+                    <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                      Pedidos Pendentes
+                    </a>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/pedidos/concluidos" legacyBehavior>
+                    <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                      Pedidos Concluídos
+                    </a>
+                  </Link>
+                </li>
+              </ul>
+            )}
           </li>
           <li>
             <button
@@ -74,6 +107,38 @@ export const Sidebar = () => {
                   <Link href="/fornecedores/fornecedores" legacyBehavior>
                     <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
                       Cadastrar Fornecedor
+                    </a>
+                  </Link>
+                </li>
+              </ul>
+            )}
+          </li>
+          <li>
+            <button
+              onClick={toggleProdutos}
+              className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors w-full text-left"
+            >
+              <FaBox className="mr-3" />
+              Produtos
+              {isProdutosOpen ? (
+                <FaChevronUp className="ml-auto" />
+              ) : (
+                <FaChevronDown className="ml-auto" />
+              )}
+            </button>
+            {isProdutosOpen && (
+              <ul className="pl-4">
+                <li>
+                  <Link href="/produtos/cadastrarProduto" legacyBehavior>
+                    <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                      Cadastrar Produto
+                    </a>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/produtos/listarProdutos" legacyBehavior>
+                    <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
+                      Listar Produtos
                     </a>
                   </Link>
                 </li>

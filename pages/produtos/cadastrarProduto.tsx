@@ -1,7 +1,6 @@
 import { useState } from "react";
-import DarkModeToggle from "../components/DarkModeToggle";
 
-const Produtos = () => {
+const CadastrarProduto = () => {
   const [nome, setNome] = useState("");
   const [sku, setSku] = useState("");
   const [message, setMessage] = useState("");
@@ -87,4 +86,4 @@ const Produtos = () => {
   );
 };
 
-export default Produtos;
+export default CadastrarProduto;
