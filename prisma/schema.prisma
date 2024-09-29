@@ -33,6 +33,7 @@ model PedidoCompra {
   comentarios  String?
   status       String
   data         DateTime        @default(now())
+  armazemId    Int? // Novo campo para armazenar a referência do armazém
 }
 
 model PedidoProduto {

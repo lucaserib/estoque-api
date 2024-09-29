@@ -58,7 +58,20 @@ const PedidosPendentes = () => {
       return;
     }
 
+    const pedidoParaConfirmar = pedidos.find((pedido) => pedido.id === id);
+
+    if (!pedidoParaConfirmar) {
+      setError("Pedido não encontrado");
+      return;
+    }
+
     try {
+      console.log("Enviando dados para confirmação:", {
+        pedidoId: id,
+        armazemId,
+        produtosRecebidos: pedidoParaConfirmar.produtos,
+      });
+
       const response = await fetch(`/api/pedidos-compra`, {
         method: "PUT",
         headers: {
@@ -67,7 +80,7 @@ const PedidosPendentes = () => {
         body: JSON.stringify({
           pedidoId: id,
           armazemId,
-          produtosRecebidos: editPedido?.produtos,
+          produtosRecebidos: pedidoParaConfirmar.produtos,
         }),
       });
 
@@ -76,7 +89,8 @@ const PedidosPendentes = () => {
         setEditPedido(null);
         setArmazemId(null);
       } else {
-        setError("Erro ao confirmar pedido");
+        const errorData = await response.json();
+        setError(errorData.error || "Erro ao confirmar pedido");
       }
     } catch (error) {
       setError("Erro ao confirmar pedido");
@@ -91,6 +105,12 @@ const PedidosPendentes = () => {
     if (!editPedido) return;
 
     try {
+      console.log("Enviando dados para salvar:", {
+        pedidoId: editPedido.id,
+        armazemId,
+        produtosRecebidos: editPedido.produtos,
+      });
+
       const response = await fetch(`/api/pedidos-compra`, {
         method: "PUT",
         headers: {
@@ -98,6 +118,7 @@ const PedidosPendentes = () => {
         },
         body: JSON.stringify({
           pedidoId: editPedido.id,
+          armazemId,
           produtosRecebidos: editPedido.produtos,
         }),
       });
@@ -110,7 +131,8 @@ const PedidosPendentes = () => {
         );
         setEditPedido(null);
       } else {
-        setError("Erro ao salvar alterações");
+        const errorData = await response.json();
+        setError(errorData.error || "Erro ao salvar alterações");
       }
     } catch (error) {
       setError("Erro ao salvar alterações");

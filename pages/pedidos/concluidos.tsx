@@ -22,6 +22,7 @@ interface Pedido {
   }[];
   comentarios: string;
   status: string;
+  armazemId: number; // Adicionando armazemId
 }
 
 const PedidosConcluidos = () => {
@@ -83,6 +84,9 @@ const PedidosConcluidos = () => {
               </ul>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                 Comentários: {pedido.comentarios}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                Armazém: {pedido.armazemId}
               </p>
             </div>
           </li>

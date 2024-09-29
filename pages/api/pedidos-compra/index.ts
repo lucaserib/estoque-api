@@ -8,14 +8,8 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (req.method === "POST") {
-    // Criar um novo pedido de compra
     try {
-      const {
-        fornecedorId,
-        produtos,
-        comentarios,
-      }: { fornecedorId: number; produtos: any[]; comentarios?: string } =
-        req.body;
+      const { fornecedorId, produtos, comentarios } = req.body;
 
       if (!fornecedorId || !produtos || produtos.length === 0) {
         return res
@@ -27,13 +21,19 @@ export default async function handler(
         data: {
           fornecedorId,
           comentarios,
-          status: "pendente", // Pedido criado com status pendente
+          status: "pendente",
           produtos: {
-            create: produtos.map((produto) => ({
-              produtoId: produto.produtoId,
-              quantidade: produto.quantidade,
-              custo: produto.custo,
-            })),
+            create: produtos.map(
+              (produto: {
+                produtoId: number;
+                quantidade: number;
+                custo: number;
+              }) => ({
+                produtoId: produto.produtoId,
+                quantidade: produto.quantidade,
+                custo: produto.custo,
+              })
+            ),
           },
         },
       });
@@ -42,11 +42,14 @@ export default async function handler(
       res.status(500).json({ error: "Erro ao criar pedido de compra" });
     }
   } else if (req.method === "GET") {
-    // Obter todos os pedidos de compra
     try {
       const pedidos = await prisma.pedidoCompra.findMany({
         include: {
-          produtos: true,
+          produtos: {
+            include: {
+              produto: true, // Inclui os dados do produto
+            },
+          },
           fornecedor: true,
         },
       });
@@ -55,14 +58,14 @@ export default async function handler(
       res.status(500).json({ error: "Erro ao buscar pedidos" });
     }
   } else if (req.method === "PUT") {
-    // Confirmar um pedido de compra e atualizar o estoque
     try {
-      const {
+      const { pedidoId, armazemId, produtosRecebidos } = req.body;
+
+      console.log("Recebendo dados para atualização:", {
         pedidoId,
         armazemId,
         produtosRecebidos,
-      }: { pedidoId: number; armazemId: number; produtosRecebidos: any[] } =
-        req.body;
+      });
 
       if (!pedidoId || !armazemId || !produtosRecebidos) {
         return res.status(400).json({
@@ -70,7 +73,6 @@ export default async function handler(
         });
       }
 
-      // Verifica se o pedido existe
       const pedidoExistente = await prisma.pedidoCompra.findUnique({
         where: { id: pedidoId },
       });
@@ -79,67 +81,69 @@ export default async function handler(
         return res.status(404).json({ error: "Pedido não encontrado" });
       }
 
-      // Atualiza a quantidade de produtos no pedido
       await Promise.all(
-        produtosRecebidos.map(async (produtoRecebido) => {
-          await prisma.pedidoProduto.updateMany({
-            where: {
-              pedidoId: pedidoId,
-              produtoId: produtoRecebido.produtoId,
-            },
-            data: {
-              quantidade: produtoRecebido.quantidade,
-            },
-          });
-        })
+        produtosRecebidos.map(
+          async (produtoRecebido: {
+            produtoId: number;
+            quantidade: number;
+          }) => {
+            await prisma.pedidoProduto.updateMany({
+              where: {
+                pedidoId: pedidoId,
+                produtoId: produtoRecebido.produtoId,
+              },
+              data: {
+                quantidade: produtoRecebido.quantidade,
+              },
+            });
+          }
+        )
       );
 
-      // Atualiza o status do pedido para "confirmado"
       const pedido = await prisma.pedidoCompra.update({
         where: { id: pedidoId },
-        data: { status: "confirmado" },
-        include: { produtos: true }, // Incluir produtos para atualização do estoque
+        data: { status: "confirmado", armazemId: armazemId },
+        include: { produtos: true },
       });
 
-      // Atualiza o estoque de acordo com os produtos recebidos (pode ser menor do que o solicitado)
       await Promise.all(
-        produtosRecebidos.map(async (produtoRecebido) => {
-          const pedidoProduto = pedido.produtos.find(
-            (p) => p.produtoId === produtoRecebido.produtoId
-          );
-          if (!pedidoProduto) {
-            throw new Error("Produto no pedido não encontrado");
-          }
+        produtosRecebidos.map(
+          async (produtoRecebido: {
+            produtoId: number;
+            quantidade: number;
+          }) => {
+            const pedidoProduto = pedido.produtos.find(
+              (p) => p.produtoId === produtoRecebido.produtoId
+            );
+            if (!pedidoProduto) {
+              throw new Error("Produto não encontrado no pedido");
+            }
 
-          const estoque = await prisma.estoque.findFirst({
-            where: {
-              produtoId: produtoRecebido.produtoId,
-              armazemId: armazemId,
-            },
-          });
-          if (estoque) {
-            // Atualiza a quantidade no estoque existente
-            await prisma.estoque.update({
-              where: { id: estoque.id },
-              data: {
-                quantidade: estoque.quantidade + produtoRecebido.quantidade,
-                valorUnitario: produtoRecebido.valorUnitario,
-              },
-            });
-          } else {
-            // Cria um novo registro de estoque se não existir
-            await prisma.estoque.create({
-              data: {
+            const estoque = await prisma.estoque.findFirst({
+              where: {
+                produtoId: produtoRecebido.produtoId,
                 armazemId: armazemId,
-                quantidade: produtoRecebido.quantidade,
-                valorUnitario: produtoRecebido.valorUnitario,
-                produto: {
-                  connect: { id: produtoRecebido.produtoId },
-                },
               },
             });
+            if (estoque) {
+              await prisma.estoque.update({
+                where: { id: estoque.id },
+                data: {
+                  quantidade: estoque.quantidade + produtoRecebido.quantidade,
+                },
+              });
+            } else {
+              await prisma.estoque.create({
+                data: {
+                  produtoId: produtoRecebido.produtoId,
+                  armazemId: armazemId,
+                  quantidade: produtoRecebido.quantidade,
+                  valorUnitario: pedidoProduto.custo,
+                },
+              });
+            }
           }
-        })
+        )
       );
 
       res.status(200).json({
@@ -152,20 +156,17 @@ export default async function handler(
         .json({ error: "Erro ao confirmar pedido e atualizar estoque" });
     }
   } else if (req.method === "DELETE") {
-    // Deletar um pedido de compra
     try {
-      const { pedidoId }: { pedidoId: number } = req.body;
+      const { pedidoId } = req.body;
 
       if (!pedidoId) {
         return res.status(400).json({ error: "PedidoId é obrigatório" });
       }
 
-      // Deletar os produtos associados ao pedido
       await prisma.pedidoProduto.deleteMany({
         where: { pedidoId: pedidoId },
       });
 
-      // Deletar o pedido
       await prisma.pedidoCompra.delete({
         where: { id: pedidoId },
       });
