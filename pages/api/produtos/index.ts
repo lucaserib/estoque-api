@@ -33,9 +33,20 @@ export default async function handler(
       if (!id) {
         return res.status(400).json({ error: "ID do produto é obrigatório" });
       }
+
+      // Remover referências antes de excluir o produto
+      await prisma.pedidoProduto.deleteMany({
+        where: { produtoId: Number(id) },
+      });
+      await prisma.estoque.deleteMany({ where: { produtoId: Number(id) } });
+      await prisma.movimentacao.deleteMany({
+        where: { produtoId: Number(id) },
+      });
+
       await prisma.produto.delete({ where: { id: Number(id) } });
       res.status(204).end();
     } catch (error) {
+      console.error(error);
       res.status(500).json({ error: "Erro ao deletar produto" });
     }
   } else {

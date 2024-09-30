@@ -20,32 +20,22 @@ export const Sidebar = () => {
   const [isProdutosOpen, setIsProdutosOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const toggleFornecedores = () => {
-    setIsFornecedoresOpen(!isFornecedoresOpen);
-  };
-
-  const togglePedidos = () => {
-    setIsPedidosOpen(!isPedidosOpen);
-  };
-
-  const toggleProdutos = () => {
-    setIsProdutosOpen(!isProdutosOpen);
-  };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
+  const toggleFornecedores = () => setIsFornecedoresOpen(!isFornecedoresOpen);
+  const togglePedidos = () => setIsPedidosOpen(!isPedidosOpen);
+  const toggleProdutos = () => setIsProdutosOpen(!isProdutosOpen);
+  const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
   return (
     <>
       <button
-        className="md:hidden p-3 text-white bg-blue-900 dark:bg-gray-900 fixed top-0 left-0 z-50"
+        className="md:hidden p-3 text-white bg-blue-900 dark:bg-gray-900 fixed top-4 left-4 z-50"
         onClick={toggleSidebar}
       >
         {isSidebarOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
       </button>
+
       <div
-        className={`w-64 md:w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between fixed z-40 transition-transform transform ${
+        className={`w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between fixed z-40 transition-transform transform ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0`}
       >
@@ -99,6 +89,7 @@ export const Sidebar = () => {
                 </ul>
               )}
             </li>
+            {/* Fornecedores Section */}
             <li>
               <button
                 onClick={toggleFornecedores}
@@ -134,6 +125,7 @@ export const Sidebar = () => {
                 </ul>
               )}
             </li>
+            {/* Produtos Section */}
             <li>
               <button
                 onClick={toggleProdutos}
@@ -166,6 +158,7 @@ export const Sidebar = () => {
                 </ul>
               )}
             </li>
+            {/* Estoque Section */}
             <li>
               <Link href="/estoque/armazens" legacyBehavior>
                 <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
