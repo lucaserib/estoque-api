@@ -7,9 +7,9 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   return (
-    <div className="flex">
+    <div className="flex min-h-screen">
       <Sidebar />
-      <div className="flex-grow p-6 bg-gray-100 dark:bg-gray-800 ml-64">
+      <div className="flex-grow p-6 bg-gray-100 dark:bg-gray-800 md:ml-64">
         {children}
       </div>
     </div>
