@@ -30,7 +30,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <div className="w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between fixed">
+    <div className="w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between fixed overflow-y-auto">
       <div>
         <h2 className="text-3xl font-bold mb-8">Gestão de Estoque</h2>
         <ul className="space-y-4">
@@ -146,7 +146,7 @@ export const Sidebar = () => {
             )}
           </li>
           <li>
-            <Link href="/estoque" legacyBehavior>
+            <Link href="/estoque/armazens" legacyBehavior>
               <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors">
                 <FaWarehouse className="mr-3" />
                 Estoque
@@ -165,7 +165,9 @@ export const Sidebar = () => {
       </div>
 
       {/* Dark Mode Toggle */}
-      <DarkModeToggle />
+      <div className="mt-auto">
+        <DarkModeToggle />
+      </div>
     </div>
   );
 };

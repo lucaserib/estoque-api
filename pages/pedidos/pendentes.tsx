@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { FaCheck, FaEdit } from "react-icons/fa";
+import { FaCheck, FaEdit, FaTrash } from "react-icons/fa";
 
 interface Fornecedor {
   id: number;
@@ -139,6 +139,27 @@ const PedidosPendentes = () => {
     }
   };
 
+  const handleDelete = async (id: number) => {
+    try {
+      const response = await fetch(`/api/pedidos-compra`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ pedidoId: id }),
+      });
+
+      if (response.ok) {
+        setPedidos(pedidos.filter((pedido) => pedido.id !== id));
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Erro ao deletar pedido");
+      }
+    } catch (error) {
+      setError("Erro ao deletar pedido");
+    }
+  };
+
   if (loading) {
     return <p className="text-center mt-10">Carregando...</p>;
   }
@@ -189,6 +210,12 @@ const PedidosPendentes = () => {
                 className="text-blue-500 hover:text-blue-700"
               >
                 <FaEdit />
+              </button>
+              <button
+                onClick={() => handleDelete(pedido.id)}
+                className="text-red-500 hover:text-red-700"
+              >
+                <FaTrash />
               </button>
             </div>
           </li>
