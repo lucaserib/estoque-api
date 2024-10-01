@@ -23,13 +23,16 @@ interface Pedido {
   }[];
   comentarios: string;
   status: string;
-  armazemId: number; // Adicionando armazemId
+  armazemId: number;
+  data: string;
 }
 
 const PedidosConcluidos = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dataInicio, setDataInicio] = useState<string | null>(null); // Data de início
+  const [dataFim, setDataFim] = useState<string | null>(null); // Data final
 
   useEffect(() => {
     const fetchPedidos = async () => {
@@ -50,6 +53,10 @@ const PedidosConcluidos = () => {
   }, []);
 
   const handleDelete = async (id: number) => {
+    if (!window.confirm("Tem certeza que deseja excluir este pedido?")) {
+      return;
+    }
+
     try {
       const response = await fetch(`/api/pedidos-compra`, {
         method: "DELETE",
@@ -70,6 +77,35 @@ const PedidosConcluidos = () => {
     }
   };
 
+  // Filtros de data
+  const handleDataInicioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDataInicio(e.target.value);
+  };
+
+  const handleDataFimChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDataFim(e.target.value);
+  };
+
+  // Função para filtrar pedidos dentro do intervalo de datas
+  const pedidosFiltrados = pedidos.filter((pedido) => {
+    const pedidoData = new Date(pedido.data);
+
+    // Verifica se as datas de início e fim são válidas
+    if (dataInicio && dataFim) {
+      const inicio = new Date(dataInicio);
+      const fim = new Date(dataFim);
+      return pedidoData >= inicio && pedidoData <= fim;
+    } else if (dataInicio) {
+      const inicio = new Date(dataInicio);
+      return pedidoData >= inicio;
+    } else if (dataFim) {
+      const fim = new Date(dataFim);
+      return pedidoData <= fim;
+    }
+
+    return true; // Caso não tenha filtro, retorna todos os pedidos
+  });
+
   if (loading) {
     return <p className="text-center mt-10">Carregando...</p>;
   }
@@ -83,27 +119,63 @@ const PedidosConcluidos = () => {
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
         Pedidos Concluídos
       </h1>
+
+      {/* Filtro por intervalo de datas */}
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Data de Início:
+          </label>
+          <input
+            type="date"
+            onChange={handleDataInicioChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+            Data Final:
+          </label>
+          <input
+            type="date"
+            onChange={handleDataFimChange}
+            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+          />
+        </div>
+      </div>
+
       <ul className="space-y-4">
-        {pedidos.map((pedido) => (
+        {pedidosFiltrados.map((pedido) => (
           <li
             key={pedido.id}
             className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
           >
             <div>
               <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Fornecedor: {pedido.fornecedor.nome}
+                Pedido #{pedido.id} - Fornecedor: {pedido.fornecedor.nome}
               </p>
-              <ul className="space-y-2 mt-2">
-                {pedido.produtos.map((produto) => (
-                  <li key={produto.produtoId}>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Produto: {produto.produto.nome} (SKU:{" "}
-                      {produto.produto.sku}) - Quantidade: {produto.quantidade}{" "}
-                      - Custo: R${produto.custo}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Data do Pedido: {new Date(pedido.data).toLocaleDateString()}
+              </p>
+
+              {/* Collapse para os produtos */}
+              <details className="mt-2">
+                <summary className="cursor-pointer text-gray-600 dark:text-gray-400">
+                  Ver produtos ({pedido.produtos.length})
+                </summary>
+                <ul className="space-y-2 mt-2">
+                  {pedido.produtos.map((produto) => (
+                    <li key={produto.produtoId}>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Produto: {produto.produto.nome} (SKU:{" "}
+                        {produto.produto.sku}) - Quantidade:{" "}
+                        {produto.quantidade} - Custo: R${produto.custo}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                 Comentários: {pedido.comentarios}
               </p>
