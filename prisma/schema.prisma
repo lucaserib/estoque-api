@@ -23,6 +23,7 @@ model Produto {
   pedidosCompra PedidoProduto[]
   estoque       Estoque[]
   Movimentacao  Movimentacao[]
+  Saida         Saida[] // Adicionado campo de relação
 }
 
 model PedidoCompra {
@@ -50,7 +51,8 @@ model Estoque {
   id            Int     @id @default(autoincrement())
   produto       Produto @relation(fields: [produtoId], references: [id])
   produtoId     Int
-  armazemId     Int // Consistência com o código
+  armazem       Armazem @relation(fields: [armazemId], references: [id])
+  armazemId     Int
   quantidade    Int
   valorUnitario Float? // Novo campo para armazenar o valor unitário do produto
 }
@@ -66,4 +68,28 @@ model Movimentacao {
   armazemId    Int // Novo campo para armazenar a referência do armazém
   fornecedor   Fornecedor? @relation(fields: [fornecedorId], references: [id])
   fornecedorId Int?
+}
+
+model Saida {
+  id         Int       @id @default(autoincrement())
+  produto    Produto   @relation(fields: [produtoId], references: [id])
+  produtoId  Int
+  quantidade Int
+  data       DateTime  @default(now())
+  armazem    Armazem   @relation(fields: [armazemId], references: [id])
+  armazemId  Int
+}
+
+model KitProduto {
+  id        Int      @id @default(autoincrement())
+  kitId     Int
+  produtoId Int
+  quantidade Int
+}
+
+model Armazem {
+  id       Int      @id @default(autoincrement())
+  nome     String
+  estoque  Estoque[]
+  saidas   Saida[] // Adicionado campo de relação
 }

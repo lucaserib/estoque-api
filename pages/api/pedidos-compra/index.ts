@@ -1,6 +1,5 @@
+import { NextApiRequest, NextApiResponse } from "next";
 import { PrismaClient } from "@prisma/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
 const prisma = new PrismaClient();
 
 export default async function handler(
@@ -61,16 +60,19 @@ export default async function handler(
     try {
       const { pedidoId, armazemId, produtosRecebidos } = req.body;
 
-      console.log("Recebendo dados para atualização:", {
-        pedidoId,
-        armazemId,
-        produtosRecebidos,
-      });
-
       if (!pedidoId || !armazemId || !produtosRecebidos) {
         return res.status(400).json({
           error: "Pedido, armazém e produtos recebidos são obrigatórios",
         });
+      }
+
+      // Verificar se o armazemId existe
+      const armazemExistente = await prisma.armazem.findUnique({
+        where: { id: armazemId },
+      });
+
+      if (!armazemExistente) {
+        return res.status(404).json({ error: "Armazém não encontrado" });
       }
 
       const pedidoExistente = await prisma.pedidoCompra.findUnique({
@@ -86,16 +88,35 @@ export default async function handler(
           async (produtoRecebido: {
             produtoId: number;
             quantidade: number;
+            custo: number;
           }) => {
-            await prisma.pedidoProduto.updateMany({
+            const estoqueExistente = await prisma.estoque.findFirst({
               where: {
-                pedidoId: pedidoId,
                 produtoId: produtoRecebido.produtoId,
-              },
-              data: {
-                quantidade: produtoRecebido.quantidade,
+                armazemId: armazemId,
               },
             });
+
+            if (estoqueExistente) {
+              await prisma.estoque.update({
+                where: { id: estoqueExistente.id },
+                data: {
+                  quantidade: {
+                    increment: produtoRecebido.quantidade,
+                  },
+                  valorUnitario: produtoRecebido.custo,
+                },
+              });
+            } else {
+              await prisma.estoque.create({
+                data: {
+                  produtoId: produtoRecebido.produtoId,
+                  armazemId: armazemId,
+                  quantidade: produtoRecebido.quantidade,
+                  valorUnitario: produtoRecebido.custo,
+                },
+              });
+            }
           }
         )
       );
@@ -105,46 +126,6 @@ export default async function handler(
         data: { status: "confirmado", armazemId: armazemId },
         include: { produtos: true },
       });
-
-      await Promise.all(
-        produtosRecebidos.map(
-          async (produtoRecebido: {
-            produtoId: number;
-            quantidade: number;
-          }) => {
-            const pedidoProduto = pedido.produtos.find(
-              (p) => p.produtoId === produtoRecebido.produtoId
-            );
-            if (!pedidoProduto) {
-              throw new Error("Produto não encontrado no pedido");
-            }
-
-            const estoque = await prisma.estoque.findFirst({
-              where: {
-                produtoId: produtoRecebido.produtoId,
-                armazemId: armazemId,
-              },
-            });
-            if (estoque) {
-              await prisma.estoque.update({
-                where: { id: estoque.id },
-                data: {
-                  quantidade: estoque.quantidade + produtoRecebido.quantidade,
-                },
-              });
-            } else {
-              await prisma.estoque.create({
-                data: {
-                  produtoId: produtoRecebido.produtoId,
-                  armazemId: armazemId,
-                  quantidade: produtoRecebido.quantidade,
-                  valorUnitario: pedidoProduto.custo,
-                },
-              });
-            }
-          }
-        )
-      );
 
       res.status(200).json({
         message: "Pedido confirmado e estoque atualizado com sucesso",
@@ -160,7 +141,7 @@ export default async function handler(
       const { pedidoId } = req.body;
 
       if (!pedidoId) {
-        return res.status(400).json({ error: "PedidoId é obrigatório" });
+        return res.status(400).json({ error: "Pedido é obrigatório" });
       }
 
       await prisma.pedidoProduto.deleteMany({

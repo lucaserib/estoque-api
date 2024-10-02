@@ -19,11 +19,15 @@ export const Sidebar = () => {
   const [isPedidosOpen, setIsPedidosOpen] = useState(false);
   const [isProdutosOpen, setIsProdutosOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSaidasOpen, setIsSaidasOpen] = useState(false);
+  const [isEstoqueOpen, setIsEstoqueOpen] = useState(false);
 
   const toggleFornecedores = () => setIsFornecedoresOpen(!isFornecedoresOpen);
   const togglePedidos = () => setIsPedidosOpen(!isPedidosOpen);
   const toggleProdutos = () => setIsProdutosOpen(!isProdutosOpen);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
+  const toggleSaidas = () => setIsSaidasOpen(!isSaidasOpen);
+  const toggleEstoque = () => setIsEstoqueOpen(!isEstoqueOpen);
 
   return (
     <>
@@ -160,20 +164,68 @@ export const Sidebar = () => {
             </li>
             {/* Estoque Section */}
             <li>
-              <Link href="/estoque/armazens" legacyBehavior>
-                <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
-                  <FaWarehouse className="mr-3" />
-                  Estoque
-                </a>
-              </Link>
+              <button
+                onClick={toggleEstoque}
+                className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors w-full text-left text-white dark:text-gray-300"
+              >
+                <FaWarehouse className="mr-3" />
+                Estoque
+                {isEstoqueOpen ? (
+                  <FaChevronUp className="ml-auto" />
+                ) : (
+                  <FaChevronDown className="ml-auto" />
+                )}
+              </button>
+              {isEstoqueOpen && (
+                <ul className="pl-4 space-y-2">
+                  <li>
+                    <Link href="/estoque/criarArmazem" legacyBehavior>
+                      <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
+                        Criar Armazéns
+                      </a>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/estoque/armazens" legacyBehavior>
+                      <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
+                        Armazens
+                      </a>
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
             <li>
-              <Link href="/saida" legacyBehavior>
-                <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
-                  <FaSignOutAlt className="mr-3" />
-                  Saída
-                </a>
-              </Link>
+              <button
+                onClick={() => setIsSaidasOpen(!isSaidasOpen)}
+                className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors w-full text-left text-white dark:text-gray-300"
+              >
+                <FaTruck className="mr-3" />
+                Saídas
+                {isSaidasOpen ? (
+                  <FaChevronUp className="ml-auto" />
+                ) : (
+                  <FaChevronDown className="ml-auto" />
+                )}
+              </button>
+              {isSaidasOpen && (
+                <ul className="pl-4 space-y-2">
+                  <li>
+                    <Link href="/saidas/novaSaida" legacyBehavior>
+                      <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
+                        Nova Saída
+                      </a>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/saidas/registroSaidas" legacyBehavior>
+                      <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
+                        Listar Saídas
+                      </a>
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
           </ul>
         </div>

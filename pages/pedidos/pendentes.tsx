@@ -1,5 +1,4 @@
-import { useEffect, useState } from "react";
-import { FaCheck, FaEdit, FaTrash } from "react-icons/fa";
+import React, { useEffect, useState } from "react";
 
 interface Fornecedor {
   id: number;
@@ -27,8 +26,14 @@ interface Pedido {
   status: string;
 }
 
+interface Armazem {
+  id: number;
+  nome: string;
+}
+
 const PedidosPendentes = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [armazens, setArmazens] = useState<Armazem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editPedido, setEditPedido] = useState<Pedido | null>(null);
@@ -49,7 +54,22 @@ const PedidosPendentes = () => {
       }
     };
 
+    const fetchArmazens = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const response = await fetch("/api/estoque/criarArmazem");
+        const data = await response.json();
+        setArmazens(data);
+      } catch (error) {
+        setError("Erro ao buscar armazéns");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchPedidos();
+    fetchArmazens();
   }, []);
 
   const handleConfirm = async (id: number) => {
@@ -66,13 +86,7 @@ const PedidosPendentes = () => {
     }
 
     try {
-      console.log("Enviando dados para confirmação:", {
-        pedidoId: id,
-        armazemId,
-        produtosRecebidos: pedidoParaConfirmar.produtos,
-      });
-
-      const response = await fetch(`/api/pedidos-compra`, {
+      const response = await fetch("/api/pedidos-compra", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -86,8 +100,6 @@ const PedidosPendentes = () => {
 
       if (response.ok) {
         setPedidos(pedidos.filter((pedido) => pedido.id !== id));
-        setEditPedido(null);
-        setArmazemId(null);
       } else {
         const errorData = await response.json();
         setError(errorData.error || "Erro ao confirmar pedido");
@@ -99,19 +111,14 @@ const PedidosPendentes = () => {
 
   const handleEdit = (pedido: Pedido) => {
     setEditPedido(pedido);
+    setArmazemId(null); // Resetar armazemId ao editar
   };
 
   const handleSave = async () => {
-    if (!editPedido) return;
+    if (!editPedido || !armazemId) return;
 
     try {
-      console.log("Enviando dados para salvar:", {
-        pedidoId: editPedido.id,
-        armazemId,
-        produtosRecebidos: editPedido.produtos,
-      });
-
-      const response = await fetch(`/api/pedidos-compra`, {
+      const response = await fetch("/api/pedidos-compra", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -124,11 +131,7 @@ const PedidosPendentes = () => {
       });
 
       if (response.ok) {
-        setPedidos(
-          pedidos.map((pedido) =>
-            pedido.id === editPedido.id ? editPedido : pedido
-          )
-        );
+        setPedidos(pedidos.filter((pedido) => pedido.id !== editPedido.id));
         setEditPedido(null);
       } else {
         const errorData = await response.json();
@@ -141,7 +144,7 @@ const PedidosPendentes = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`/api/pedidos-compra`, {
+      const response = await fetch("/api/pedidos-compra", {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
@@ -158,6 +161,23 @@ const PedidosPendentes = () => {
     } catch (error) {
       setError("Erro ao deletar pedido");
     }
+  };
+
+  const handleProdutoChange = (
+    produtoId: number,
+    field: string,
+    value: number
+  ) => {
+    if (!editPedido) return;
+
+    const updatedProdutos = editPedido.produtos.map((produto) => {
+      if (produto.produtoId === produtoId) {
+        return { ...produto, [field]: value };
+      }
+      return produto;
+    });
+
+    setEditPedido({ ...editPedido, produtos: updatedProdutos });
   };
 
   if (loading) {
@@ -177,47 +197,26 @@ const PedidosPendentes = () => {
         {pedidos.map((pedido) => (
           <li
             key={pedido.id}
-            className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
+            className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md shadow-md"
           >
-            <div>
-              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Fornecedor: {pedido.fornecedor.nome}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Comentários: {pedido.comentarios}
-              </p>
-              <ul className="mt-2">
-                {pedido.produtos.map((produto, index) => (
-                  <li key={index}>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Produto: {produto.produto?.nome || "Desconhecido"} (SKU:{" "}
-                      {produto.produto?.sku || "Desconhecido"}) - Quantidade:{" "}
-                      {produto.quantidade} - Custo: R${produto.custo}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => handleConfirm(pedido.id)}
-                className="text-green-500 hover:text-green-700"
-              >
-                <FaCheck />
-              </button>
-              <button
-                onClick={() => handleEdit(pedido)}
-                className="text-blue-500 hover:text-blue-700"
-              >
-                <FaEdit />
-              </button>
-              <button
-                onClick={() => handleDelete(pedido.id)}
-                className="text-red-500 hover:text-red-700"
-              >
-                <FaTrash />
-              </button>
-            </div>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+              Pedido #{pedido.id} - {pedido.fornecedor.nome}
+            </h2>
+            <p className="text-gray-700 dark:text-gray-300">
+              {pedido.comentarios}
+            </p>
+            <button
+              onClick={() => handleEdit(pedido)}
+              className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            >
+              Editar
+            </button>
+            <button
+              onClick={() => handleDelete(pedido.id)}
+              className="mt-2 ml-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Deletar
+            </button>
           </li>
         ))}
       </ul>
@@ -225,67 +224,80 @@ const PedidosPendentes = () => {
       {editPedido && (
         <div className="mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
           <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-            Editar Pedido
+            Editar Pedido #{editPedido.id}
           </h2>
-          <ul className="space-y-4">
-            {editPedido.produtos.map((produto, index) => (
-              <li key={index} className="flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Produto: {produto.produto?.nome || "Desconhecido"} (SKU:{" "}
-                    {produto.produto?.sku || "Desconhecido"})
-                  </p>
-                  <input
-                    type="number"
-                    value={produto.quantidade}
-                    onChange={(e) =>
-                      setEditPedido({
-                        ...editPedido,
-                        produtos: editPedido.produtos.map((p, i) =>
-                          i === index
-                            ? { ...p, quantidade: Number(e.target.value) }
-                            : p
-                        ),
-                      })
-                    }
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                  <input
-                    type="number"
-                    value={produto.custo}
-                    onChange={(e) =>
-                      setEditPedido({
-                        ...editPedido,
-                        produtos: editPedido.produtos.map((p, i) =>
-                          i === index
-                            ? { ...p, custo: Number(e.target.value) }
-                            : p
-                        ),
-                      })
-                    }
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-              </li>
-            ))}
-          </ul>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Armazém
+            <label
+              htmlFor="armazem"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Selecione o Armazém
             </label>
-            <input
-              type="number"
-              value={armazemId || ""}
+            <select
+              id="armazem"
+              name="armazem"
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
               onChange={(e) => setArmazemId(Number(e.target.value))}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-              required
-            />
+            >
+              <option value="">Selecione um armazém</option>
+              {armazens.map((armazem) => (
+                <option key={armazem.id} value={armazem.id}>
+                  {armazem.nome}
+                </option>
+              ))}
+            </select>
           </div>
+          {editPedido.produtos.map((produto) => (
+            <div key={produto.produtoId} className="mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                {produto.produto?.nome || "Produto"} (SKU:{" "}
+                {produto.produto?.sku || "N/A"})
+              </h3>
+              <label
+                htmlFor={`quantidade-${produto.produtoId}`}
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Quantidade
+              </label>
+              <input
+                id={`quantidade-${produto.produtoId}`}
+                type="number"
+                value={produto.quantidade}
+                onChange={(e) =>
+                  handleProdutoChange(
+                    produto.produtoId,
+                    "quantidade",
+                    Number(e.target.value)
+                  )
+                }
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              />
+              <label
+                htmlFor={`custo-${produto.produtoId}`}
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+              >
+                Custo
+              </label>
+              <input
+                id={`custo-${produto.produtoId}`}
+                type="number"
+                value={produto.custo}
+                onChange={(e) =>
+                  handleProdutoChange(
+                    produto.produtoId,
+                    "custo",
+                    Number(e.target.value)
+                  )
+                }
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              />
+            </div>
+          ))}
           <button
             onClick={handleSave}
-            className="mt-4 w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+            className="mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
           >
-            Salvar Alterações
+            Confirmar
           </button>
         </div>
       )}

@@ -8,55 +8,113 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (req.method === "POST") {
-    const {
-      produtoId,
-      quantidade,
-      armazemId,
-    }: { produtoId: number; quantidade: number; armazemId: number } = req.body;
-
-    if (!produtoId || !quantidade || !armazemId) {
-      return res.status(400).json({ error: "Dados incompletos" });
-    }
-
     try {
-      // Buscar o estoque para o produto no armazém específico
-      const estoque = await prisma.estoque.findFirst({
-        where: {
-          produtoId,
-          armazemId: armazemId,
-        },
-      });
+      const { produtos, armazemId } = req.body;
 
-      if (!estoque) {
-        return res.status(404).json({ error: "Estoque não encontrado" });
+      if (!produtos || produtos.length === 0 || !armazemId) {
+        return res
+          .status(400)
+          .json({ error: "Produtos e armazém são obrigatórios" });
       }
 
-      if (estoque.quantidade < quantidade) {
-        return res.status(400).json({ error: "Estoque insuficiente" });
+      for (const { produtoId, quantidade, isKit } of produtos) {
+        if (isKit) {
+          const kitProdutos = await prisma.kitProduto.findMany({
+            where: { kitId: produtoId },
+          });
+
+          for (const kitProduto of kitProdutos) {
+            const estoque = await prisma.estoque.findFirst({
+              where: {
+                produtoId: kitProduto.produtoId,
+                armazemId,
+              },
+            });
+
+            if (!estoque) {
+              return res.status(404).json({
+                error: `Produto ${kitProduto.produtoId} não encontrado no estoque do armazém ${armazemId}`,
+              });
+            }
+
+            if (estoque.quantidade < kitProduto.quantidade * quantidade) {
+              return res.status(400).json({
+                error: `Quantidade insuficiente no estoque para o produto ${kitProduto.produtoId}`,
+              });
+            }
+
+            await prisma.estoque.update({
+              where: { id: estoque.id },
+              data: {
+                quantidade:
+                  estoque.quantidade - kitProduto.quantidade * quantidade,
+              },
+            });
+
+            await prisma.saida.create({
+              data: {
+                produtoId: kitProduto.produtoId,
+                quantidade: kitProduto.quantidade * quantidade,
+                armazemId,
+                data: new Date(),
+              },
+            });
+          }
+        } else {
+          const estoque = await prisma.estoque.findFirst({
+            where: {
+              produtoId,
+              armazemId,
+            },
+          });
+
+          if (!estoque) {
+            return res.status(404).json({
+              error: `Produto ${produtoId} não encontrado no estoque do armazém ${armazemId}`,
+            });
+          }
+
+          if (estoque.quantidade < quantidade) {
+            return res
+              .status(400)
+              .json({ error: "Quantidade insuficiente no estoque" });
+          }
+
+          await prisma.estoque.update({
+            where: { id: estoque.id },
+            data: {
+              quantidade: estoque.quantidade - quantidade,
+            },
+          });
+
+          await prisma.saida.create({
+            data: {
+              produtoId,
+              quantidade,
+              armazemId,
+              data: new Date(),
+            },
+          });
+        }
       }
 
-      // Atualizar a quantidade no estoque
-      await prisma.estoque.update({
-        where: { id: estoque.id },
-        data: { quantidade: estoque.quantidade - quantidade },
-      });
-
-      // Registrar a movimentação de saída
-      const movimentacao = await prisma.movimentacao.create({
-        data: {
-          tipo: "saida",
-          quantidade,
-          produtoId,
-          armazemId,
-          valorTotal: quantidade * estoque.valorUnitario, // Corrigido com o novo campo
-        },
-      });
-
-      res.status(200).json(movimentacao);
+      res.status(201).json({ message: "Saída registrada com sucesso" });
     } catch (error) {
-      res
-        .status(500)
-        .json({ error: "Erro ao registrar movimentação de saída" });
+      console.error(error);
+      res.status(500).json({ error: "Erro ao registrar saída" });
+    }
+  } else if (req.method === "GET") {
+    try {
+      const saidas = await prisma.saida.findMany({
+        include: {
+          produto: true,
+          armazem: true,
+        },
+      });
+      res.status(200).json(saidas);
+    } catch (error) {
+      console.error("Erro ao buscar saídas:", error);
+      res.status(500).json({ error: "Erro ao buscar saídas" });
     }
   } else {
     res.status(405).json({ error: "Método não permitido" });

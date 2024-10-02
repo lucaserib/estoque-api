@@ -35,12 +35,10 @@ export default async function handler(
       } = req.body;
 
       if (!armazemId || !produtoId || !quantidade || !valorUnitario) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Armazém, produto, quantidade e valor unitário são obrigatórios",
-          });
+        return res.status(400).json({
+          message:
+            "Armazém, produto, quantidade e valor unitário são obrigatórios",
+        });
       }
 
       const estoque = await prisma.estoque.create({

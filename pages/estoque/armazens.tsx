@@ -6,77 +6,71 @@ interface Produto {
   sku: string;
 }
 
-interface PedidoProduto {
-  produtoId: number;
-  quantidade: number;
-  custo: number;
+interface Estoque {
+  id: number;
   produto: Produto;
+  quantidade: number;
+  valorUnitario: number;
+  armazemId: number;
 }
 
-interface Pedido {
+interface Armazem {
   id: number;
-  armazemId: number;
-  produtos: PedidoProduto[];
-  status: string;
+  nome: string;
 }
 
 const Estoque = () => {
-  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [estoque, setEstoque] = useState<Estoque[]>([]);
+  const [armazens, setArmazens] = useState<Armazem[]>([]); // Adicionado para armazenar os armazéns
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [armazemSelecionado, setArmazemSelecionado] = useState<number | null>(
     null
   );
 
-  useEffect(() => {
-    const fetchPedidos = async () => {
-      try {
-        const response = await fetch("/api/pedidos-compra");
-        const data = await response.json();
-        setPedidos(
-          data.filter((pedido: Pedido) => pedido.status === "confirmado")
-        );
-      } catch (error) {
-        setError("Erro ao buscar pedidos");
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Função para buscar o estoque do armazém selecionado
+  const fetchEstoque = async (armazemId: number | null) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/estoque/armazens${armazemId ? `?armazemId=${armazemId}` : ""}`
+      );
+      const data = await response.json();
+      setEstoque(data);
+    } catch (error) {
+      setError("Erro ao buscar estoque");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    fetchPedidos();
+  // Função para buscar os armazéns
+  const fetchArmazens = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/estoque/criarArmazem`); // Alterado para a rota correta
+      const data = await response.json();
+      setArmazens(data); // Atualizando a lista de armazéns
+    } catch (error) {
+      setError("Erro ao buscar armazéns");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Efeito para buscar os armazéns ao carregar o componente
+  useEffect(() => {
+    fetchArmazens();
   }, []);
 
-  const armazensUnicos = Array.from(
-    new Set(pedidos.map((pedido) => pedido.armazemId))
-  );
-
-  const produtosPorArmazem = (armazemId: number) => {
-    const produtosMap = new Map<
-      number,
-      { produto: Produto; quantidade: number; custoTotal: number }
-    >();
-
-    pedidos
-      .filter((pedido) => pedido.armazemId === armazemId)
-      .forEach((pedido) => {
-        pedido.produtos.forEach((pedidoProduto) => {
-          if (produtosMap.has(pedidoProduto.produtoId)) {
-            const produtoInfo = produtosMap.get(pedidoProduto.produtoId)!;
-            produtoInfo.quantidade += pedidoProduto.quantidade;
-            produtoInfo.custoTotal +=
-              pedidoProduto.custo * pedidoProduto.quantidade;
-          } else {
-            produtosMap.set(pedidoProduto.produtoId, {
-              produto: pedidoProduto.produto,
-              quantidade: pedidoProduto.quantidade,
-              custoTotal: pedidoProduto.custo * pedidoProduto.quantidade,
-            });
-          }
-        });
-      });
-
-    return Array.from(produtosMap.values());
-  };
+  // Efeito para buscar o estoque sempre que o armazém for alterado
+  useEffect(() => {
+    if (armazemSelecionado !== null) {
+      fetchEstoque(armazemSelecionado);
+    }
+  }, [armazemSelecionado]);
 
   if (loading) {
     return <p className="text-center mt-10">Carregando...</p>;
@@ -105,45 +99,55 @@ const Estoque = () => {
           onChange={(e) => setArmazemSelecionado(Number(e.target.value))}
         >
           <option value="">Selecione um armazém</option>
-          {armazensUnicos.map((armazemId) => (
-            <option key={armazemId} value={armazemId}>
-              Armazém {armazemId}
+          {armazens.map((armazem) => (
+            <option key={armazem.id} value={armazem.id}>
+              {armazem.nome}
             </option>
           ))}
         </select>
       </div>
-      {armazemSelecionado && (
+
+      {armazemSelecionado ? (
         <div>
           <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
             Produtos no Armazém {armazemSelecionado}
           </h2>
-          <ul className="space-y-4">
-            {produtosPorArmazem(armazemSelecionado).map(
-              ({ produto, quantidade, custoTotal }) => (
-                <li
-                  key={produto.id}
-                  className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
-                >
-                  <div>
-                    <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                      {produto.nome}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      SKU: {produto.sku}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Quantidade: {quantidade}
-                    </p>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Média do valor pago:{" "}
-                      {(custoTotal / quantidade).toFixed(2)}
-                    </p>
-                  </div>
-                </li>
-              )
-            )}
-          </ul>
+          {estoque.length === 0 ? (
+            <p className="text-center text-gray-500 dark:text-gray-400">
+              Nenhum produto encontrado neste armazém.
+            </p>
+          ) : (
+            <ul className="space-y-4">
+              {estoque
+                .filter((item) => item.armazemId === armazemSelecionado)
+                .map(({ produto, quantidade, valorUnitario }) => (
+                  <li
+                    key={produto.id}
+                    className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
+                  >
+                    <div>
+                      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {produto.nome}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        SKU: {produto.sku}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Quantidade: {quantidade}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Valor Unitário: R${valorUnitario.toFixed(2)}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+            </ul>
+          )}
         </div>
+      ) : (
+        <p className="text-center text-gray-500 dark:text-gray-400">
+          Selecione um armazém para visualizar os produtos.
+        </p>
       )}
     </div>
   );
