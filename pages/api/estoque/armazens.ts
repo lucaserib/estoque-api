@@ -91,6 +91,22 @@ export default async function handler(
     } catch (error) {
       res.status(500).json({ message: "Erro ao atualizar estoque" });
     }
+  } else if (req.method === "DELETE") {
+    try {
+      const { id } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ message: "ID do armazém é obrigatório" });
+      }
+
+      await prisma.armazem.delete({
+        where: { id: Number(id) },
+      });
+
+      res.status(200).json({ message: "Armazém deletado com sucesso" });
+    } catch (error) {
+      res.status(500).json({ message: "Erro ao deletar armazém" });
+    }
   } else {
     res.status(405).json({ message: "Método não permitido" });
   }

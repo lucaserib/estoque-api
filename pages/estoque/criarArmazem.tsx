@@ -1,9 +1,30 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+interface Armazem {
+  id: number;
+  nome: string;
+}
 
 const CriarArmazem = () => {
   const [nome, setNome] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+  const [armazens, setArmazens] = useState<Armazem[]>([]);
+
+  const fetchArmazens = async () => {
+    try {
+      const response = await fetch("/api/estoque/criarArmazem");
+      const data = await response.json();
+      setArmazens(data);
+    } catch (error) {
+      setMessage("Erro ao buscar armazéns");
+      setMessageType("error");
+    }
+  };
+
+  useEffect(() => {
+    fetchArmazens();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,6 +42,7 @@ const CriarArmazem = () => {
         setMessage("Armazém criado com sucesso!");
         setMessageType("success");
         setNome("");
+        fetchArmazens(); // Atualizar a lista de armazéns
       } else {
         const errorData = await response.json();
         setMessage(errorData.error || "Erro ao criar armazém");
@@ -28,6 +50,31 @@ const CriarArmazem = () => {
       }
     } catch (error) {
       setMessage("Erro ao criar armazém");
+      setMessageType("error");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      const response = await fetch("/api/estoque/armazens", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      });
+
+      if (response.ok) {
+        setMessage("Armazém deletado com sucesso!");
+        setMessageType("success");
+        fetchArmazens(); // Atualizar a lista de armazéns
+      } else {
+        const errorData = await response.json();
+        setMessage(errorData.error || "Erro ao deletar armazém");
+        setMessageType("error");
+      }
+    } catch (error) {
+      setMessage("Erro ao deletar armazém");
       setMessageType("error");
     }
   };
@@ -70,6 +117,28 @@ const CriarArmazem = () => {
           Criar Armazém
         </button>
       </form>
+
+      <h2 className="text-xl font-bold mt-10 mb-4 text-gray-900 dark:text-gray-100">
+        Armazéns Criados
+      </h2>
+      <ul className="space-y-4">
+        {armazens.map((armazem) => (
+          <li
+            key={armazem.id}
+            className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-800 rounded-md shadow-md"
+          >
+            <span className="text-gray-900 dark:text-gray-100">
+              {armazem.nome}
+            </span>
+            <button
+              onClick={() => handleDelete(armazem.id)}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              Deletar
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
