@@ -27,7 +27,7 @@ const RegistroSaidas = () => {
   useEffect(() => {
     const fetchSaidas = async () => {
       try {
-        const response = await fetch("/api/saidas");
+        const response = await fetch("/api/saida");
         const data = await response.json();
         setSaidas(data);
       } catch (error) {
