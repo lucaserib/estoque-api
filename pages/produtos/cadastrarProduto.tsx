@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+// pages/cadastrarProduto.tsx
+import React, { useEffect, useState } from "react";
 
 interface Produto {
   id: number;
@@ -83,10 +84,20 @@ const CadastrarProdutoOuKit = () => {
   };
 
   const handleAddProdutoAoKit = (produtoId: number, quantidade: number) => {
-    setKitProdutos((prevKitProdutos) => [
-      ...prevKitProdutos,
-      { produtoId, quantidade },
-    ]);
+    setKitProdutos((prevKitProdutos) => {
+      const existingProduto = prevKitProdutos.find(
+        (p) => p.produtoId === produtoId
+      );
+      if (existingProduto) {
+        return prevKitProdutos.map((p) =>
+          p.produtoId === produtoId
+            ? { ...p, quantidade: p.quantidade + quantidade }
+            : p
+        );
+      } else {
+        return [...prevKitProdutos, { produtoId, quantidade }];
+      }
+    });
   };
 
   const handleRemoveProdutoDoKit = (produtoId: number) => {
@@ -100,11 +111,9 @@ const CadastrarProdutoOuKit = () => {
       </h1>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Nome
-          </label>
           <input
             type="text"
+            placeholder="Nome"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border rounded-md shadow-lg"
@@ -113,11 +122,9 @@ const CadastrarProdutoOuKit = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            SKU
-          </label>
           <input
             type="text"
+            placeholder="SKU"
             value={sku}
             onChange={(e) => setSku(e.target.value)}
             className="mt-1 block w-full px-3 py-2 border rounded-md shadow-lg"
@@ -126,114 +133,78 @@ const CadastrarProdutoOuKit = () => {
         </div>
 
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Tipo
+          <label className="inline-flex items-center">
+            <input
+              type="checkbox"
+              checked={isKit}
+              onChange={(e) => setIsKit(e.target.checked)}
+              className="form-checkbox"
+            />
+            <span className="ml-2">É um kit?</span>
           </label>
-          <select
-            value={isKit ? "kit" : "produto"}
-            onChange={(e) => setIsKit(e.target.value === "kit")}
-            className="mt-1 block w-full px-3 py-2 border rounded-md shadow-lg"
-          >
-            <option value="produto">Produto</option>
-            <option value="kit">Kit</option>
-          </select>
         </div>
 
         {isKit && (
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Selecionar Produtos para o Kit
-            </label>
             <input
               type="text"
-              placeholder="Buscar produtos por nome ou SKU"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="mt-1 block w-full px-3 py-2 border rounded-md shadow-lg"
+              placeholder="Buscar produtos por nome ou SKU"
             />
-            {filteredProdutos.length > 0 && (
-              <ul className="mt-2 space-y-2 max-h-48 overflow-y-auto bg-gray-50 dark:bg-gray-700 p-2 rounded-md">
-                {filteredProdutos.map((produto) => (
-                  <li
-                    key={produto.id}
-                    className="flex justify-between items-center"
-                  >
+            <ul className="mt-2">
+              {filteredProdutos.map((produto) => (
+                <li key={produto.id}>
+                  <div className="flex justify-between items-center">
                     <span>
                       {produto.nome} (SKU: {produto.sku})
                     </span>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="Quantidade"
-                        className="w-20 px-2 py-1 border rounded-md"
-                        id={`quantidade-${produto.id}`}
-                      />
+                    <button
+                      type="button"
+                      onClick={
+                        () => handleAddProdutoAoKit(produto.id, 1) // Adiciona com quantidade 1 por padrão
+                      }
+                      className="ml-2 px-2 py-1 bg-blue-500 text-white rounded-md"
+                    >
+                      Adicionar
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <ul className="mt-4">
+              {kitProdutos.map((kitProduto) => {
+                const produto = produtos.find(
+                  (p) => p.id === kitProduto.produtoId
+                );
+                return (
+                  <li key={kitProduto.produtoId}>
+                    <div className="flex justify-between items-center">
+                      <span>
+                        {produto?.nome} (SKU: {produto?.sku}) - Quantidade:{" "}
+                        {kitProduto.quantidade}
+                      </span>
                       <button
                         type="button"
                         onClick={() =>
-                          handleAddProdutoAoKit(
-                            produto.id,
-                            Number(
-                              (
-                                document.getElementById(
-                                  `quantidade-${produto.id}`
-                                ) as HTMLInputElement
-                              ).value
-                            )
-                          )
+                          handleRemoveProdutoDoKit(kitProduto.produtoId)
                         }
-                        className="text-green-500 hover:text-green-700"
+                        className="ml-2 px-2 py-1 bg-red-500 text-white rounded-md"
                       >
-                        Adicionar
+                        Remover
                       </button>
                     </div>
                   </li>
-                ))}
-              </ul>
-            )}
-
-            {/* Produtos selecionados para o kit */}
-            {kitProdutos.length > 0 && (
-              <div className="mt-4">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Produtos no Kit:
-                </h3>
-                <ul className="space-y-2">
-                  {kitProdutos.map((kitProduto, index) => {
-                    const produto = produtos.find(
-                      (p) => p.id === kitProduto.produtoId
-                    );
-                    return (
-                      <li
-                        key={index}
-                        className="flex justify-between items-center"
-                      >
-                        <span>
-                          {produto?.nome} (SKU: {produto?.sku}) - Quantidade:{" "}
-                          {kitProduto.quantidade}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleRemoveProdutoDoKit(kitProduto.produtoId)
-                          }
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          Remover
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
+                );
+              })}
+            </ul>
           </div>
         )}
 
         <button
           type="submit"
-          className="w-full py-2 px-4 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
         >
           {isKit ? "Cadastrar Kit" : "Cadastrar Produto"}
         </button>

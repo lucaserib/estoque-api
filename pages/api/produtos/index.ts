@@ -1,3 +1,4 @@
+// pages/api/produtos/index.ts
 import { PrismaClient } from "@prisma/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -9,20 +10,52 @@ export default async function handler(
 ) {
   if (req.method === "POST") {
     try {
-      const { nome, sku, quantidade, fornecedorId } = req.body;
-      const novoProduto = await prisma.produto.create({
-        data: {
-          nome,
-          sku,
-        },
-      });
-      res.status(201).json(novoProduto);
+      const { nome, sku, produtos } = req.body;
+
+      if (produtos && produtos.length > 0) {
+        // Criar o produto (kit) primeiro
+        const novoKit = await prisma.produto.create({
+          data: {
+            nome,
+            sku,
+            isKit: true,
+          },
+        });
+
+        // Associar os produtos ao kit
+        const kitProdutos = await prisma.kitProduto.createMany({
+          data: produtos.map(
+            (p: { produtoId: number; quantidade: number }) => ({
+              kitId: novoKit.id,
+              produtoId: p.produtoId,
+              quantidade: p.quantidade,
+            })
+          ),
+        });
+
+        res.status(201).json({ ...novoKit, KitProduto: kitProdutos });
+      } else {
+        // Criar um produto
+        const novoProduto = await prisma.produto.create({
+          data: {
+            nome,
+            sku,
+            isKit: false,
+          },
+        });
+        res.status(201).json(novoProduto);
+      }
     } catch (error) {
-      res.status(500).json({ error: "Erro ao cadastrar produto" });
+      console.error("Erro ao cadastrar produto ou kit:", error);
+      res.status(500).json({ error: "Erro ao cadastrar produto ou kit" });
     }
   } else if (req.method === "GET") {
     try {
-      const produtos = await prisma.produto.findMany();
+      const produtos = await prisma.produto.findMany({
+        where: {
+          isKit: false,
+        },
+      });
       res.status(200).json(produtos);
     } catch (error) {
       res.status(500).json({ error: "Erro ao buscar produtos" });

@@ -12,18 +12,21 @@ model Fornecedor {
   nome              String
   cnpj              String?
   inscricaoEstadual String?
-  pedidosCompra     PedidoCompra[]
   Movimentacao      Movimentacao[]
+  pedidos          PedidoCompra[]
 }
 
 model Produto {
   id            Int             @id @default(autoincrement())
   nome          String
   sku           String
+  isKit         Boolean         @default(false)
   pedidosCompra PedidoProduto[]
   estoque       Estoque[]
   Movimentacao  Movimentacao[]
-  Saida         Saida[] // Adicionado campo de relação
+  Saida         Saida[]
+  KitProduto    KitProduto[] @relation(name: "ProdutoRelation")
+  kits          KitProduto[] @relation(name: "KitRelation")
 }
 
 model PedidoCompra {
@@ -34,7 +37,7 @@ model PedidoCompra {
   comentarios  String?
   status       String
   data         DateTime        @default(now())
-  armazemId    Int? // Novo campo para armazenar a referência do armazém
+  armazemId    Int?
 }
 
 model PedidoProduto {
@@ -54,7 +57,7 @@ model Estoque {
   armazem       Armazem @relation(fields: [armazemId], references: [id])
   armazemId     Int
   quantidade    Int
-  valorUnitario Float? // Novo campo para armazenar o valor unitário do produto
+  valorUnitario Float?
 }
 
 model Movimentacao {
@@ -65,7 +68,7 @@ model Movimentacao {
   quantidade   Int
   data         DateTime    @default(now())
   valorTotal   Float
-  armazemId    Int // Novo campo para armazenar a referência do armazém
+  armazemId    Int
   fornecedor   Fornecedor? @relation(fields: [fornecedorId], references: [id])
   fornecedorId Int?
 }
@@ -80,16 +83,18 @@ model Saida {
   armazemId  Int
 }
 
+model Armazem {
+  id       Int       @id @default(autoincrement())
+  nome     String
+  estoque  Estoque[]
+  Saida    Saida[]
+}
+
 model KitProduto {
   id        Int      @id @default(autoincrement())
   kitId     Int
   produtoId Int
   quantidade Int
-}
-
-model Armazem {
-  id       Int      @id @default(autoincrement())
-  nome     String
-  estoque  Estoque[]
-  saidas   Saida[] // Adicionado campo de relação
+  produto   Produto  @relation(fields: [produtoId], references: [id], name: "ProdutoRelation")
+  kit       Produto  @relation(fields: [kitId], references: [id], name: "KitRelation")
 }

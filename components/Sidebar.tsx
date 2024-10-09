@@ -159,6 +159,13 @@ export const Sidebar = () => {
                       </a>
                     </Link>
                   </li>
+                  <li>
+                    <Link href="/produtos/listarKits" legacyBehavior>
+                      <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
+                        Listar Kits
+                      </a>
+                    </Link>
+                  </li>
                 </ul>
               )}
             </li>

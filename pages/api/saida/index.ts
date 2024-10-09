@@ -1,3 +1,5 @@
+// pages/api/saida/index.ts
+
 import { PrismaClient } from "@prisma/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -21,6 +23,7 @@ export default async function handler(
         if (isKit) {
           const kitProdutos = await prisma.kitProduto.findMany({
             where: { kitId: produtoId },
+            include: { produto: true },
           });
 
           for (const kitProduto of kitProdutos) {
@@ -32,24 +35,36 @@ export default async function handler(
             });
 
             if (!estoque) {
-              return res.status(404).json({
-                error: `Produto ${kitProduto.produtoId} não encontrado no estoque do armazém ${armazemId}`,
+              return res.status(400).json({
+                error: `Produto ${kitProduto.produto.nome} não encontrado no estoque do armazém selecionado`,
               });
             }
 
             if (estoque.quantidade < kitProduto.quantidade * quantidade) {
               return res.status(400).json({
-                error: `Quantidade insuficiente no estoque para o produto ${kitProduto.produtoId}`,
+                error: `Quantidade insuficiente do produto ${kitProduto.produto.nome} no estoque do armazém selecionado`,
               });
             }
+          }
 
-            await prisma.estoque.update({
-              where: { id: estoque.id },
-              data: {
-                quantidade:
-                  estoque.quantidade - kitProduto.quantidade * quantidade,
+          // Atualizar o estoque para cada produto do kit
+          for (const kitProduto of kitProdutos) {
+            const estoque = await prisma.estoque.findFirst({
+              where: {
+                produtoId: kitProduto.produtoId,
+                armazemId,
               },
             });
+
+            if (estoque) {
+              await prisma.estoque.update({
+                where: { id: estoque.id },
+                data: {
+                  quantidade:
+                    estoque.quantidade - kitProduto.quantidade * quantidade,
+                },
+              });
+            }
 
             await prisma.saida.create({
               data: {
@@ -69,15 +84,15 @@ export default async function handler(
           });
 
           if (!estoque) {
-            return res.status(404).json({
-              error: `Produto ${produtoId} não encontrado no estoque do armazém ${armazemId}`,
+            return res.status(400).json({
+              error: `Produto não encontrado no estoque do armazém selecionado`,
             });
           }
 
           if (estoque.quantidade < quantidade) {
-            return res
-              .status(400)
-              .json({ error: "Quantidade insuficiente no estoque" });
+            return res.status(400).json({
+              error: `Quantidade insuficiente do produto no estoque do armazém selecionado`,
+            });
           }
 
           await prisma.estoque.update({

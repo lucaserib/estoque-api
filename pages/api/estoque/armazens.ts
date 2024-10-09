@@ -8,15 +8,9 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (req.method === "GET") {
-    const { armazemId } = req.query;
-
     try {
-      const estoque = await prisma.estoque.findMany({
-        where: armazemId ? { armazemId: Number(armazemId) } : {},
-        include: { produto: true },
-      });
-
-      res.status(200).json(estoque);
+      const armazens = await prisma.armazem.findMany();
+      res.status(200).json(armazens);
     } catch (error) {
       res.status(500).json({ error: "Erro ao buscar estoque" });
     }
