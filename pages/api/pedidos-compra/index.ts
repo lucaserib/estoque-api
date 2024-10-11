@@ -1,5 +1,6 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import { PrismaClient } from "@prisma/client";
+import type { NextApiRequest, NextApiResponse } from "next";
+
 const prisma = new PrismaClient();
 
 export default async function handler(
@@ -61,9 +62,11 @@ export default async function handler(
       const { pedidoId, armazemId, produtosRecebidos } = req.body;
 
       if (!pedidoId || !armazemId || !produtosRecebidos) {
-        return res.status(400).json({
-          error: "Pedido, armazém e produtos recebidos são obrigatórios",
-        });
+        return res
+          .status(400)
+          .json({
+            error: "Pedido, armazém e produtos recebidos são obrigatórios",
+          });
       }
 
       // Verificar se o armazemId existe
@@ -99,7 +102,12 @@ export default async function handler(
 
             if (estoqueExistente) {
               await prisma.estoque.update({
-                where: { id: estoqueExistente.id },
+                where: {
+                  produtoId_armazemId: {
+                    produtoId: produtoRecebido.produtoId,
+                    armazemId: armazemId,
+                  },
+                },
                 data: {
                   quantidade: {
                     increment: produtoRecebido.quantidade,
@@ -141,7 +149,7 @@ export default async function handler(
       const { pedidoId } = req.body;
 
       if (!pedidoId) {
-        return res.status(400).json({ error: "Pedido é obrigatório" });
+        return res.status(400).json({ error: "ID do pedido é obrigatório" });
       }
 
       await prisma.pedidoProduto.deleteMany({

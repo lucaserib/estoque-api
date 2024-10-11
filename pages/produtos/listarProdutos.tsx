@@ -17,7 +17,11 @@ const ListarProdutos = () => {
       try {
         const response = await fetch("/api/produtos");
         const data = await response.json();
-        setProdutos(data);
+        if (Array.isArray(data)) {
+          setProdutos(data);
+        } else {
+          setError("Dados inválidos recebidos da API");
+        }
       } catch (error) {
         setError("Erro ao buscar produtos");
       } finally {
@@ -55,19 +59,19 @@ const ListarProdutos = () => {
   return (
     <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-        Produtos
+        Lista de Produtos
       </h1>
       <ul className="space-y-4">
         {produtos.map((produto) => (
           <li
             key={produto.id}
-            className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
+            className="p-4 bg-white dark:bg-gray-800 rounded-md shadow-md flex justify-between items-center"
           >
             <div>
-              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                 {produto.nome}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              </h2>
+              <p className="text-gray-700 dark:text-gray-300">
                 SKU: {produto.sku}
               </p>
             </div>

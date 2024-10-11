@@ -1,7 +1,16 @@
-// pages/novaSaida.tsx
+import React, { useEffect, useState } from "react";
 
-import { Produto, Armazem, Estoque } from "@prisma/client";
-import { useState, useEffect } from "react";
+interface Produto {
+  id: number;
+  nome: string;
+  sku: string;
+  isKit: boolean;
+}
+
+interface Armazem {
+  id: number;
+  nome: string;
+}
 
 const NovaSaida = () => {
   const [sku, setSku] = useState("");
@@ -36,9 +45,9 @@ const NovaSaida = () => {
       if (!armazemId) return;
 
       try {
-        const response = await fetch(`/api/estoque/${armazemId}`);
+        const response = await fetch(`/api/produtos?armazemId=${armazemId}`);
         const data = await response.json();
-        setProdutos(data.map((item: Estoque) => ({ id: item.produtoId })));
+        setProdutos(data);
       } catch (error) {
         setMessage("Erro ao buscar produtos");
         setMessageType("error");
@@ -48,7 +57,7 @@ const NovaSaida = () => {
     fetchProdutos();
   }, [armazemId]);
 
-  const handleAddProduto = () => {
+  const handleAddProduto = async () => {
     if (!produtoId || quantidade <= 0) {
       setMessage(
         "Por favor, selecione um produto válido e quantidade maior que zero."
@@ -60,15 +69,44 @@ const NovaSaida = () => {
     const produto = produtos.find((p) => p.id === produtoId);
 
     if (produto) {
-      setSaidaProdutos((prev) => [
-        ...prev,
-        {
-          produtoId,
-          quantidade,
-          sku: produto.sku,
-          isKit: produto.isKit,
-        },
-      ]);
+      if (produto.isKit) {
+        // Se o produto for um kit, buscar os componentes do kit
+        try {
+          const response = await fetch(`/api/kits/${produtoId}`);
+          const kitComponentes = await response.json();
+
+          if (kitComponentes.length > 0) {
+            // Adiciona os produtos do kit na lista de saída
+            kitComponentes.forEach((componente: any) => {
+              setSaidaProdutos((prev) => [
+                ...prev,
+                {
+                  produtoId: componente.produtoId,
+                  quantidade: componente.quantidade * quantidade, // Multiplica pela quantidade de kits
+                  sku: componente.produto.sku,
+                  isKit: false, // Produto individual dentro do kit
+                },
+              ]);
+            });
+          }
+        } catch (error) {
+          setMessage("Erro ao buscar componentes do kit");
+          setMessageType("error");
+          return;
+        }
+      } else {
+        // Produto individual
+        setSaidaProdutos((prev) => [
+          ...prev,
+          {
+            produtoId,
+            quantidade,
+            sku: produto.sku,
+            isKit: produto.isKit,
+          },
+        ]);
+      }
+
       setSku("");
       setQuantidade(0);
       setProdutoId(null);
@@ -89,122 +127,64 @@ const NovaSaida = () => {
     }
 
     try {
-      // Verificar se todos os produtos do kit estão disponíveis no estoque
-      for (const { produtoId, quantidade, isKit } of saidaProdutos) {
-        if (isKit) {
-          const kitProdutos = await fetch(`/api/kits/${produtoId}`).then(
-            (res) => res.json()
-          );
+      const response = await fetch("/api/saida", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ produtos: saidaProdutos, armazemId }),
+      });
 
-          for (const kitProduto of kitProdutos) {
-            const estoque = await fetch(
-              `/api/estoque/${armazemId}?produtoId=${kitProduto.produtoId}`
-            ).then((res) => res.json());
-
-            if (
-              !estoque ||
-              estoque.quantidade < kitProduto.quantidade * quantidade
-            ) {
-              setMessage(
-                `Estoque insuficiente para o produto ${kitProduto.produto.nome} (SKU: ${kitProduto.produto.sku})`
-              );
-              setMessageType("error");
-              return;
-            }
-          }
-        } else {
-          const estoque = await fetch(
-            `/api/estoque/${armazemId}?produtoId=${produtoId}`
-          ).then((res) => res.json());
-
-          if (!estoque || estoque.quantidade < quantidade) {
-            setMessage(
-              `Estoque insuficiente para o produto com ID ${produtoId}`
-            );
-            setMessageType("error");
-            return;
-          }
-        }
+      if (response.ok) {
+        setMessage("Saída registrada com sucesso");
+        setMessageType("success");
+        setSaidaProdutos([]);
+        setArmazemId(null);
+      } else {
+        const errorData = await response.json();
+        setMessage(errorData.error || "Erro ao registrar saída");
+        setMessageType("error");
       }
-
-      // Atualizar o estoque e registrar a saída
-      for (const { produtoId, quantidade, isKit } of saidaProdutos) {
-        if (isKit) {
-          const kitProdutos = await fetch(`/api/kits/${produtoId}`).then(
-            (res) => res.json()
-          );
-
-          for (const kitProduto of kitProdutos) {
-            await fetch(`/api/estoque/${armazemId}`, {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                produtoId: kitProduto.produtoId,
-                quantidade: -kitProduto.quantidade * quantidade,
-              }),
-            });
-
-            await fetch("/api/saida", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                produtoId: kitProduto.produtoId,
-                quantidade: kitProduto.quantidade * quantidade,
-                armazemId,
-              }),
-            });
-          }
-        } else {
-          await fetch(`/api/estoque/${armazemId}`, {
-            method: "PUT",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              produtoId,
-              quantidade: -quantidade,
-            }),
-          });
-
-          await fetch("/api/saida", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              produtoId,
-              quantidade,
-              armazemId,
-            }),
-          });
-        }
-      }
-
-      setMessage("Saída registrada com sucesso!");
-      setMessageType("success");
-      setSaidaProdutos([]);
     } catch (error) {
-      console.error("Erro ao registrar saída:", error);
       setMessage("Erro ao registrar saída");
       setMessageType("error");
     }
   };
 
-  const handleSkuChange = (value: string) => {
+  const handleSkuChange = async (value: string) => {
     setSku(value);
-    const produto = produtos.find((p) => p.sku === value);
 
-    if (produto) {
-      setProdutoId(produto.id);
-      setMessage("");
-      setMessageType("");
-    } else {
+    try {
+      // Primeiro, buscar se o SKU pertence a um produto individual
+      const response = await fetch(`/api/produtos?sku=${value}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.length > 0) {
+          setProdutoId(data[0].id);
+          setMessage("");
+          setMessageType("");
+          return;
+        }
+      }
+
+      // Se não for produto individual, verificar se é um kit
+      const kitResponse = await fetch(`/api/kits?sku=${value}`);
+      if (kitResponse.ok) {
+        const kitData = await kitResponse.json();
+        if (kitData.length > 0) {
+          setProdutoId(kitData[0].id);
+          setMessage("");
+          setMessageType("");
+          return;
+        }
+      }
+
       setProdutoId(null);
-      setMessage("Produto não encontrado");
+      setMessage("Produto ou Kit não encontrado");
+      setMessageType("error");
+    } catch (error) {
+      setProdutoId(null);
+      setMessage("Produto ou Kit não encontrado");
       setMessageType("error");
     }
   };
@@ -212,14 +192,14 @@ const NovaSaida = () => {
   return (
     <div className="max-w-md mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-        Registrar Saída
+        Nova Saída
       </h1>
       <div className="mb-4">
         <label
           htmlFor="armazem"
           className="block text-sm font-medium text-gray-700 dark:text-gray-300"
         >
-          Selecione um Armazém
+          Armazém
         </label>
         <select
           id="armazem"
@@ -227,7 +207,9 @@ const NovaSaida = () => {
           onChange={(e) => setArmazemId(Number(e.target.value))}
           className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
         >
-          <option value="">Selecione um armazém</option>
+          <option value="" disabled>
+            Selecione um armazém
+          </option>
           {armazens.map((armazem) => (
             <option key={armazem.id} value={armazem.id}>
               {armazem.nome}
@@ -240,7 +222,7 @@ const NovaSaida = () => {
           htmlFor="sku"
           className="block text-sm font-medium text-gray-700 dark:text-gray-300"
         >
-          SKU do Produto
+          SKU do Produto ou Kit
         </label>
         <input
           type="text"
@@ -266,56 +248,59 @@ const NovaSaida = () => {
         />
       </div>
       <button
+        type="button"
         onClick={handleAddProduto}
-        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+        className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
       >
-        Adicionar Produto
+        Adicionar Produto/Kit
       </button>
-      {saidaProdutos.length > 0 && (
-        <div className="mt-6">
-          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-            Produtos na Saída
-          </h2>
-          <ul className="space-y-4">
-            {saidaProdutos.map((produto) => (
-              <li
-                key={produto.sku}
-                className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
-              >
-                <div>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    SKU: {produto.sku}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Quantidade: {produto.quantidade}
-                  </p>
-                </div>
-                <button
-                  onClick={() => handleRemoveProduto(produto.sku)}
-                  className="text-red-500 hover:text-red-700"
+
+      <div className="mt-6">
+        {saidaProdutos.length > 0 && (
+          <>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+              Produtos Adicionados
+            </h3>
+            <ul className="mt-3">
+              {saidaProdutos.map((p) => (
+                <li
+                  key={p.sku}
+                  className="flex justify-between items-center py-2"
                 >
-                  Remover
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+                  <span>
+                    {p.sku} (Quantidade: {p.quantidade})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveProduto(p.sku)}
+                    className="text-red-500"
+                  >
+                    Remover
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={handleRegistrarSaida}
+        className="w-full mt-4 bg-green-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+      >
+        Registrar Saída
+      </button>
+
       {message && (
         <p
-          className={`mt-4 text-center ${
-            messageType === "success" ? "text-green-500" : "text-red-500"
+          className={`mt-4 text-center text-sm ${
+            messageType === "error" ? "text-red-500" : "text-green-500"
           }`}
         >
           {message}
         </p>
       )}
-      <button
-        onClick={handleRegistrarSaida}
-        className="mt-6 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-      >
-        Registrar Saída
-      </button>
     </div>
   );
 };

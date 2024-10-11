@@ -1,5 +1,4 @@
-// pages/cadastrarProduto.tsx
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Produto {
   id: number;
@@ -10,25 +9,29 @@ interface Produto {
 const CadastrarProdutoOuKit = () => {
   const [nome, setNome] = useState("");
   const [sku, setSku] = useState("");
-  const [isKit, setIsKit] = useState(false); // Para definir se é um produto ou kit
-  const [produtos, setProdutos] = useState<Produto[]>([]); // Lista de produtos disponíveis
+  const [isKit, setIsKit] = useState(false);
+  const [produtos, setProdutos] = useState<Produto[]>([]);
   const [kitProdutos, setKitProdutos] = useState<
     { produtoId: number; quantidade: number }[]
-  >([]); // Produtos no kit
-  const [searchTerm, setSearchTerm] = useState(""); // Termo de pesquisa para os SKUs
-  const [filteredProdutos, setFilteredProdutos] = useState<Produto[]>([]); // Produtos filtrados pela pesquisa
+  >([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredProdutos, setFilteredProdutos] = useState<Produto[]>([]);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+  const [quantidades, setQuantidades] = useState<{ [key: number]: number }>({});
 
   useEffect(() => {
-    // Buscar produtos disponíveis no sistema para serem usados em kits
     const fetchProdutos = async () => {
       try {
         const response = await fetch("/api/produtos");
         const data = await response.json();
-        setProdutos(data);
+        if (Array.isArray(data)) {
+          setProdutos(data);
+        } else {
+          console.error("Dados inválidos recebidos da API");
+        }
       } catch (error) {
-        console.error("Erro ao buscar produtos:", error);
+        console.error("Erro ao buscar produtos", error);
       }
     };
 
@@ -36,7 +39,6 @@ const CadastrarProdutoOuKit = () => {
   }, []);
 
   useEffect(() => {
-    // Filtrar produtos de acordo com o termo de pesquisa (nome ou SKU)
     const filtered = produtos.filter(
       (produto) =>
         produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -49,11 +51,23 @@ const CadastrarProdutoOuKit = () => {
     e.preventDefault();
 
     const produtoOuKit = isKit
-      ? { nome, sku, produtos: kitProdutos } // Se for kit, inclui produtos e quantidades
-      : { nome, sku };
+      ? {
+          nome,
+          sku,
+          componentes: kitProdutos.map((kitProduto) => ({
+            quantidade: kitProduto.quantidade,
+            produtoId: kitProduto.produtoId,
+          })),
+        }
+      : {
+          nome,
+          sku,
+        };
+
+    const endpoint = isKit ? "/api/kits" : "/api/produtos";
 
     try {
-      const response = await fetch("/api/produtos", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -62,114 +76,142 @@ const CadastrarProdutoOuKit = () => {
       });
 
       if (response.ok) {
-        setMessage(
-          isKit
-            ? "Kit cadastrado com sucesso!"
-            : "Produto cadastrado com sucesso!"
-        );
+        setMessage("Produto ou kit cadastrado com sucesso!");
         setMessageType("success");
         setNome("");
         setSku("");
+        setIsKit(false);
         setKitProdutos([]);
-        setSearchTerm("");
       } else {
-        setMessage("Erro ao cadastrar.");
+        setMessage("Erro ao cadastrar produto ou kit.");
         setMessageType("error");
       }
     } catch (error) {
-      console.error("Erro ao cadastrar:", error);
-      setMessage("Erro ao cadastrar.");
+      console.error("Erro ao cadastrar produto ou kit:", error);
+      setMessage("Erro ao cadastrar produto ou kit.");
       setMessageType("error");
     }
   };
 
-  const handleAddProdutoAoKit = (produtoId: number, quantidade: number) => {
-    setKitProdutos((prevKitProdutos) => {
-      const existingProduto = prevKitProdutos.find(
-        (p) => p.produtoId === produtoId
-      );
-      if (existingProduto) {
-        return prevKitProdutos.map((p) =>
-          p.produtoId === produtoId
-            ? { ...p, quantidade: p.quantidade + quantidade }
-            : p
-        );
-      } else {
-        return [...prevKitProdutos, { produtoId, quantidade }];
-      }
-    });
+  const handleAddProdutoAoKit = (produtoId: number) => {
+    const quantidade = quantidades[produtoId];
+    if (quantidade > 0) {
+      setKitProdutos((prevKitProdutos) => [
+        ...prevKitProdutos,
+        { produtoId, quantidade },
+      ]);
+      setQuantidades((prevQuantidades) => ({
+        ...prevQuantidades,
+        [produtoId]: 0,
+      }));
+    }
   };
 
   const handleRemoveProdutoDoKit = (produtoId: number) => {
-    setKitProdutos(kitProdutos.filter((p) => p.produtoId !== produtoId));
+    setKitProdutos((prevKitProdutos) =>
+      prevKitProdutos.filter((p) => p.produtoId !== produtoId)
+    );
+  };
+
+  const handleQuantidadeChange = (produtoId: number, quantidade: number) => {
+    setQuantidades((prevQuantidades) => ({
+      ...prevQuantidades,
+      [produtoId]: quantidade,
+    }));
   };
 
   return (
     <div className="max-w-md mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-        {isKit ? "Cadastrar Kit" : "Cadastrar Produto"}
+        Cadastrar Produto ou Kit
       </h1>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
+          <label
+            htmlFor="nome"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            Nome
+          </label>
           <input
             type="text"
-            placeholder="Nome"
+            id="nome"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border rounded-md shadow-lg"
-            required
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           />
         </div>
-
         <div className="mb-4">
+          <label
+            htmlFor="sku"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            SKU
+          </label>
           <input
             type="text"
-            placeholder="SKU"
+            id="sku"
             value={sku}
             onChange={(e) => setSku(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border rounded-md shadow-lg"
-            required
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           />
         </div>
-
         <div className="mb-4">
-          <label className="inline-flex items-center">
-            <input
-              type="checkbox"
-              checked={isKit}
-              onChange={(e) => setIsKit(e.target.checked)}
-              className="form-checkbox"
-            />
-            <span className="ml-2">É um kit?</span>
+          <label
+            htmlFor="isKit"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            É um Kit?
           </label>
+          <input
+            type="checkbox"
+            id="isKit"
+            checked={isKit}
+            onChange={(e) => setIsKit(e.target.checked)}
+            className="mt-1"
+          />
         </div>
-
         {isKit && (
           <div className="mb-4">
+            <label
+              htmlFor="searchTerm"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Buscar Produtos
+            </label>
             <input
               type="text"
+              id="searchTerm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="mt-1 block w-full px-3 py-2 border rounded-md shadow-lg"
-              placeholder="Buscar produtos por nome ou SKU"
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             />
-            <ul className="mt-2">
+            <ul className="mt-4">
               {filteredProdutos.map((produto) => (
-                <li key={produto.id}>
-                  <div className="flex justify-between items-center">
-                    <span>
-                      {produto.nome} (SKU: {produto.sku})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={
-                        () => handleAddProdutoAoKit(produto.id, 1) // Adiciona com quantidade 1 por padrão
-                      }
-                      className="ml-2 px-2 py-1 bg-blue-500 text-white rounded-md"
-                    >
-                      Adicionar
-                    </button>
-                  </div>
+                <li key={produto.id} className="flex items-center">
+                  <span className="mr-2">
+                    {produto.nome} (SKU: {produto.sku})
+                  </span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={quantidades[produto.id] || ""}
+                    placeholder="Quantidade"
+                    className="mr-2 w-20 p-1 border border-gray-300 rounded-md"
+                    onChange={(e) =>
+                      handleQuantidadeChange(
+                        produto.id,
+                        parseInt(e.target.value, 10)
+                      )
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddProdutoAoKit(produto.id)}
+                    className="bg-indigo-600 text-white py-1 px-2 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  >
+                    Adicionar
+                  </button>
                 </li>
               ))}
             </ul>
@@ -179,37 +221,36 @@ const CadastrarProdutoOuKit = () => {
                   (p) => p.id === kitProduto.produtoId
                 );
                 return (
-                  <li key={kitProduto.produtoId}>
-                    <div className="flex justify-between items-center">
-                      <span>
-                        {produto?.nome} (SKU: {produto?.sku}) - Quantidade:{" "}
-                        {kitProduto.quantidade}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleRemoveProdutoDoKit(kitProduto.produtoId)
-                        }
-                        className="ml-2 px-2 py-1 bg-red-500 text-white rounded-md"
-                      >
-                        Remover
-                      </button>
-                    </div>
+                  <li
+                    key={kitProduto.produtoId}
+                    className="flex justify-between items-center"
+                  >
+                    <span>
+                      {produto?.nome} (SKU: {produto?.sku}) - Quantidade:{" "}
+                      {kitProduto.quantidade}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleRemoveProdutoDoKit(kitProduto.produtoId)
+                      }
+                      className="bg-red-600 text-white py-1 px-2 rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    >
+                      Remover
+                    </button>
                   </li>
                 );
               })}
             </ul>
           </div>
         )}
-
         <button
           type="submit"
-          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
-          {isKit ? "Cadastrar Kit" : "Cadastrar Produto"}
+          Cadastrar
         </button>
       </form>
-
       {message && (
         <p
           className={`mt-4 text-center ${

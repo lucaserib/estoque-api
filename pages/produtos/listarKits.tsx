@@ -1,17 +1,11 @@
-// pages/listarKits.tsx
 import { useEffect, useState } from "react";
 
 interface Produto {
   id: number;
   nome: string;
   sku: string;
-  kits?: {
-    produto: {
-      nome: string;
-      sku: string;
-    };
-    quantidade: number;
-  }[];
+  isKit: boolean;
+  componentes?: Array<{ produto: Produto; quantidade: number }>;
 }
 
 const ListarKits = () => {
@@ -22,13 +16,22 @@ const ListarKits = () => {
   useEffect(() => {
     const fetchKits = async () => {
       try {
-        const response = await fetch("/api/kits");
+        const response = await fetch("/api/kits", {
+          method: "GET",
+          headers: {
+            "Cache-Control": "no-cache",
+          },
+        });
         const data = await response.json();
-        setKits(data); // Armazena os kits resolvidos
+        if (Array.isArray(data)) {
+          setKits(data.filter((produto) => produto.isKit));
+        } else {
+          setError("Dados inválidos recebidos da API");
+        }
       } catch (error) {
         setError("Erro ao buscar kits");
       } finally {
-        setLoading(false); // Carregamento completo
+        setLoading(false);
       }
     };
 
@@ -44,7 +47,7 @@ const ListarKits = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
+    <div className="max-w-2xl mx-auto mt-10">
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
         Kits
       </h1>
@@ -52,28 +55,35 @@ const ListarKits = () => {
         {kits.map((kit) => (
           <li
             key={kit.id}
-            className="flex flex-col justify-between items-start p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
+            className="p-4 bg-white dark:bg-gray-900 rounded-md shadow-md"
           >
-            <div>
-              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                {kit.nome} (SKU: {kit.sku})
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Produtos no kit:
-              </p>
-              <ul className="ml-4 list-disc">
-                {kit.kits && kit.kits.length > 0 ? (
-                  kit.kits.map((kitProduto) => (
-                    <li key={kitProduto.produto.sku}>
-                      {kitProduto.produto.nome} - SKU: {kitProduto.produto.sku}{" "}
-                      - Quantidade: {kitProduto.quantidade}
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              {kit.nome}
+            </h2>
+            <p className="text-gray-700 dark:text-gray-300">SKU: {kit.sku}</p>
+            {kit.componentes?.length ? (
+              <div className="mt-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  Componentes do Kit:
+                </h3>
+                <ul className="mt-2 space-y-1">
+                  {kit.componentes?.map((Componente, index) => (
+                    <li
+                      key={index}
+                      className="text-gray-700 dark:text-gray-300"
+                    >
+                      {Componente?.produto?.nome || "Produto não encontrado"}{" "}
+                      (SKU: {Componente?.produto?.sku || "N/A"}) - Quantidade:{" "}
+                      {Componente?.quantidade || 0}
                     </li>
-                  ))
-                ) : (
-                  <li>Este kit não contém produtos.</li>
-                )}
-              </ul>
-            </div>
+                  ))}
+                </ul>
+              </div>
+            ) : (
+              <p className="mt-4 text-gray-700 dark:text-gray-300">
+                Kit sem componentes.
+              </p>
+            )}
           </li>
         ))}
       </ul>

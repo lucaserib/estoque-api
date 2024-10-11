@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+
+interface Fornecedor {
+  id: number;
+  nome: string;
+}
+
+interface Produto {
+  id: number;
+  nome: string;
+  sku: string;
+}
 
 const NovoPedido = () => {
-  interface Fornecedor {
-    id: number;
-    nome: string;
-  }
-
-  interface Produto {
-    id: number;
-    nome: string;
-    sku: string;
-  }
-
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [fornecedorNome, setFornecedorNome] = useState("");
@@ -31,15 +31,31 @@ const NovoPedido = () => {
 
   useEffect(() => {
     const fetchFornecedores = async () => {
-      const response = await fetch("/api/fornecedores");
-      const data = await response.json();
-      setFornecedores(data);
+      try {
+        const response = await fetch("/api/fornecedores");
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setFornecedores(data);
+        } else {
+          console.error("Dados inválidos recebidos da API");
+        }
+      } catch (error) {
+        console.error("Erro ao buscar fornecedores", error);
+      }
     };
 
     const fetchProdutos = async () => {
-      const response = await fetch("/api/produtos");
-      const data = await response.json();
-      setProdutos(data);
+      try {
+        const response = await fetch("/api/produtos");
+        const data = await response.json();
+        if (Array.isArray(data)) {
+          setProdutos(data);
+        } else {
+          console.error("Dados inválidos recebidos da API");
+        }
+      } catch (error) {
+        console.error("Erro ao buscar produtos", error);
+      }
     };
 
     fetchFornecedores();
@@ -50,48 +66,35 @@ const NovoPedido = () => {
     setNovoProduto({ ...novoProduto, [field]: value });
   };
 
-  const handleAddProduto = () => {
-    // Verificar se todos os campos de novo produto estão preenchidos
-    if (
-      !novoProduto.produtoId ||
-      !novoProduto.quantidade ||
-      !novoProduto.custo ||
-      !novoProduto.sku
-    ) {
-      setMessage(
-        "Por favor, preencha todos os campos para adicionar um novo produto."
-      );
-      setMessageType("error");
-      return;
-    }
-
-    // Adicionar o produto à lista de produtos do pedido
-    setProdutosPedido([...produtosPedido, { ...novoProduto }]);
-    setNovoProduto({ produtoId: "", quantidade: "", custo: "", sku: "" });
-    setMessage("");
-    setMessageType("");
-  };
+  // Removed duplicate handleAddProduto function
 
   const handleRemoveProduto = (index: number) => {
-    const newProdutos = produtosPedido.filter((_, i) => i !== index);
-    setProdutosPedido(newProdutos);
+    const newProdutosPedido = [...produtosPedido];
+    newProdutosPedido.splice(index, 1);
+    setProdutosPedido(newProdutosPedido);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!fornecedorId) {
-      setMessage("Por favor, selecione um fornecedor válido.");
+      setMessage("Selecione um fornecedor");
+      setMessageType("error");
+      return;
+    }
+
+    if (produtosPedido.length === 0) {
+      setMessage("Adicione pelo menos um produto ao pedido");
       setMessageType("error");
       return;
     }
 
     const pedido = {
       fornecedorId,
-      produtos: produtosPedido.map((produto) => ({
-        produtoId: Number(produto.produtoId),
-        quantidade: Number(produto.quantidade),
-        custo: Number(produto.custo),
+      produtos: produtosPedido.map((p) => ({
+        produtoId: Number(p.produtoId),
+        quantidade: Number(p.quantidade),
+        custo: Number(p.custo),
       })),
       comentarios,
     };
@@ -106,63 +109,89 @@ const NovoPedido = () => {
       });
 
       if (response.ok) {
-        setMessage("Pedido de compra criado com sucesso!");
+        setMessage("Pedido criado com sucesso!");
         setMessageType("success");
-        setFornecedorNome("");
         setFornecedorId(null);
         setProdutosPedido([]);
         setComentarios("");
       } else {
-        setMessage("Erro ao criar pedido de compra.");
+        setMessage("Erro ao criar pedido");
         setMessageType("error");
       }
     } catch (error) {
-      console.error("Erro ao criar pedido de compra:", error);
-      setMessage("Erro ao criar pedido de compra.");
+      console.error("Erro ao criar pedido:", error);
+      setMessage("Erro ao criar pedido");
       setMessageType("error");
     }
   };
 
-  const handleProdutoSearch = (value: string) => {
-    const produto = produtos.find((p) => p.sku === value);
-    if (produto) {
+  const handleProdutoSearch = (sku: string) => {
+    const produtoSelecionado = produtos.find((p) => p.sku === sku);
+
+    if (produtoSelecionado) {
       setNovoProduto({
         ...novoProduto,
-        produtoId: produto.id.toString(),
-        sku: produto.sku,
+        sku: produtoSelecionado.sku,
+        produtoId: produtoSelecionado.id.toString(), // Certifica-se que o ID é corretamente atribuído
       });
     } else {
-      setNovoProduto({ ...novoProduto, produtoId: "", sku: value });
+      setNovoProduto({
+        ...novoProduto,
+        sku: sku,
+        produtoId: "", // Limpa o produtoId caso o SKU não seja encontrado
+      });
     }
   };
 
+  const handleAddProduto = () => {
+    // Validação dos campos
+    if (
+      !novoProduto.produtoId ||
+      !novoProduto.quantidade ||
+      !novoProduto.custo ||
+      !novoProduto.sku
+    ) {
+      setMessage("Preencha todos os campos do produto");
+      setMessageType("error");
+      return;
+    }
+
+    // Adiciona o produto à lista
+    setProdutosPedido([...produtosPedido, { ...novoProduto }]);
+    setNovoProduto({ produtoId: "", quantidade: "", custo: "", sku: "" });
+  };
+
   const handleFornecedorChange = (value: string) => {
-    setFornecedorNome(value);
     const fornecedor = fornecedores.find((f) => f.nome === value);
     if (fornecedor) {
       setFornecedorId(fornecedor.id);
+      setFornecedorNome(fornecedor.nome);
     } else {
       setFornecedorId(null);
+      setFornecedorNome(value);
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
+    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-        Novo Pedido de Compra
+        Novo Pedido
       </h1>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label
+            htmlFor="fornecedor"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             Fornecedor
           </label>
           <input
             type="text"
-            list="fornecedores"
+            id="fornecedor"
             value={fornecedorNome}
             onChange={(e) => handleFornecedorChange(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-            required
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            list="fornecedores"
           />
           <datalist id="fornecedores">
             {fornecedores.map((fornecedor) => (
@@ -170,17 +199,19 @@ const NovoPedido = () => {
             ))}
           </datalist>
         </div>
-
-        {/* Caixas de inserção para adicionar novos produtos */}
         <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-            Produto (SKU)
+          <label
+            htmlFor="sku"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            SKU do Produto
           </label>
           <input
             type="text"
+            id="sku"
             value={novoProduto.sku}
             onChange={(e) => handleProdutoSearch(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             list="produtos"
           />
           <datalist id="produtos">
@@ -192,97 +223,98 @@ const NovoPedido = () => {
                 </option>
               ))}
           </datalist>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+        </div>
+        <div className="mb-4">
+          <label
+            htmlFor="quantidade"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             Quantidade
           </label>
           <input
             type="number"
+            id="quantidade"
             value={novoProduto.quantidade}
             onChange={(e) => handleProdutoChange("quantidade", e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           />
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+        </div>
+        <div className="mb-4">
+          <label
+            htmlFor="custo"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             Custo
           </label>
           <input
             type="number"
+            id="custo"
             value={novoProduto.custo}
             onChange={(e) => handleProdutoChange("custo", e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           />
         </div>
-
         <button
           type="button"
           onClick={handleAddProduto}
-          className="w-full py-2 px-4 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
         >
           Adicionar Produto
         </button>
-
-        <div className="mb-4 mt-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+        <ul className="mt-4 space-y-2">
+          {produtosPedido.map((produto, index) => (
+            <li
+              key={index}
+              className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
+            >
+              <div>
+                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {produto.sku}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Quantidade: {produto.quantidade} | Custo: {produto.custo}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRemoveProduto(index)}
+                className="text-red-600 hover:text-red-900"
+              >
+                Remover
+              </button>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4">
+          <label
+            htmlFor="comentarios"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
             Comentários
           </label>
           <textarea
+            id="comentarios"
             value={comentarios}
             onChange={(e) => setComentarios(e.target.value)}
-            className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-lg focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           />
         </div>
-
-        {/* Exibir lista de produtos já adicionados */}
-        {produtosPedido.length > 0 && (
-          <div className="mt-6">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-              Produtos Adicionados
-            </h2>
-            <ul className="space-y-4">
-              {produtosPedido.map((produto, index) => (
-                <li key={index} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-gray-900 dark:text-gray-100">
-                      <strong>SKU:</strong> {produto.sku}
-                    </p>
-                    <p className="text-gray-900 dark:text-gray-100">
-                      <strong>Quantidade:</strong> {produto.quantidade}
-                    </p>
-                    <p className="text-gray-900 dark:text-gray-100">
-                      <strong>Custo:</strong> R$ {produto.custo}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveProduto(index)}
-                    className="text-red-600 hover:text-red-800"
-                  >
-                    Remover
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        <div className="mt-6">
-          <button
-            type="submit"
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-          >
-            Confirmar Pedido de Compra
-          </button>
-        </div>
-
-        {message && (
-          <p
-            className={`mt-4 text-sm ${
-              messageType === "success" ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {message}
-          </p>
-        )}
+        <button
+          type="submit"
+          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mt-4"
+        >
+          Criar Pedido
+        </button>
       </form>
+      {message && (
+        <p
+          className={`mt-4 text-center ${
+            messageType === "success" ? "text-green-500" : "text-red-500"
+          }`}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 };

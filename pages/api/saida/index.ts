@@ -1,5 +1,3 @@
-// pages/api/saida/index.ts
-
 import { PrismaClient } from "@prisma/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
@@ -10,112 +8,130 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (req.method === "POST") {
+    const { produtos, armazemId } = req.body;
+
+    if (!produtos || !armazemId) {
+      return res
+        .status(400)
+        .json({ error: "Produtos e armazém são obrigatórios" });
+    }
+
     try {
-      const { produtos, armazemId } = req.body;
-
-      if (!produtos || produtos.length === 0 || !armazemId) {
-        return res
-          .status(400)
-          .json({ error: "Produtos e armazém são obrigatórios" });
-      }
-
-      for (const { produtoId, quantidade, isKit } of produtos) {
-        if (isKit) {
-          const kitProdutos = await prisma.kitProduto.findMany({
-            where: { kitId: produtoId },
-            include: { produto: true },
+      // Processar cada produto/kit
+      for (const produto of produtos) {
+        if (produto.isKit) {
+          const kitProdutos = await prisma.componente.findMany({
+            where: { kitId: produto.produtoId },
+            include: {
+              produto: true, // Incluindo os produtos componentes do kit
+            },
           });
 
-          for (const kitProduto of kitProdutos) {
-            const estoque = await prisma.estoque.findFirst({
-              where: {
-                produtoId: kitProduto.produtoId,
-                armazemId,
-              },
-            });
-
-            if (!estoque) {
-              return res.status(400).json({
-                error: `Produto ${kitProduto.produto.nome} não encontrado no estoque do armazém selecionado`,
-              });
-            }
-
-            if (estoque.quantidade < kitProduto.quantidade * quantidade) {
-              return res.status(400).json({
-                error: `Quantidade insuficiente do produto ${kitProduto.produto.nome} no estoque do armazém selecionado`,
-              });
-            }
+          if (kitProdutos.length === 0) {
+            return res
+              .status(404)
+              .json({ error: `Kit ${produto.sku} não encontrado` });
           }
 
-          // Atualizar o estoque para cada produto do kit
+          // Checar e atualizar o estoque de cada produto no kit
           for (const kitProduto of kitProdutos) {
             const estoque = await prisma.estoque.findFirst({
               where: {
                 produtoId: kitProduto.produtoId,
-                armazemId,
+                armazemId: armazemId,
               },
             });
 
-            if (estoque) {
-              await prisma.estoque.update({
-                where: { id: estoque.id },
-                data: {
-                  quantidade:
-                    estoque.quantidade - kitProduto.quantidade * quantidade,
-                },
+            // Checar se há quantidade suficiente no estoque
+            if (
+              !estoque ||
+              estoque.quantidade < kitProduto.quantidade * produto.quantidade
+            ) {
+              return res.status(400).json({
+                error: `Estoque insuficiente para o produto ${kitProduto.produto.sku} no armazém ${armazemId}`,
               });
             }
 
+            // Atualizar o estoque do produto do kit
+            await prisma.estoque.update({
+              where: {
+                produtoId_armazemId: {
+                  produtoId: kitProduto.produtoId,
+                  armazemId: armazemId,
+                },
+              },
+              data: {
+                quantidade: {
+                  decrement: kitProduto.quantidade * produto.quantidade,
+                },
+              },
+            });
+
+            // Registrar a saída do produto do kit
             await prisma.saida.create({
               data: {
                 produtoId: kitProduto.produtoId,
-                quantidade: kitProduto.quantidade * quantidade,
-                armazemId,
+                quantidade: kitProduto.quantidade * produto.quantidade,
+                armazemId: armazemId,
                 data: new Date(),
               },
             });
           }
-        } else {
-          const estoque = await prisma.estoque.findFirst({
-            where: {
-              produtoId,
-              armazemId,
-            },
-          });
 
-          if (!estoque) {
-            return res.status(400).json({
-              error: `Produto não encontrado no estoque do armazém selecionado`,
-            });
-          }
-
-          if (estoque.quantidade < quantidade) {
-            return res.status(400).json({
-              error: `Quantidade insuficiente do produto no estoque do armazém selecionado`,
-            });
-          }
-
-          await prisma.estoque.update({
-            where: { id: estoque.id },
-            data: {
-              quantidade: estoque.quantidade - quantidade,
-            },
-          });
-
+          // Registrar a saída do kit
           await prisma.saida.create({
             data: {
-              produtoId,
-              quantidade,
-              armazemId,
+              produtoId: produto.produtoId, // SKU do kit
+              quantidade: produto.quantidade,
+              armazemId: armazemId,
+              data: new Date(),
+            },
+          });
+        } else {
+          // Lógica para produtos individuais
+          const estoque = await prisma.estoque.findFirst({
+            where: {
+              produtoId: produto.produtoId,
+              armazemId: armazemId,
+            },
+          });
+
+          if (!estoque || estoque.quantidade < produto.quantidade) {
+            return res.status(400).json({
+              error: `Estoque insuficiente para o produto ${produto.sku} no armazém ${armazemId}`,
+            });
+          }
+
+          // Atualizar o estoque de produto individual
+          await prisma.estoque.update({
+            where: {
+              produtoId_armazemId: {
+                produtoId: produto.produtoId,
+                armazemId: armazemId,
+              },
+            },
+            data: {
+              quantidade: {
+                decrement: produto.quantidade,
+              },
+            },
+          });
+
+          // Registrar a saída do produto individual
+          await prisma.saida.create({
+            data: {
+              produtoId: produto.produtoId,
+              quantidade: produto.quantidade,
+              armazemId: armazemId,
               data: new Date(),
             },
           });
         }
       }
 
-      res.status(201).json({ message: "Saída registrada com sucesso" });
+      res.status(200).json({ message: "Saída registrada com sucesso" });
     } catch (error) {
-      console.error(error);
+      console.error("Erro ao registrar saída:", error);
       res.status(500).json({ error: "Erro ao registrar saída" });
     }
   } else if (req.method === "GET") {
