@@ -20,25 +20,25 @@ export default async function handler(
       for (const produto of produtos) {
         const { sku, quantidade, isKit } = produto;
 
-        // Primeiro, tentar encontrar o produto pelo SKU
-        const produtoEncontrado = await prisma.produto.findUnique({
-          where: { sku },
-          include: {
-            componentes: {
-              include: { produto: true },
-            },
-          },
-        });
-
-        if (!produtoEncontrado) {
-          return res
-            .status(404)
-            .json({ error: `Produto com SKU ${sku} não encontrado` });
-        }
-
-        // Se o produto for um kit, verificar e retirar os produtos componentes do estoque
+        // Se for kit, buscar os componentes ao invés de buscar o kit no estoque
         if (isKit) {
-          for (const componente of produtoEncontrado.componentes) {
+          const kitEncontrado = await prisma.produto.findUnique({
+            where: { sku },
+            include: {
+              componentes: {
+                include: { produto: true },
+              },
+            },
+          });
+
+          if (!kitEncontrado) {
+            return res
+              .status(404)
+              .json({ error: `Kit com SKU ${sku} não encontrado` });
+          }
+
+          // Processar os componentes do kit e atualizar o estoque de cada um
+          for (const componente of kitEncontrado.componentes) {
             const { produto, quantidade: qtdComponente } = componente;
 
             // Verificar se o componente existe no estoque
@@ -50,11 +50,9 @@ export default async function handler(
             });
 
             if (!estoque || estoque.quantidade < qtdComponente * quantidade) {
-              return res
-                .status(400)
-                .json({
-                  error: `Estoque insuficiente para o componente ${produto.sku}`,
-                });
+              return res.status(400).json({
+                error: `Estoque insuficiente para o componente ${produto.sku}`,
+              });
             }
 
             // Atualizar o estoque de cada produto componente com base na quantidade do kit
@@ -71,7 +69,32 @@ export default async function handler(
             });
           }
         } else {
-          // Caso seja um produto normal, atualizar diretamente o estoque
+          // Caso seja um produto normal, verificar se existe no estoque e atualizar
+          const produtoEncontrado = await prisma.produto.findUnique({
+            where: { sku },
+          });
+
+          if (!produtoEncontrado) {
+            return res
+              .status(404)
+              .json({ error: `Produto com SKU ${sku} não encontrado` });
+          }
+
+          // Verificar se o produto existe no estoque
+          const estoque = await prisma.estoque.findFirst({
+            where: {
+              produtoId: produtoEncontrado.id,
+              armazemId: Number(armazemId),
+            },
+          });
+
+          if (!estoque || estoque.quantidade < quantidade) {
+            return res
+              .status(400)
+              .json({ error: `Estoque insuficiente para o produto ${sku}` });
+          }
+
+          // Atualizar o estoque do produto
           await prisma.estoque.updateMany({
             where: {
               produtoId: produtoEncontrado.id,
@@ -86,6 +109,7 @@ export default async function handler(
         }
       }
 
+      // Retorno de sucesso
       res.status(200).json({
         message: "Produtos adicionados ao pedido e estoques atualizados",
       });
