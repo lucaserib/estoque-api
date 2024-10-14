@@ -24,6 +24,7 @@ const NovaSaida = () => {
       sku: string;
       isHidden?: boolean;
       isKit?: boolean;
+      componentes?: { produtoId: number; quantidade: number; sku: string }[];
     }[]
   >([]);
   const [armazens, setArmazens] = useState<Armazem[]>([]);
@@ -97,82 +98,49 @@ const NovaSaida = () => {
           );
 
           if (kitExistente) {
-            // Se já existe, apenas incrementar a quantidade
+            // Atualizar a quantidade do kit existente
             kitExistente.quantidade += quantidade;
           } else {
-            // Adicionar novo kit
-            return [
-              ...prevSaidaProdutos,
-              {
-                produtoId: kitEncontrado.id,
-                quantidade,
-                sku: kitEncontrado.sku,
-                nome: kitEncontrado.nome,
-                isKit: true,
-              },
-            ];
+            // Adicionar novo kit à lista
+            prevSaidaProdutos.push({
+              produtoId: kitEncontrado.id,
+              quantidade,
+              sku: kitEncontrado.sku,
+              isKit: true,
+              componentes: kitEncontrado.componentes.map(
+                (componente: { produto: Produto; quantidade: number }) => ({
+                  produtoId: componente.produto.id,
+                  quantidade: componente.quantidade * quantidade,
+                  sku: componente.produto.sku,
+                })
+              ),
+            });
           }
 
-          return prevSaidaProdutos; // Retorna o array atualizado
-        });
-
-        // Processar componentes do kit, evitando duplicidade
-        const componentesDoKit = kitEncontrado.componentes;
-
-        setSaidaProdutos((prevSaidaProdutos) => {
-          const novosProdutos = prevSaidaProdutos.slice(); // Copiar array para evitar mutação direta
-
-          componentesDoKit.forEach((componente: any) => {
-            const produtoKit = componente.produto;
-
-            // Verificar se o produto do kit já está na lista
-            const produtoExistente = novosProdutos.find(
-              (p) => p.produtoId === produtoKit.id && p.isHidden
-            );
-
-            if (produtoExistente) {
-              // Se já existe, apenas incrementar a quantidade
-              produtoExistente.quantidade += quantidade * componente.quantidade;
-            } else {
-              // Adicionar componente do kit
-              novosProdutos.push({
-                produtoId: produtoKit.id,
-                quantidade: quantidade * componente.quantidade, // Quantidade ajustada
-                sku: produtoKit.sku,
-                isHidden: true, // Marcar como oculto para não exibir na UI
-              });
-            }
-          });
-
-          return novosProdutos; // Retorna o array atualizado
+          return [...prevSaidaProdutos]; // Retorna o array atualizado
         });
       } else {
         // Se for um produto normal, adicionar diretamente
         const produtoEncontrado = produto[0];
         setSaidaProdutos((prevSaidaProdutos) => {
-          // Verificar se o produto já está na lista
           const produtoExistente = prevSaidaProdutos.find(
             (p) => p.produtoId === produtoEncontrado.id && !p.isKit
           );
 
           if (produtoExistente) {
-            // Se já existe, apenas incrementar a quantidade
+            // Atualizar a quantidade do produto existente
             produtoExistente.quantidade += quantidade;
           } else {
-            // Adicionar novo produto
-            return [
-              ...prevSaidaProdutos,
-              {
-                produtoId: produtoEncontrado.id,
-                quantidade,
-                sku: produtoEncontrado.sku,
-                nome: produtoEncontrado.nome,
-                isKit: false,
-              },
-            ];
+            // Adicionar novo produto à lista
+            prevSaidaProdutos.push({
+              produtoId: produtoEncontrado.id,
+              quantidade,
+              sku: produtoEncontrado.sku,
+              isKit: false,
+            });
           }
 
-          return prevSaidaProdutos; // Retorna o array atualizado
+          return [...prevSaidaProdutos]; // Retorna o array atualizado
         });
       }
 
@@ -202,12 +170,20 @@ const NovaSaida = () => {
     }
 
     try {
+      // Preparar a lista de produtos para envio ao backend
+      const produtosParaSaida = saidaProdutos.flatMap((produto) => {
+        if (produto.isKit && produto.componentes) {
+          return produto.componentes;
+        }
+        return produto;
+      });
+
       const response = await fetch("/api/saida", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ produtos: saidaProdutos, armazemId }),
+        body: JSON.stringify({ produtos: produtosParaSaida, armazemId }),
       });
 
       if (response.ok) {
