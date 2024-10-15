@@ -1,5 +1,5 @@
-import { NextApiRequest, NextApiResponse } from "next";
 import { PrismaClient } from "@prisma/client";
+import { NextApiRequest, NextApiResponse } from "next";
 
 const prisma = new PrismaClient();
 
@@ -17,10 +17,18 @@ export default async function handler(
     }
 
     try {
+      // Criar uma nova saída
+      const saida = await prisma.saida.create({
+        data: {
+          data: new Date(),
+          armazemId: Number(armazemId),
+        },
+      });
+
+      // Processamento da saída dos produtos
       for (const produto of produtos) {
         const { sku, quantidade, isKit } = produto;
 
-        // Se for kit, buscar os componentes ao invés de buscar o kit no estoque
         if (isKit) {
           const kitEncontrado = await prisma.produto.findUnique({
             where: { sku },
@@ -32,73 +40,75 @@ export default async function handler(
           });
 
           if (!kitEncontrado) {
-            return res
-              .status(404)
-              .json({ error: `Kit com SKU ${sku} não encontrado` });
+            return res.status(404).json({ error: "Kit não encontrado" });
           }
 
-          // Processar os componentes do kit e atualizar o estoque de cada um
           for (const componente of kitEncontrado.componentes) {
-            const { produto, quantidade: qtdComponente } = componente;
-
-            // Verificar se o componente existe no estoque
-            const estoque = await prisma.estoque.findFirst({
+            const estoqueComponente = await prisma.estoque.findFirst({
               where: {
-                produtoId: produto.id,
+                produtoId: componente.produtoId,
                 armazemId: Number(armazemId),
               },
             });
 
-            if (!estoque || estoque.quantidade < qtdComponente * quantidade) {
-              return res.status(400).json({
-                error: `Estoque insuficiente para o componente ${produto.sku}`,
-              });
+            if (
+              !estoqueComponente ||
+              estoqueComponente.quantidade < componente.quantidade * quantidade
+            ) {
+              return res
+                .status(400)
+                .json({ error: "Estoque insuficiente para o componente" });
             }
 
-            // Atualizar o estoque de cada produto componente com base na quantidade do kit
-            await prisma.estoque.updateMany({
+            await prisma.estoque.update({
               where: {
-                produtoId: produto.id,
-                armazemId: Number(armazemId),
+                produtoId_armazemId: {
+                  produtoId: componente.produtoId,
+                  armazemId: Number(armazemId),
+                },
               },
               data: {
                 quantidade: {
-                  decrement: qtdComponente * quantidade, // Multiplica pela quantidade de kits
+                  decrement: componente.quantidade * quantidade,
                 },
+              },
+            });
+
+            await prisma.detalhesSaida.create({
+              data: {
+                saidaId: saida.id,
+                produtoId: componente.produtoId,
+                quantidade: componente.quantidade * quantidade,
+                isKit: true,
               },
             });
           }
         } else {
-          // Caso seja um produto normal, verificar se existe no estoque e atualizar
           const produtoEncontrado = await prisma.produto.findUnique({
             where: { sku },
           });
 
           if (!produtoEncontrado) {
-            return res
-              .status(404)
-              .json({ error: `Produto com SKU ${sku} não encontrado` });
+            return res.status(404).json({ error: "Produto não encontrado" });
           }
 
-          // Verificar se o produto existe no estoque
-          const estoque = await prisma.estoque.findFirst({
+          const estoqueProduto = await prisma.estoque.findFirst({
             where: {
               produtoId: produtoEncontrado.id,
               armazemId: Number(armazemId),
             },
           });
 
-          if (!estoque || estoque.quantidade < quantidade) {
-            return res
-              .status(400)
-              .json({ error: `Estoque insuficiente para o produto ${sku}` });
+          if (!estoqueProduto || estoqueProduto.quantidade < quantidade) {
+            return res.status(400).json({ error: "Estoque insuficiente" });
           }
 
-          // Atualizar o estoque do produto
-          await prisma.estoque.updateMany({
+          await prisma.estoque.update({
             where: {
-              produtoId: produtoEncontrado.id,
-              armazemId: Number(armazemId),
+              produtoId_armazemId: {
+                produtoId: produtoEncontrado.id,
+                armazemId: Number(armazemId),
+              },
             },
             data: {
               quantidade: {
@@ -106,18 +116,41 @@ export default async function handler(
               },
             },
           });
+
+          await prisma.detalhesSaida.create({
+            data: {
+              saidaId: saida.id,
+              produtoId: produtoEncontrado.id,
+              quantidade,
+              isKit: false,
+            },
+          });
         }
       }
 
-      // Retorno de sucesso
-      res.status(200).json({
-        message: "Produtos adicionados ao pedido e estoques atualizados",
-      });
+      return res.status(200).json({ message: "Saída registrada com sucesso!" });
     } catch (error) {
-      console.error("Erro ao processar pedido:", error);
-      res.status(500).json({ error: "Erro ao processar pedido" });
+      console.error("Erro ao registrar saída:", error);
+      return res.status(500).json({ error: "Erro ao registrar saída" });
+    }
+  } else if (req.method === "GET") {
+    try {
+      const saidas = await prisma.saida.findMany({
+        include: {
+          armazem: true,
+          detalhes: {
+            include: {
+              produto: true,
+            },
+          },
+        },
+      });
+      return res.status(200).json(saidas);
+    } catch (error) {
+      console.error("Erro ao buscar saídas:", error);
+      return res.status(500).json({ error: "Erro ao buscar saídas" });
     }
   } else {
-    res.status(405).json({ message: "Método não permitido" });
+    return res.status(405).json({ error: "Método não permitido" });
   }
 }

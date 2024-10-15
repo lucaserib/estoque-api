@@ -17,6 +17,7 @@ model Produto {
   estoques    Estoque[]
   saidas      Saida[]
   pedidos     PedidoProduto[]
+  detalhesSaida DetalhesSaida[]
 }
 
 model Componente {
@@ -40,14 +41,25 @@ model Estoque {
 }
 
 model Saida {
-  id         Int      @id @default(autoincrement())
-  produtoId  Int
-  quantidade Int
-  armazemId  Int
-  data       DateTime @default(now())
-  produto    Produto  @relation(fields: [produtoId], references: [id])
-  armazem    Armazem  @relation(fields: [armazemId], references: [id])
+  id        Int              @id @default(autoincrement())
+  data      DateTime         @default(now())
+  armazem   Armazem          @relation(fields: [armazemId], references: [id])
+  armazemId Int
+  detalhes  DetalhesSaida[]
+  produto   Produto?         @relation(fields: [produtoId], references: [id])
+  produtoId Int?
 }
+
+model DetalhesSaida {
+  id        Int     @id @default(autoincrement())
+  saida     Saida   @relation(fields: [saidaId], references: [id])
+  saidaId   Int
+  produto   Produto @relation(fields: [produtoId], references: [id])
+  produtoId Int
+  quantidade Int
+  isKit     Boolean
+}
+
 
 model Armazem {
   id      Int      @id @default(autoincrement())

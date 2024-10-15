@@ -170,20 +170,12 @@ const NovaSaida = () => {
     }
 
     try {
-      // Preparar a lista de produtos para envio ao backend
-      const produtosParaSaida = saidaProdutos.flatMap((produto) => {
-        if (produto.isKit && produto.componentes) {
-          return produto.componentes;
-        }
-        return produto;
-      });
-
       const response = await fetch("/api/saida", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ produtos: produtosParaSaida, armazemId }),
+        body: JSON.stringify({ produtos: saidaProdutos, armazemId }),
       });
 
       if (response.ok) {
@@ -281,7 +273,7 @@ const NovaSaida = () => {
         ) : (
           <ul className="divide-y divide-gray-200">
             {saidaProdutos
-              .filter((produto) => !produto.isHidden) // Filtra os produtos ocultos
+              .filter((produto) => !produto.isHidden)
               .map((produto) => (
                 <li
                   key={produto.sku}
