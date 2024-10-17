@@ -31,12 +31,13 @@ const PedidosConcluidos = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [dataInicio, setDataInicio] = useState<string | null>(null); // Data de início
-  const [dataFim, setDataFim] = useState<string | null>(null); // Data final
+  const [dataInicio, setDataInicio] = useState<string | null>(null);
+  const [dataFim, setDataFim] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
+        // Buscando pedidos já confirmados com as quantidades editadas
         const response = await fetch("/api/pedidos-compra");
         const data = await response.json();
         setPedidos(
@@ -86,11 +87,10 @@ const PedidosConcluidos = () => {
     setDataFim(e.target.value);
   };
 
-  // Função para filtrar pedidos dentro do intervalo de datas
+  // Filtrando pedidos dentro do intervalo de datas
   const pedidosFiltrados = pedidos.filter((pedido) => {
     const pedidoData = new Date(pedido.data);
 
-    // Verifica se as datas de início e fim são válidas
     if (dataInicio && dataFim) {
       const inicio = new Date(dataInicio);
       const fim = new Date(dataFim);
@@ -103,7 +103,7 @@ const PedidosConcluidos = () => {
       return pedidoData <= fim;
     }
 
-    return true; // Caso não tenha filtro, retorna todos os pedidos
+    return true; // Retorna todos os pedidos se não houver filtros de data
   });
 
   if (loading) {
@@ -158,7 +158,7 @@ const PedidosConcluidos = () => {
                 Data do Pedido: {new Date(pedido.data).toLocaleDateString()}
               </p>
 
-              {/* Collapse para os produtos */}
+              {/* Exibindo os produtos com as quantidades atualizadas */}
               <details className="mt-2">
                 <summary className="cursor-pointer text-gray-600 dark:text-gray-400">
                   Ver produtos ({pedido.produtos.length})

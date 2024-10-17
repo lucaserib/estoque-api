@@ -117,6 +117,12 @@ const PedidosPendentes = () => {
   const handleSave = async () => {
     if (!editPedido || !armazemId) return;
 
+    const produtosRecebidos = editPedido.produtos.map((produto) => ({
+      produtoId: produto.produtoId,
+      quantidade: produto.quantidade,
+      custo: produto.custo,
+    }));
+
     try {
       const response = await fetch("/api/pedidos-compra", {
         method: "PUT",
@@ -126,7 +132,7 @@ const PedidosPendentes = () => {
         body: JSON.stringify({
           pedidoId: editPedido.id,
           armazemId,
-          produtosRecebidos: editPedido.produtos,
+          produtosRecebidos,
         }),
       });
 
@@ -274,7 +280,7 @@ const PedidosPendentes = () => {
               />
               <label
                 htmlFor={`custo-${produto.produtoId}`}
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-2"
               >
                 Custo
               </label>
@@ -293,11 +299,12 @@ const PedidosPendentes = () => {
               />
             </div>
           ))}
+
           <button
             onClick={handleSave}
             className="mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
           >
-            Confirmar
+            Salvar Alterações
           </button>
         </div>
       )}

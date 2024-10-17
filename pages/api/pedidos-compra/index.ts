@@ -62,14 +62,11 @@ export default async function handler(
       const { pedidoId, armazemId, produtosRecebidos } = req.body;
 
       if (!pedidoId || !armazemId || !produtosRecebidos) {
-        return res
-          .status(400)
-          .json({
-            error: "Pedido, armazém e produtos recebidos são obrigatórios",
-          });
+        return res.status(400).json({
+          error: "Pedido, armazém e produtos recebidos são obrigatórios",
+        });
       }
 
-      // Verificar se o armazemId existe
       const armazemExistente = await prisma.armazem.findUnique({
         where: { id: armazemId },
       });
@@ -80,11 +77,18 @@ export default async function handler(
 
       const pedidoExistente = await prisma.pedidoCompra.findUnique({
         where: { id: pedidoId },
+        include: { produtos: true },
       });
 
       if (!pedidoExistente) {
         return res.status(404).json({ error: "Pedido não encontrado" });
       }
+
+      const produtosNaoRecebidos: {
+        produtoId: number;
+        quantidade: number;
+        custo: number;
+      }[] = [];
 
       await Promise.all(
         produtosRecebidos.map(
@@ -93,46 +97,92 @@ export default async function handler(
             quantidade: number;
             custo: number;
           }) => {
-            const estoqueExistente = await prisma.estoque.findFirst({
-              where: {
-                produtoId: produtoRecebido.produtoId,
-                armazemId: armazemId,
-              },
-            });
+            const produtoPedido = pedidoExistente.produtos.find(
+              (produto) => produto.produtoId === produtoRecebido.produtoId
+            );
 
-            if (estoqueExistente) {
-              await prisma.estoque.update({
+            if (produtoPedido) {
+              const quantidadeNaoRecebida =
+                produtoPedido.quantidade - produtoRecebido.quantidade;
+
+              if (quantidadeNaoRecebida > 0) {
+                produtosNaoRecebidos.push({
+                  produtoId: produtoRecebido.produtoId,
+                  quantidade: quantidadeNaoRecebida,
+                  custo: produtoRecebido.custo,
+                });
+              }
+
+              // Atualizando a quantidade do produto no pedido conforme o recebido
+              await prisma.pedidoProduto.update({
                 where: {
-                  produtoId_armazemId: {
-                    produtoId: produtoRecebido.produtoId,
-                    armazemId: armazemId,
-                  },
+                  id: produtoPedido.id,
                 },
                 data: {
-                  quantidade: {
-                    increment: produtoRecebido.quantidade,
-                  },
-                  valorUnitario: produtoRecebido.custo,
+                  quantidade: produtoRecebido.quantidade,
+                  custo: produtoRecebido.custo,
                 },
               });
-            } else {
-              await prisma.estoque.create({
-                data: {
+
+              // Atualizando o estoque
+              const estoqueExistente = await prisma.estoque.findFirst({
+                where: {
                   produtoId: produtoRecebido.produtoId,
                   armazemId: armazemId,
-                  quantidade: produtoRecebido.quantidade,
-                  valorUnitario: produtoRecebido.custo,
                 },
               });
+
+              if (estoqueExistente) {
+                await prisma.estoque.update({
+                  where: {
+                    produtoId_armazemId: {
+                      produtoId: produtoRecebido.produtoId,
+                      armazemId: armazemId,
+                    },
+                  },
+                  data: {
+                    quantidade: {
+                      increment: produtoRecebido.quantidade,
+                    },
+                    valorUnitario: produtoRecebido.custo,
+                  },
+                });
+              } else {
+                await prisma.estoque.create({
+                  data: {
+                    produtoId: produtoRecebido.produtoId,
+                    armazemId: armazemId,
+                    quantidade: produtoRecebido.quantidade,
+                    valorUnitario: produtoRecebido.custo,
+                  },
+                });
+              }
             }
           }
         )
       );
 
-      const pedido = await prisma.pedidoCompra.update({
+      if (produtosNaoRecebidos.length > 0) {
+        await prisma.pedidoCompra.create({
+          data: {
+            fornecedorId: pedidoExistente.fornecedorId,
+            comentarios:
+              "Produtos não recebidos do pedido #" + pedidoExistente.id,
+            status: "pendente",
+            produtos: {
+              create: produtosNaoRecebidos.map((produto) => ({
+                produtoId: produto.produtoId,
+                quantidade: produto.quantidade,
+                custo: produto.custo,
+              })),
+            },
+          },
+        });
+      }
+
+      await prisma.pedidoCompra.update({
         where: { id: pedidoId },
         data: { status: "confirmado", armazemId: armazemId },
-        include: { produtos: true },
       });
 
       res.status(200).json({
