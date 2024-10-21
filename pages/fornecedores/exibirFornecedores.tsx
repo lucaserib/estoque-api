@@ -6,12 +6,12 @@ interface Fornecedor {
   nome: string;
   cnpj: string;
   inscricaoEstadual: string;
+  contato: string;
+  endereco: string;
 }
 
 const ExibirFornecedores = () => {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     const fetchFornecedores = async () => {
@@ -20,9 +20,7 @@ const ExibirFornecedores = () => {
         const data = await response.json();
         setFornecedores(data);
       } catch (error) {
-        setError("Erro ao buscar fornecedores");
-      } finally {
-        setLoading(false);
+        console.error("Erro ao buscar fornecedores:", error);
       }
     };
 
@@ -31,57 +29,49 @@ const ExibirFornecedores = () => {
 
   const handleDelete = async (id: number) => {
     try {
-      const response = await fetch(`/api/fornecedores?id=${id}`, {
+      await fetch(`/api/fornecedores?id=${id}`, {
         method: "DELETE",
       });
-
-      if (response.ok) {
-        setFornecedores(
-          fornecedores.filter((fornecedor) => fornecedor.id !== id)
-        );
-      } else {
-        setError("Erro ao deletar fornecedor");
-      }
+      setFornecedores(fornecedores.filter((f) => f.id !== id));
     } catch (error) {
-      setError("Erro ao deletar fornecedor");
+      console.error("Erro ao deletar fornecedor:", error);
     }
   };
 
-  if (loading) {
-    return <p className="text-center mt-10">Carregando...</p>;
-  }
-
-  if (error) {
-    return <p className="text-center mt-10 text-red-500">{error}</p>;
-  }
-
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+    <div className="max-w-5xl mx-auto mt-10 p-8 bg-white dark:bg-gray-900 rounded-lg shadow-lg">
+      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100 text-center">
         Fornecedores
       </h1>
       <ul className="space-y-4">
         {fornecedores.map((fornecedor) => (
           <li
             key={fornecedor.id}
-            className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
+            className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm"
           >
             <div>
-              <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {fornecedor.nome}
+              </h2>
+              <p className="text-gray-700 dark:text-gray-400">
+                CNPJ: {fornecedor.cnpj || "Não informado"}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {fornecedor.cnpj}
+              <p className="text-gray-700 dark:text-gray-400">
+                Inscrição Estadual:{" "}
+                {fornecedor.inscricaoEstadual || "Não informado"}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                {fornecedor.inscricaoEstadual}
+              <p className="text-gray-700 dark:text-gray-400">
+                Contato: {fornecedor.contato || "Não informado"}
+              </p>
+              <p className="text-gray-700 dark:text-gray-400">
+                Endereço: {fornecedor.endereco || "Não informado"}
               </p>
             </div>
             <button
               onClick={() => handleDelete(fornecedor.id)}
-              className="text-red-500 hover:text-red-700"
+              className="text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-700"
             >
-              <FaTrash />
+              <FaTrash size={20} />
             </button>
           </li>
         ))}

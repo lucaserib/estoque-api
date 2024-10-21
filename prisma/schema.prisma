@@ -73,6 +73,8 @@ model Fornecedor {
   nome              String
   cnpj              String?
   inscricaoEstadual String?
+  contato           String?
+  endereco          String?
 
   PedidoCompra PedidoCompra[]
 }

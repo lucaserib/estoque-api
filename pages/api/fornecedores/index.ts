@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import type { NextApiRequest, NextApiResponse } from "next";
-
-const prisma = new PrismaClient();
+import { NextApiRequest, NextApiResponse } from "next";
+import { prisma } from "../../../lib/prisma";
 
 export default async function handler(
   req: NextApiRequest,
@@ -13,7 +11,15 @@ export default async function handler(
         nome,
         cnpj,
         inscricaoEstadual,
-      }: { nome: string; cnpj?: string; inscricaoEstadual?: string } = req.body;
+        contato,
+        endereco,
+      }: {
+        nome: string;
+        cnpj?: string;
+        inscricaoEstadual?: string;
+        contato?: string;
+        endereco?: string;
+      } = req.body;
 
       if (!nome) {
         return res
@@ -26,6 +32,8 @@ export default async function handler(
           nome,
           cnpj,
           inscricaoEstadual,
+          contato,
+          endereco,
         },
       });
       res.status(201).json(fornecedor);
