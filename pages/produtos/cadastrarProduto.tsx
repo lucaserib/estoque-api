@@ -9,6 +9,7 @@ interface Produto {
 const CadastrarProdutoOuKit = () => {
   const [nome, setNome] = useState("");
   const [sku, setSku] = useState("");
+  const [ean, setEan] = useState("");
   const [isKit, setIsKit] = useState(false);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [kitProdutos, setKitProdutos] = useState<
@@ -54,6 +55,7 @@ const CadastrarProdutoOuKit = () => {
       ? {
           nome,
           sku,
+          ean: ean || null, // Certifique-se de que o EAN seja tratado como opcional
           componentes: kitProdutos.map((kitProduto) => ({
             quantidade: kitProduto.quantidade,
             produtoId: kitProduto.produtoId,
@@ -62,6 +64,7 @@ const CadastrarProdutoOuKit = () => {
       : {
           nome,
           sku,
+          ean: ean || null, // Certifique-se de que o EAN seja tratado como opcional
         };
 
     const endpoint = isKit ? "/api/kits" : "/api/produtos";
@@ -80,10 +83,12 @@ const CadastrarProdutoOuKit = () => {
         setMessageType("success");
         setNome("");
         setSku("");
+        setEan("");
         setIsKit(false);
         setKitProdutos([]);
       } else {
-        setMessage("Erro ao cadastrar produto ou kit.");
+        const errorData = await response.json();
+        setMessage(errorData.error || "Erro ao cadastrar produto ou kit.");
         setMessageType("error");
       }
     } catch (error) {
@@ -153,6 +158,21 @@ const CadastrarProdutoOuKit = () => {
             id="sku"
             value={sku}
             onChange={(e) => setSku(e.target.value)}
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+          />
+        </div>
+        <div className="mb-4">
+          <label
+            htmlFor="ean"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          >
+            EAN
+          </label>
+          <input
+            type="text"
+            id="ean"
+            value={ean}
+            onChange={(e) => setEan(e.target.value)}
             className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           />
         </div>

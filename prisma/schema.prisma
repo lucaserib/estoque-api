@@ -14,10 +14,12 @@ model Produto {
   isKit       Boolean      @default(false)
   componentes Componente[] @relation("KitToComponente")
   kitsComponentes Componente[] @relation("ProdutoToComponente")
+  ean         BigInt?
   estoques    Estoque[]
   saidas      Saida[]
   pedidos     PedidoProduto[]
   detalhesSaida DetalhesSaida[]
+  fornecedores ProdutoFornecedor[]
 }
 
 model Componente {
@@ -75,8 +77,8 @@ model Fornecedor {
   inscricaoEstadual String?
   contato           String?
   endereco          String?
-
-  PedidoCompra PedidoCompra[]
+  produtos          ProdutoFornecedor[] // Relacionamento com produto
+  pedidos           PedidoCompra[]
 }
 
 model PedidoCompra {
@@ -115,4 +117,18 @@ model PedidoProduto {
 
   produto    Produto      @relation(fields: [produtoId], references: [id])
 
+}
+
+
+model ProdutoFornecedor {
+  id               Int       @id @default(autoincrement())
+  produtoId        Int
+  fornecedorId     Int
+  preco            Float     // Preço do produto com este fornecedor
+  multiplicador    Float     // Multiplicador usado para o pedido de compra
+  codigoNF         String?   // Código NF do produto com o fornecedor
+  produto          Produto   @relation(fields: [produtoId], references: [id])
+  fornecedor       Fornecedor @relation(fields: [fornecedorId], references: [id])
+
+  @@unique([produtoId, fornecedorId]) // Cada produto pode ter apenas um registro com o fornecedor
 }

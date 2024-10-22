@@ -1,16 +1,19 @@
 import { useEffect, useState } from "react";
 import { FaTrash } from "react-icons/fa";
+import FornecedorModal from "../../components/FornecedorModal"; // Importar o modal de fornecedores
 
 interface Produto {
   id: number;
   nome: string;
   sku: string;
+  ean: string;
 }
 
 const ListarProdutos = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
 
   useEffect(() => {
     const fetchProdutos = async () => {
@@ -18,7 +21,11 @@ const ListarProdutos = () => {
         const response = await fetch("/api/produtos");
         const data = await response.json();
         if (Array.isArray(data)) {
-          setProdutos(data);
+          const produtosComEan = data.map((produto: any) => ({
+            ...produto,
+            ean: produto.ean ? produto.ean.toString() : "",
+          }));
+          setProdutos(produtosComEan);
         } else {
           setError("Dados inválidos recebidos da API");
         }
@@ -48,6 +55,10 @@ const ListarProdutos = () => {
     }
   };
 
+  const handleVincularFornecedor = (produto: Produto) => {
+    setSelectedProduto(produto); // Define o produto selecionado para vincular fornecedor
+  };
+
   if (loading) {
     return <p className="text-center mt-10">Carregando...</p>;
   }
@@ -57,33 +68,47 @@ const ListarProdutos = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-        Lista de Produtos
-      </h1>
-      <ul className="space-y-4">
-        {produtos.map((produto) => (
-          <li
-            key={produto.id}
-            className="p-4 bg-white dark:bg-gray-800 rounded-md shadow-md flex justify-between items-center"
-          >
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-                {produto.nome}
-              </h2>
-              <p className="text-gray-700 dark:text-gray-300">
-                SKU: {produto.sku}
-              </p>
-            </div>
-            <button
-              onClick={() => handleDelete(produto.id)}
-              className="text-red-500 hover:text-red-700"
-            >
-              <FaTrash />
-            </button>
-          </li>
-        ))}
-      </ul>
+    <div>
+      <h1 className="text-xl font-bold mb-4">Lista de Produtos</h1>
+      <table className="min-w-full table-auto">
+        <thead>
+          <tr>
+            <th className="px-4 py-2">Nome</th>
+            <th className="px-4 py-2">SKU</th>
+            <th className="px-4 py-2">EAN</th>
+            <th className="px-4 py-2">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {produtos.map((produto) => (
+            <tr key={produto.id} className="border-t">
+              <td className="px-4 py-2">{produto.nome}</td>
+              <td className="px-4 py-2">{produto.sku}</td>
+              <td className="px-4 py-2">{produto.ean}</td>
+              <td className="px-4 py-2 space-x-4">
+                <button
+                  onClick={() => handleVincularFornecedor(produto)}
+                  className="bg-blue-500 text-white px-2 py-1 rounded"
+                >
+                  Vincular Fornecedor
+                </button>
+                <button
+                  onClick={() => handleDelete(produto.id)}
+                  className="text-red-500"
+                >
+                  <FaTrash />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {selectedProduto && (
+        <FornecedorModal
+          produto={selectedProduto}
+          onClose={() => setSelectedProduto(null)} // Fecha o modal
+        />
+      )}
     </div>
   );
 };

@@ -3,6 +3,15 @@ import { NextApiRequest, NextApiResponse } from "next";
 
 const prisma = new PrismaClient();
 
+// Função para serializar BigInt como string
+const serializeBigInt = (obj: any) => {
+  return JSON.parse(
+    JSON.stringify(obj, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -145,7 +154,7 @@ export default async function handler(
           },
         },
       });
-      return res.status(200).json(saidas);
+      return res.status(200).json(serializeBigInt(saidas));
     } catch (error) {
       console.error("Erro ao buscar saídas:", error);
       return res.status(500).json({ error: "Erro ao buscar saídas" });

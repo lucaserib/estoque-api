@@ -1,8 +1,16 @@
-// pages/api/estoque/[armazemId].ts
 import { PrismaClient } from "@prisma/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const prisma = new PrismaClient();
+
+// Função para serializar BigInt como string
+const serializeBigInt = (obj: any) => {
+  return JSON.parse(
+    JSON.stringify(obj, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -21,7 +29,7 @@ export default async function handler(
         },
       });
 
-      res.status(200).json(estoque);
+      res.status(200).json(serializeBigInt(estoque));
     } catch (error) {
       console.error("Erro ao buscar estoque:", error);
       res.status(500).json({ error: "Erro ao buscar estoque" });

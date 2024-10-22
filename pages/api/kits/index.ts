@@ -3,6 +3,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 const prisma = new PrismaClient();
 
+// Função para serializar BigInt como string
+const serializeBigInt = (obj: any) => {
+  return JSON.parse(
+    JSON.stringify(obj, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -15,14 +24,14 @@ export default async function handler(
 
       if (sku) {
         // Buscar produtos pelo SKU
-        const produtosEncontrados = await prisma.produto.findMany({
+        produtos = await prisma.produto.findMany({
           where: {
+            isKit: true,
             sku: {
               contains: sku as string,
             },
           },
           include: {
-            estoques: true,
             componentes: {
               include: {
                 produto: true,
@@ -30,33 +39,11 @@ export default async function handler(
             },
           },
         });
-
-        produtos = produtosEncontrados;
-
-        // Se não encontrar produtos, buscar kits pelo SKU
-        if (produtos.length === 0) {
-          const kitsEncontrados = await prisma.produto.findMany({
-            where: {
-              isKit: true,
-              sku: {
-                contains: sku as string,
-              },
-            },
-            include: {
-              componentes: {
-                include: {
-                  produto: true,
-                },
-              },
-            },
-          });
-
-          produtos = kitsEncontrados;
-        }
       } else if (armazemId) {
         // Buscar produtos pelo armazemId
         produtos = await prisma.produto.findMany({
           where: {
+            isKit: true,
             estoques: {
               some: {
                 armazemId: Number(armazemId),
@@ -64,7 +51,6 @@ export default async function handler(
             },
           },
           include: {
-            estoques: true,
             componentes: {
               include: {
                 produto: true,
@@ -73,10 +59,12 @@ export default async function handler(
           },
         });
       } else {
-        // Buscar todos os produtos se nenhum parâmetro for fornecido
+        // Buscar todos os produtos que são kits se nenhum parâmetro for fornecido
         produtos = await prisma.produto.findMany({
+          where: {
+            isKit: true,
+          },
           include: {
-            estoques: true,
             componentes: {
               include: {
                 produto: true,
@@ -86,13 +74,15 @@ export default async function handler(
         });
       }
 
-      res.status(200).json(produtos);
+      res.status(200).json(serializeBigInt(produtos));
     } catch (error) {
       console.error("Erro ao buscar produtos:", error);
       res.status(500).json({ error: "Erro ao buscar produtos" });
     }
   } else if (req.method === "POST") {
-    const { nome, sku, componentes } = req.body;
+    const { nome, sku, ean, componentes } = req.body;
+
+    console.log("Recebido:", { nome, sku, ean, componentes });
 
     if (!nome || !sku) {
       return res.status(400).json({ error: "Nome e SKU são obrigatórios" });
@@ -105,6 +95,7 @@ export default async function handler(
           data: {
             nome,
             sku,
+            ean: ean ? BigInt(ean) : null, // Certifique-se de que o EAN seja tratado como BigInt ou null
             isKit: true,
             componentes: {
               create: componentes.map((componente: any) => ({
@@ -137,17 +128,11 @@ export default async function handler(
           },
         });
 
-        res.status(201).json(kitComComponentes);
+        res.status(201).json(serializeBigInt(kitComComponentes));
       } else {
-        // Criar um produto
-        const novoProduto = await prisma.produto.create({
-          data: {
-            nome,
-            sku,
-            isKit: false,
-          },
-        });
-        res.status(201).json(novoProduto);
+        return res
+          .status(400)
+          .json({ error: "Componentes são obrigatórios para kits" });
       }
     } catch (error) {
       console.error("Erro ao criar produto ou kit:", error);

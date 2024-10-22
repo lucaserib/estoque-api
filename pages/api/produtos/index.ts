@@ -3,6 +3,15 @@ import type { NextApiRequest, NextApiResponse } from "next";
 
 const prisma = new PrismaClient();
 
+// Função para serializar BigInt como string
+const serializeBigInt = (obj: any) => {
+  return JSON.parse(
+    JSON.stringify(obj, (key, value) =>
+      typeof value === "bigint" ? value.toString() : value
+    )
+  );
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -53,25 +62,39 @@ export default async function handler(
         });
       }
 
-      res.status(200).json(produtos);
+      res.status(200).json(serializeBigInt(produtos));
     } catch (error) {
       console.error("Erro ao buscar produtos:", error);
       res.status(500).json({ error: "Erro ao buscar produtos" });
     }
   } else if (req.method === "POST") {
-    const { nome, sku, componentes } = req.body;
+    const { nome, sku, ean, componentes } = req.body;
 
-    if (!nome || !sku) {
-      return res.status(400).json({ error: "Nome e SKU são obrigatórios" });
+    console.log("Recebido:", { nome, sku, ean, componentes });
+
+    if (!nome || !sku || !ean) {
+      return res
+        .status(400)
+        .json({ error: "Nome, SKU e EAN são obrigatórios" });
     }
 
     try {
+      // Verificar se o SKU já existe
+      const existingProduto = await prisma.produto.findUnique({
+        where: { sku },
+      });
+
+      if (existingProduto) {
+        return res.status(400).json({ error: "SKU já existe" });
+      }
+
       if (componentes && componentes.length > 0) {
         // Criar um kit
         const novoKit = await prisma.produto.create({
           data: {
             nome,
             sku,
+            ean: BigInt(ean), // Certifique-se de que o EAN seja tratado como BigInt
             isKit: true,
             componentes: {
               create: componentes.map((componente: any) => ({
@@ -92,17 +115,18 @@ export default async function handler(
           });
         }
 
-        res.status(201).json(novoKit);
+        res.status(201).json(serializeBigInt(novoKit));
       } else {
         // Criar um produto
         const novoProduto = await prisma.produto.create({
           data: {
             nome,
             sku,
+            ean: BigInt(ean), // Certifique-se de que o EAN seja tratado como BigInt
             isKit: false,
           },
         });
-        res.status(201).json(novoProduto);
+        res.status(201).json(serializeBigInt(novoProduto));
       }
     } catch (error) {
       console.error("Erro ao criar produto ou kit:", error);

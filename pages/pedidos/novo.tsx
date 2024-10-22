@@ -11,19 +11,38 @@ interface Produto {
   sku: string;
 }
 
+interface ProdutoFornecedor {
+  produtoId: number;
+  fornecedorId: number;
+  preco: number;
+  multiplicador: number;
+  codigoNF: string;
+  produto: Produto;
+}
+
 const NovoPedido = () => {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
-  const [produtos, setProdutos] = useState<Produto[]>([]);
-  const [fornecedorNome, setFornecedorNome] = useState("");
+  const [produtoFornecedores, setProdutoFornecedores] = useState<
+    ProdutoFornecedor[]
+  >([]);
   const [fornecedorId, setFornecedorId] = useState<number | null>(null);
   const [novoProduto, setNovoProduto] = useState({
     produtoId: "",
     quantidade: "",
     custo: "",
     sku: "",
+    codigoNF: "",
+    multiplicador: "",
   });
   const [produtosPedido, setProdutosPedido] = useState<
-    { produtoId: string; quantidade: string; custo: string; sku: string }[]
+    {
+      produtoId: string;
+      quantidade: string;
+      custo: string;
+      sku: string;
+      codigoNF: string;
+      multiplicador: string;
+    }[]
   >([]);
   const [comentarios, setComentarios] = useState("");
   const [message, setMessage] = useState("");
@@ -34,6 +53,7 @@ const NovoPedido = () => {
       try {
         const response = await fetch("/api/fornecedores");
         const data = await response.json();
+        console.log("Fornecedores recebidos:", data);
         if (Array.isArray(data)) {
           setFornecedores(data);
         } else {
@@ -44,29 +64,35 @@ const NovoPedido = () => {
       }
     };
 
-    const fetchProdutos = async () => {
-      try {
-        const response = await fetch("/api/produtos");
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setProdutos(data);
-        } else {
-          console.error("Dados inválidos recebidos da API");
+    fetchFornecedores();
+  }, []);
+
+  useEffect(() => {
+    const fetchProdutoFornecedores = async () => {
+      if (fornecedorId) {
+        try {
+          const response = await fetch(
+            `/api/produto-fornecedor?fornecedorId=${fornecedorId}`
+          );
+          const data = await response.json();
+          console.log("Produtos do fornecedor recebidos:", data);
+          if (Array.isArray(data)) {
+            setProdutoFornecedores(data);
+          } else {
+            console.error("Dados inválidos recebidos da API");
+          }
+        } catch (error) {
+          console.error("Erro ao buscar produtos do fornecedor", error);
         }
-      } catch (error) {
-        console.error("Erro ao buscar produtos", error);
       }
     };
 
-    fetchFornecedores();
-    fetchProdutos();
-  }, []);
+    fetchProdutoFornecedores();
+  }, [fornecedorId]);
 
   const handleProdutoChange = (field: string, value: string) => {
     setNovoProduto({ ...novoProduto, [field]: value });
   };
-
-  // Removed duplicate handleAddProduto function
 
   const handleRemoveProduto = (index: number) => {
     const newProdutosPedido = [...produtosPedido];
@@ -126,13 +152,18 @@ const NovoPedido = () => {
   };
 
   const handleProdutoSearch = (sku: string) => {
-    const produtoSelecionado = produtos.find((p) => p.sku === sku);
+    const produtoFornecedor = produtoFornecedores.find(
+      (pf) => pf.produto.sku === sku
+    );
 
-    if (produtoSelecionado) {
+    if (produtoFornecedor) {
       setNovoProduto({
         ...novoProduto,
-        sku: produtoSelecionado.sku,
-        produtoId: produtoSelecionado.id.toString(), // Certifica-se que o ID é corretamente atribuído
+        sku: produtoFornecedor.produto.sku,
+        produtoId: produtoFornecedor.produtoId.toString(), // Certifica-se que o ID é corretamente atribuído
+        custo: produtoFornecedor.preco.toString(),
+        codigoNF: produtoFornecedor.codigoNF,
+        multiplicador: produtoFornecedor.multiplicador.toString(),
       });
     } else {
       setNovoProduto({
@@ -144,7 +175,6 @@ const NovoPedido = () => {
   };
 
   const handleAddProduto = () => {
-    // Validação dos campos
     if (
       !novoProduto.produtoId ||
       !novoProduto.quantidade ||
@@ -158,18 +188,26 @@ const NovoPedido = () => {
 
     // Adiciona o produto à lista
     setProdutosPedido([...produtosPedido, { ...novoProduto }]);
-    setNovoProduto({ produtoId: "", quantidade: "", custo: "", sku: "" });
+    setNovoProduto({
+      produtoId: "",
+      quantidade: "",
+      custo: "",
+      sku: "",
+      codigoNF: "",
+      multiplicador: "",
+    });
   };
 
-  const handleFornecedorChange = (value: string) => {
-    const fornecedor = fornecedores.find((f) => f.nome === value);
-    if (fornecedor) {
-      setFornecedorId(fornecedor.id);
-      setFornecedorNome(fornecedor.nome);
-    } else {
-      setFornecedorId(null);
-      setFornecedorNome(value);
-    }
+  const handleFornecedorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const fornecedorId = Number(e.target.value);
+    console.log("Fornecedor selecionado:", fornecedorId);
+    setFornecedorId(fornecedorId);
+  };
+
+  const handleSkuChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const sku = e.target.value;
+    console.log("SKU selecionado:", sku);
+    handleProdutoSearch(sku);
   };
 
   return (
@@ -179,142 +217,131 @@ const NovoPedido = () => {
       </h1>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
-          <label
-            htmlFor="fornecedor"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
+          <label className="block text-gray-700 dark:text-gray-300">
             Fornecedor
           </label>
-          <input
-            type="text"
-            id="fornecedor"
-            value={fornecedorNome}
-            onChange={(e) => handleFornecedorChange(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            list="fornecedores"
-          />
-          <datalist id="fornecedores">
+          <select
+            value={fornecedorId || ""}
+            onChange={handleFornecedorChange}
+            className="mt-1 block w-full"
+          >
+            <option value="" disabled>
+              Selecione um fornecedor
+            </option>
             {fornecedores.map((fornecedor) => (
-              <option key={fornecedor.id} value={fornecedor.nome} />
+              <option key={fornecedor.id} value={fornecedor.id}>
+                {fornecedor.nome}
+              </option>
             ))}
-          </datalist>
+          </select>
         </div>
         <div className="mb-4">
-          <label
-            htmlFor="sku"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            SKU do Produto
-          </label>
-          <input
-            type="text"
-            id="sku"
-            value={novoProduto.sku}
-            onChange={(e) => handleProdutoSearch(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            list="produtos"
-          />
-          <datalist id="produtos">
-            {produtos
-              .filter((p) => p.sku.includes(novoProduto.sku))
-              .map((p) => (
-                <option key={p.id} value={p.sku}>
-                  {p.nome}
-                </option>
-              ))}
-          </datalist>
-        </div>
-        <div className="mb-4">
-          <label
-            htmlFor="quantidade"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            Quantidade
-          </label>
-          <input
-            type="number"
-            id="quantidade"
-            value={novoProduto.quantidade}
-            onChange={(e) => handleProdutoChange("quantidade", e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-          />
-        </div>
-        <div className="mb-4">
-          <label
-            htmlFor="custo"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
-            Custo
-          </label>
-          <input
-            type="number"
-            id="custo"
-            value={novoProduto.custo}
-            onChange={(e) => handleProdutoChange("custo", e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-          />
-        </div>
-        <button
-          type="button"
-          onClick={handleAddProduto}
-          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          Adicionar Produto
-        </button>
-        <ul className="mt-4 space-y-2">
-          {produtosPedido.map((produto, index) => (
-            <li
-              key={index}
-              className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
-            >
-              <div>
-                <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {produto.sku}
-                </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Quantidade: {produto.quantidade} | Custo: {produto.custo}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleRemoveProduto(index)}
-                className="text-red-600 hover:text-red-900"
-              >
-                Remover
-              </button>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-4">
-          <label
-            htmlFor="comentarios"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-          >
+          <label className="block text-gray-700 dark:text-gray-300">
             Comentários
           </label>
           <textarea
-            id="comentarios"
             value={comentarios}
             onChange={(e) => setComentarios(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            className="mt-1 block w-full"
           />
         </div>
+        <div className="mb-4">
+          <label className="block text-gray-700 dark:text-gray-300">
+            Produtos
+          </label>
+          <div className="flex mb-2">
+            <select
+              value={novoProduto.sku}
+              onChange={handleSkuChange}
+              className="mt-1 block w-full"
+            >
+              <option value="" disabled>
+                Selecione um SKU
+              </option>
+              {produtoFornecedores.map((pf) => (
+                <option key={pf.produtoId} value={pf.produto.sku}>
+                  {pf.produto.sku}
+                </option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Quantidade"
+              value={novoProduto.quantidade}
+              onChange={(e) =>
+                handleProdutoChange("quantidade", e.target.value)
+              }
+              className="mt-1 block w-full"
+            />
+            <input
+              type="text"
+              placeholder="Custo"
+              value={novoProduto.custo}
+              onChange={(e) => handleProdutoChange("custo", e.target.value)}
+              className="mt-1 block w-full"
+              readOnly
+            />
+            <input
+              type="text"
+              placeholder="Código NF"
+              value={novoProduto.codigoNF}
+              onChange={(e) => handleProdutoChange("codigoNF", e.target.value)}
+              className="mt-1 block w-full"
+              readOnly
+            />
+            <input
+              type="text"
+              placeholder="Multiplicador"
+              value={novoProduto.multiplicador}
+              onChange={(e) =>
+                handleProdutoChange("multiplicador", e.target.value)
+              }
+              className="mt-1 block w-full"
+              readOnly
+            />
+            <button
+              type="button"
+              onClick={handleAddProduto}
+              className="ml-2 bg-blue-500 text-white px-4 py-2 rounded"
+            >
+              Adicionar
+            </button>
+          </div>
+          <ul>
+            {produtosPedido.map((produto, index) => (
+              <li key={index} className="flex justify-between items-center">
+                <span>{produto.sku}</span>
+                <span>{produto.quantidade}</span>
+                <span>{produto.custo}</span>
+                <span>{produto.codigoNF}</span>
+                <span>{produto.multiplicador}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveProduto(index)}
+                  className="ml-2 bg-red-500 text-white px-4 py-2 rounded"
+                >
+                  Remover
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+        {message && (
+          <div
+            className={`mb-4 p-4 rounded ${
+              messageType === "success" ? "bg-green-500" : "bg-red-500"
+            } text-white`}
+          >
+            {message}
+          </div>
+        )}
         <button
           type="submit"
-          className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mt-4"
+          className="bg-blue-500 text-white px-4 py-2 rounded"
         >
           Criar Pedido
         </button>
       </form>
-      {message && (
-        <p
-          className={`mt-4 text-center ${
-            messageType === "success" ? "text-green-500" : "text-red-500"
-          }`}
-        >
-          {message}
-        </p>
-      )}
     </div>
   );
 };
