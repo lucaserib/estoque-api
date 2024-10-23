@@ -24,6 +24,7 @@ interface Pedido {
   produtos: PedidoProduto[];
   comentarios: string;
   status: string;
+  dataPrevista?: string; // Adicionei o campo dataPrevista
 }
 
 interface Armazem {
@@ -211,6 +212,12 @@ const PedidosPendentes = () => {
             <p className="text-gray-700 dark:text-gray-300">
               {pedido.comentarios}
             </p>
+            {pedido.dataPrevista && (
+              <p className="text-gray-700 dark:text-gray-300">
+                Data Prevista:{" "}
+                {new Date(pedido.dataPrevista).toLocaleDateString()}
+              </p>
+            )}
             <button
               onClick={() => handleEdit(pedido)}
               className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"

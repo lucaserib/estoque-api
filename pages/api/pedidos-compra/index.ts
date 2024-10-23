@@ -18,7 +18,7 @@ export default async function handler(
 ) {
   if (req.method === "POST") {
     try {
-      const { fornecedorId, produtos, comentarios } = req.body;
+      const { fornecedorId, produtos, comentarios, dataPrevista } = req.body;
 
       if (!fornecedorId || !produtos || produtos.length === 0) {
         return res
@@ -31,6 +31,7 @@ export default async function handler(
           fornecedorId,
           comentarios,
           status: "pendente",
+          dataPrevista: dataPrevista ? new Date(dataPrevista) : null,
           produtos: {
             create: produtos.map(
               (produto: {

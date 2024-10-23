@@ -86,18 +86,13 @@ model Fornecedor {
 model PedidoCompra {
 
   id          Int             @id @default(autoincrement())
-
   fornecedorId Int
-
   comentarios String?
-
   status      String
-
   produtos    PedidoProduto[]
-
   armazemId   Int?
-
   fornecedor  Fornecedor      @relation(fields: [fornecedorId], references: [id])
+  dataPrevista DateTime?
 
 }
 

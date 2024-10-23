@@ -45,6 +45,7 @@ const NovoPedido = () => {
     }[]
   >([]);
   const [comentarios, setComentarios] = useState("");
+  const [dataPrevista, setDataPrevista] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
 
@@ -121,6 +122,7 @@ const NovoPedido = () => {
         custo: Number(p.custo),
       })),
       comentarios,
+      dataPrevista,
     };
 
     try {
@@ -138,6 +140,7 @@ const NovoPedido = () => {
         setFornecedorId(null);
         setProdutosPedido([]);
         setComentarios("");
+        setDataPrevista("");
       } else {
         setMessage("Erro ao criar pedido");
         setMessageType("error");
@@ -241,6 +244,17 @@ const NovoPedido = () => {
               className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Data Prevista
+            </label>
+            <input
+              type="date"
+              value={dataPrevista}
+              onChange={(e) => setDataPrevista(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200"
+            />
+          </div>
         </div>
 
         <div className="mt-6">
@@ -294,65 +308,41 @@ const NovoPedido = () => {
               Adicionar
             </button>
           </div>
-
-          {produtosPedido.length > 0 && (
-            <div className="mt-4">
-              <table className="min-w-full bg-white dark:bg-gray-800">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
-                      SKU
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Quantidade
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Custo
-                    </th>
-                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
-                      Código NF
-                    </th>
-                    <th className="px-4 py-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {produtosPedido.map((produto, index) => (
-                    <tr key={index} className="border-t">
-                      <td className="px-4 py-2">{produto.sku}</td>
-                      <td className="px-4 py-2">{produto.quantidade}</td>
-                      <td className="px-4 py-2">{produto.custo}</td>
-                      <td className="px-4 py-2">{produto.codigoNF}</td>
-                      <td className="px-4 py-2">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveProduto(index)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          Remover
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <ul>
+            {produtosPedido.map((produto, index) => (
+              <li
+                key={index}
+                className="flex justify-between items-center mb-2"
+              >
+                <span>{produto.sku}</span>
+                <span>{produto.quantidade}</span>
+                <span>{produto.custo}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveProduto(index)}
+                  className="px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
+                >
+                  Remover
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
 
         {message && (
           <div
-            className={`mt-6 p-4 rounded-md text-white ${
-              messageType === "success" ? "bg-green-500" : "bg-red-500"
+            className={`mt-4 p-2 rounded-md ${
+              messageType === "success" ? "bg-green-200" : "bg-red-200"
             }`}
           >
             {message}
           </div>
         )}
 
-        <div className="mt-6">
+        <div className="mt-6 flex justify-end">
           <button
             type="submit"
-            className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Criar Pedido
           </button>
