@@ -92,6 +92,45 @@ export default async function handler(
         .status(500)
         .json({ error: "Erro ao buscar produtos ou fornecedores" });
     }
+  } else if (req.method === "DELETE") {
+    const { id } = req.query;
+
+    if (!id) {
+      return res.status(400).json({ error: "ID é obrigatório" });
+    }
+
+    try {
+      await prisma.produtoFornecedor.delete({
+        where: { id: Number(id) },
+      });
+      return res.status(204).end();
+    } catch (error) {
+      console.error("Erro ao deletar fornecedor:", error);
+      return res.status(500).json({ error: "Erro ao deletar fornecedor" });
+    }
+  } else if (req.method === "PUT") {
+    const { id, preco, multiplicador, codigoNF } = req.body;
+
+    if (!id || !preco || !multiplicador || !codigoNF) {
+      return res.status(400).json({
+        error: "ID, Preço, Multiplicador e Código NF são obrigatórios",
+      });
+    }
+
+    try {
+      const vinculo = await prisma.produtoFornecedor.update({
+        where: { id: Number(id) },
+        data: {
+          preco,
+          multiplicador,
+          codigoNF,
+        },
+      });
+      return res.status(200).json(vinculo);
+    } catch (error) {
+      console.error("Erro ao atualizar fornecedor:", error);
+      return res.status(500).json({ error: "Erro ao atualizar fornecedor" });
+    }
   } else {
     return res.status(405).json({ message: "Método não permitido" });
   }

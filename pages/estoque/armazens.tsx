@@ -12,6 +12,7 @@ interface Estoque {
   produto: Produto;
   quantidade: number;
   valorUnitario: number;
+  estoqueSeguranca: number; // Novo campo
 }
 
 interface Armazem {
@@ -107,7 +108,11 @@ const Armazens = () => {
             {estoque.map((item) => (
               <li
                 key={item.id}
-                className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
+                className={`flex justify-between items-center p-4 rounded-md shadow-sm ${
+                  item.quantidade < item.estoqueSeguranca
+                    ? "bg-red-200 dark:bg-red-800"
+                    : "bg-gray-100 dark:bg-gray-700"
+                }`}
               >
                 <div>
                   <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
@@ -115,6 +120,9 @@ const Armazens = () => {
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Quantidade: {item.quantidade}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Estoque de Segurança: {item.estoqueSeguranca}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     Valor Unitário: {item.valorUnitario}
