@@ -38,6 +38,8 @@ model Estoque {
   valorUnitario Float
   produto      Produto  @relation(fields: [produtoId], references: [id])
   armazem      Armazem  @relation(fields: [armazemId], references: [id])
+  estoqueSeguranca Int?
+
 
   @@id([produtoId, armazemId])
 }

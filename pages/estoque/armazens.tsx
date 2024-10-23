@@ -1,4 +1,3 @@
-// pages/armazens.tsx
 import { useEffect, useState } from "react";
 
 interface Produto {
@@ -12,7 +11,7 @@ interface Estoque {
   produto: Produto;
   quantidade: number;
   valorUnitario: number;
-  estoqueSeguranca: number; // Novo campo
+  estoqueSeguranca: number;
 }
 
 interface Armazem {
@@ -28,6 +27,8 @@ const Armazens = () => {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showModal, setShowModal] = useState(false);
+  const [currentEstoque, setCurrentEstoque] = useState<Estoque | null>(null);
 
   useEffect(() => {
     const fetchArmazens = async () => {
@@ -65,6 +66,36 @@ const Armazens = () => {
     }
   }, [selectedArmazemId]);
 
+  const handleSaveEstoqueSeguranca = async () => {
+    if (currentEstoque) {
+      try {
+        const response = await fetch(`/api/estoque/estoqueSeguranca`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            produtoId: currentEstoque.produto.id,
+            armazemId: selectedArmazemId,
+            estoqueSeguranca: currentEstoque.estoqueSeguranca,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error("Erro ao salvar estoque de segurança");
+        }
+        setShowModal(false);
+        setCurrentEstoque(null);
+        // Re-fetch the stock data
+        if (selectedArmazemId !== null) {
+          const response = await fetch(`/api/estoque/${selectedArmazemId}`);
+          const data = await response.json();
+          setEstoque(data);
+        }
+      } catch (error) {
+        setError("Erro ao salvar estoque de segurança");
+      }
+    }
+  };
   if (loading) {
     return <p className="text-center mt-10">Carregando...</p>;
   }
@@ -128,6 +159,15 @@ const Armazens = () => {
                     Valor Unitário: {item.valorUnitario}
                   </p>
                 </div>
+                <button
+                  onClick={() => {
+                    setCurrentEstoque(item);
+                    setShowModal(true);
+                  }}
+                  className="ml-4 px-4 py-2 bg-blue-500 text-white rounded-md"
+                >
+                  Editar Estoque de Segurança
+                </button>
               </li>
             ))}
           </ul>
@@ -136,6 +176,44 @@ const Armazens = () => {
         <p className="text-center mt-10 text-gray-600 dark:text-gray-400">
           Selecione um armazém para visualizar os produtos.
         </p>
+      )}
+
+      {showModal && currentEstoque && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-md shadow-md">
+            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+              Editar Estoque de Segurança
+            </h2>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Estoque de Segurança
+            </label>
+            <input
+              type="number"
+              value={currentEstoque.estoqueSeguranca}
+              onChange={(e) =>
+                setCurrentEstoque({
+                  ...currentEstoque,
+                  estoqueSeguranca: Number(e.target.value),
+                })
+              }
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            />
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowModal(false)}
+                className="mr-4 px-4 py-2 bg-gray-500 text-white rounded-md"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveEstoqueSeguranca}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
