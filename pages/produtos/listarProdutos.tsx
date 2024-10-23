@@ -68,33 +68,35 @@ const ListarProdutos = () => {
   }
 
   return (
-    <div>
-      <h1 className="text-xl font-bold mb-4">Lista de Produtos</h1>
-      <table className="min-w-full table-auto">
+    <div className="container mx-auto px-4">
+      <h1 className="text-2xl font-bold mb-6 text-gray-800">
+        Lista de Produtos
+      </h1>
+      <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
         <thead>
-          <tr>
-            <th className="px-4 py-2">Nome</th>
-            <th className="px-4 py-2">SKU</th>
-            <th className="px-4 py-2">EAN</th>
-            <th className="px-4 py-2">Ações</th>
+          <tr className="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
+            <th className="px-6 py-3">Nome</th>
+            <th className="px-6 py-3">SKU</th>
+            <th className="px-6 py-3">EAN</th>
+            <th className="px-6 py-3">Ações</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="text-gray-700 text-sm">
           {produtos.map((produto) => (
-            <tr key={produto.id} className="border-t">
-              <td className="px-4 py-2">{produto.nome}</td>
-              <td className="px-4 py-2">{produto.sku}</td>
-              <td className="px-4 py-2">{produto.ean}</td>
-              <td className="px-4 py-2 space-x-4">
+            <tr key={produto.id} className="border-b hover:bg-gray-100">
+              <td className="px-6 py-4">{produto.nome}</td>
+              <td className="px-6 py-4">{produto.sku}</td>
+              <td className="px-6 py-4">{produto.ean}</td>
+              <td className="px-6 py-4 space-x-4 flex">
                 <button
                   onClick={() => handleVincularFornecedor(produto)}
-                  className="bg-blue-500 text-white px-2 py-1 rounded"
+                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition duration-300"
                 >
                   Vincular Fornecedor
                 </button>
                 <button
                   onClick={() => handleDelete(produto.id)}
-                  className="text-red-500"
+                  className="text-red-500 hover:text-red-700 transition duration-300"
                 >
                   <FaTrash />
                 </button>
@@ -103,6 +105,7 @@ const ListarProdutos = () => {
           ))}
         </tbody>
       </table>
+
       {selectedProduto && (
         <FornecedorModal
           produto={selectedProduto}

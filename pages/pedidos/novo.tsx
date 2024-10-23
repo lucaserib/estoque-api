@@ -53,7 +53,6 @@ const NovoPedido = () => {
       try {
         const response = await fetch("/api/fornecedores");
         const data = await response.json();
-        console.log("Fornecedores recebidos:", data);
         if (Array.isArray(data)) {
           setFornecedores(data);
         } else {
@@ -75,7 +74,6 @@ const NovoPedido = () => {
             `/api/produto-fornecedor?fornecedorId=${fornecedorId}`
           );
           const data = await response.json();
-          console.log("Produtos do fornecedor recebidos:", data);
           if (Array.isArray(data)) {
             setProdutoFornecedores(data);
           } else {
@@ -160,7 +158,7 @@ const NovoPedido = () => {
       setNovoProduto({
         ...novoProduto,
         sku: produtoFornecedor.produto.sku,
-        produtoId: produtoFornecedor.produtoId.toString(), // Certifica-se que o ID é corretamente atribuído
+        produtoId: produtoFornecedor.produtoId.toString(),
         custo: produtoFornecedor.preco.toString(),
         codigoNF: produtoFornecedor.codigoNF,
         multiplicador: produtoFornecedor.multiplicador.toString(),
@@ -169,7 +167,7 @@ const NovoPedido = () => {
       setNovoProduto({
         ...novoProduto,
         sku: sku,
-        produtoId: "", // Limpa o produtoId caso o SKU não seja encontrado
+        produtoId: "",
       });
     }
   };
@@ -186,7 +184,6 @@ const NovoPedido = () => {
       return;
     }
 
-    // Adiciona o produto à lista
     setProdutosPedido([...produtosPedido, { ...novoProduto }]);
     setNovoProduto({
       produtoId: "",
@@ -200,60 +197,61 @@ const NovoPedido = () => {
 
   const handleFornecedorChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const fornecedorId = Number(e.target.value);
-    console.log("Fornecedor selecionado:", fornecedorId);
     setFornecedorId(fornecedorId);
   };
 
   const handleSkuChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const sku = e.target.value;
-    console.log("SKU selecionado:", sku);
     handleProdutoSearch(sku);
   };
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-        Novo Pedido
+    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-lg">
+      <h1 className="text-3xl font-semibold mb-6 text-gray-900 dark:text-gray-100">
+        Criar Novo Pedido
       </h1>
       <form onSubmit={handleSubmit}>
-        <div className="mb-4">
-          <label className="block text-gray-700 dark:text-gray-300">
-            Fornecedor
-          </label>
-          <select
-            value={fornecedorId || ""}
-            onChange={handleFornecedorChange}
-            className="mt-1 block w-full"
-          >
-            <option value="" disabled>
-              Selecione um fornecedor
-            </option>
-            {fornecedores.map((fornecedor) => (
-              <option key={fornecedor.id} value={fornecedor.id}>
-                {fornecedor.nome}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Fornecedor
+            </label>
+            <select
+              value={fornecedorId || ""}
+              onChange={handleFornecedorChange}
+              className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200"
+            >
+              <option value="" disabled>
+                Selecione um fornecedor
               </option>
-            ))}
-          </select>
+              {fornecedores.map((fornecedor) => (
+                <option key={fornecedor.id} value={fornecedor.id}>
+                  {fornecedor.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Comentários
+            </label>
+            <textarea
+              value={comentarios}
+              onChange={(e) => setComentarios(e.target.value)}
+              className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200"
+            />
+          </div>
         </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 dark:text-gray-300">
-            Comentários
-          </label>
-          <textarea
-            value={comentarios}
-            onChange={(e) => setComentarios(e.target.value)}
-            className="mt-1 block w-full"
-          />
-        </div>
-        <div className="mb-4">
-          <label className="block text-gray-700 dark:text-gray-300">
+
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
             Produtos
-          </label>
-          <div className="flex mb-2">
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-5 gap-4 items-center mb-4">
             <select
               value={novoProduto.sku}
               onChange={handleSkuChange}
-              className="mt-1 block w-full"
+              className="col-span-1 sm:col-span-2 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200"
             >
               <option value="" disabled>
                 Selecione um SKU
@@ -271,14 +269,14 @@ const NovoPedido = () => {
               onChange={(e) =>
                 handleProdutoChange("quantidade", e.target.value)
               }
-              className="mt-1 block w-full"
+              className="col-span-1 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200"
             />
             <input
               type="text"
               placeholder="Custo"
               value={novoProduto.custo}
               onChange={(e) => handleProdutoChange("custo", e.target.value)}
-              className="mt-1 block w-full"
+              className="col-span-1 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200"
               readOnly
             />
             <input
@@ -286,61 +284,79 @@ const NovoPedido = () => {
               placeholder="Código NF"
               value={novoProduto.codigoNF}
               onChange={(e) => handleProdutoChange("codigoNF", e.target.value)}
-              className="mt-1 block w-full"
-              readOnly
-            />
-            <input
-              type="text"
-              placeholder="Multiplicador"
-              value={novoProduto.multiplicador}
-              onChange={(e) =>
-                handleProdutoChange("multiplicador", e.target.value)
-              }
-              className="mt-1 block w-full"
-              readOnly
+              className="col-span-1 p-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200"
             />
             <button
               type="button"
               onClick={handleAddProduto}
-              className="ml-2 bg-blue-500 text-white px-4 py-2 rounded"
+              className="col-span-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
             >
               Adicionar
             </button>
           </div>
-          <ul>
-            {produtosPedido.map((produto, index) => (
-              <li key={index} className="flex justify-between items-center">
-                <span>{produto.sku}</span>
-                <span>{produto.quantidade}</span>
-                <span>{produto.custo}</span>
-                <span>{produto.codigoNF}</span>
-                <span>{produto.multiplicador}</span>
-                <button
-                  type="button"
-                  onClick={() => handleRemoveProduto(index)}
-                  className="ml-2 bg-red-500 text-white px-4 py-2 rounded"
-                >
-                  Remover
-                </button>
-              </li>
-            ))}
-          </ul>
+
+          {produtosPedido.length > 0 && (
+            <div className="mt-4">
+              <table className="min-w-full bg-white dark:bg-gray-800">
+                <thead>
+                  <tr>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
+                      SKU
+                    </th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Quantidade
+                    </th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Custo
+                    </th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-900 dark:text-gray-100">
+                      Código NF
+                    </th>
+                    <th className="px-4 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {produtosPedido.map((produto, index) => (
+                    <tr key={index} className="border-t">
+                      <td className="px-4 py-2">{produto.sku}</td>
+                      <td className="px-4 py-2">{produto.quantidade}</td>
+                      <td className="px-4 py-2">{produto.custo}</td>
+                      <td className="px-4 py-2">{produto.codigoNF}</td>
+                      <td className="px-4 py-2">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveProduto(index)}
+                          className="text-red-600 hover:text-red-800"
+                        >
+                          Remover
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
+
         {message && (
           <div
-            className={`mb-4 p-4 rounded ${
+            className={`mt-6 p-4 rounded-md text-white ${
               messageType === "success" ? "bg-green-500" : "bg-red-500"
-            } text-white`}
+            }`}
           >
             {message}
           </div>
         )}
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-2 rounded"
-        >
-          Criar Pedido
-        </button>
+
+        <div className="mt-6">
+          <button
+            type="submit"
+            className="w-full py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+          >
+            Criar Pedido
+          </button>
+        </div>
       </form>
     </div>
   );

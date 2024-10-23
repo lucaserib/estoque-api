@@ -54,28 +54,43 @@ export default async function handler(
       return res.status(500).json({ error: "Erro ao vincular fornecedor" });
     }
   } else if (req.method === "GET") {
-    const { fornecedorId } = req.query;
+    const { fornecedorId, produtoId } = req.query;
 
-    if (!fornecedorId) {
-      return res.status(400).json({ error: "FornecedorId é obrigatório" });
+    if (!fornecedorId && !produtoId) {
+      return res
+        .status(400)
+        .json({ error: "FornecedorId ou ProdutoId é obrigatório" });
     }
 
     try {
-      const produtos = await prisma.produtoFornecedor.findMany({
-        where: {
-          fornecedorId: Number(fornecedorId),
-        },
-        include: {
-          produto: true,
-        },
-      });
-      console.log("Produtos encontrados:", produtos);
-      return res.status(200).json(serializeBigInt(produtos));
+      if (fornecedorId) {
+        const produtos = await prisma.produtoFornecedor.findMany({
+          where: {
+            fornecedorId: Number(fornecedorId),
+          },
+          include: {
+            produto: true,
+          },
+        });
+        console.log("Produtos encontrados:", produtos);
+        return res.status(200).json(serializeBigInt(produtos));
+      } else if (produtoId) {
+        const fornecedores = await prisma.produtoFornecedor.findMany({
+          where: {
+            produtoId: Number(produtoId),
+          },
+          include: {
+            fornecedor: true,
+          },
+        });
+        console.log("Fornecedores encontrados:", fornecedores);
+        return res.status(200).json(serializeBigInt(fornecedores));
+      }
     } catch (error) {
-      console.error("Erro ao buscar produtos do fornecedor:", error);
+      console.error("Erro ao buscar produtos ou fornecedores:", error);
       return res
         .status(500)
-        .json({ error: "Erro ao buscar produtos do fornecedor" });
+        .json({ error: "Erro ao buscar produtos ou fornecedores" });
     }
   } else {
     return res.status(405).json({ message: "Método não permitido" });
