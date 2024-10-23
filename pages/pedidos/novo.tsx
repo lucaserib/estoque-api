@@ -208,6 +208,15 @@ const NovoPedido = () => {
     handleProdutoSearch(sku);
   };
 
+  const calcularValorTotal = () => {
+    return produtosPedido.reduce((total, produto) => {
+      const quantidade = Number(produto.quantidade);
+      const custo = Number(produto.custo);
+      const multiplicador = Number(produto.multiplicador);
+      return total + quantidade * custo * multiplicador;
+    }, 0);
+  };
+
   return (
     <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-lg">
       <h1 className="text-3xl font-semibold mb-6 text-gray-900 dark:text-gray-100">
@@ -327,6 +336,12 @@ const NovoPedido = () => {
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="mt-6">
+          <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">
+            Valor Total: R${calcularValorTotal().toFixed(2)}
+          </h2>
         </div>
 
         {message && (

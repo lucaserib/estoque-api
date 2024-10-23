@@ -192,7 +192,11 @@ export default async function handler(
 
       await prisma.pedidoCompra.update({
         where: { id: pedidoId },
-        data: { status: "confirmado", armazemId: armazemId },
+        data: {
+          status: "confirmado",
+          armazemId: armazemId,
+          dataConclusao: new Date(),
+        },
       });
 
       res.status(200).json({

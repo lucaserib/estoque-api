@@ -93,6 +93,7 @@ model PedidoCompra {
   armazemId   Int?
   fornecedor  Fornecedor      @relation(fields: [fornecedorId], references: [id])
   dataPrevista DateTime?
+  dataConclusao DateTime?
 
 }
 

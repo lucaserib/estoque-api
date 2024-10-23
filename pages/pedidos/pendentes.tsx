@@ -9,6 +9,7 @@ interface Produto {
   id: number;
   nome: string;
   sku: string;
+  multiplicador: number;
 }
 
 interface PedidoProduto {
@@ -187,6 +188,21 @@ const PedidosPendentes = () => {
     setEditPedido({ ...editPedido, produtos: updatedProdutos });
   };
 
+  const calcularValorTotalPedido = (pedido: Pedido) => {
+    return pedido.produtos.reduce((subtotal, produto) => {
+      const quantidade = produto.quantidade;
+      const custo = produto.custo;
+      const multiplicador = produto.produto?.multiplicador || 1;
+      return subtotal + quantidade * custo * multiplicador;
+    }, 0);
+  };
+
+  const calcularValorTotal = () => {
+    return pedidos.reduce((total, pedido) => {
+      return total + calcularValorTotalPedido(pedido);
+    }, 0);
+  };
+
   if (loading) {
     return <p className="text-center mt-10">Carregando...</p>;
   }
@@ -218,6 +234,10 @@ const PedidosPendentes = () => {
                 {new Date(pedido.dataPrevista).toLocaleDateString()}
               </p>
             )}
+            <p className="text-gray-700 dark:text-gray-300">
+              Valor Total do Pedido: R$
+              {calcularValorTotalPedido(pedido).toFixed(2)}
+            </p>
             <button
               onClick={() => handleEdit(pedido)}
               className="mt-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -315,6 +335,12 @@ const PedidosPendentes = () => {
           </button>
         </div>
       )}
+
+      <div className="mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
+        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+          Valor Total dos Pedidos Pendentes: R${calcularValorTotal().toFixed(2)}
+        </h2>
+      </div>
     </div>
   );
 };
