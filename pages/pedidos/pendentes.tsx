@@ -16,7 +16,7 @@ interface PedidoProduto {
   produtoId: number;
   quantidade: number;
   custo: number;
-  produto?: Produto; // Produto pode ser opcional
+  produto?: Produto;
 }
 
 interface Pedido {
@@ -25,7 +25,7 @@ interface Pedido {
   produtos: PedidoProduto[];
   comentarios: string;
   status: string;
-  dataPrevista?: string; // Adicionei o campo dataPrevista
+  dataPrevista?: string;
 }
 
 interface Armazem {
@@ -112,7 +112,7 @@ const PedidosPendentes = () => {
   };
 
   const handleEdit = (pedido: Pedido) => {
-    setEditPedido(pedido);
+    setEditPedido({ ...pedido });
     setArmazemId(null); // Resetar armazemId ao editar
   };
 
@@ -135,6 +135,7 @@ const PedidosPendentes = () => {
           pedidoId: editPedido.id,
           armazemId,
           produtosRecebidos,
+          comentarios: editPedido.comentarios,
         }),
       });
 
@@ -188,6 +189,11 @@ const PedidosPendentes = () => {
     setEditPedido({ ...editPedido, produtos: updatedProdutos });
   };
 
+  const handleComentariosChange = (comentarios: string) => {
+    if (!editPedido) return;
+    setEditPedido({ ...editPedido, comentarios });
+  };
+
   const calcularValorTotalPedido = (pedido: Pedido) => {
     return pedido.produtos.reduce((subtotal, produto) => {
       const quantidade = produto.quantidade;
@@ -226,7 +232,7 @@ const PedidosPendentes = () => {
               Pedido #{pedido.id} - {pedido.fornecedor.nome}
             </h2>
             <p className="text-gray-700 dark:text-gray-300">
-              {pedido.comentarios}
+              Comentários: {pedido.comentarios}
             </p>
             {pedido.dataPrevista && (
               <p className="text-gray-700 dark:text-gray-300">
@@ -235,7 +241,7 @@ const PedidosPendentes = () => {
               </p>
             )}
             <p className="text-gray-700 dark:text-gray-300">
-              Valor Total do Pedido: R$
+              Valor Total do Pedido: R${" "}
               {calcularValorTotalPedido(pedido).toFixed(2)}
             </p>
             <button
@@ -261,18 +267,33 @@ const PedidosPendentes = () => {
           </h2>
           <div className="mb-4">
             <label
-              htmlFor="armazem"
+              htmlFor="comentarios"
               className="block text-sm font-medium text-gray-700 dark:text-gray-300"
             >
-              Selecione o Armazém
+              Comentários
+            </label>
+            <textarea
+              id="comentarios"
+              value={editPedido.comentarios}
+              onChange={(e) => handleComentariosChange(e.target.value)}
+              className="mt-1 block w-full px-3 py-2 text-base border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+              rows={3}
+            />
+          </div>
+          <div className="mb-4">
+            <label
+              htmlFor="armazemId"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
+              Armazém
             </label>
             <select
-              id="armazem"
-              name="armazem"
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+              id="armazemId"
+              value={armazemId || ""}
               onChange={(e) => setArmazemId(Number(e.target.value))}
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
             >
-              <option value="">Selecione um armazém</option>
+              <option value="">Selecione um Armazém</option>
               {armazens.map((armazem) => (
                 <option key={armazem.id} value={armazem.id}>
                   {armazem.nome}
@@ -280,65 +301,73 @@ const PedidosPendentes = () => {
               ))}
             </select>
           </div>
-          {editPedido.produtos.map((produto) => (
-            <div key={produto.produtoId} className="mb-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                {produto.produto?.nome || "Produto"} (SKU:{" "}
-                {produto.produto?.sku || "N/A"})
-              </h3>
-              <label
-                htmlFor={`quantidade-${produto.produtoId}`}
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+              Produtos
+            </h3>
+            {editPedido.produtos.map((produto) => (
+              <div
+                key={produto.produtoId}
+                className="flex items-center mb-4 space-x-4"
               >
-                Quantidade
-              </label>
-              <input
-                id={`quantidade-${produto.produtoId}`}
-                type="number"
-                value={produto.quantidade}
-                onChange={(e) =>
-                  handleProdutoChange(
-                    produto.produtoId,
-                    "quantidade",
-                    Number(e.target.value)
-                  )
-                }
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              />
-              <label
-                htmlFor={`custo-${produto.produtoId}`}
-                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mt-2"
-              >
-                Custo
-              </label>
-              <input
-                id={`custo-${produto.produtoId}`}
-                type="number"
-                value={produto.custo}
-                onChange={(e) =>
-                  handleProdutoChange(
-                    produto.produtoId,
-                    "custo",
-                    Number(e.target.value)
-                  )
-                }
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              />
-            </div>
-          ))}
-
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    {produto.produto?.nome} (SKU: {produto.produto?.sku})
+                  </p>
+                  <label
+                    htmlFor={`quantidade-${produto.produtoId}`}
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Quantidade
+                  </label>
+                  <input
+                    type="number"
+                    id={`quantidade-${produto.produtoId}`}
+                    value={produto.quantidade}
+                    onChange={(e) =>
+                      handleProdutoChange(
+                        produto.produtoId,
+                        "quantidade",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                  <label
+                    htmlFor={`custo-${produto.produtoId}`}
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+                  >
+                    Custo
+                  </label>
+                  <input
+                    type="number"
+                    id={`custo-${produto.produtoId}`}
+                    value={produto.custo}
+                    onChange={(e) =>
+                      handleProdutoChange(
+                        produto.produtoId,
+                        "custo",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
           <button
             onClick={handleSave}
-            className="mt-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
           >
-            Salvar Alterações
+            Salvar
           </button>
         </div>
       )}
 
-      <div className="mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-          Valor Total dos Pedidos Pendentes: R${calcularValorTotal().toFixed(2)}
+      <div className="mt-8">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          Total dos Pedidos Pendentes: R$ {calcularValorTotal().toFixed(2)}
         </h2>
       </div>
     </div>

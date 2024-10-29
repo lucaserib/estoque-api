@@ -14,6 +14,7 @@ const ListarProdutos = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
+  const [searchTerm, setSearchTerm] = useState(""); // Novo estado para armazenar o termo de pesquisa
 
   useEffect(() => {
     const fetchProdutos = async () => {
@@ -59,6 +60,13 @@ const ListarProdutos = () => {
     setSelectedProduto(produto); // Define o produto selecionado para vincular fornecedor
   };
 
+  // Filtrando os produtos com base no termo de pesquisa
+  const filteredProdutos = produtos.filter(
+    (produto) =>
+      produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (loading) {
     return <p className="text-center mt-10">Carregando...</p>;
   }
@@ -72,6 +80,16 @@ const ListarProdutos = () => {
       <h1 className="text-2xl font-bold mb-6 text-gray-800">
         Lista de Produtos
       </h1>
+
+      {/* Campo de Pesquisa */}
+      <input
+        type="text"
+        placeholder="Pesquisar por nome ou SKU"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)} // Atualiza o termo de pesquisa
+        className="mb-4 px-4 py-2 border border-gray-300 rounded-md w-full"
+      />
+
       <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
         <thead>
           <tr className="bg-gray-100 text-gray-600 uppercase text-sm leading-normal">
@@ -82,7 +100,7 @@ const ListarProdutos = () => {
           </tr>
         </thead>
         <tbody className="text-gray-700 text-sm">
-          {produtos.map((produto) => (
+          {filteredProdutos.map((produto) => (
             <tr key={produto.id} className="border-b hover:bg-gray-100">
               <td className="px-6 py-4">{produto.nome}</td>
               <td className="px-6 py-4">{produto.sku}</td>

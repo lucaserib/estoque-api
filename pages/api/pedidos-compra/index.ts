@@ -69,7 +69,7 @@ export default async function handler(
     }
   } else if (req.method === "PUT") {
     try {
-      const { pedidoId, armazemId, produtosRecebidos } = req.body;
+      const { pedidoId, armazemId, produtosRecebidos, comentarios } = req.body;
 
       if (!pedidoId || !armazemId || !produtosRecebidos) {
         return res.status(400).json({
@@ -196,6 +196,7 @@ export default async function handler(
           status: "confirmado",
           armazemId: armazemId,
           dataConclusao: new Date(),
+          ...(comentarios && { comentarios }), // Atualização dos comentários, se fornecido
         },
       });
 

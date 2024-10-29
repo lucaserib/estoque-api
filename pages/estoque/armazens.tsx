@@ -29,6 +29,7 @@ const Armazens = () => {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [currentEstoque, setCurrentEstoque] = useState<Estoque | null>(null);
+  const [searchTerm, setSearchTerm] = useState(""); // Novo estado de pesquisa
 
   useEffect(() => {
     const fetchArmazens = async () => {
@@ -96,6 +97,14 @@ const Armazens = () => {
       }
     }
   };
+
+  // Função para filtrar os produtos com base no nome ou SKU
+  const filteredEstoque = estoque.filter(
+    (item) =>
+      item.produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   if (loading) {
     return <p className="text-center mt-10">Carregando...</p>;
   }
@@ -130,13 +139,32 @@ const Armazens = () => {
           ))}
         </select>
       </div>
+
+      {/* Campo de pesquisa */}
+      <div className="mb-4">
+        <label
+          htmlFor="search"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
+          Pesquisar por Nome ou SKU
+        </label>
+        <input
+          id="search"
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Digite o nome ou SKU do produto"
+          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+        />
+      </div>
+
       {selectedArmazemId !== null ? (
         <div>
           <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
             Estoque do Armazém
           </h2>
           <ul className="space-y-4">
-            {estoque.map((item) => (
+            {filteredEstoque.map((item) => (
               <li
                 key={item.id}
                 className={`flex justify-between items-center p-4 rounded-md shadow-sm ${

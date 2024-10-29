@@ -31,17 +31,21 @@ interface Pedido {
 
 const PedidosConcluidos = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [filteredPedidos, setFilteredPedidos] = useState<Pedido[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
         const response = await fetch("/api/pedidos-compra");
         const data = await response.json();
-        setPedidos(
-          data.filter((pedido: Pedido) => pedido.status === "confirmado")
+        const pedidosConcluidos = data.filter(
+          (pedido: Pedido) => pedido.status === "confirmado"
         );
+        setPedidos(pedidosConcluidos);
+        setFilteredPedidos(pedidosConcluidos);
       } catch (error) {
         setError("Erro ao buscar pedidos");
       } finally {
@@ -62,9 +66,21 @@ const PedidosConcluidos = () => {
   };
 
   const calcularValorTotal = () => {
-    return pedidos.reduce((total, pedido) => {
+    return filteredPedidos.reduce((total, pedido) => {
       return total + calcularValorTotalPedido(pedido);
     }, 0);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(event.target.value);
+    const lowerCaseSearch = event.target.value.toLowerCase();
+    setFilteredPedidos(
+      pedidos.filter(
+        (pedido) =>
+          pedido.fornecedor.nome.toLowerCase().includes(lowerCaseSearch) ||
+          pedido.id.toString().includes(lowerCaseSearch)
+      )
+    );
   };
 
   if (loading) {
@@ -76,51 +92,77 @@ const PedidosConcluidos = () => {
   }
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+    <div className="max-w-6xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
+      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100">
         Pedidos Concluídos
       </h1>
-      <ul className="space-y-4">
-        {pedidos.map((pedido) => (
-          <li
-            key={pedido.id}
-            className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md shadow-md"
-          >
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              Pedido #{pedido.id} - {pedido.fornecedor.nome}
-            </h2>
-            <p className="text-gray-700 dark:text-gray-300">
-              {pedido.comentarios}
-            </p>
-            <p className="text-gray-700 dark:text-gray-300">
-              Data de Conclusão:{" "}
-              {new Date(pedido.dataConclusao).toLocaleDateString()}
-            </p>
-            <p className="text-gray-700 dark:text-gray-300">
-              Valor Total do Pedido: R$
-              {calcularValorTotalPedido(pedido).toFixed(2)}
-            </p>
-            <ul className="mt-2">
-              {pedido.produtos.map((produto) => (
-                <li
-                  key={produto.produtoId}
-                  className="text-gray-700 dark:text-gray-300"
-                >
-                  {produto.produto.nome} (SKU: {produto.produto.sku}) -
-                  Quantidade: {produto.quantidade} - Custo: R$
-                  {produto.custo.toFixed(2)}
-                </li>
-              ))}
-            </ul>
-          </li>
-        ))}
+
+      {/* Barra de pesquisa */}
+      <div className="mb-6 flex justify-between items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={handleSearchChange}
+          placeholder="Pesquisar por fornecedor ou ID do pedido"
+          className="p-3 w-full md:w-1/2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+        />
+      </div>
+
+      <ul className="space-y-6">
+        {filteredPedidos.length > 0 ? (
+          filteredPedidos.map((pedido) => (
+            <li
+              key={pedido.id}
+              className="p-5 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md"
+            >
+              <div className="flex justify-between items-center mb-2">
+                <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+                  Pedido #{pedido.id} - {pedido.fornecedor.nome}
+                </h2>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  Concluído em:{" "}
+                  {new Date(pedido.dataConclusao).toLocaleDateString()}
+                </span>
+              </div>
+              <p className="text-gray-700 dark:text-gray-300 mb-2">
+                Comentários: {pedido.comentarios || "Nenhum comentário"}
+              </p>
+              <p className="text-gray-700 dark:text-gray-300 mb-2">
+                Valor Total do Pedido:{" "}
+                <span className="font-semibold text-green-500">
+                  R$ {calcularValorTotalPedido(pedido).toFixed(2)}
+                </span>
+              </p>
+              <ul className="mt-2 space-y-1">
+                {pedido.produtos.map((produto) => (
+                  <li
+                    key={produto.produtoId}
+                    className="flex justify-between text-gray-700 dark:text-gray-300"
+                  >
+                    <span>
+                      {produto.produto.nome} (SKU: {produto.produto.sku}) -
+                      Quantidade: {produto.quantidade}
+                    </span>
+                    <span>Custo: R$ {produto.custo.toFixed(2)}</span>
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))
+        ) : (
+          <p className="text-center text-gray-700 dark:text-gray-300">
+            Nenhum pedido encontrado.
+          </p>
+        )}
       </ul>
 
-      <div className="mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-          Valor Total dos Pedidos Concluídos: R$
-          {calcularValorTotal().toFixed(2)}
+      <div className="mt-10 p-6 bg-gray-200 dark:bg-gray-700 rounded-md shadow-md">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          Valor Total dos Pedidos Concluídos:
         </h2>
+        <p className="text-2xl font-semibold text-green-600 dark:text-green-400">
+          R$ {calcularValorTotal().toFixed(2)}
+        </p>
       </div>
     </div>
   );
