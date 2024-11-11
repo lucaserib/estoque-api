@@ -13,6 +13,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import DarkModeToggle from "./DarkModeToggle";
+import { auth } from "../lib/firebase";
 
 export const Sidebar = () => {
   const [isFornecedoresOpen, setIsFornecedoresOpen] = useState(false);
@@ -32,19 +33,20 @@ export const Sidebar = () => {
   return (
     <>
       <button
-        className="md:hidden p-3 text-white bg-blue-900 dark:bg-gray-900 fixed top-4 left-4 z-50"
+        className="md:hidden p-3 text-white bg-blue-900 dark:bg-gray-900 fixed top-4 left-4 z-50 rounded-full shadow-lg"
         onClick={toggleSidebar}
       >
         {isSidebarOpen ? <FaTimes size={24} /> : <FaBars size={24} />}
       </button>
-
       <div
-        className={`w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between fixed z-40 transition-transform transform ${
+        className={`w-64 h-screen bg-blue-900 dark:bg-gray-900 text-white p-4 flex flex-col justify-between fixed z-40 transition-transform transform shadow-lg ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0`}
       >
-        <div className="overflow-y-auto flex-grow">
-          <h2 className="text-3xl font-bold mb-8">Gestão de Estoque</h2>
+        <div className="flex flex-col overflow-y-auto flex-grow">
+          <h2 className="text-2xl font-semibold mb-8 text-center">
+            Gestão de Estoque
+          </h2>
           <ul className="space-y-4">
             <li>
               <Link href="/" legacyBehavior>
@@ -93,7 +95,6 @@ export const Sidebar = () => {
                 </ul>
               )}
             </li>
-            {/* Fornecedores Section */}
             <li>
               <button
                 onClick={toggleFornecedores}
@@ -129,7 +130,6 @@ export const Sidebar = () => {
                 </ul>
               )}
             </li>
-            {/* Produtos Section */}
             <li>
               <button
                 onClick={toggleProdutos}
@@ -169,7 +169,6 @@ export const Sidebar = () => {
                 </ul>
               )}
             </li>
-            {/* Estoque Section */}
             <li>
               <button
                 onClick={toggleEstoque}
@@ -204,10 +203,10 @@ export const Sidebar = () => {
             </li>
             <li>
               <button
-                onClick={() => setIsSaidasOpen(!isSaidasOpen)}
+                onClick={toggleSaidas}
                 className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors w-full text-left text-white dark:text-gray-300"
               >
-                <FaTruck className="mr-3" />
+                <FaBox className="mr-3" />
                 Saídas
                 {isSaidasOpen ? (
                   <FaChevronUp className="ml-auto" />
@@ -227,7 +226,7 @@ export const Sidebar = () => {
                   <li>
                     <Link href="/saidas/registroSaidas" legacyBehavior>
                       <a className="flex items-center py-2 px-4 rounded-md hover:bg-blue-700 dark:hover:bg-gray-700 transition-colors text-white dark:text-gray-300">
-                        Listar Saídas
+                        Registro de saídas
                       </a>
                     </Link>
                   </li>
@@ -235,13 +234,22 @@ export const Sidebar = () => {
               )}
             </li>
           </ul>
+          <div className="mt-4">
+            <DarkModeToggle />
+          </div>
         </div>
-
-        {/* Dark Mode Toggle */}
-        <div className="mt-auto">
-          <DarkModeToggle />
+        <div className="mt-4 flex flex-col items-center">
+          <button
+            className="flex items-center py-2 px-4 rounded-md bg-red-600 hover:bg-red-700 transition-colors text-white w-full"
+            onClick={() => auth.signOut()}
+          >
+            <FaSignOutAlt className="mr-2" />
+            Logout
+          </button>
         </div>
       </div>
     </>
   );
 };
+
+export default Sidebar;

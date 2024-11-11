@@ -29,7 +29,22 @@ const Armazens = () => {
   const [error, setError] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [currentEstoque, setCurrentEstoque] = useState<Estoque | null>(null);
-  const [searchTerm, setSearchTerm] = useState(""); // Novo estado de pesquisa
+  const [searchTerm, setSearchTerm] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const fetchEstoque = async (armazemId: number) => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/estoque/${armazemId}`);
+      const data = await response.json();
+      setEstoque(data);
+    } catch (error) {
+      setError("Erro ao buscar estoque");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchArmazens = async () => {
@@ -49,32 +64,17 @@ const Armazens = () => {
 
   useEffect(() => {
     if (selectedArmazemId !== null) {
-      const fetchEstoque = async () => {
-        setLoading(true);
-        setError("");
-        try {
-          const response = await fetch(`/api/estoque/${selectedArmazemId}`);
-          const data = await response.json();
-          setEstoque(data);
-        } catch (error) {
-          setError("Erro ao buscar estoque");
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      fetchEstoque();
+      fetchEstoque(selectedArmazemId);
     }
   }, [selectedArmazemId]);
 
   const handleSaveEstoqueSeguranca = async () => {
     if (currentEstoque) {
+      setSaving(true);
       try {
         const response = await fetch(`/api/estoque/estoqueSeguranca`, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             produtoId: currentEstoque.produto.id,
             armazemId: selectedArmazemId,
@@ -86,19 +86,15 @@ const Armazens = () => {
         }
         setShowModal(false);
         setCurrentEstoque(null);
-        // Re-fetch the stock data
-        if (selectedArmazemId !== null) {
-          const response = await fetch(`/api/estoque/${selectedArmazemId}`);
-          const data = await response.json();
-          setEstoque(data);
-        }
+        fetchEstoque(selectedArmazemId!); // Re-fetch the stock data
       } catch (error) {
         setError("Erro ao salvar estoque de segurança");
+      } finally {
+        setSaving(false);
       }
     }
   };
 
-  // Função para filtrar os produtos com base no nome ou SKU
   const filteredEstoque = estoque.filter(
     (item) =>
       item.produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -106,11 +102,19 @@ const Armazens = () => {
   );
 
   if (loading) {
-    return <p className="text-center mt-10">Carregando...</p>;
+    return (
+      <p aria-live="polite" className="text-center mt-10">
+        Carregando...
+      </p>
+    );
   }
 
   if (error) {
-    return <p className="text-center mt-10 text-red-500">{error}</p>;
+    return (
+      <p aria-live="polite" className="text-center mt-10 text-red-500">
+        {error}
+      </p>
+    );
   }
 
   return (
@@ -140,7 +144,6 @@ const Armazens = () => {
         </select>
       </div>
 
-      {/* Campo de pesquisa */}
       <div className="mb-4">
         <label
           htmlFor="search"
@@ -169,7 +172,7 @@ const Armazens = () => {
                 key={item.id}
                 className={`flex justify-between items-center p-4 rounded-md shadow-sm ${
                   item.quantidade < item.estoqueSeguranca
-                    ? "bg-red-200 dark:bg-red-800"
+                    ? "bg-red-200 dark:bg-red-800 blink"
                     : "bg-gray-100 dark:bg-gray-700"
                 }`}
               >
@@ -198,6 +201,11 @@ const Armazens = () => {
                 </button>
               </li>
             ))}
+            {filteredEstoque.length === 0 && (
+              <p className="text-center text-gray-600 dark:text-gray-400">
+                Nenhum produto encontrado.
+              </p>
+            )}
           </ul>
         </div>
       ) : (
@@ -219,27 +227,23 @@ const Armazens = () => {
               type="number"
               value={currentEstoque.estoqueSeguranca}
               onChange={(e) =>
-                setCurrentEstoque({
-                  ...currentEstoque,
-                  estoqueSeguranca: Number(e.target.value),
-                })
+                setCurrentEstoque(
+                  (prev) =>
+                    prev && {
+                      ...prev,
+                      estoqueSeguranca: Number(e.target.value),
+                    }
+                )
               }
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
             />
-            <div className="mt-4 flex justify-end">
-              <button
-                onClick={() => setShowModal(false)}
-                className="mr-4 px-4 py-2 bg-gray-500 text-white rounded-md"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveEstoqueSeguranca}
-                className="px-4 py-2 bg-blue-500 text-white rounded-md"
-              >
-                Salvar
-              </button>
-            </div>
+            <button
+              onClick={handleSaveEstoqueSeguranca}
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md"
+              disabled={saving}
+            >
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
           </div>
         </div>
       )}

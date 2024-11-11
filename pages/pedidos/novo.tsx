@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Fornecedor {
   id: number;
@@ -122,7 +124,9 @@ const NovoPedido = () => {
         custo: Number(p.custo),
       })),
       comentarios,
-      dataPrevista,
+      dataPrevista: format(new Date(dataPrevista), "dd/MM/yyyy", {
+        locale: ptBR,
+      }),
     };
 
     try {

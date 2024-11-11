@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Saida {
   id: number;
@@ -57,7 +59,8 @@ const RegistroSaidas = () => {
         {saidas.map((saida) => (
           <li key={saida.id} className="py-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-              Saída #{saida.id} - {new Date(saida.data).toLocaleDateString()}
+              Saída #{saida.id} -{" "}
+              {format(new Date(saida.data), "dd/MM/yyyy", { locale: ptBR })}
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
               Armazém: {saida.armazem.nome}

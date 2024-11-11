@@ -61,7 +61,7 @@ const CriarArmazem = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ armazemId: id }), // Altere aqui para armazemId
       });
 
       if (response.ok) {

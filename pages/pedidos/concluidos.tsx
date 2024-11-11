@@ -1,4 +1,6 @@
+import { ptBR } from "date-fns/locale";
 import React, { useEffect, useState } from "react";
+import { format } from "date-fns";
 
 interface Fornecedor {
   id: number;
@@ -121,7 +123,9 @@ const PedidosConcluidos = () => {
                 </h2>
                 <span className="text-sm text-gray-600 dark:text-gray-400">
                   Concluído em:{" "}
-                  {new Date(pedido.dataConclusao).toLocaleDateString()}
+                  {format(new Date(pedido.dataConclusao), "dd/MM/yyyy", {
+                    locale: ptBR,
+                  })}
                 </span>
               </div>
               <p className="text-gray-700 dark:text-gray-300 mb-2">

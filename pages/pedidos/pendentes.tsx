@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from "react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Fornecedor {
   id: number;
@@ -237,7 +239,9 @@ const PedidosPendentes = () => {
             {pedido.dataPrevista && (
               <p className="text-gray-700 dark:text-gray-300">
                 Data Prevista:{" "}
-                {new Date(pedido.dataPrevista).toLocaleDateString()}
+                {format(new Date(pedido.dataPrevista), "dd/MM/yyyy", {
+                  locale: ptBR,
+                })}
               </p>
             )}
             <p className="text-gray-700 dark:text-gray-300">
