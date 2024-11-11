@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 const prisma = new PrismaClient();
 
 // Função para serializar BigInt como string
-const serializeBigInt = (obj: any) => {
+const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
       typeof value === "bigint" ? value.toString() : value
@@ -12,13 +12,42 @@ const serializeBigInt = (obj: any) => {
   );
 };
 
+interface ProdutoRecebido {
+  produtoId: number;
+  quantidade: number;
+  custo: number;
+}
+
+interface RequestBodyPost {
+  fornecedorId: number;
+  produtos: ProdutoRecebido[];
+  comentarios?: string;
+  dataPrevista?: string;
+}
+
+interface RequestBodyPut {
+  pedidoId: number;
+  armazemId: number;
+  produtosRecebidos: ProdutoRecebido[];
+  comentarios?: string;
+}
+
+interface RequestBodyDelete {
+  pedidoId: number;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === "POST") {
     try {
-      const { fornecedorId, produtos, comentarios, dataPrevista } = req.body;
+      const {
+        fornecedorId,
+        produtos,
+        comentarios,
+        dataPrevista,
+      }: RequestBodyPost = req.body;
 
       if (!fornecedorId || !produtos || produtos.length === 0) {
         return res
@@ -33,22 +62,17 @@ export default async function handler(
           status: "pendente",
           dataPrevista: dataPrevista ? new Date(dataPrevista) : null,
           produtos: {
-            create: produtos.map(
-              (produto: {
-                produtoId: number;
-                quantidade: number;
-                custo: number;
-              }) => ({
-                produtoId: produto.produtoId,
-                quantidade: produto.quantidade,
-                custo: produto.custo,
-              })
-            ),
+            create: produtos.map((produto) => ({
+              produtoId: produto.produtoId,
+              quantidade: produto.quantidade,
+              custo: produto.custo,
+            })),
           },
         },
       });
       res.status(201).json(pedido);
     } catch (error) {
+      console.error("Erro ao criar pedido de compra:", error);
       res.status(500).json({ error: "Erro ao criar pedido de compra" });
     }
   } else if (req.method === "GET") {
@@ -65,11 +89,17 @@ export default async function handler(
       });
       res.status(200).json(serializeBigInt(pedidos));
     } catch (error) {
+      console.error("Erro ao buscar pedidos:", error);
       res.status(500).json({ error: "Erro ao buscar pedidos" });
     }
   } else if (req.method === "PUT") {
     try {
-      const { pedidoId, armazemId, produtosRecebidos, comentarios } = req.body;
+      const {
+        pedidoId,
+        armazemId,
+        produtosRecebidos,
+        comentarios,
+      }: RequestBodyPut = req.body;
 
       if (!pedidoId || !armazemId || !produtosRecebidos) {
         return res.status(400).json({
@@ -94,82 +124,72 @@ export default async function handler(
         return res.status(404).json({ error: "Pedido não encontrado" });
       }
 
-      const produtosNaoRecebidos: {
-        produtoId: number;
-        quantidade: number;
-        custo: number;
-      }[] = [];
+      const produtosNaoRecebidos: ProdutoRecebido[] = [];
 
       await Promise.all(
-        produtosRecebidos.map(
-          async (produtoRecebido: {
-            produtoId: number;
-            quantidade: number;
-            custo: number;
-          }) => {
-            const produtoPedido = pedidoExistente.produtos.find(
-              (produto) => produto.produtoId === produtoRecebido.produtoId
-            );
+        produtosRecebidos.map(async (produtoRecebido) => {
+          const produtoPedido = pedidoExistente.produtos.find(
+            (produto) => produto.produtoId === produtoRecebido.produtoId
+          );
 
-            if (produtoPedido) {
-              const quantidadeNaoRecebida =
-                produtoPedido.quantidade - produtoRecebido.quantidade;
+          if (produtoPedido) {
+            const quantidadeNaoRecebida =
+              produtoPedido.quantidade - produtoRecebido.quantidade;
 
-              if (quantidadeNaoRecebida > 0) {
-                produtosNaoRecebidos.push({
-                  produtoId: produtoRecebido.produtoId,
-                  quantidade: quantidadeNaoRecebida,
-                  custo: produtoRecebido.custo,
-                });
-              }
-
-              // Atualizando a quantidade do produto no pedido conforme o recebido
-              await prisma.pedidoProduto.update({
-                where: {
-                  id: produtoPedido.id,
-                },
-                data: {
-                  quantidade: produtoRecebido.quantidade,
-                  custo: produtoRecebido.custo,
-                },
+            if (quantidadeNaoRecebida > 0) {
+              produtosNaoRecebidos.push({
+                produtoId: produtoRecebido.produtoId,
+                quantidade: quantidadeNaoRecebida,
+                custo: produtoRecebido.custo,
               });
+            }
 
-              // Atualizando o estoque
-              const estoqueExistente = await prisma.estoque.findFirst({
+            // Atualizando a quantidade do produto no pedido conforme o recebido
+            await prisma.pedidoProduto.update({
+              where: {
+                id: produtoPedido.id,
+              },
+              data: {
+                quantidade: produtoRecebido.quantidade,
+                custo: produtoRecebido.custo,
+              },
+            });
+
+            // Atualizando o estoque
+            const estoqueExistente = await prisma.estoque.findFirst({
+              where: {
+                produtoId: produtoRecebido.produtoId,
+                armazemId: armazemId,
+              },
+            });
+
+            if (estoqueExistente) {
+              await prisma.estoque.update({
                 where: {
-                  produtoId: produtoRecebido.produtoId,
-                  armazemId: armazemId,
-                },
-              });
-
-              if (estoqueExistente) {
-                await prisma.estoque.update({
-                  where: {
-                    produtoId_armazemId: {
-                      produtoId: produtoRecebido.produtoId,
-                      armazemId: armazemId,
-                    },
-                  },
-                  data: {
-                    quantidade: {
-                      increment: produtoRecebido.quantidade,
-                    },
-                    valorUnitario: produtoRecebido.custo,
-                  },
-                });
-              } else {
-                await prisma.estoque.create({
-                  data: {
+                  produtoId_armazemId: {
                     produtoId: produtoRecebido.produtoId,
                     armazemId: armazemId,
-                    quantidade: produtoRecebido.quantidade,
-                    valorUnitario: produtoRecebido.custo,
                   },
-                });
-              }
+                },
+                data: {
+                  quantidade: {
+                    increment: produtoRecebido.quantidade,
+                  },
+                  valorUnitario: produtoRecebido.custo,
+                },
+              });
+            } else {
+              await prisma.estoque.create({
+                data: {
+                  produtoId: produtoRecebido.produtoId,
+                  armazemId: armazemId,
+                  quantidade: produtoRecebido.quantidade,
+                  valorUnitario: produtoRecebido.custo,
+                },
+              });
             }
           }
-        )
+        })
       );
 
       if (produtosNaoRecebidos.length > 0) {
@@ -211,7 +231,7 @@ export default async function handler(
     }
   } else if (req.method === "DELETE") {
     try {
-      const { pedidoId } = req.body;
+      const { pedidoId }: RequestBodyDelete = req.body;
 
       if (!pedidoId) {
         return res.status(400).json({ error: "ID do pedido é obrigatório" });

@@ -21,9 +21,14 @@ const Login = () => {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       router.push("/"); // Redireciona para a página inicial
-    } catch (error: any) {
-      setError(error.message);
-      console.error("Erro ao fazer login:", error);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+        console.error("Erro ao fazer login:", error);
+      } else {
+        setError("Erro desconhecido");
+        console.error("Erro desconhecido:", error);
+      }
     }
   };
 
@@ -32,9 +37,14 @@ const Login = () => {
     try {
       await signInWithPopup(auth, provider);
       router.push("/"); // Redireciona para a página inicial
-    } catch (error: any) {
-      setError(error.message);
-      console.error("Erro ao fazer login com Google:", error);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+        console.error("Erro ao fazer login com Google:", error);
+      } else {
+        setError("Erro desconhecido");
+        console.error("Erro desconhecido:", error);
+      }
     }
   };
 

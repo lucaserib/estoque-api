@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 const prisma = new PrismaClient();
 
 // Função para serializar BigInt como string
-const serializeBigInt = (obj: any) => {
+const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
       typeof value === "bigint" ? value.toString() : value

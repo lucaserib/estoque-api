@@ -1,16 +1,28 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Produto as PrismaProduto } from "@prisma/client";
 import type { NextApiRequest, NextApiResponse } from "next";
 
 const prisma = new PrismaClient();
 
 // Função para serializar BigInt como string
-const serializeBigInt = (obj: any) => {
+const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
       typeof value === "bigint" ? value.toString() : value
     )
   );
 };
+
+interface Componente {
+  quantidade: number;
+  produtoId: number;
+}
+
+interface RequestBodyPost {
+  nome: string;
+  sku: string;
+  ean?: string;
+  componentes: Componente[];
+}
 
 export default async function handler(
   req: NextApiRequest,
@@ -20,7 +32,7 @@ export default async function handler(
     const { sku, armazemId } = req.query;
 
     try {
-      let produtos: any[] = [];
+      let produtos: PrismaProduto[] = [];
 
       if (sku) {
         // Buscar produtos pelo SKU
@@ -80,7 +92,7 @@ export default async function handler(
       res.status(500).json({ error: "Erro ao buscar produtos" });
     }
   } else if (req.method === "POST") {
-    const { nome, sku, ean, componentes } = req.body;
+    const { nome, sku, ean, componentes }: RequestBodyPost = req.body;
 
     console.log("Recebido:", { nome, sku, ean, componentes });
 
@@ -98,7 +110,7 @@ export default async function handler(
             ean: ean ? BigInt(ean) : null, // Certifique-se de que o EAN seja tratado como BigInt ou null
             isKit: true,
             componentes: {
-              create: componentes.map((componente: any) => ({
+              create: componentes.map((componente) => ({
                 quantidade: componente.quantidade,
                 produto: {
                   connect: { id: componente.produtoId },

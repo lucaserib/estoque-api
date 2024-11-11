@@ -4,7 +4,7 @@ import type { NextApiRequest, NextApiResponse } from "next";
 const prisma = new PrismaClient();
 
 // Função para serializar BigInt como string
-const serializeBigInt = (obj: any) => {
+const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
       typeof value === "bigint" ? value.toString() : value
@@ -12,13 +12,27 @@ const serializeBigInt = (obj: any) => {
   );
 };
 
+interface RequestBody {
+  produtoId: number;
+  fornecedorId: number;
+  id?: number;
+  preco: number;
+  multiplicador: number;
+  codigoNF: string;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === "POST") {
-    const { produtoId, fornecedorId, preco, multiplicador, codigoNF } =
-      req.body;
+    const {
+      produtoId,
+      fornecedorId,
+      preco,
+      multiplicador,
+      codigoNF,
+    }: RequestBody = req.body;
 
     if (!produtoId || !fornecedorId || !preco || !multiplicador || !codigoNF) {
       return res.status(400).json({
@@ -51,6 +65,7 @@ export default async function handler(
       });
       return res.status(201).json(vinculo);
     } catch (error) {
+      console.error("Erro ao vincular fornecedor:", error);
       return res.status(500).json({ error: "Erro ao vincular fornecedor" });
     }
   } else if (req.method === "GET") {
@@ -109,7 +124,7 @@ export default async function handler(
       return res.status(500).json({ error: "Erro ao deletar fornecedor" });
     }
   } else if (req.method === "PUT") {
-    const { id, preco, multiplicador, codigoNF } = req.body;
+    const { id, preco, multiplicador, codigoNF }: RequestBody = req.body;
 
     if (!id || !preco || !multiplicador || !codigoNF) {
       return res.status(400).json({

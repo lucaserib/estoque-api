@@ -27,9 +27,14 @@ const Register = () => {
         });
       }
       router.push("/"); // Redireciona para a página inicial
-    } catch (error: any) {
-      setError(error.message);
-      console.error("Erro ao registrar:", error);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+        console.error("Erro ao registrar:", error);
+      } else {
+        setError("Erro desconhecido");
+        console.error("Erro desconhecido:", error);
+      }
     }
   };
 

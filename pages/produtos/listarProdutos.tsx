@@ -20,9 +20,9 @@ const ListarProdutos = () => {
     const fetchProdutos = async () => {
       try {
         const response = await fetch("/api/produtos");
-        const data = await response.json();
+        const data: Produto[] = await response.json();
         if (Array.isArray(data)) {
-          const produtosComEan = data.map((produto: any) => ({
+          const produtosComEan = data.map((produto) => ({
             ...produto,
             ean: produto.ean ? produto.ean.toString() : "",
           }));

@@ -4,7 +4,7 @@ import { NextApiRequest, NextApiResponse } from "next";
 const prisma = new PrismaClient();
 
 // Função para serializar BigInt como string
-const serializeBigInt = (obj: any) => {
+const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
       typeof value === "bigint" ? value.toString() : value
@@ -12,12 +12,23 @@ const serializeBigInt = (obj: any) => {
   );
 };
 
+interface Produto {
+  sku: string;
+  quantidade: number;
+  isKit: boolean;
+}
+
+interface RequestBody {
+  produtos: Produto[];
+  armazemId: number;
+}
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
   if (req.method === "POST") {
-    const { produtos, armazemId } = req.body;
+    const { produtos, armazemId }: RequestBody = req.body;
 
     if (!produtos || !armazemId) {
       return res
