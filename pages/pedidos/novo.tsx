@@ -124,9 +124,7 @@ const NovoPedido = () => {
         custo: Number(p.custo),
       })),
       comentarios,
-      dataPrevista: format(new Date(dataPrevista), "dd/MM/yyyy", {
-        locale: ptBR,
-      }),
+      dataPrevista: new Date(dataPrevista),
     };
 
     try {

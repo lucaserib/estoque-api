@@ -37,20 +37,24 @@ interface Armazem {
 
 const PedidosPendentes = () => {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [filteredPedidos, setFilteredPedidos] = useState<Pedido[]>([]);
   const [armazens, setArmazens] = useState<Armazem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [editPedido, setEditPedido] = useState<Pedido | null>(null);
   const [armazemId, setArmazemId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const fetchPedidos = async () => {
       try {
         const response = await fetch("/api/pedidos-compra");
         const data = await response.json();
-        setPedidos(
-          data.filter((pedido: Pedido) => pedido.status === "pendente")
+        const pedidosPendentes = data.filter(
+          (pedido: Pedido) => pedido.status === "pendente"
         );
+        setPedidos(pedidosPendentes);
+        setFilteredPedidos(pedidosPendentes);
       } catch (error) {
         setError("Erro ao buscar pedidos");
       } finally {
@@ -75,6 +79,20 @@ const PedidosPendentes = () => {
     fetchPedidos();
     fetchArmazens();
   }, []);
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearch(event.target.value);
+    const lowerCaseSearch = event.target.value.toLowerCase();
+    setFilteredPedidos(
+      pedidos.filter(
+        (pedido) =>
+          pedido.fornecedor.nome.toLowerCase().includes(lowerCaseSearch) ||
+          pedido.produtos.some((produto) =>
+            produto.produto?.sku.toLowerCase().includes(lowerCaseSearch)
+          )
+      )
+    );
+  };
 
   const handleConfirm = async (id: number) => {
     if (!armazemId) {
@@ -206,7 +224,7 @@ const PedidosPendentes = () => {
   };
 
   const calcularValorTotal = () => {
-    return pedidos.reduce((total, pedido) => {
+    return filteredPedidos.reduce((total, pedido) => {
       return total + calcularValorTotalPedido(pedido);
     }, 0);
   };
@@ -224,8 +242,20 @@ const PedidosPendentes = () => {
       <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
         Pedidos Pendentes
       </h1>
+
+      {/* Barra de pesquisa */}
+      <div className="mb-6 flex justify-between items-center">
+        <input
+          type="text"
+          value={search}
+          onChange={handleSearchChange}
+          placeholder="Pesquisar por fornecedor ou SKU do produto"
+          className="p-3 w-full md:w-1/2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
+        />
+      </div>
+
       <ul className="space-y-4">
-        {pedidos.map((pedido) => (
+        {filteredPedidos.map((pedido) => (
           <li
             key={pedido.id}
             className="p-4 bg-gray-100 dark:bg-gray-800 rounded-md shadow-md"

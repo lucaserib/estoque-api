@@ -24,9 +24,8 @@ const RegistroSaidas = () => {
         const response = await fetch("/api/saida");
         const data = await response.json();
 
-        console.log("Dados recebidos da API:", data); // Adiciona log para verificar os dados
+        console.log("Dados recebidos da API:", data);
 
-        // Verificar se a resposta é um array
         if (Array.isArray(data)) {
           setSaidas(data);
         } else {
@@ -43,36 +42,57 @@ const RegistroSaidas = () => {
   }, []);
 
   if (loading) {
-    return <div>Carregando saídas...</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200">
+        <div className="text-xl font-medium">Carregando saídas...</div>
+      </div>
+    );
   }
 
   if (!Array.isArray(saidas) || saidas.length === 0) {
-    return <div>Nenhuma saída registrada.</div>;
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-700 dark:text-gray-200">
+        <div className="text-xl font-medium">Nenhuma saída registrada.</div>
+      </div>
+    );
   }
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+    <div className="max-w-5xl mx-auto mt-10 p-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg">
+      <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-200 mb-6 text-center">
         Registro de Saídas
       </h1>
-      <ul className="divide-y divide-gray-200">
+      <ul className="space-y-4">
         {saidas.map((saida) => (
-          <li key={saida.id} className="py-4">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <li
+            key={saida.id}
+            className="p-6 bg-gray-50 dark:bg-gray-700 rounded-lg shadow-md transition-transform transform hover:scale-105"
+          >
+            <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
               Saída #{saida.id} -{" "}
               {format(new Date(saida.data), "dd/MM/yyyy", { locale: ptBR })}
             </h2>
-            <p className="text-gray-600 dark:text-gray-400">
-              Armazém: {saida.armazem.nome}
+            <p className="text-gray-600 dark:text-gray-300 mt-1">
+              <span className="font-medium">Armazém:</span> {saida.armazem.nome}
             </p>
-            <ul className="mt-2 space-y-1">
+            <ul className="mt-3 border-t border-gray-200 dark:border-gray-600 pt-3 space-y-2">
               {saida.detalhes.map((detalhe) => (
                 <li
                   key={detalhe.id}
-                  className="text-gray-800 dark:text-gray-300"
+                  className="flex justify-between items-center text-gray-700 dark:text-gray-300 text-sm"
                 >
-                  {detalhe.produto.sku} ({detalhe.produto.nome}) - Quantidade:{" "}
-                  {detalhe.quantidade} {detalhe.isKit ? "(Kit)" : ""}
+                  <div>
+                    <span className="font-semibold">{detalhe.produto.sku}</span>{" "}
+                    - {detalhe.produto.nome}
+                  </div>
+                  <div className="text-gray-500 dark:text-gray-400">
+                    Quantidade: {detalhe.quantidade}{" "}
+                    {detalhe.isKit && (
+                      <span className="text-xs bg-blue-500 text-white py-1 px-2 rounded-full ml-2">
+                        Kit
+                      </span>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

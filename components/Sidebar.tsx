@@ -240,7 +240,7 @@ export const Sidebar = () => {
         </div>
         <div className="mt-4 flex flex-col items-center">
           <button
-            className="flex items-center py-2 px-4 rounded-md bg-red-600 hover:bg-red-700 transition-colors text-white w-full"
+            className="flex items-center justify-center py-2 px-4 w-full rounded-full bg-red-600 hover:bg-red-700 transition-colors text-white shadow-md mt-4"
             onClick={() => auth.signOut()}
           >
             <FaSignOutAlt className="mr-2" />
