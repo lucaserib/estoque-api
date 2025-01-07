@@ -13,7 +13,6 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import DarkModeToggle from "./DarkModeToggle";
-import { auth } from "../lib/firebase";
 
 export const Sidebar = () => {
   const [isFornecedoresOpen, setIsFornecedoresOpen] = useState(false);
@@ -238,15 +237,7 @@ export const Sidebar = () => {
             <DarkModeToggle />
           </div>
         </div>
-        <div className="mt-4 flex flex-col items-center">
-          <button
-            className="flex items-center justify-center py-2 px-4 w-full rounded-full bg-red-600 hover:bg-red-700 transition-colors text-white shadow-md mt-4"
-            onClick={() => auth.signOut()}
-          >
-            <FaSignOutAlt className="mr-2" />
-            Logout
-          </button>
-        </div>
+        <div className="mt-4 flex flex-col items-center"></div>
       </div>
     </>
   );
