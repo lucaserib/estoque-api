@@ -7,126 +7,151 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id        String    @id @default(cuid())
+  name      String?
+  email     String    @unique
+  password  String?
+  image     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  accounts  Account[]
+  sessions  Session[]
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model Produto {
-  id          Int          @id @default(autoincrement())
-  nome        String
-  sku         String       @unique
-  isKit       Boolean      @default(false)
-  componentes Componente[] @relation("KitToComponente")
-  kitsComponentes Componente[] @relation("ProdutoToComponente")
-  ean         BigInt?
-  estoques    Estoque[]
-  saidas      Saida[]
-  pedidos     PedidoProduto[]
-  detalhesSaida DetalhesSaida[]
-  fornecedores ProdutoFornecedor[]
+  id              Int                 @id @default(autoincrement())
+  nome            String
+  sku             String              @unique
+  isKit           Boolean             @default(false)
+  ean             BigInt?
+  componentes     Componente[]        @relation("KitToComponente")
+  kitsComponentes Componente[]        @relation("ProdutoToComponente")
+  detalhesSaida   DetalhesSaida[]
+  estoques        Estoque[]
+  pedidos         PedidoProduto[]
+  fornecedores    ProdutoFornecedor[]
+  saidas          Saida[]
 }
 
 model Componente {
-  id         Int      @id @default(autoincrement())
+  id         Int     @id @default(autoincrement())
   quantidade Int
   produtoId  Int
   kitId      Int
-  produto    Produto  @relation("ProdutoToComponente", fields: [produtoId], references: [id])
-  kit        Produto  @relation("KitToComponente", fields: [kitId], references: [id])
+  kit        Produto @relation("KitToComponente", fields: [kitId], references: [id])
+  produto    Produto @relation("ProdutoToComponente", fields: [produtoId], references: [id])
 }
 
 model Estoque {
-  produtoId    Int
-  armazemId    Int
-  quantidade   Int
-  valorUnitario Float
-  produto      Produto  @relation(fields: [produtoId], references: [id])
-  armazem      Armazem  @relation(fields: [armazemId], references: [id])
+  produtoId        Int
+  armazemId        Int
+  quantidade       Int
+  valorUnitario    Float
   estoqueSeguranca Int?
-
+  armazem          Armazem @relation(fields: [armazemId], references: [id])
+  produto          Produto @relation(fields: [produtoId], references: [id])
 
   @@id([produtoId, armazemId])
 }
 
 model Saida {
-  id        Int              @id @default(autoincrement())
-  data      DateTime         @default(now())
-  armazem   Armazem          @relation(fields: [armazemId], references: [id])
+  id        Int             @id @default(autoincrement())
+  data      DateTime        @default(now())
   armazemId Int
-  detalhes  DetalhesSaida[]
-  produto   Produto?         @relation(fields: [produtoId], references: [id])
   produtoId Int?
+  detalhes  DetalhesSaida[]
+  armazem   Armazem         @relation(fields: [armazemId], references: [id])
+  produto   Produto?        @relation(fields: [produtoId], references: [id])
 }
 
 model DetalhesSaida {
-  id        Int     @id @default(autoincrement())
-  saida     Saida   @relation(fields: [saidaId], references: [id])
-  saidaId   Int
-  produto   Produto @relation(fields: [produtoId], references: [id])
-  produtoId Int
+  id         Int     @id @default(autoincrement())
+  saidaId    Int
+  produtoId  Int
   quantidade Int
-  isKit     Boolean
+  isKit      Boolean
+  produto    Produto @relation(fields: [produtoId], references: [id])
+  saida      Saida   @relation(fields: [saidaId], references: [id])
 }
 
-
 model Armazem {
-  id      Int      @id @default(autoincrement())
-  nome    String
+  id       Int       @id @default(autoincrement())
+  nome     String
   estoques Estoque[]
-  saidas  Saida[]
+  saidas   Saida[]
 }
 
 model Fornecedor {
-  id                Int      @id @default(autoincrement())
+  id                Int                 @id @default(autoincrement())
   nome              String
   cnpj              String?
   inscricaoEstadual String?
   contato           String?
   endereco          String?
-  produtos          ProdutoFornecedor[] // Relacionamento com produto
   pedidos           PedidoCompra[]
+  produtos          ProdutoFornecedor[]
 }
 
 model PedidoCompra {
-
-  id          Int             @id @default(autoincrement())
-  fornecedorId Int
-  comentarios String?
-  status      String
-  produtos    PedidoProduto[]
-  armazemId   Int?
-  fornecedor  Fornecedor      @relation(fields: [fornecedorId], references: [id])
-  dataPrevista DateTime?
+  id            Int             @id @default(autoincrement())
+  fornecedorId  Int
+  comentarios   String?
+  status        String
+  armazemId     Int?
+  dataPrevista  DateTime?
   dataConclusao DateTime?
-
+  fornecedor    Fornecedor      @relation(fields: [fornecedorId], references: [id])
+  produtos      PedidoProduto[]
 }
-
-
 
 model PedidoProduto {
-
-  id         Int      @id @default(autoincrement())
-
+  id         Int          @id @default(autoincrement())
   pedidoId   Int
-
   produtoId  Int
-
   quantidade Int
-
   custo      Float
-
   pedido     PedidoCompra @relation(fields: [pedidoId], references: [id])
-
   produto    Produto      @relation(fields: [produtoId], references: [id])
-
 }
 
-
 model ProdutoFornecedor {
-  id               Int       @id @default(autoincrement())
-  produtoId        Int
-  fornecedorId     Int
-  preco            Float     // Preço do produto com este fornecedor
-  multiplicador    Float     // Multiplicador usado para o pedido de compra
-  codigoNF         String?   // Código NF do produto com o fornecedor
-  produto          Produto   @relation(fields: [produtoId], references: [id])
-  fornecedor       Fornecedor @relation(fields: [fornecedorId], references: [id])
+  id            Int        @id @default(autoincrement())
+  produtoId     Int
+  fornecedorId  Int
+  preco         Float
+  multiplicador Float
+  codigoNF      String?
+  fornecedor    Fornecedor @relation(fields: [fornecedorId], references: [id])
+  produto       Produto    @relation(fields: [produtoId], references: [id])
 
-  @@unique([produtoId, fornecedorId]) // Cada produto pode ter apenas um registro com o fornecedor
+  @@unique([produtoId, fornecedorId])
 }
