@@ -1,8 +1,14 @@
-export default function HomePage() {
+import React from "react";
+import { auth } from "@/lib/auth";
+import "../../styles/global.css";
+
+const Page = () => {
+  const session = auth();
   return (
     <div>
-      <h1>Bem-vindo ao Sistema de Estoque</h1>
-      <p>Escolha uma opção no menu para continuar.</p>
+      <p color="">Bem vindo: </p>
     </div>
   );
-}
+};
+
+export default Page;

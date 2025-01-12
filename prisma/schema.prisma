@@ -8,15 +8,22 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(cuid())
+  id        String   @id @default(uuid())
   name      String?
-  email     String    @unique
+  email     String   @unique
   password  String?
   image     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  accounts  Account[]
-  sessions  Session[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  produtos   Produto[]
+  armazens   Armazem[]
+  pedidos    PedidoCompra[]
+  saidas     Saida[]
+  Fornecedor Fornecedor[]
 }
 
 model Account {
@@ -53,6 +60,8 @@ model Produto {
   sku             String              @unique
   isKit           Boolean             @default(false)
   ean             BigInt?
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   componentes     Componente[]        @relation("KitToComponente")
   kitsComponentes Componente[]        @relation("ProdutoToComponente")
   detalhesSaida   DetalhesSaida[]
@@ -88,6 +97,8 @@ model Saida {
   data      DateTime        @default(now())
   armazemId Int
   produtoId Int?
+  userId    String
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   detalhes  DetalhesSaida[]
   armazem   Armazem         @relation(fields: [armazemId], references: [id])
   produto   Produto?        @relation(fields: [produtoId], references: [id])
@@ -106,6 +117,8 @@ model DetalhesSaida {
 model Armazem {
   id       Int       @id @default(autoincrement())
   nome     String
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   estoques Estoque[]
   saidas   Saida[]
 }
@@ -117,6 +130,8 @@ model Fornecedor {
   inscricaoEstadual String?
   contato           String?
   endereco          String?
+  userId            String
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   pedidos           PedidoCompra[]
   produtos          ProdutoFornecedor[]
 }
@@ -124,6 +139,8 @@ model Fornecedor {
 model PedidoCompra {
   id            Int             @id @default(autoincrement())
   fornecedorId  Int
+  userId        String
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   comentarios   String?
   status        String
   armazemId     Int?
