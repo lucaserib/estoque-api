@@ -14,6 +14,8 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import DarkModeToggle from "../DarkModeToggle";
+import { Button } from "../ui/button";
+import { SignOut } from "../SignOut";
 
 export const Sidebar = () => {
   const [isFornecedoresOpen, setIsFornecedoresOpen] = useState(false);
@@ -221,6 +223,9 @@ export const Sidebar = () => {
           </ul>
           <div className="mt-4">
             <DarkModeToggle />
+          </div>
+          <div>
+            <SignOut />
           </div>
         </div>
         <div className="mt-4 flex flex-col items-center"></div>
