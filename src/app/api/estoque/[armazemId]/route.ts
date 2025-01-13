@@ -13,7 +13,6 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function GET(request: NextRequest, context: Record<string, any>) {
   const { armazemId } = context.params;
 
