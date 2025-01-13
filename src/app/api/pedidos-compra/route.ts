@@ -1,4 +1,6 @@
+import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
+import { request } from "http";
 import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
@@ -39,6 +41,8 @@ interface RequestBodyDelete {
 // POST
 export async function POST(request: Request) {
   try {
+    const user = await verifyUser(request);
+
     const body: RequestBodyPost = await request.json();
 
     const { fornecedorId, produtos, comentarios, dataPrevista } = body;
@@ -52,6 +56,7 @@ export async function POST(request: Request) {
 
     const pedido = await prisma.pedidoCompra.create({
       data: {
+        userId: user.id,
         fornecedorId,
         comentarios,
         status: "pendente",
@@ -77,9 +82,11 @@ export async function POST(request: Request) {
 }
 
 // GET
-export async function GET() {
+export async function GET(request: Request) {
+  const user = await verifyUser(request);
   try {
     const pedidos = await prisma.pedidoCompra.findMany({
+      where: { userId: user.id },
       include: {
         produtos: {
           include: {
@@ -103,6 +110,8 @@ export async function GET() {
 // PUT
 export async function PUT(request: Request) {
   try {
+    const user = await verifyUser(request);
+
     const body: RequestBodyPut = await request.json();
 
     const { pedidoId, armazemId, produtosRecebidos, comentarios } = body;
@@ -114,10 +123,126 @@ export async function PUT(request: Request) {
       );
     }
 
-    // Verificação e atualizações seguem como no exemplo anterior...
+    const armazemExiste = await prisma.armazem.findUnique({
+      where: { id: armazemId },
+    });
+
+    if (!armazemExiste) {
+      return NextResponse.json(
+        { error: "Armazém não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    const pedidoExiste = await prisma.pedidoCompra.findUnique({
+      where: { id: pedidoId },
+      include: {
+        produtos: true,
+      },
+    });
+
+    if (!pedidoExiste) {
+      return NextResponse.json(
+        { error: "Pedido não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    const produtosNaoRecebidos: ProdutoRecebido[] = [];
+
+    await Promise.all(
+      produtosRecebidos.map(async (produtoRecebido) => {
+        const produtoPedido = pedidoExiste.produtos.find(
+          (produto) => produto.produtoId === produtoRecebido.produtoId
+        );
+
+        if (produtoPedido) {
+          const quantidadeNaoRecebida =
+            produtoPedido.quantidade - produtoRecebido.quantidade;
+
+          if (quantidadeNaoRecebida > 0) {
+            produtosNaoRecebidos.push({
+              produtoId: produtoPedido.produtoId,
+              quantidade: quantidadeNaoRecebida,
+              custo: produtoPedido.custo,
+            });
+          }
+          await prisma.pedidoProduto.update({
+            where: {
+              id: produtoPedido.id,
+            },
+            data: {
+              quantidade: produtoRecebido.quantidade,
+              custo: produtoRecebido.custo,
+            },
+          });
+
+          const estoqueExiste = await prisma.estoque.findFirst({
+            where: {
+              produtoId: produtoRecebido.produtoId,
+              armazemId,
+            },
+          });
+
+          if (estoqueExiste) {
+            await prisma.estoque.update({
+              where: {
+                produtoId_armazemId: {
+                  produtoId: produtoRecebido.produtoId,
+                  armazemId,
+                },
+              },
+              data: {
+                quantidade: {
+                  increment: produtoRecebido.quantidade,
+                },
+                valorUnitario: produtoRecebido.custo,
+              },
+            });
+          } else {
+            await prisma.estoque.create({
+              data: {
+                produtoId: produtoRecebido.produtoId,
+                armazemId,
+                quantidade: produtoRecebido.quantidade,
+                valorUnitario: produtoRecebido.custo,
+              },
+            });
+          }
+        }
+      })
+    );
+
+    if (produtosNaoRecebidos.length > 0) {
+      await prisma.pedidoCompra.create({
+        data: {
+          userId: user.id,
+          fornecedorId: pedidoExiste.fornecedorId,
+          comentarios: "Produtos Não recebidos do pedido #" + pedidoExiste.id,
+          status: "pendente",
+          produtos: {
+            create: produtosNaoRecebidos.map((produto) => ({
+              produtoId: produto.produtoId,
+              quantidade: produto.quantidade,
+              custo: produto.custo,
+            })),
+          },
+        },
+      });
+    }
+
+    await prisma.pedidoCompra.update({
+      where: { id: pedidoId },
+      data: {
+        status: "confirmado",
+        armazemId,
+        dataConclusao: new Date(),
+        ...(comentarios && { comentarios }),
+      },
+    });
 
     return NextResponse.json({
-      message: "Pedido confirmado e estoque atualizado com sucesso",
+      message: "Pedido confirmado e estoque atualizadocom sucesso",
     });
   } catch (error) {
     console.error("Erro ao confirmar pedido:", error);
@@ -131,6 +256,7 @@ export async function PUT(request: Request) {
 // DELETE
 export async function DELETE(request: Request) {
   try {
+    const user = await verifyUser(request);
     const body: RequestBodyDelete = await request.json();
 
     const { pedidoId } = body;

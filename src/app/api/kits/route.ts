@@ -1,3 +1,4 @@
+import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -81,6 +82,7 @@ export async function GET(req: Request) {
 
 // Handler para o método POST
 export async function POST(req: Request) {
+  const user = await verifyUser(req);
   const body = await req.json();
 
   const { nome, sku, ean, componentes } = body;
@@ -96,6 +98,7 @@ export async function POST(req: Request) {
     if (componentes && componentes.length > 0) {
       const novoKit = await prisma.produto.create({
         data: {
+          userId: user.id,
           nome,
           sku,
           ean: ean ? BigInt(ean) : null,

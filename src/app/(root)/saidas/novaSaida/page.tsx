@@ -130,7 +130,7 @@ const NovaSaida = () => {
 
           if (produtoExistente) {
             // Atualizar a quantidade do produto existente
-            produtoExistente.quantidade += quantidade;
+            produtoExistente.quantidade * quantidade;
           } else {
             // Adicionar novo produto à lista
             prevSaidaProdutos.push({

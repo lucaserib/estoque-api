@@ -1,12 +1,16 @@
+import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
 // Função para tratar requisições GET
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const armazens = await prisma.armazem.findMany();
+    const user = await verifyUser(req);
+    const armazens = await prisma.armazem.findMany({
+      where: { userId: user.id },
+    });
     return NextResponse.json(armazens, { status: 200 });
   } catch (error) {
     console.error("Erro ao buscar armazéns:", error);
@@ -20,6 +24,7 @@ export async function GET() {
 // Função para tratar requisições POST
 export async function POST(request: Request) {
   try {
+    const user = await verifyUser(request);
     const body = await request.json();
     const {
       armazemId,
@@ -40,6 +45,20 @@ export async function POST(request: Request) {
             "Armazém, produto, quantidade e valor unitário são obrigatórios",
         },
         { status: 400 }
+      );
+    }
+
+    const armazem = await prisma.armazem.findFirst({
+      where: {
+        id: armazemId,
+        userId: user.id,
+      },
+    });
+
+    if (!armazem) {
+      return NextResponse.json(
+        { message: "Armazém não encontrado" },
+        { status: 404 }
       );
     }
 
@@ -66,6 +85,8 @@ export async function POST(request: Request) {
 // Função para tratar requisições PUT
 export async function PUT(request: Request) {
   try {
+    const user = await verifyUser(request);
+
     const body = await request.json();
     const {
       armazemId,
@@ -86,6 +107,20 @@ export async function PUT(request: Request) {
             "Armazém, produto, quantidade e valor unitário são obrigatórios",
         },
         { status: 400 }
+      );
+    }
+
+    const armazem = await prisma.armazem.findFirst({
+      where: {
+        id: armazemId,
+        userId: user.id,
+      },
+    });
+
+    if (!armazem) {
+      return NextResponse.json(
+        { message: "Armazém não encontrado ou não pertence ao usuário" },
+        { status: 404 }
       );
     }
 
@@ -116,6 +151,8 @@ export async function PUT(request: Request) {
 // Função para tratar requisições DELETE
 export async function DELETE(request: Request) {
   try {
+    const user = await verifyUser(request);
+
     const body = await request.json();
     const { armazemId, produtoId }: { armazemId: number; produtoId?: number } =
       body;
@@ -124,6 +161,20 @@ export async function DELETE(request: Request) {
       return NextResponse.json(
         { message: "ID do armazém é obrigatório" },
         { status: 400 }
+      );
+    }
+
+    const armazem = await prisma.armazem.findFirst({
+      where: {
+        id: armazemId,
+        userId: user.id,
+      },
+    });
+
+    if (!armazem) {
+      return NextResponse.json(
+        { message: "Armazém não encontrado ou não pertence ao usuário" },
+        { status: 404 }
       );
     }
 

@@ -1,3 +1,4 @@
+import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -18,6 +19,7 @@ export async function GET(req: Request) {
   const armazemId = searchParams.get("armazemId");
 
   try {
+    const user = await verifyUser(req);
     let produtos = [];
 
     if (sku) {
@@ -27,6 +29,7 @@ export async function GET(req: Request) {
           sku: {
             contains: sku,
           },
+          userId: user.id,
         },
         include: {
           estoques: true,
@@ -41,6 +44,7 @@ export async function GET(req: Request) {
               armazemId: Number(armazemId),
             },
           },
+          userId: user.id,
         },
         include: {
           estoques: true,
@@ -50,6 +54,7 @@ export async function GET(req: Request) {
       produtos = await prisma.produto.findMany({
         where: {
           isKit: false,
+          userId: user.id,
         },
         include: {
           estoques: true,
@@ -72,6 +77,8 @@ export async function GET(req: Request) {
 // Handler para o método POST
 export async function POST(req: Request) {
   try {
+    const user = await verifyUser(req);
+
     const body = await req.json();
     const { nome, sku, ean, componentes } = body;
 
@@ -82,7 +89,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const existingProduto = await prisma.produto.findUnique({ where: { sku } });
+    const existingProduto = await prisma.produto.findUnique({
+      where: { sku, userId: user.id },
+    });
 
     if (existingProduto) {
       return new Response(JSON.stringify({ error: "SKU já existe" }), {
@@ -94,6 +103,7 @@ export async function POST(req: Request) {
       // Criar um kit
       const novoKit = await prisma.produto.create({
         data: {
+          userId: user.id,
           nome,
           sku,
           ean: BigInt(ean),
@@ -126,6 +136,7 @@ export async function POST(req: Request) {
       // Criar um produto
       const novoProduto = await prisma.produto.create({
         data: {
+          userId: user.id,
           nome,
           sku,
           ean: BigInt(ean),

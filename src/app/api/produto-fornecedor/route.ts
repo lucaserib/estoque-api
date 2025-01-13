@@ -1,3 +1,4 @@
+import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -23,21 +24,21 @@ interface RequestBody {
 
 // POST
 export async function POST(request: Request) {
-  const body: RequestBody = await request.json();
-
-  const { produtoId, fornecedorId, preco, multiplicador, codigoNF } = body;
-
-  if (!produtoId || !fornecedorId || !preco || !multiplicador || !codigoNF) {
-    return NextResponse.json(
-      {
-        error:
-          "Produto, Fornecedor, Preço, Multiplicador e Código NF são obrigatórios",
-      },
-      { status: 400 }
-    );
-  }
-
   try {
+    const user = await verifyUser(request);
+    const body: RequestBody = await request.json();
+
+    const { produtoId, fornecedorId, preco, multiplicador, codigoNF } = body;
+
+    if (!produtoId || !fornecedorId || !preco || !multiplicador || !codigoNF) {
+      return NextResponse.json(
+        {
+          error: "Todos os campos são obrigatórios!",
+        },
+        { status: 400 }
+      );
+    }
+
     const vinculoExistente = await prisma.produtoFornecedor.findFirst({
       where: { produtoId, fornecedorId },
     });
@@ -71,18 +72,19 @@ export async function POST(request: Request) {
 
 // GET
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const fornecedorId = searchParams.get("fornecedorId");
-  const produtoId = searchParams.get("produtoId");
-
-  if (!fornecedorId && !produtoId) {
-    return NextResponse.json(
-      { error: "FornecedorId ou ProdutoId é obrigatório" },
-      { status: 400 }
-    );
-  }
-
   try {
+    const user = await verifyUser(request);
+
+    const { searchParams } = new URL(request.url);
+    const fornecedorId = searchParams.get("fornecedorId");
+    const produtoId = searchParams.get("produtoId");
+
+    if (!fornecedorId && !produtoId) {
+      return NextResponse.json(
+        { error: "FornecedorId ou ProdutoId é obrigatório" },
+        { status: 400 }
+      );
+    }
     if (fornecedorId) {
       const produtos = await prisma.produtoFornecedor.findMany({
         where: {
@@ -92,7 +94,7 @@ export async function GET(request: Request) {
           produto: true,
         },
       });
-      console.log("Produtos encontrados:", produtos);
+
       return NextResponse.json(serializeBigInt(produtos), { status: 200 });
     } else if (produtoId) {
       const fornecedores = await prisma.produtoFornecedor.findMany({
@@ -103,7 +105,6 @@ export async function GET(request: Request) {
           fornecedor: true,
         },
       });
-      console.log("Fornecedores encontrados:", fornecedores);
       return NextResponse.json(serializeBigInt(fornecedores), { status: 200 });
     }
   } catch (error) {
@@ -117,6 +118,7 @@ export async function GET(request: Request) {
 
 // DELETE
 export async function DELETE(request: Request) {
+  const user = await verifyUser(request);
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -152,6 +154,7 @@ export async function PUT(request: Request) {
   }
 
   try {
+    const user = await verifyUser(request);
     const vinculo = await prisma.produtoFornecedor.update({
       where: { id: Number(id) },
       data: {

@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
+import { verifyUser } from "@/helpers/verifyUser";
 
 export async function POST(req: Request) {
   try {
+    const user = await verifyUser(req);
     const { nome, cnpj, inscricaoEstadual, contato, endereco } =
       await req.json();
 
@@ -19,6 +21,7 @@ export async function POST(req: Request) {
         inscricaoEstadual,
         contato,
         endereco,
+        userId: user.id,
       },
     });
 
@@ -31,9 +34,13 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
-    const fornecedores = await prisma.fornecedor.findMany();
+    const user = await verifyUser(req);
+
+    const fornecedores = await prisma.fornecedor.findMany({
+      where: { userId: user.id },
+    });
     return NextResponse.json(fornecedores, { status: 200 });
   } catch {
     NextResponse.json({ error: "Erro ao buscar Fornecedor" }, { status: 500 });
@@ -42,6 +49,8 @@ export async function GET() {
 
 export async function DELETE(req: Request) {
   try {
+    const user = await verifyUser(req);
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -49,9 +58,22 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "ID do fornecedor é obrigatorio" });
     }
 
+    const fornecedor = await prisma.fornecedor.findUnique({
+      where: { id: Number(id) },
+    });
+
+    if (!fornecedor) {
+      return NextResponse.json(
+        { error: "Fornecedor não encontrado ou não pertence a este usuário" },
+        { status: 404 }
+      );
+    }
+
     await prisma.fornecedor.delete({ where: { id: Number(id) } });
+
     return NextResponse.json({}, { status: 204 });
   } catch (error) {
+    console.error("Erro ao deletar fornecedor:", error);
     return NextResponse.json(
       { error: "Erro ao deletar fornecedor" },
       { status: 500 }

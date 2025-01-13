@@ -1,3 +1,4 @@
+import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 
@@ -25,20 +26,33 @@ interface RequestBody {
 
 // POST
 export async function POST(request: Request) {
-  const body: RequestBody = await request.json();
-  const { produtos, armazemId } = body;
-
-  if (!produtos || !armazemId) {
-    return NextResponse.json(
-      { error: "Produtos e Armazém são obrigatórios" },
-      { status: 400 }
-    );
-  }
-
   try {
+    const user = await verifyUser(request);
+
+    const body: RequestBody = await request.json();
+    const { produtos, armazemId } = body;
+
+    if (!produtos || !armazemId) {
+      return NextResponse.json(
+        { error: "Produtos e Armazém são obrigatórios" },
+        { status: 400 }
+      );
+    }
+    const armazem = await prisma.armazem.findUnique({
+      where: { id: armazemId },
+    });
+
+    if (!armazem || armazem.userId !== user.id) {
+      return NextResponse.json(
+        { error: "Armazém não encontrado ou não pertence ao usuário" },
+        { status: 403 }
+      );
+    }
+
     // Criar uma nova saída
     const saida = await prisma.saida.create({
       data: {
+        userId: user.id,
         data: new Date(),
         armazemId: Number(armazemId),
       },
@@ -58,7 +72,7 @@ export async function POST(request: Request) {
           },
         });
 
-        if (!kitEncontrado) {
+        if (!kitEncontrado || kitEncontrado.userId !== user.id) {
           return NextResponse.json(
             { error: "Kit não encontrado" },
             { status: 404 }
@@ -168,9 +182,11 @@ export async function POST(request: Request) {
 }
 
 // GET
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const user = await verifyUser(request);
     const saidas = await prisma.saida.findMany({
+      where: { userId: user.id },
       include: {
         armazem: true,
         detalhes: {

@@ -14,11 +14,20 @@ export async function middleware(req: NextRequest) {
   }
 
   // Redirecionar se o usuário não estiver autenticado
-  if (!session) {
+  if (!session || !session.user?.id) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  return NextResponse.next();
+  const requestHeaders = new Headers(req.headers);
+  if (session.user && session.user.id) {
+    requestHeaders.set("x-user-id", session.user.id);
+  }
+
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  });
 }
 
 // Define as rotas que o middleware protege

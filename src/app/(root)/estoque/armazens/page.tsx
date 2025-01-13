@@ -97,11 +97,13 @@ const Armazens = () => {
     }
   };
 
-  const filteredEstoque = estoque.filter(
-    (item) =>
-      item.produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredEstoque = Array.isArray(estoque)
+    ? estoque.filter(
+        (item) =>
+          item.produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          item.produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : [];
 
   if (loading) {
     return (
