@@ -17,7 +17,7 @@ export async function GET(
   request: Request,
   { params }: { params: { armazemId: string } }
 ) {
-  const { armazemId } = params; // Acesse diretamente o parâmetro
+  const armazemId = params.armazemId; // Acesso correto ao parâmetro
 
   if (!armazemId || isNaN(Number(armazemId))) {
     return NextResponse.json(
