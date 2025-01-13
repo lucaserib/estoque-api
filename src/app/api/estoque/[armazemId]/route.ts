@@ -14,10 +14,7 @@ const serializeBigInt = (obj: unknown): unknown => {
 };
 
 // Handler para o método GET
-export async function GET(
-  request: NextRequest,
-  context: { params: { armazemId: string } }
-) {
+export async function GET(request: NextRequest, context: Record<string, any>) {
   const { armazemId } = context.params;
 
   if (!armazemId || isNaN(Number(armazemId))) {
