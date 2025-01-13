@@ -1,35 +1,35 @@
-import { auth } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 import { prisma } from "../../lib/prisma";
+import { NextRequest } from "next/server";
 
-export async function verifyUser(req: Request) {
-  const session = await auth(); // Obtém a sessão do usuário
+export async function verifyUser(req: NextRequest) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-  if (!session || !session.user?.id) {
+  if (!token || !token.id) {
     throw new Error("Unauthorized");
   }
 
-  // Dados do usuário autenticado
-  const { id, email, name } = session.user;
+  const userId = token.id as string;
 
   // Tenta encontrar o usuário no banco de dados
   let user = await prisma.user.findUnique({
-    where: { id },
+    where: { id: userId },
   });
 
   // Se o usuário não existir, cria um novo
   if (!user) {
-    if (!email) {
+    if (!token.email) {
       throw new Error("User email is required for registration");
     }
 
     user = await prisma.user.create({
       data: {
-        id, // ID fornecido pelo sistema de autenticação
-        email,
-        name: name || "Usuário", // Nome padrão, caso não exista
+        id: userId,
+        email: token.email,
+        name: token.name || "Usuário",
       },
     });
   }
 
-  return user; // Retorna o usuário do banco de dados
+  return user;
 }

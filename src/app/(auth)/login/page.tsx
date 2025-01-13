@@ -1,17 +1,51 @@
-import { auth } from "@/lib/auth";
-import { signIn } from "@/lib/auth";
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { executeAction } from "@/lib/executeAction";
-import Link from "next/link";
-import { redirect } from "next/navigation";
 import GoogleSignin from "@/components/GoogleSignin";
 import "../../../../styles/global.css";
+import { signIn } from "next-auth/react";
 
-const Page = async () => {
-  const session = await auth();
-  if (session) redirect("/");
+const LoginForm = () => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
 
+    // Login com credenciais
+    await signIn("credentials", { email, password, callbackUrl: "/" });
+  };
+
+  return (
+    <form className="space-y-4" onSubmit={handleSubmit}>
+      <Input
+        name="email"
+        placeholder="Email"
+        type="email"
+        required
+        autoComplete="email"
+        className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+      />
+      <Input
+        name="password"
+        placeholder="Password"
+        type="password"
+        required
+        autoComplete="current-password"
+        className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+      />
+      <Button
+        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg"
+        type="submit"
+      >
+        Sign In
+      </Button>
+    </form>
+  );
+};
+
+const Page = () => {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
       <div className="w-full max-w-sm bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 space-y-6">
@@ -32,46 +66,13 @@ const Page = async () => {
           </div>
         </div>
 
-        <form
-          className="space-y-4"
-          action={async (formData) => {
-            "use server";
-            await executeAction({
-              actionFn: async () => {
-                await signIn("credentials", formData);
-              },
-            });
-          }}
-        >
-          <Input
-            name="email"
-            placeholder="Email"
-            type="email"
-            required
-            autoComplete="email"
-            className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          />
-          <Input
-            name="password"
-            placeholder="Password"
-            type="password"
-            required
-            autoComplete="current-password"
-            className="w-full border border-gray-300 dark:border-gray-700 rounded-lg p-2 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-          />
-          <Button
-            className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-lg"
-            type="submit"
-          >
-            Sign In
-          </Button>
-        </form>
+        <LoginForm />
 
         <div className="text-center mt-4">
           <Button asChild variant="link">
-            <Link href="/register" className="text-indigo-600 hover:underline">
+            <a href="/register" className="text-indigo-600 hover:underline">
               Don&apos;t have an account? Sign up
-            </Link>
+            </a>
           </Button>
         </div>
       </div>

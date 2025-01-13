@@ -1,9 +1,10 @@
 import React from "react";
-import { auth } from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
 import "../../styles/global.css";
+import { getServerSession } from "next-auth";
 
-const Page = () => {
-  const session = auth();
+const Page = async () => {
+  const session = await getServerSession(authOptions);
   return (
     <div>
       <p color="">Bem vindo: </p>

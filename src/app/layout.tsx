@@ -1,14 +1,15 @@
 import { ReactNode } from "react";
 import "../../styles/global.css";
 import Sidebar from "../components/layout/Sidebar";
-import { auth } from "@/lib/auth";
+import { authOptions } from "@/lib/auth";
+import { getServerSession } from "next-auth";
 
 interface RootLayoutProps {
   children: ReactNode;
 }
 
 const RootLayout = async ({ children }: RootLayoutProps) => {
-  const session = await auth();
+  const session = await getServerSession(authOptions);
 
   return (
     <html lang="pt-BR">

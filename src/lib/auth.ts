@@ -1,10 +1,21 @@
-import NextAuth from "next-auth";
+import NextAuth, { NextAuthOptions, Session } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
 import { prisma } from "../../lib/prisma";
 import bcrypt from "bcryptjs";
-import Credentials from "next-auth/providers/credentials";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string;
+      name?: string | null;
+      email?: string | null;
+      image?: string | null;
+    };
+  }
+}
+
+export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -43,7 +54,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.id as string;
+        session.user = {
+          ...session.user,
+          id: token.id as string,
+        };
       }
       return session;
     },
@@ -58,4 +72,6 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/login",
     signOut: "/login",
   },
-});
+};
+
+export default NextAuth(authOptions);
