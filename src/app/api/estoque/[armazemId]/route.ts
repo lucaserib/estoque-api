@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
+// Função para serializar BigInt
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
@@ -11,11 +12,12 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
+// Handler para o método GET
 export async function GET(
   request: Request,
   { params }: { params: { armazemId: string } }
 ) {
-  const { armazemId } = await params;
+  const { armazemId } = params; // Acesse diretamente o parâmetro
 
   if (!armazemId || isNaN(Number(armazemId))) {
     return NextResponse.json(
@@ -34,14 +36,16 @@ export async function GET(
       },
     });
 
-    return new Response(JSON.stringify(serializeBigInt(estoque)), {
+    return NextResponse.json(serializeBigInt(estoque), {
       status: 200,
-      headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
     console.error("Erro ao buscar estoque:", error);
-    return new Response(JSON.stringify({ error: "Erro ao buscar armazens" }), {
-      status: 500,
-    });
+    return NextResponse.json(
+      { error: "Erro ao buscar armazéns" },
+      {
+        status: 500,
+      }
+    );
   }
 }
