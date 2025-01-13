@@ -1,6 +1,6 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
@@ -23,7 +23,7 @@ interface RequestBody {
 }
 
 // POST
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const body: RequestBody = await request.json();
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 }
 
 // GET
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
@@ -117,7 +117,7 @@ export async function GET(request: Request) {
 }
 
 // DELETE
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   const user = await verifyUser(request);
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
@@ -141,7 +141,7 @@ export async function DELETE(request: Request) {
 }
 
 // PUT
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   const body: RequestBody = await request.json();
 
   const { id, preco, multiplicador, codigoNF } = body;

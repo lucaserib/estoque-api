@@ -1,7 +1,7 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 import { request } from "http";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
@@ -39,7 +39,7 @@ interface RequestBodyDelete {
 }
 
 // POST
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
 }
 
 // GET
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const user = await verifyUser(request);
   try {
     const pedidos = await prisma.pedidoCompra.findMany({
@@ -108,7 +108,7 @@ export async function GET(request: Request) {
 }
 
 // PUT
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
@@ -254,7 +254,7 @@ export async function PUT(request: Request) {
 }
 
 // DELETE
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const body: RequestBodyDelete = await request.json();

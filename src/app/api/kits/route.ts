@@ -1,5 +1,6 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
+import { NextRequest } from "next/server";
 
 const prisma = new PrismaClient();
 
@@ -13,7 +14,7 @@ const serializeBigInt = (obj: unknown): unknown => {
 };
 
 // Handler para o método GET
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const sku = url.searchParams.get("sku");
   const armazemId = url.searchParams.get("armazemId");
@@ -81,7 +82,7 @@ export async function GET(req: Request) {
 }
 
 // Handler para o método POST
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const user = await verifyUser(req);
   const body = await req.json();
 
@@ -151,7 +152,7 @@ export async function POST(req: Request) {
 }
 
 // Handler para o método DELETE
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
 

@@ -1,6 +1,6 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
@@ -25,7 +25,7 @@ interface RequestBody {
 }
 
 // POST
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
@@ -182,7 +182,7 @@ export async function POST(request: Request) {
 }
 
 // GET
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const saidas = await prisma.saida.findMany({

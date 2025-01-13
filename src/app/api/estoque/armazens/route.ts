@@ -1,11 +1,11 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
 // Função para tratar requisições GET
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const user = await verifyUser(req);
     const armazens = await prisma.armazem.findMany({
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
 }
 
 // Função para tratar requisições POST
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const body = await request.json();
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
 }
 
 // Função para tratar requisições PUT
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
@@ -149,7 +149,7 @@ export async function PUT(request: Request) {
 }
 
 // Função para tratar requisições DELETE
-export async function DELETE(request: Request) {
+export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 

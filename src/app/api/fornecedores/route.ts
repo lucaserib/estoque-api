@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../lib/prisma";
 import { verifyUser } from "@/helpers/verifyUser";
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   try {
     const user = await verifyUser(req);
     const { nome, cnpj, inscricaoEstadual, contato, endereco } =
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
     const user = await verifyUser(req);
 
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
   }
 }
 
-export async function DELETE(req: Request) {
+export async function DELETE(req: NextRequest) {
   try {
     const user = await verifyUser(req);
 
