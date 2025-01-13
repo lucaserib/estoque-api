@@ -13,8 +13,12 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
-export async function GET(request: NextRequest, context: Record<string, any>) {
-  const { armazemId } = context.params;
+// Handler para o método GET
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { armazemId: string } }
+) {
+  const { armazemId } = params;
 
   if (!armazemId || isNaN(Number(armazemId))) {
     return NextResponse.json(
@@ -33,9 +37,20 @@ export async function GET(request: NextRequest, context: Record<string, any>) {
       },
     });
 
-    return NextResponse.json(serializeBigInt(estoque), {
-      status: 200,
-    });
+    const serializedEstoque = estoque.map((item) => ({
+      ...item,
+      produto: {
+        ...item.produto,
+        id: item.produto.id.toString(),
+      },
+    }));
+
+    return (
+      NextResponse.json(serializedEstoque),
+      {
+        status: 200,
+      }
+    );
   } catch (error) {
     console.error("Erro ao buscar estoque:", error);
     return NextResponse.json(
