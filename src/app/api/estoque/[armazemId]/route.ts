@@ -1,5 +1,6 @@
-import { PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server"; // Import explícito para tipagem
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -14,10 +15,10 @@ const serializeBigInt = (obj: unknown): unknown => {
 
 // Handler para o método GET
 export async function GET(
-  request: Request,
+  request: NextRequest,
   context: { params: { armazemId: string } }
 ) {
-  const { armazemId } = context.params; // Acessando o parâmetro corretamente
+  const { armazemId } = context.params;
 
   if (!armazemId || isNaN(Number(armazemId))) {
     return NextResponse.json(
@@ -43,9 +44,7 @@ export async function GET(
     console.error("Erro ao buscar estoque:", error);
     return NextResponse.json(
       { error: "Erro ao buscar armazéns" },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }
