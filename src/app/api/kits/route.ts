@@ -4,6 +4,11 @@ import { NextRequest } from "next/server";
 
 const prisma = new PrismaClient();
 
+interface Componente {
+  produtoId: number;
+  quantidade: number;
+}
+
 // Função para serializar BigInt como string
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
@@ -105,7 +110,7 @@ export async function POST(req: NextRequest) {
           ean: ean ? BigInt(ean) : null,
           isKit: true,
           componentes: {
-            create: componentes.map((componente: any) => ({
+            create: componentes.map((componente: Componente) => ({
               quantidade: componente.quantidade,
               produto: { connect: { id: componente.produtoId } },
             })),
