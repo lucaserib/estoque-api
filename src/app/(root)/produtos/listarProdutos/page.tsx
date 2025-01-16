@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { FaTrash } from "react-icons/fa";
-import FornecedorModal from "../../../../components/FornecedorModal"; // Importar o modal de fornecedores
+import FornecedorModal from "../../../components/FornecedorModal"; // Importar o modal de fornecedores
 
 interface Produto {
   id: number;
