@@ -3,16 +3,13 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function GET({ params }: { params: { armazemId: string } }) {
-  console.log(
-    "Recebendo requisição para estoque com armazemId:",
-    params.armazemId
-  );
+export async function GET(req: Request) {
+  // Obtém o armazemId a partir da URL usando a busca no URL pathname
+  const { searchParams } = new URL(req.url);
+  const armazemId = searchParams.get("armazemId");
 
-  const armazemId = Number(params.armazemId);
-
-  if (isNaN(armazemId)) {
-    console.error("ID do armazém inválido:", params.armazemId);
+  if (!armazemId || isNaN(Number(armazemId))) {
+    console.error("ID do armazém inválido:", armazemId);
     return NextResponse.json(
       { error: "ID do armazém inválido" },
       { status: 400 }
@@ -21,7 +18,7 @@ export async function GET({ params }: { params: { armazemId: string } }) {
 
   try {
     const estoque = await prisma.estoque.findMany({
-      where: { armazemId },
+      where: { armazemId: Number(armazemId) },
       include: { produto: true },
     });
 
@@ -34,17 +31,17 @@ export async function GET({ params }: { params: { armazemId: string } }) {
 
     // Serialização para evitar erro com BigInt
     const serializedEstoque = estoque.map((item) => ({
-      produtoId: item.produtoId, // Já é um número inteiro
-      armazemId: item.armazemId, // Já é um número inteiro
-      quantidade: item.quantidade, // Já é um número inteiro
-      valorUnitario: item.valorUnitario, // Já é float
-      estoqueSeguranca: item.estoqueSeguranca ?? 0, // Se for null, define 0
+      produtoId: item.produtoId,
+      armazemId: item.armazemId,
+      quantidade: item.quantidade,
+      valorUnitario: item.valorUnitario,
+      estoqueSeguranca: item.estoqueSeguranca ?? 0,
       produto: {
-        id: item.produto.id, // Já é um número inteiro
+        id: item.produto.id,
         nome: item.produto.nome,
         sku: item.produto.sku,
         isKit: item.produto.isKit,
-        ean: item.produto.ean ? item.produto.ean.toString() : null, // BigInt convertido
+        ean: item.produto.ean ? item.produto.ean.toString() : null,
         userId: item.produto.userId,
       },
     }));
