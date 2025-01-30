@@ -40,6 +40,8 @@ const Armazens = () => {
     try {
       const response = await fetch(`/api/estoque/${armazemId}`);
       const data = await response.json();
+      console.log("Estoque recebido:", data); // <-- Log para depuração
+
       setEstoque(data);
     } catch (error) {
       setError("Erro ao buscar estoque");

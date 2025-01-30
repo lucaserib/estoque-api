@@ -9,15 +9,10 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarCollapsed, isDarkMode } = useLayout();
 
   useEffect(() => {
-    if (isDarkMode) {
-      document.documentElement.classList.add("dark");
-      document.documentElement.classList.remove("light");
-    } else {
-      document.documentElement.classList.add("light");
-      document.documentElement.classList.remove("dark");
-    }
+    const html = document.documentElement;
+    html.classList.toggle("dark", isDarkMode);
+    html.classList.toggle("light", !isDarkMode);
   }, [isDarkMode]);
-
   return (
     <div
       className={`${

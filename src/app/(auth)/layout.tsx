@@ -1,13 +1,13 @@
-import { ReactNode } from "react";
-import "../../../styles/global.css";
+"use client";
+import { useEffect } from "react";
 
-interface AuthLayoutProps {
-  children: ReactNode;
-}
+const AuthLayout = ({ children }: { children: React.ReactNode }) => {
+  useEffect(() => {
+    document.documentElement.classList.add("dark"); // Força o dark mode
+  }, []);
 
-const AuthLayout = ({ children }: AuthLayoutProps) => {
   return (
-    <div className="flex items-center justify-center h-screen bg-gray-100 overflow-hidden">
+    <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">
       <div className="w-full max-w-md px-4">{children}</div>
     </div>
   );

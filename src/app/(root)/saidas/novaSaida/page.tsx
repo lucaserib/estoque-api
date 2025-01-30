@@ -100,7 +100,7 @@ const NovaSaida = () => {
 
           if (kitExistente) {
             // Atualizar a quantidade do kit existente
-            kitExistente.quantidade += quantidade;
+            kitExistente.quantidade * quantidade;
           } else {
             // Adicionar novo kit à lista
             prevSaidaProdutos.push({
