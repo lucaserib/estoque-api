@@ -3,10 +3,7 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function GET(
-  req: Request,
-  { params }: { params: { armazemId: string } }
-) {
+export async function GET({ params }: { params: { armazemId: string } }) {
   console.log(
     "Recebendo requisição para estoque com armazemId:",
     params.armazemId
