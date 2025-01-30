@@ -3,13 +3,14 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function GET(req: Request) {
-  // Obtém o armazemId a partir da URL usando a busca no URL pathname
-  const { searchParams } = new URL(req.url);
-  const armazemId = searchParams.get("armazemId");
+export async function GET(
+  req: Request,
+  { params }: { params: { armazemId: string } }
+) {
+  const armazemId = Number(params.armazemId);
 
-  if (!armazemId || isNaN(Number(armazemId))) {
-    console.error("ID do armazém inválido:", armazemId);
+  if (isNaN(armazemId)) {
+    console.error("ID do armazém inválido:", params.armazemId);
     return NextResponse.json(
       { error: "ID do armazém inválido" },
       { status: 400 }
@@ -18,7 +19,7 @@ export async function GET(req: Request) {
 
   try {
     const estoque = await prisma.estoque.findMany({
-      where: { armazemId: Number(armazemId) },
+      where: { armazemId },
       include: { produto: true },
     });
 
@@ -29,7 +30,6 @@ export async function GET(req: Request) {
       return NextResponse.json([], { status: 200 });
     }
 
-    // Serialização para evitar erro com BigInt
     const serializedEstoque = estoque.map((item) => ({
       produtoId: item.produtoId,
       armazemId: item.armazemId,
