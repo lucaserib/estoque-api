@@ -3,14 +3,11 @@ import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
-export async function GET(
-  req: Request,
-  { params }: { params: { armazemId: string } }
-) {
-  const armazemId = Number(params.armazemId);
+export async function GET(req: Request) {
+  const armazemId = req.url.split("/").pop(); // Captura o último segmento da URL
 
-  if (isNaN(armazemId)) {
-    console.error("ID do armazém inválido:", params.armazemId);
+  if (!armazemId || isNaN(Number(armazemId))) {
+    console.error("ID do armazém inválido:", armazemId);
     return NextResponse.json(
       { error: "ID do armazém inválido" },
       { status: 400 }
@@ -19,14 +16,11 @@ export async function GET(
 
   try {
     const estoque = await prisma.estoque.findMany({
-      where: { armazemId },
+      where: { armazemId: Number(armazemId) },
       include: { produto: true },
     });
 
-    console.log("Estoque encontrado no banco:", estoque);
-
     if (!estoque.length) {
-      console.warn("Nenhum produto encontrado para este armazém.");
       return NextResponse.json([], { status: 200 });
     }
 
