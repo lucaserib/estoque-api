@@ -1,6 +1,6 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
@@ -153,6 +153,42 @@ export async function POST(req: NextRequest) {
     console.error("Erro ao criar produto ou kit:", error);
     return new Response(
       JSON.stringify({ error: "Erro ao criar produto ou kit" }),
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const user = await verifyUser(req);
+    const body = await req.json();
+
+    const { id, nome, sku, ean } = body;
+    if (!id || !nome || !sku || !ean) {
+      return NextResponse.json(
+        {
+          error: "ID, Nome, SKU e  EAN são obrigatórios",
+        },
+        { status: 400 }
+      );
+    }
+
+    const produtoAtualizado = await prisma.produto.update({
+      where: { id },
+      data: {
+        nome,
+        sku,
+        ean: BigInt(ean),
+      },
+    });
+    return new Response(JSON.stringify(serializeBigInt(produtoAtualizado)), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Erro ao atualizar produto:", error);
+    return NextResponse.json(
+      { error: "Erro ao atualizar produto" },
       { status: 500 }
     );
   }

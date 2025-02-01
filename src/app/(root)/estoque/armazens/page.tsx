@@ -6,6 +6,7 @@ interface Produto {
   id: number;
   nome: string;
   sku: string;
+  custoMedio: number;
 }
 
 interface Estoque {
@@ -193,7 +194,7 @@ const Armazens = () => {
                     Estoque de Segurança: {item.estoqueSeguranca}
                   </p>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Valor Unitário: {item.valorUnitario}
+                    Custo Médio: {item.produto.custoMedio}
                   </p>
                 </div>
                 <button
@@ -207,11 +208,6 @@ const Armazens = () => {
                 </button>
               </li>
             ))}
-            {filteredEstoque.length === 0 && (
-              <p className="text-center text-gray-600 dark:text-gray-400">
-                Nenhum produto encontrado.
-              </p>
-            )}
           </ul>
         </div>
       ) : (

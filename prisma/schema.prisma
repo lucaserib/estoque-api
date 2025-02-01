@@ -64,6 +64,7 @@ model Produto {
   user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   componentes     Componente[]        @relation("KitToComponente")
   kitsComponentes Componente[]        @relation("ProdutoToComponente")
+  custoMedio      Float?              @default(0)
   detalhesSaida   DetalhesSaida[]
   estoques        Estoque[]
   pedidos         PedidoProduto[]
@@ -84,7 +85,6 @@ model Estoque {
   produtoId        Int
   armazemId        Int
   quantidade       Int
-  valorUnitario    Float
   estoqueSeguranca Int?
   armazem          Armazem @relation(fields: [armazemId], references: [id])
   produto          Produto @relation(fields: [produtoId], references: [id])

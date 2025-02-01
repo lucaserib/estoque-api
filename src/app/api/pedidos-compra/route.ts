@@ -14,6 +14,24 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
+const calcularCustoMedio = async (produtoId: number) => {
+  const pedidos = await prisma.pedidoProduto.findMany({
+    where: { produtoId },
+    select: { quantidade: true, custo: true },
+  });
+
+  const totalValor = pedidos.reduce(
+    (acc, pedido) => acc + pedido.quantidade * pedido.custo,
+    0
+  );
+  const totalQuantidade = pedidos.reduce(
+    (acc, pedido) => acc + pedido.quantidade,
+    0
+  );
+
+  return totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
+};
+
 interface ProdutoRecebido {
   produtoId: number;
   quantidade: number;
@@ -196,7 +214,6 @@ export async function PUT(request: NextRequest) {
                 quantidade: {
                   increment: produtoRecebido.quantidade,
                 },
-                valorUnitario: produtoRecebido.custo,
               },
             });
           } else {
@@ -205,10 +222,16 @@ export async function PUT(request: NextRequest) {
                 produtoId: produtoRecebido.produtoId,
                 armazemId,
                 quantidade: produtoRecebido.quantidade,
-                valorUnitario: produtoRecebido.custo,
               },
             });
           }
+          const custoMedio = await calcularCustoMedio(
+            produtoRecebido.produtoId
+          );
+          await prisma.produto.update({
+            where: { id: produtoRecebido.produtoId },
+            data: { custoMedio },
+          });
         }
       })
     );
