@@ -1,6 +1,33 @@
 "use client";
 
+import LoadingSpinner from "@/app/components/LoadingSpinner";
+import { Input } from "@/app/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useEffect, useState } from "react";
+import { FaEdit, FaTrash } from "react-icons/fa";
 
 interface Produto {
   id: number;
@@ -11,9 +38,9 @@ interface Produto {
 
 interface Estoque {
   id: number;
+  produtoId: number;
   produto: Produto;
   quantidade: number;
-  valorUnitario: number;
   estoqueSeguranca: number;
 }
 
@@ -25,228 +52,294 @@ interface Armazem {
 const Armazens = () => {
   const [armazens, setArmazens] = useState<Armazem[]>([]);
   const [estoque, setEstoque] = useState<Estoque[]>([]);
-  const [selectedArmazemId, setSelectedArmazemId] = useState<number | null>(
+  const [selectedArmazemId, setSelectedArmazemId] = useState<string | null>(
     null
   );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [showModal, setShowModal] = useState(false);
-  const [currentEstoque, setCurrentEstoque] = useState<Estoque | null>(null);
+  const [novoArmazem, setNovoArmazem] = useState("");
+  const [estoqueSeguranca, setEstoqueSeguranca] = useState<number | null>(null);
+  const [quantidadeProduto, setQuantidadeProduto] = useState<number | null>(
+    null
+  );
+  const [produtoEmEdicao, setProdutoEmEdicao] = useState<Estoque | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const fetchEstoque = async (armazemId: number) => {
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch(`/api/estoque/${armazemId}`);
-      const data = await response.json();
-      console.log("Estoque recebido:", data); // <-- Log para depuração
-
-      setEstoque(data);
-    } catch (error) {
-      setError("Erro ao buscar estoque");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
-    const fetchArmazens = async () => {
-      try {
-        const response = await fetch("/api/estoque/armazens");
-        const data = await response.json();
-        setArmazens(data);
-      } catch (error) {
-        setError("Erro ao buscar armazéns");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchArmazens();
   }, []);
 
   useEffect(() => {
-    if (selectedArmazemId !== null) {
-      fetchEstoque(selectedArmazemId);
-    }
+    if (selectedArmazemId) fetchEstoque(Number(selectedArmazemId));
   }, [selectedArmazemId]);
 
-  const handleSaveEstoqueSeguranca = async () => {
-    if (currentEstoque) {
-      setSaving(true);
-      try {
-        const response = await fetch(`/api/estoque/estoqueSeguranca`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            produtoId: currentEstoque.produto.id,
-            armazemId: selectedArmazemId,
-            estoqueSeguranca: currentEstoque.estoqueSeguranca,
-          }),
-        });
-        if (!response.ok) {
-          throw new Error("Erro ao salvar estoque de segurança");
-        }
-        setShowModal(false);
-        setCurrentEstoque(null);
-        fetchEstoque(selectedArmazemId!); // Re-fetch the stock data
-      } catch (error) {
-        setError("Erro ao salvar estoque de segurança");
-      } finally {
-        setSaving(false);
-      }
+  const fetchArmazens = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch("/api/estoque/armazens");
+      const data = await response.json();
+      setArmazens(data);
+    } catch (error) {
+      console.error("Erro ao buscar armazéns:", error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const filteredEstoque = Array.isArray(estoque)
-    ? estoque.filter(
-        (item) =>
-          item.produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : [];
+  const fetchEstoque = async (armazemId: number) => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/estoque/${armazemId}`);
+      const data = await response.json();
+      setEstoque(data);
+    } catch (error) {
+      console.error("Erro ao buscar estoque:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  if (loading) {
-    return (
-      <p aria-live="polite" className="text-center mt-10">
-        Carregando...
-      </p>
-    );
-  }
+  const handleCriarArmazem = async () => {
+    setIsLoading(true);
+    try {
+      await fetch("/api/estoque/criarArmazem", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: novoArmazem }),
+      });
+      setNovoArmazem("");
+      fetchArmazens();
+    } catch (error) {
+      console.error("Erro ao criar armazém:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  if (error) {
-    return (
-      <p aria-live="polite" className="text-center mt-10 text-red-500">
-        {error}
-      </p>
-    );
-  }
+  const handleAtualizarEstoque = async (produtoId: number) => {
+    if (!selectedArmazemId) return;
+
+    try {
+      setIsSaving(true);
+
+      if (quantidadeProduto !== null) {
+        await fetch("/api/estoque/armazens", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            produtoId,
+            armazemId: Number(selectedArmazemId),
+            quantidade: quantidadeProduto,
+          }),
+        });
+      }
+
+      if (estoqueSeguranca !== null) {
+        await fetch(`/api/estoque/estoqueSeguranca`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            produtoId,
+            armazemId: Number(selectedArmazemId),
+            estoqueSeguranca,
+          }),
+        });
+      }
+
+      setEstoque((prev) =>
+        prev.map((item) =>
+          item.produto.id === produtoId
+            ? {
+                ...item,
+                quantidade: quantidadeProduto ?? item.quantidade,
+                estoqueSeguranca: estoqueSeguranca ?? item.estoqueSeguranca,
+              }
+            : item
+        )
+      );
+
+      setProdutoEmEdicao(null);
+      setQuantidadeProduto(null);
+      setEstoqueSeguranca(null);
+      setTimeout(() => setSuccessMessage(""), 2000);
+    } catch (error) {
+      console.error("Erro ao atualizar estoque:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleEditarProduto = (produto: Estoque) => {
+    setProdutoEmEdicao(produto);
+    setQuantidadeProduto(produto.quantidade);
+    setEstoqueSeguranca(produto.estoqueSeguranca);
+    setIsModalOpen(true);
+  };
+
+  const produtosFiltrados = estoque.filter(
+    (item) =>
+      item.produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      item.produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="max-w-4xl mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-        Armazéns
-      </h1>
-      <div className="mb-4">
-        <label
-          htmlFor="armazem"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          Selecione um Armazém
-        </label>
-        <select
-          id="armazem"
-          value={selectedArmazemId || ""}
-          onChange={(e) => setSelectedArmazemId(Number(e.target.value))}
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-        >
-          <option value="">Selecione um armazém</option>
-          {armazens.map((armazem) => (
-            <option key={armazem.id} value={armazem.id}>
-              {armazem.nome}
-            </option>
-          ))}
-        </select>
-      </div>
+    <div className="transition-all">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-4">
+          Gerenciar estoque
+        </h1>
 
-      <div className="mb-4">
-        <label
-          htmlFor="search"
-          className="block text-sm font-medium text-gray-700 dark:text-gray-300"
-        >
-          Pesquisar por Nome ou SKU
-        </label>
-        <input
-          id="search"
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Digite o nome ou SKU do produto"
-          className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-        />
-      </div>
-
-      {selectedArmazemId !== null ? (
-        <div>
-          <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-            Estoque do Armazém
-          </h2>
-          <ul className="space-y-4">
-            {filteredEstoque.map((item) => (
-              <li
-                key={item.id}
-                className={`flex justify-between items-center p-4 rounded-md shadow-sm ${
-                  item.quantidade < item.estoqueSeguranca
-                    ? "bg-red-200 dark:bg-red-800 blink"
-                    : "bg-gray-100 dark:bg-gray-700"
-                }`}
+        {/* Seletor de Armazem */}
+        <div className="flex justify-between items-center mb-6">
+          <Select onValueChange={(value) => setSelectedArmazemId(value)}>
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Selecionar Armazém" />
+            </SelectTrigger>
+            <SelectContent>
+              {armazens.map((armazem) => (
+                <SelectItem key={armazem.id} value={String(armazem.id)}>
+                  {armazem.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button
+                variant="default"
+                className="bg-blue-300 shadow-md hover:bg-blue-200 ml-1"
               >
-                <div>
-                  <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {item.produto.nome} (SKU: {item.produto.sku})
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Quantidade: {item.quantidade}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Estoque de Segurança: {item.estoqueSeguranca}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Custo Médio: {item.produto.custoMedio}
-                  </p>
-                </div>
-                <button
-                  onClick={() => {
-                    setCurrentEstoque(item);
-                    setShowModal(true);
-                  }}
-                  className="ml-4 px-4 py-2 bg-blue-500 text-white rounded-md"
-                >
-                  Editar Estoque de Segurança
-                </button>
-              </li>
-            ))}
-          </ul>
+                Criar Armazém
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-gray-100 border rounded-md shadow-md">
+              <DialogHeader>
+                <DialogTitle>Novo Armazém</DialogTitle>
+              </DialogHeader>
+              <Input
+                type="text"
+                placeholder="Nome do Armazém"
+                value={novoArmazem}
+                onChange={(e) => setNovoArmazem(e.target.value)}
+              />
+              <Button
+                onClick={handleCriarArmazem}
+                className="mt-4 w-full bg-blue-300 hover:bg-blue-200 shadow-sm"
+              >
+                Criar
+              </Button>
+            </DialogContent>
+          </Dialog>
         </div>
-      ) : (
-        <p className="text-center mt-10 text-gray-600 dark:text-gray-400">
-          Selecione um armazém para visualizar os produtos.
-        </p>
-      )}
+      </div>
 
-      {showModal && currentEstoque && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-md shadow-md">
-            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
-              Editar Estoque de Segurança
-            </h2>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-              Estoque de Segurança
-            </label>
-            <input
-              type="number"
-              value={currentEstoque.estoqueSeguranca}
-              onChange={(e) =>
-                setCurrentEstoque(
-                  (prev) =>
-                    prev && {
-                      ...prev,
-                      estoqueSeguranca: Number(e.target.value),
-                    }
-                )
-              }
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-            />
-            <button
-              onClick={handleSaveEstoqueSeguranca}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md"
-              disabled={saving}
-            >
-              {saving ? "Salvando..." : "Salvar"}
-            </button>
-          </div>
+      {/* Barra de Pesquisa */}
+      <Input
+        type="text"
+        placeholder="Buscar por nome ou SKU..."
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="w-64 mb-4 px-4 py-2 border border-gray-300 rounded-md shadow-sm"
+      />
+
+      {/* Tabela de Produtos */}
+      {selectedArmazemId && (
+        <div className="rounded-md shadow-md">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-gray-900 font-semibold">
+                Estoque de Produtos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex justify-center items-center min-h-[200px]">
+              {isLoading ? (
+                <LoadingSpinner />
+              ) : (
+                <Table>
+                  <TableHeader className="bg-gray-400">
+                    <TableRow>
+                      <TableHead>Produto</TableHead>
+                      <TableHead>Quantidade</TableHead>
+                      <TableHead>Estoque Segurança</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="hover:bg-gray-200">
+                    {produtosFiltrados.map((item) => (
+                      <TableRow
+                        key={item.id}
+                        className={
+                          item.quantidade <= item.estoqueSeguranca
+                            ? "bg-red-200"
+                            : ""
+                        }
+                      >
+                        <TableCell>{item.produto.nome}</TableCell>
+                        <TableCell>{item.quantidade}</TableCell>
+                        <TableCell>{item.estoqueSeguranca}</TableCell>
+                        <TableCell className="flex">
+                          <Dialog
+                            open={isModalOpen}
+                            onOpenChange={setIsModalOpen}
+                          >
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                onClick={() => handleEditarProduto(item)}
+                              >
+                                <FaEdit className="text-blue-500" />
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent className="bg-gray-100 border rounded-md shadow-md">
+                              <DialogHeader>
+                                <DialogTitle>Editar Produto</DialogTitle>
+                              </DialogHeader>
+                              Editar quantidade:
+                              <Input
+                                type="number"
+                                value={quantidadeProduto ?? ""}
+                                onChange={(e) =>
+                                  setQuantidadeProduto(
+                                    Number(e.target.value) || 0
+                                  )
+                                }
+                              />
+                              Editar Estoque de segurança:
+                              <Input
+                                type="number"
+                                placeholder="Editar estoque de segurança"
+                                value={estoqueSeguranca ?? ""}
+                                onChange={(e) =>
+                                  setEstoqueSeguranca(
+                                    Number(e.target.value) || 0
+                                  )
+                                }
+                              />
+                              <Button
+                                onClick={() => {
+                                  handleAtualizarEstoque(item.produto.id);
+                                  setIsModalOpen(false); // Fecha o modal após salvar
+                                }}
+                                className="mt-4 w-full bg-blue-300 hover:bg-blue-200 shadow-sm"
+                              >
+                                Salvar
+                              </Button>
+                              {isSaving && <LoadingSpinner />}
+                            </DialogContent>
+                          </Dialog>
+                          <Button variant="ghost" className="pl-0.5">
+                            <FaTrash className="text-red-500" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

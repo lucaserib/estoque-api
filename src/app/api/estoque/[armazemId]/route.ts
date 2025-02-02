@@ -28,7 +28,6 @@ export async function GET(req: Request) {
       produtoId: item.produtoId,
       armazemId: item.armazemId,
       quantidade: item.quantidade,
-      valorUnitario: item.valorUnitario,
       estoqueSeguranca: item.estoqueSeguranca ?? 0,
       produto: {
         id: item.produto.id,

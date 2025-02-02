@@ -30,15 +30,13 @@ export async function POST(request: NextRequest) {
       armazemId,
       produtoId,
       quantidade,
-      valorUnitario,
     }: {
       armazemId: number;
       produtoId: number;
       quantidade: number;
-      valorUnitario: number;
     } = body;
 
-    if (!armazemId || !produtoId || !quantidade || !valorUnitario) {
+    if (!armazemId || !produtoId || !quantidade) {
       return NextResponse.json(
         {
           message:
@@ -67,7 +65,6 @@ export async function POST(request: NextRequest) {
         armazemId,
         produtoId,
         quantidade,
-        valorUnitario,
       },
       include: { produto: true },
     });
@@ -92,15 +89,13 @@ export async function PUT(request: NextRequest) {
       armazemId,
       produtoId,
       quantidade,
-      valorUnitario,
     }: {
       armazemId: number;
       produtoId: number;
       quantidade: number;
-      valorUnitario: number;
     } = body;
 
-    if (!armazemId || !produtoId || !quantidade || !valorUnitario) {
+    if (!armazemId || !produtoId || !quantidade) {
       return NextResponse.json(
         {
           message:
@@ -133,7 +128,6 @@ export async function PUT(request: NextRequest) {
       },
       data: {
         quantidade,
-        valorUnitario,
       },
       include: { produto: true },
     });
