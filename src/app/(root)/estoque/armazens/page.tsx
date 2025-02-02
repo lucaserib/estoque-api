@@ -248,11 +248,13 @@ const Armazens = () => {
       {selectedArmazemId && (
         <div className="rounded-md shadow-md">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-gray-900 font-semibold">
-                Estoque de Produtos
-              </CardTitle>
-            </CardHeader>
+            <div className="rounded-md">
+              <CardHeader>
+                <CardTitle className="text-gray-900 font-semibold">
+                  Estoque de Produtos
+                </CardTitle>
+              </CardHeader>
+            </div>
             <CardContent className="flex justify-center items-center min-h-[200px]">
               {isLoading ? (
                 <LoadingSpinner />

@@ -210,24 +210,13 @@ const Sidebar = () => {
             isCollapsed={false}
           />
         </SidebarDropdown>
-        <SidebarDropdown
-          icon={Warehouse}
-          label="Estoque"
+        <SidebarLink
+          href="/estoque/armazens"
+          icon={Layout}
+          label="Home"
           isCollapsed={isSidebarCollapsed}
-        >
-          <SidebarLink
-            href="/estoque/criarArmazem"
-            icon={Box}
-            label="Criar Armazéns"
-            isCollapsed={false}
-          />
-          <SidebarLink
-            href="/estoque/armazens"
-            icon={Box}
-            label="Armazéns"
-            isCollapsed={false}
-          />
-        </SidebarDropdown>
+        />
+
         <SidebarDropdown
           icon={Box}
           label="Saídas"
