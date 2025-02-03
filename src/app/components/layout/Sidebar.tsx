@@ -212,8 +212,8 @@ const Sidebar = () => {
         </SidebarDropdown>
         <SidebarLink
           href="/estoque/armazens"
-          icon={Layout}
-          label="Home"
+          icon={Warehouse}
+          label="Estoque"
           isCollapsed={isSidebarCollapsed}
         />
 
