@@ -130,7 +130,7 @@ export async function DELETE(request: NextRequest) {
     await prisma.produtoFornecedor.delete({
       where: { id: Number(id) },
     });
-    return NextResponse.json(null, { status: 204 });
+    return new NextResponse(null, { status: 204 });
   } catch (error) {
     console.error("Erro ao deletar fornecedor:", error);
     return NextResponse.json(
