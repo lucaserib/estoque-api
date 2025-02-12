@@ -1,3 +1,4 @@
+import CardValorEstoque from "@/app/components/dashboard/CardValorEstoque";
 import FluxoFinanceiroChart from "@/app/components/dashboard/FluxoFinanceiroChart";
 import TopProdutosChart from "@/app/components/dashboard/TopProdutosChart";
 import Header from "@/app/components/Header";
@@ -12,6 +13,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <TopProdutosChart />
         <FluxoFinanceiroChart />
+        <CardValorEstoque />
       </div>
     </div>
   );
