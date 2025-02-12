@@ -31,7 +31,7 @@ const TopProdutosList = () => {
       const query = `?startDate=${startDate || "2000-01-01"}&endDate=${
         endDate || new Date().toISOString()
       }`;
-      const response = await fetch(`/api/top-produtos${query}`);
+      const response = await fetch(`/api/dashboard/top-produtos${query}`);
       const result = await response.json();
       setData(result);
     } catch (error) {
@@ -86,7 +86,7 @@ const TopProdutosList = () => {
                   </div>
                 </div>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {produto.quantidade}
+                  Vendas: {produto.quantidade}
                 </p>
               </div>
             ))
