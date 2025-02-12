@@ -34,8 +34,8 @@ const CardFluxoFinanceiro = () => {
       setIsLoading(true);
       try {
         const today = new Date();
-        let startDate = new Date(today);
-        let endDate = new Date(today);
+        const startDate = new Date(today);
+        const endDate = new Date(today);
 
         if (period === "semanal") {
           startDate.setDate(today.getDate() - 7);
