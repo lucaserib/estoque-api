@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
 import { Button } from "@/components/ui/button";
-
 import { FaBoxOpen } from "react-icons/fa";
 import { Input } from "../ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,11 +19,8 @@ const TopProdutosList = () => {
   const [endDate, setEndDate] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  // Usando useCallback para memoizar a função fetchData
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const query = `?startDate=${startDate || "2000-01-01"}&endDate=${
@@ -39,7 +34,12 @@ const TopProdutosList = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [startDate, endDate]);
+
+  // Executa fetchData quando o componente é montado
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   return (
     <Card className="shadow-md">

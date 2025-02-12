@@ -30,45 +30,44 @@ const CardFluxoFinanceiro = () => {
   const [period, setPeriod] = useState("mensal");
 
   useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const today = new Date();
+        let startDate = new Date(today);
+        let endDate = new Date(today);
+
+        if (period === "semanal") {
+          startDate.setDate(today.getDate() - 7);
+        } else if (period === "mensal") {
+          startDate.setMonth(today.getMonth() - 1);
+        }
+
+        const query = `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
+        const response = await fetch(`/api/dashboard/fluxo-financeiro${query}`);
+        const result = await response.json();
+
+        setData(result);
+
+        // Criando dados para o gráfico
+        setChartData([
+          {
+            date: "Período Anterior",
+            value:
+              result.variacaoSaidas < 0
+                ? result.saidas * 1.2
+                : result.saidas * 0.8,
+          },
+          { date: "Atual", value: result.saidas },
+        ]);
+      } catch (error) {
+        console.error("Erro ao buscar fluxo financeiro:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
     fetchData();
   }, [period]);
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const today = new Date();
-      let startDate = new Date(today);
-      let endDate = new Date(today);
-
-      if (period === "semanal") {
-        startDate.setDate(today.getDate() - 7);
-      } else if (period === "mensal") {
-        startDate.setMonth(today.getMonth() - 1);
-      }
-
-      const query = `?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`;
-      const response = await fetch(`/api/dashboard/fluxo-financeiro${query}`);
-      const result = await response.json();
-
-      setData(result);
-
-      // Criando dados para o gráfico
-      setChartData([
-        {
-          date: "Período Anterior",
-          value:
-            result.variacaoSaidas < 0
-              ? result.saidas * 1.2
-              : result.saidas * 0.8,
-        },
-        { date: "Atual", value: result.saidas },
-      ]);
-    } catch (error) {
-      console.error("Erro ao buscar fluxo financeiro:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   return (
     <Card className="shadow-md p-4">
