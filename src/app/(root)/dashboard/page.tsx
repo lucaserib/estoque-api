@@ -1,4 +1,6 @@
 import CardValorEstoque from "@/app/components/dashboard/CardValorEstoque";
+import EntradasChart from "@/app/components/dashboard/EntradasChart";
+import EstoqueSegurancaCard from "@/app/components/dashboard/EstoqueSegurancaCard";
 import FluxoFinanceiroChart from "@/app/components/dashboard/FluxoFinanceiroChart";
 import TopProdutosChart from "@/app/components/dashboard/TopProdutosChart";
 import Header from "@/app/components/Header";
@@ -14,6 +16,8 @@ const Dashboard = () => {
         <TopProdutosChart />
         <FluxoFinanceiroChart />
         <CardValorEstoque />
+        <EntradasChart />
+        <EstoqueSegurancaCard />
       </div>
     </div>
   );
