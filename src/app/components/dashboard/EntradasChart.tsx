@@ -62,7 +62,7 @@ const EntradasChart = () => {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <Skeleton className="h-40 w-full rounded-md" />
+          <Skeleton className="h-10 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart

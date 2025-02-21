@@ -17,7 +17,7 @@ const TopProdutosList = () => {
   const [data, setData] = useState<ProdutoTop[]>([]);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Usando useCallback para memoizar a função fetchData
   const fetchData = useCallback(async () => {
@@ -64,16 +64,16 @@ const TopProdutosList = () => {
           <Button onClick={fetchData}>Filtrar</Button>
         </div>
 
-        {/* Lista de Produtos */}
-        <div className="space-y-3">
-          {isLoading ? (
-            Array(3)
-              .fill(null)
-              .map((_, index) => (
-                <Skeleton key={index} className="h-10 w-full rounded-md" />
-              ))
-          ) : data.length > 0 ? (
-            data.map((produto, index) => (
+        {/* Skeleton Loader enquanto os dados carregam */}
+        {isLoading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
+            <Skeleton className="h-10 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
+            <Skeleton className="h-10 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
+          </div>
+        ) : data && data.length > 0 ? (
+          <div className="space-y-3">
+            {data.map((produto, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between p-3 bg-gray-100 dark:bg-gray-800 rounded-lg"
@@ -89,11 +89,11 @@ const TopProdutosList = () => {
                   Vendas: {produto.quantidade}
                 </p>
               </div>
-            ))
-          ) : (
-            <p className="text-center text-gray-500">Nenhum dado encontrado.</p>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center text-gray-500">Nenhum dado encontrado.</p>
+        )}
       </CardContent>
     </Card>
   );

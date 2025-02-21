@@ -144,30 +144,13 @@ const Sidebar = () => {
           label="Home"
           isCollapsed={isSidebarCollapsed}
         />
-        <SidebarDropdown
-          icon={Clipboard}
-          label="Pedidos de Compra"
+        <SidebarLink
+          href="/pedidos/gestaoPedidos"
           isCollapsed={isSidebarCollapsed}
-        >
-          <SidebarLink
-            href="/pedidos/novo"
-            icon={Box}
-            label="Novo Pedido"
-            isCollapsed={false}
-          />
-          <SidebarLink
-            href="/pedidos/pendentes"
-            icon={Box}
-            label="Pedidos Pendentes"
-            isCollapsed={false}
-          />
-          <SidebarLink
-            href="/pedidos/concluidos"
-            icon={Box}
-            label="Pedidos Concluídos"
-            isCollapsed={false}
-          />
-        </SidebarDropdown>
+          label="Pedidos de Compra"
+          icon={Clipboard}
+        />
+
         <SidebarDropdown
           icon={Truck}
           label="Fornecedores"

@@ -38,7 +38,7 @@ const EstoqueSegurancaCard = () => {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <Skeleton className="h-32 w-full rounded-md" />
+          <Skeleton className="h-10 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
         ) : produtos.length > 0 ? (
           <ul className="space-y-3">
             {produtos.map((produto) => (
