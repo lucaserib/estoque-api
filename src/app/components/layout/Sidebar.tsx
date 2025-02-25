@@ -145,7 +145,7 @@ const Sidebar = () => {
           isCollapsed={isSidebarCollapsed}
         />
         <SidebarLink
-          href="/pedidos/gestaoPedidos"
+          href="/gestao-edidos"
           isCollapsed={isSidebarCollapsed}
           label="Pedidos de Compra"
           icon={Clipboard}
