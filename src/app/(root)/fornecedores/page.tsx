@@ -1,36 +1,40 @@
 // app/fornecedores/page.tsx
 "use client";
-import { useState } from "react";
-import Navbar from "@/app/components/Navbar";
+import { useState, useEffect } from "react";
+
 import { useLayout } from "@/app/context/LayoutContext";
 import { useFetch } from "@/app/hooks/useFetch";
+import FornecedorForm from "./components/FornecedorForm";
 import FornecedorList from "./components/FornecedorList";
 import { Fornecedor } from "./types";
-import Sidebar from "@/app/components/layout/Sidebar";
-import FornecedorForm from "./components/FornecedorForm";
 
 const FornecedoresPage = () => {
   const { isSidebarCollapsed } = useLayout();
   const [activeTab, setActiveTab] = useState<"list" | "create">("list");
   const {
-    data: fornecedores,
+    data: initialFornecedores,
     loading,
     error,
   } = useFetch<Fornecedor>("/api/fornecedores");
+  const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
+
+  useEffect(() => {
+    setFornecedores(initialFornecedores);
+  }, [initialFornecedores]);
 
   const handleAddFornecedor = (newFornecedor: Fornecedor) => {
-    // Update the list optimistically
-    fornecedores.push(newFornecedor);
+    setFornecedores((prev) => [...prev, newFornecedor]);
+    setActiveTab("list"); // Switch to list tab after adding
   };
 
   const handleDeleteFornecedor = async (id: number) => {
     try {
-      await fetch(`/api/fornecedores?id=${id}`, {
+      const response = await fetch(`/api/fornecedores?id=${id}`, {
         method: "DELETE",
       });
-      // Update the list optimistically
-      const updatedFornecedores = fornecedores.filter((f) => f.id !== id);
-      (fornecedores as Fornecedor[]) = updatedFornecedores; // Note: This won't trigger a re-render without state
+      if (response.ok) {
+        setFornecedores((prev) => prev.filter((f) => f.id !== id));
+      }
     } catch (error) {
       console.error("Erro ao deletar fornecedor:", error);
     }
