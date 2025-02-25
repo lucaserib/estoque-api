@@ -63,7 +63,6 @@ const GestaoPedidos = () => {
           Gestão de Pedidos
         </h1>
 
-        {/* Navegação por abas */}
         <div className="flex flex-col sm:flex-row sm:space-x-4 mb-6 border-b border-gray-200 dark:border-gray-700">
           {[
             { id: "novo", label: "Novo Pedido" },
