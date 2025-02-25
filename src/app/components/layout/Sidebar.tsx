@@ -145,30 +145,18 @@ const Sidebar = () => {
           isCollapsed={isSidebarCollapsed}
         />
         <SidebarLink
-          href="/gestao-edidos"
+          href="/gestao-pedidos"
           isCollapsed={isSidebarCollapsed}
           label="Pedidos de Compra"
           icon={Clipboard}
         />
-
-        <SidebarDropdown
-          icon={Truck}
-          label="Fornecedores"
+        <SidebarLink
+          href="/fornecedores"
           isCollapsed={isSidebarCollapsed}
-        >
-          <SidebarLink
-            href="/fornecedores/exibirFornecedores"
-            icon={Box}
-            label="Listar Fornecedores"
-            isCollapsed={false}
-          />
-          <SidebarLink
-            href="/fornecedores/fornecedores"
-            icon={Box}
-            label="Cadastrar Fornecedor"
-            isCollapsed={false}
-          />
-        </SidebarDropdown>
+          label="Fornecedor"
+          icon={Truck}
+        />
+
         <SidebarDropdown
           icon={Package}
           label="Produtos"
