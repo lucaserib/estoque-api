@@ -170,24 +170,12 @@ const Sidebar = () => {
           isCollapsed={isSidebarCollapsed}
         />
 
-        <SidebarDropdown
+        <SidebarLink
           icon={Box}
           label="Saídas"
           isCollapsed={isSidebarCollapsed}
-        >
-          <SidebarLink
-            href="/saidas/novaSaida"
-            icon={Box}
-            label="Nova Saída"
-            isCollapsed={false}
-          />
-          <SidebarLink
-            href="/saidas/registroSaidas"
-            icon={Box}
-            label="Registro de Saídas"
-            isCollapsed={false}
-          />
-        </SidebarDropdown>
+          href="/saidas"
+        />
       </div>
 
       {/* Footer */}
