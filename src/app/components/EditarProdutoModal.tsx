@@ -6,7 +6,7 @@ interface EditarProdutoModalProps {
     id: number;
     nome: string;
     sku: string;
-    ean: string;
+    ean?: string;
   };
   onClose: () => void;
   onSave: (produto: {

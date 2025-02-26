@@ -157,30 +157,12 @@ const Sidebar = () => {
           icon={Truck}
         />
 
-        <SidebarDropdown
+        <SidebarLink
           icon={Package}
           label="Produtos"
           isCollapsed={isSidebarCollapsed}
-        >
-          <SidebarLink
-            href="/produtos/cadastrarProdutos"
-            icon={Box}
-            label="Cadastrar Produto"
-            isCollapsed={false}
-          />
-          <SidebarLink
-            href="/produtos/listarProdutos"
-            icon={Box}
-            label="Listar Produtos"
-            isCollapsed={false}
-          />
-          <SidebarLink
-            href="/produtos/listarKits"
-            icon={Box}
-            label="Listar Kits"
-            isCollapsed={false}
-          />
-        </SidebarDropdown>
+          href="/produtos"
+        />
         <SidebarLink
           href="/estoque/armazens"
           icon={Warehouse}
