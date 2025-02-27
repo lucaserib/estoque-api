@@ -151,13 +151,14 @@ model PedidoCompra {
 }
 
 model PedidoProduto {
-  id         Int          @id @default(autoincrement())
-  pedidoId   Int
-  produtoId  Int
-  quantidade Int
-  custo      Float
-  pedido     PedidoCompra @relation(fields: [pedidoId], references: [id])
-  produto    Produto      @relation(fields: [produtoId], references: [id])
+  id            Int          @id @default(autoincrement())
+  pedidoId      Int
+  produtoId     Int
+  quantidade    Int
+  custo         Float
+  multiplicador Int          @default(1)
+  pedido        PedidoCompra @relation(fields: [pedidoId], references: [id])
+  produto       Produto      @relation(fields: [produtoId], references: [id])
 }
 
 model ProdutoFornecedor {

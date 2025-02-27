@@ -23,7 +23,6 @@ interface SidebarLinkProps {
   label: string;
   isCollapsed: boolean;
 }
-
 const SidebarLink = ({
   href,
   icon: Icon,
@@ -119,7 +118,21 @@ const Sidebar = () => {
           isSidebarCollapsed ? "px-5 " : "px-8"
         }`}
       >
-        <div>Logo</div>
+        <div>
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M4 6V20H20V6H4ZM18 8V10H14V8H18ZM14 12V14H18V12H14ZM6 8H10V10H6V8ZM6 12H10V14H6V12ZM2 4H22V6H2V4ZM6 16H10V18H6V16ZM14 16H18V18H14V16Z"
+              fill="#4B5EAA"
+            />
+            <path d="M11 20H13V22H11V20Z" fill="#4B5EAA" />
+          </svg>
+        </div>
         <h1
           className={`${
             isSidebarCollapsed ? "hidden" : "block"

@@ -23,6 +23,7 @@ export interface PedidoProduto {
   produtoId: number;
   quantidade: number;
   custo: number;
+  multiplicador?: number;
   produto?: Produto;
 }
 

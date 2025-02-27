@@ -1,10 +1,10 @@
-// app/gestao-pedidos/components/PedidosPendentes.tsx
 "use client";
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Pedido, PedidoProduto, Armazem } from "../../types"; // Adjust path as needed
+import { Pedido, PedidoProduto, Armazem } from "../../types";
 import { useFetch } from "../../../../hooks/useFetch";
+import { FaEdit, FaTrash, FaCheck, FaChevronDown } from "react-icons/fa";
 
 const PedidosPendentes = () => {
   const {
@@ -20,15 +20,15 @@ const PedidosPendentes = () => {
     error: armazensError,
   } = useFetch<Armazem>("/api/estoque/criarArmazem");
 
-  const [filteredPedidos, setFilteredPedidos] = useState<Pedido[]>(pedidos);
+  const [filteredPedidos, setFilteredPedidos] = useState<Pedido[]>([]);
   const [editPedido, setEditPedido] = useState<Pedido | null>(null);
   const [armazemId, setArmazemId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
-  // Sync filteredPedidos with pedidos when pedidos changes
   useEffect(() => {
     setFilteredPedidos(pedidos);
+    console.log("Pedidos recebidos em Pendentes:", pedidos); // Debug
   }, [pedidos]);
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,7 +48,7 @@ const PedidosPendentes = () => {
 
   const handleConfirm = async (id: number) => {
     if (!armazemId) {
-      setError("Armazém é obrigatório para confirmar o pedido");
+      setError("Selecione um armazém para confirmar o pedido");
       return;
     }
 
@@ -62,12 +62,18 @@ const PedidosPendentes = () => {
         body: JSON.stringify({
           pedidoId: id,
           armazemId,
-          produtosRecebidos: pedidoParaConfirmar.produtos,
+          produtosRecebidos: pedidoParaConfirmar.produtos.map((p) => ({
+            produtoId: p.produtoId,
+            quantidade: p.quantidade,
+            custo: p.custo,
+            multiplicador: p.multiplicador || p.produto?.multiplicador || 1, // Usa o multiplicador do pedidoProduto
+          })),
         }),
       });
 
       if (response.ok) {
         setFilteredPedidos((prev) => prev.filter((pedido) => pedido.id !== id));
+        setEditPedido(null);
       } else {
         setError("Erro ao confirmar pedido");
       }
@@ -88,6 +94,8 @@ const PedidosPendentes = () => {
       produtoId: produto.produtoId,
       quantidade: produto.quantidade,
       custo: produto.custo,
+      multiplicador:
+        produto.multiplicador || produto.produto?.multiplicador || 1, // Usa o multiplicador do pedidoProduto
     }));
 
     try {
@@ -149,7 +157,8 @@ const PedidosPendentes = () => {
     pedido.produtos.reduce((subtotal, produto) => {
       const quantidade = produto.quantidade;
       const custo = produto.custo;
-      const multiplicador = produto.produto?.multiplicador || 1;
+      const multiplicador =
+        produto.multiplicador || produto.produto?.multiplicador || 1; // Prioriza o multiplicador do pedidoProduto
       return subtotal + quantidade * custo * multiplicador;
     }, 0);
 
@@ -159,17 +168,21 @@ const PedidosPendentes = () => {
       0
     );
 
-  // Combine loading and error states
   const loading = pedidosLoading || armazensLoading;
   const combinedError = pedidosError || armazensError || error;
 
   if (loading)
-    return <p className="text-gray-500 dark:text-gray-400">Carregando...</p>;
-  if (combinedError) return <p className="text-red-500">{combinedError}</p>;
+    return (
+      <p className="text-gray-500 dark:text-gray-400 text-center">
+        Carregando...
+      </p>
+    );
+  if (combinedError)
+    return <p className="text-red-500 text-center">{combinedError}</p>;
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+    <div className="bg-white dark:bg-gray-900 shadow-xl rounded-xl p-6">
+      <h2 className="text-2xl font-bold mb-6 text-gray-800 dark:text-gray-100 tracking-tight">
         Pedidos Pendentes
       </h2>
       <input
@@ -177,53 +190,59 @@ const PedidosPendentes = () => {
         value={search}
         onChange={handleSearchChange}
         placeholder="Pesquisar por fornecedor ou SKU"
-        className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full p-3 mb-6 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
-      <ul className="space-y-4">
+      <ul className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {filteredPedidos.map((pedido) => (
           <li
             key={pedido.id}
-            className="p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm"
+            className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
           >
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center mb-2">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                Pedido #{pedido.id} - {pedido.fornecedor.nome}
+                Pedido #{pedido.id}
               </h3>
-              <div className="space-x-2">
+              <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(pedido)}
-                  className="px-3 py-1 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                  className="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition-colors"
                 >
-                  Editar
+                  <FaEdit />
                 </button>
                 <button
                   onClick={() => handleDelete(pedido.id)}
-                  className="px-3 py-1 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                  className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
                 >
-                  Deletar
+                  <FaTrash />
                 </button>
               </div>
             </div>
             <p className="text-gray-700 dark:text-gray-300">
-              Comentários: {pedido.comentarios}
+              <span className="font-medium">Fornecedor:</span>{" "}
+              {pedido.fornecedor.nome}
+            </p>
+            <p className="text-gray-700 dark:text-gray-300">
+              <span className="font-medium">Comentários:</span>{" "}
+              {pedido.comentarios || "Nenhum"}
             </p>
             {pedido.dataPrevista && (
               <p className="text-gray-700 dark:text-gray-300">
-                Data Prevista:{" "}
+                <span className="font-medium">Data Prevista:</span>{" "}
                 {format(new Date(pedido.dataPrevista), "dd/MM/yyyy", {
                   locale: ptBR,
                 })}
               </p>
             )}
-            <p className="text-gray-700 dark:text-gray-300">
-              Valor Total: R$ {calcularValorTotalPedido(pedido).toFixed(2)}
+            <p className="text-gray-700 dark:text-gray-300 mt-2">
+              <span className="font-medium">Valor Total:</span> R${" "}
+              {calcularValorTotalPedido(pedido).toFixed(2)}
             </p>
           </li>
         ))}
       </ul>
       {editPedido && (
-        <div className="p-4 bg-gray-100 dark:bg-gray-700 rounded-md shadow-sm">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <div className="mt-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-inner">
+          <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
             Editar Pedido #{editPedido.id}
           </h3>
           <textarea
@@ -231,75 +250,96 @@ const PedidosPendentes = () => {
             onChange={(e) =>
               setEditPedido({ ...editPedido, comentarios: e.target.value })
             }
-            className="mt-2 w-full p-2 border border-gray-300 rounded-md dark:bg-gray-600 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             rows={3}
+            placeholder="Atualize os comentários..."
           />
-          <select
-            value={armazemId || ""}
-            onChange={(e) => setArmazemId(Number(e.target.value) || null)}
-            className="mt-2 w-full p-2 border border-gray-300 rounded-md dark:bg-gray-600 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Selecione um Armazém</option>
-            {armazens.map((armazem) => (
-              <option key={armazem.id} value={armazem.id}>
-                {armazem.nome}
-              </option>
-            ))}
-          </select>
-          {editPedido.produtos.map((produto) => (
-            <div key={produto.produtoId} className="mt-4">
-              <p className="text-gray-900 dark:text-gray-100">
-                {produto.produto?.nome} (SKU: {produto.produto?.sku})
-              </p>
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <input
-                  type="number"
-                  value={produto.quantidade}
-                  onChange={(e) =>
-                    handleProdutoChange(
-                      produto.produtoId,
-                      "quantidade",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="p-2 border border-gray-300 rounded-md dark:bg-gray-600 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Quantidade"
-                />
-                <input
-                  type="number"
-                  value={produto.custo}
-                  onChange={(e) =>
-                    handleProdutoChange(
-                      produto.produtoId,
-                      "custo",
-                      Number(e.target.value)
-                    )
-                  }
-                  className="p-2 border border-gray-300 rounded-md dark:bg-gray-600 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Custo"
-                />
+          <div className="relative mt-4">
+            <select
+              value={armazemId || ""}
+              onChange={(e) => setArmazemId(Number(e.target.value) || null)}
+              className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
+            >
+              <option value="">Selecione um Armazém</option>
+              {armazens.map((armazem) => (
+                <option key={armazem.id} value={armazem.id}>
+                  {armazem.nome}
+                </option>
+              ))}
+            </select>
+            <FaChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400" />
+          </div>
+          <div className="mt-4 space-y-4">
+            {editPedido.produtos.map((produto) => (
+              <div
+                key={produto.produtoId}
+                className="p-3 bg-white dark:bg-gray-700 rounded-lg shadow-sm"
+              >
+                <p className="text-gray-900 dark:text-gray-100 font-medium">
+                  {produto.produto?.nome} (SKU: {produto.produto?.sku})
+                </p>
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <input
+                    type="number"
+                    value={produto.quantidade}
+                    onChange={(e) =>
+                      handleProdutoChange(
+                        produto.produtoId,
+                        "quantidade",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="p-3 bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Quantidade"
+                  />
+                  <input
+                    type="number"
+                    value={produto.custo}
+                    onChange={(e) =>
+                      handleProdutoChange(
+                        produto.produtoId,
+                        "custo",
+                        Number(e.target.value)
+                      )
+                    }
+                    className="p-3 bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Custo"
+                  />
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  Multiplicador:{" "}
+                  {produto.multiplicador || produto.produto?.multiplicador || 1}{" "}
+                  | Total: R${" "}
+                  {(
+                    produto.quantidade *
+                    produto.custo *
+                    (produto.multiplicador ||
+                      produto.produto?.multiplicador ||
+                      1)
+                  ).toFixed(2)}
+                </p>
               </div>
-            </div>
-          ))}
-          <div className="mt-4 flex space-x-2">
+            ))}
+          </div>
+          <div className="mt-6 flex justify-end gap-3">
             <button
               onClick={handleSave}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-md"
             >
-              Salvar
+              <FaCheck className="mr-2 inline" /> Salvar
             </button>
             <button
               onClick={() => handleConfirm(editPedido.id)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-md"
             >
-              Confirmar
+              <FaCheck className="mr-2 inline" /> Confirmar
             </button>
           </div>
         </div>
       )}
-      <div>
+      <div className="mt-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Total: R$ {calcularValorTotal().toFixed(2)}
+          Total Geral: R$ {calcularValorTotal().toFixed(2)}
         </h3>
       </div>
     </div>

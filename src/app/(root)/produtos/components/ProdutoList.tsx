@@ -1,15 +1,24 @@
 // app/produtos/components/ProdutoList.tsx
 "use client";
-import { useState } from "react";
-import { FaTrash, FaEdit, FaEye, FaLink } from "react-icons/fa";
+import { useState, useEffect } from "react";
+import { FaTrash, FaEdit, FaEye, FaLink, FaWarehouse } from "react-icons/fa";
 import FornecedorModal from "@/app/components/FornecedorModal";
 import EditarProdutoModal from "@/app/components/EditarProdutoModal";
 import { Produto } from "../types";
+import { useFetch } from "@/app/hooks/useFetch";
 
 interface ProdutoListProps {
   produtos: Produto[];
   onDelete: (id: number) => void;
   onEdit: (produto: Produto) => void;
+}
+
+interface StockItem {
+  produtoId: number;
+  armazemId: number;
+  quantidade: number;
+  estoqueSeguranca?: number;
+  armazem?: { id: number; nome: string }; // Updated to single object
 }
 
 const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
@@ -18,8 +27,56 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
+  const [showStockModal, setShowStockModal] = useState(false);
+  const [stockData, setStockData] = useState<{ [key: number]: number }>({}); // Total por produto
+  const [stockDetails, setStockDetails] = useState<StockItem[]>([]); // Detalhes por armazém
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const { data: armazens } = useFetch<{ id: number; nome: string }[]>(
+    "/api/estoque/criarArmazem"
+  ); // Fetch armazéns
+
+  // Fetch total stock quantities for all products
+  useEffect(() => {
+    const fetchStockTotals = async () => {
+      try {
+        const stockPromises = produtos.map(async (produto) => {
+          const response = await fetch(`/api/estoque/produto/${produto.id}`);
+          const stockItems: StockItem[] = await response.json();
+          const totalQuantity = stockItems.reduce(
+            (sum, item) => sum + item.quantidade,
+            0
+          );
+          return { produtoId: produto.id, totalQuantity };
+        });
+        const stockResults = await Promise.all(stockPromises);
+        const stockMap = stockResults.reduce(
+          (acc, { produtoId, totalQuantity }) => {
+            acc[produtoId] = totalQuantity;
+            return acc;
+          },
+          {} as { [key: number]: number }
+        );
+        setStockData(stockMap);
+      } catch (error) {
+        console.error("Erro ao buscar estoque:", error);
+      }
+    };
+    fetchStockTotals();
+  }, [produtos]);
+
+  const fetchStockDetails = async (produtoId: number) => {
+    try {
+      const response = await fetch(`/api/estoque/produto/${produtoId}`);
+      const stockItems: StockItem[] = await response.json();
+      // Não precisamos enriquecer manualmente, pois o API já inclui armazem
+      setStockDetails(stockItems);
+      setShowStockModal(true);
+    } catch (error) {
+      console.error("Erro ao buscar detalhes do estoque:", error);
+    }
+  };
 
   const filteredProdutos = produtos.filter(
     (produto) =>
@@ -62,6 +119,9 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
                 Custo Médio
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
+                Quantidade Total
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">
                 Ações
               </th>
             </tr>
@@ -85,6 +145,11 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
                   {produto.custoMedio
                     ? `R$ ${produto.custoMedio.toFixed(2)}`
                     : "N/A"}
+                </td>
+                <td className="px-6 py-4 text-gray-900 dark:text-gray-100">
+                  {stockData[produto.id] !== undefined
+                    ? stockData[produto.id]
+                    : "Carregando..."}
                 </td>
                 <td className="px-6 py-4 flex space-x-4">
                   <button
@@ -113,6 +178,12 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
                     className="text-purple-500 hover:text-purple-700"
                   >
                     <FaLink className="w-5 h-5" />
+                  </button>
+                  <button
+                    onClick={() => fetchStockDetails(produto.id)}
+                    className="text-orange-500 hover:text-orange-700"
+                  >
+                    <FaWarehouse className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => onDelete(produto.id)}
@@ -145,6 +216,7 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
         )}
       </div>
 
+      {/* Modal de Detalhes do Produto */}
       {showDetailsModal && selectedProduto && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-11/12 max-w-md">
@@ -178,6 +250,7 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
         </div>
       )}
 
+      {/* Modal de Edição do Produto */}
       {showEditModal && selectedProduto && (
         <EditarProdutoModal
           produto={selectedProduto}
@@ -189,11 +262,49 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
         />
       )}
 
+      {/* Modal de Fornecedores */}
       {showFornecedorModal && selectedProduto && (
         <FornecedorModal
           produto={selectedProduto}
           onClose={() => setShowFornecedorModal(false)}
         />
+      )}
+
+      {/* Modal de Estoque por Armazém */}
+      {showStockModal && selectedProduto && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-11/12 max-w-md max-h-[80vh] overflow-y-auto">
+            <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+              Estoque de {selectedProduto.nome} (SKU: {selectedProduto.sku})
+            </h2>
+            {stockDetails.length > 0 ? (
+              <ul className="space-y-2">
+                {stockDetails.map((item) => (
+                  <li
+                    key={item.armazemId}
+                    className="p-2 bg-gray-100 dark:bg-gray-700 rounded-md text-gray-900 dark:text-gray-200"
+                  >
+                    <strong>Armazém:</strong>{" "}
+                    {item.armazem?.nome || "Desconhecido"} <br />
+                    <strong>Quantidade:</strong> {item.quantidade}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-gray-500 dark:text-gray-400">
+                Nenhum estoque encontrado para este produto.
+              </p>
+            )}
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setShowStockModal(false)}
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

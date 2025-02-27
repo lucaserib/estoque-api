@@ -1,11 +1,9 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
-import { request } from "http";
 import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
-// Função para serializar BigInt como string
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
@@ -36,6 +34,7 @@ interface ProdutoRecebido {
   produtoId: number;
   quantidade: number;
   custo: number;
+  multiplicador?: number; // Adicionado para suportar o multiplicador
 }
 
 interface RequestBodyPost {
@@ -60,9 +59,7 @@ interface RequestBodyDelete {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
-
     const body: RequestBodyPost = await request.json();
-
     const { fornecedorId, produtos, comentarios, dataPrevista } = body;
 
     if (!fornecedorId || !produtos || produtos.length === 0) {
@@ -84,12 +81,13 @@ export async function POST(request: NextRequest) {
             produtoId: produto.produtoId,
             quantidade: produto.quantidade,
             custo: produto.custo,
+            multiplicador: produto.multiplicador || 1, // Salva o multiplicador
           })),
         },
       },
     });
 
-    return NextResponse.json(pedido, { status: 201 });
+    return NextResponse.json(serializeBigInt(pedido), { status: 201 });
   } catch (error) {
     console.error("Erro ao criar pedido de compra:", error);
     return NextResponse.json(
@@ -108,7 +106,7 @@ export async function GET(request: NextRequest) {
       include: {
         produtos: {
           include: {
-            produto: true,
+            produto: true, // Inclui detalhes do produto
           },
         },
         fornecedor: true,
@@ -129,9 +127,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const user = await verifyUser(request);
-
     const body: RequestBodyPut = await request.json();
-
     const { pedidoId, armazemId, produtosRecebidos, comentarios } = body;
 
     if (!pedidoId || !armazemId || !produtosRecebidos) {
@@ -144,7 +140,6 @@ export async function PUT(request: NextRequest) {
     const armazemExiste = await prisma.armazem.findUnique({
       where: { id: armazemId },
     });
-
     if (!armazemExiste) {
       return NextResponse.json(
         { error: "Armazém não encontrado" },
@@ -154,11 +149,8 @@ export async function PUT(request: NextRequest) {
 
     const pedidoExiste = await prisma.pedidoCompra.findUnique({
       where: { id: pedidoId },
-      include: {
-        produtos: true,
-      },
+      include: { produtos: true },
     });
-
     if (!pedidoExiste) {
       return NextResponse.json(
         { error: "Pedido não encontrado" },
@@ -177,30 +169,34 @@ export async function PUT(request: NextRequest) {
         if (produtoPedido) {
           const quantidadeNaoRecebida =
             produtoPedido.quantidade - produtoRecebido.quantidade;
-
           if (quantidadeNaoRecebida > 0) {
             produtosNaoRecebidos.push({
               produtoId: produtoPedido.produtoId,
               quantidade: quantidadeNaoRecebida,
               custo: produtoPedido.custo,
+              multiplicador: produtoPedido.multiplicador, // Mantém o multiplicador
             });
           }
+
           await prisma.pedidoProduto.update({
-            where: {
-              id: produtoPedido.id,
-            },
+            where: { id: produtoPedido.id },
             data: {
               quantidade: produtoRecebido.quantidade,
               custo: produtoRecebido.custo,
+              multiplicador:
+                produtoRecebido.multiplicador ||
+                produtoPedido.multiplicador ||
+                1, // Usa o multiplicador enviado ou o existente
             },
           });
 
           const estoqueExiste = await prisma.estoque.findFirst({
-            where: {
-              produtoId: produtoRecebido.produtoId,
-              armazemId,
-            },
+            where: { produtoId: produtoRecebido.produtoId, armazemId },
           });
+
+          const quantidadeFinal =
+            produtoRecebido.quantidade *
+            (produtoRecebido.multiplicador || produtoPedido.multiplicador || 1);
 
           if (estoqueExiste) {
             await prisma.estoque.update({
@@ -210,21 +206,18 @@ export async function PUT(request: NextRequest) {
                   armazemId,
                 },
               },
-              data: {
-                quantidade: {
-                  increment: produtoRecebido.quantidade,
-                },
-              },
+              data: { quantidade: { increment: quantidadeFinal } },
             });
           } else {
             await prisma.estoque.create({
               data: {
                 produtoId: produtoRecebido.produtoId,
                 armazemId,
-                quantidade: produtoRecebido.quantidade,
+                quantidade: quantidadeFinal,
               },
             });
           }
+
           const custoMedio = await calcularCustoMedio(
             produtoRecebido.produtoId
           );
@@ -248,6 +241,7 @@ export async function PUT(request: NextRequest) {
               produtoId: produto.produtoId,
               quantidade: produto.quantidade,
               custo: produto.custo,
+              multiplicador: produto.multiplicador || 1, // Mantém o multiplicador
             })),
           },
         },
@@ -265,7 +259,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({
-      message: "Pedido confirmado e estoque atualizadocom sucesso",
+      message: "Pedido confirmado e estoque atualizado com sucesso",
     });
   } catch (error) {
     console.error("Erro ao confirmar pedido:", error);
@@ -281,7 +275,6 @@ export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const body: RequestBodyDelete = await request.json();
-
     const { pedidoId } = body;
 
     if (!pedidoId) {
@@ -291,13 +284,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await prisma.pedidoProduto.deleteMany({
-      where: { pedidoId: pedidoId },
-    });
-
-    await prisma.pedidoCompra.delete({
-      where: { id: pedidoId },
-    });
+    await prisma.pedidoProduto.deleteMany({ where: { pedidoId } });
+    await prisma.pedidoCompra.delete({ where: { id: pedidoId } });
 
     return NextResponse.json({ message: "Pedido deletado com sucesso" });
   } catch (error) {
