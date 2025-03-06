@@ -1,4 +1,5 @@
 import { verifyUser } from "@/helpers/verifyUser";
+import { brlToCents } from "@/utils/currency";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -14,15 +15,14 @@ const serializeBigInt = (obj: unknown): unknown => {
 };
 
 interface RequestBody {
-  produtoId: number;
-  fornecedorId: number;
+  produtoId: string;
+  fornecedorId: string;
   id?: number;
   preco: number;
   multiplicador: number;
   codigoNF: string;
 }
 
-// POST
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       data: {
         produtoId,
         fornecedorId,
-        preco,
+        preco: brlToCents(preco),
         multiplicador,
         codigoNF,
       },
@@ -70,7 +70,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -88,7 +87,7 @@ export async function GET(request: NextRequest) {
     if (fornecedorId) {
       const produtos = await prisma.produtoFornecedor.findMany({
         where: {
-          fornecedorId: Number(fornecedorId),
+          fornecedorId: fornecedorId,
         },
         include: {
           produto: true,
@@ -99,7 +98,7 @@ export async function GET(request: NextRequest) {
     } else if (produtoId) {
       const fornecedores = await prisma.produtoFornecedor.findMany({
         where: {
-          produtoId: Number(produtoId),
+          produtoId: produtoId,
         },
         include: {
           fornecedor: true,
@@ -116,7 +115,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// DELETE
 export async function DELETE(request: NextRequest) {
   const user = await verifyUser(request);
   const { searchParams } = new URL(request.url);
@@ -140,7 +138,6 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// PUT
 export async function PUT(request: NextRequest) {
   const body: RequestBody = await request.json();
 

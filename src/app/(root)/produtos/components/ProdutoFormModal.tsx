@@ -16,7 +16,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
   const [isKit, setIsKit] = useState(false);
   const [kitProdutos, setKitProdutos] = useState<KitComponente[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [quantidades, setQuantidades] = useState<{ [key: number]: number }>({});
+  const [quantidades, setQuantidades] = useState<{ [key: string]: number }>({});
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
 
@@ -53,7 +53,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
         setEan("");
         setIsKit(false);
         setKitProdutos([]);
-        setTimeout(onClose, 1500); // Fecha após sucesso
+        setTimeout(onClose, 1500);
       } else {
         const errorData = await response.json();
         setMessage(errorData.error || "Erro ao cadastrar.");
@@ -66,7 +66,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
     }
   };
 
-  const handleAddProdutoAoKit = (produtoId: number) => {
+  const handleAddProdutoAoKit = (produtoId: string) => {
     const quantidade = quantidades[produtoId] || 0;
     if (quantidade > 0) {
       setKitProdutos((prev) => [...prev, { produtoId, quantidade }]);
@@ -74,11 +74,11 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
     }
   };
 
-  const handleRemoveProdutoDoKit = (produtoId: number) => {
+  const handleRemoveProdutoDoKit = (produtoId: string) => {
     setKitProdutos((prev) => prev.filter((p) => p.produtoId !== produtoId));
   };
 
-  const handleQuantidadeChange = (produtoId: number, quantidade: number) => {
+  const handleQuantidadeChange = (produtoId: string, quantidade: number) => {
     setQuantidades((prev) => ({ ...prev, [produtoId]: quantidade }));
   };
 

@@ -31,8 +31,8 @@ export async function POST(request: NextRequest) {
       produtoId,
       quantidade,
     }: {
-      armazemId: number;
-      produtoId: number;
+      armazemId: string;
+      produtoId: string;
       quantidade: number;
     } = body;
 
@@ -79,7 +79,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Função para tratar requisições PUT
 export async function PUT(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -90,8 +89,8 @@ export async function PUT(request: NextRequest) {
       produtoId,
       quantidade,
     }: {
-      armazemId: number;
-      produtoId: number;
+      armazemId: string;
+      produtoId: string;
       quantidade: number;
     } = body;
 
@@ -142,13 +141,12 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// Função para tratar requisições DELETE
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
     const body = await request.json();
-    const { armazemId, produtoId }: { armazemId: number; produtoId?: number } =
+    const { armazemId, produtoId }: { armazemId: string; produtoId?: string } =
       body;
 
     if (!armazemId) {
@@ -172,7 +170,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Caso tenha produtoId, deleta o estoque específico
     if (produtoId) {
       await prisma.estoque.delete({
         where: {
@@ -188,7 +185,6 @@ export async function DELETE(request: NextRequest) {
         { status: 200 }
       );
     } else {
-      // Deleta o armazém se apenas o armazemId for fornecido
       await prisma.armazem.delete({
         where: {
           id: armazemId,

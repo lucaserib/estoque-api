@@ -21,7 +21,7 @@ interface Produto {
 
 interface RequestBody {
   produtos: Produto[];
-  armazemId: number;
+  armazemId: string;
 }
 
 // POST
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       data: {
         userId: user.id,
         data: new Date(),
-        armazemId: Number(armazemId),
+        armazemId: armazemId,
       },
     });
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           const estoqueComponente = await prisma.estoque.findFirst({
             where: {
               produtoId: componente.produtoId,
-              armazemId: Number(armazemId),
+              armazemId: armazemId,
             },
           });
 
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
             where: {
               produtoId_armazemId: {
                 produtoId: componente.produtoId,
-                armazemId: Number(armazemId),
+                armazemId: armazemId,
               },
             },
             data: {
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
         const estoqueProduto = await prisma.estoque.findFirst({
           where: {
             produtoId: produtoEncontrado.id,
-            armazemId: Number(armazemId),
+            armazemId: armazemId,
           },
         });
 
@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
           where: {
             produtoId_armazemId: {
               produtoId: produtoEncontrado.id,
-              armazemId: Number(armazemId),
+              armazemId: armazemId,
             },
           },
           data: {

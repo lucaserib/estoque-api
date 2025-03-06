@@ -4,7 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
-// Função para serializar BigInt como string
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
@@ -13,7 +12,6 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
-// Handler para o método GET
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const sku = searchParams.get("sku");
@@ -42,7 +40,7 @@ export async function GET(req: NextRequest) {
           isKit: false,
           estoques: {
             some: {
-              armazemId: Number(armazemId),
+              armazemId: armazemId,
             },
           },
           userId: user.id,
@@ -75,7 +73,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Handler para o método POST
 export async function POST(req: NextRequest) {
   try {
     const user = await verifyUser(req);
@@ -101,7 +98,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (componentes && componentes.length > 0) {
-      // Criar um kit
       const novoKit = await prisma.produto.create({
         data: {
           userId: user.id,
@@ -111,7 +107,7 @@ export async function POST(req: NextRequest) {
           isKit: true,
           componentes: {
             create: componentes.map(
-              (componente: { quantidade: number; produtoId: number }) => ({
+              (componente: { quantidade: number; produtoId: string }) => ({
                 quantidade: componente.quantidade,
                 produto: {
                   connect: { id: componente.produtoId },
@@ -134,7 +130,6 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     } else {
-      // Criar um produto
       const novoProduto = await prisma.produto.create({
         data: {
           userId: user.id,
@@ -194,7 +189,6 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-// Handler para o método DELETE
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get("id");
@@ -207,7 +201,7 @@ export async function DELETE(req: NextRequest) {
 
   try {
     await prisma.produto.delete({
-      where: { id: Number(id) },
+      where: { id: id },
     });
     return new Response(null, { status: 204 });
   } catch (error) {

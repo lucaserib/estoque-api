@@ -12,14 +12,14 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
-const calcularCustoMedio = async (produtoId: number) => {
+const calcularCustoMedio = async (produtoId: string) => {
   const pedidos = await prisma.pedidoProduto.findMany({
     where: { produtoId },
     select: { quantidade: true, custo: true },
   });
 
   const totalValor = pedidos.reduce(
-    (acc, pedido) => acc + pedido.quantidade * pedido.custo,
+    (acc, pedido) => acc + pedido.quantidade * (pedido.custo / 100),
     0
   );
   const totalQuantidade = pedidos.reduce(
@@ -27,18 +27,20 @@ const calcularCustoMedio = async (produtoId: number) => {
     0
   );
 
-  return totalQuantidade > 0 ? totalValor / totalQuantidade : 0;
+  return totalQuantidade > 0
+    ? Math.round((totalValor / totalQuantidade) * 100)
+    : 0;
 };
 
 interface ProdutoRecebido {
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
   custo: number;
-  multiplicador?: number; // Adicionado para suportar o multiplicador
+  multiplicador?: number;
 }
 
 interface RequestBodyPost {
-  fornecedorId: number;
+  fornecedorId: string;
   produtos: ProdutoRecebido[];
   comentarios?: string;
   dataPrevista?: string;
@@ -46,7 +48,7 @@ interface RequestBodyPost {
 
 interface RequestBodyPut {
   pedidoId: number;
-  armazemId: number;
+  armazemId: string;
   produtosRecebidos: ProdutoRecebido[];
   comentarios?: string;
 }
@@ -55,7 +57,6 @@ interface RequestBodyDelete {
   pedidoId: number;
 }
 
-// POST
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -67,6 +68,15 @@ export async function POST(request: NextRequest) {
         { error: "Fornecedor e produtos são obrigatórios" },
         { status: 400 }
       );
+    }
+
+    for (const produto of produtos) {
+      if (!Number.isInteger(produto.custo) || produto.custo < 0) {
+        return NextResponse.json(
+          { error: "Custo deve ser um valor inteiro não-negativo em centavos" },
+          { status: 400 }
+        );
+      }
     }
 
     const pedido = await prisma.pedidoCompra.create({
@@ -97,7 +107,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET
 export async function GET(request: NextRequest) {
   const user = await verifyUser(request);
   try {
@@ -106,7 +115,7 @@ export async function GET(request: NextRequest) {
       include: {
         produtos: {
           include: {
-            produto: true, // Inclui detalhes do produto
+            produto: true,
           },
         },
         fornecedor: true,
@@ -123,7 +132,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// PUT
 export async function PUT(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -135,6 +143,15 @@ export async function PUT(request: NextRequest) {
         { error: "Pedido, armazém e produtos recebidos são obrigatórios" },
         { status: 400 }
       );
+    }
+
+    for (const produto of produtosRecebidos) {
+      if (!Number.isInteger(produto.custo) || produto.custo < 0) {
+        return NextResponse.json(
+          { error: "Custo deve ser um valor inteiro não-negativo em centavos" },
+          { status: 400 }
+        );
+      }
     }
 
     const armazemExiste = await prisma.armazem.findUnique({
@@ -174,7 +191,7 @@ export async function PUT(request: NextRequest) {
               produtoId: produtoPedido.produtoId,
               quantidade: quantidadeNaoRecebida,
               custo: produtoPedido.custo,
-              multiplicador: produtoPedido.multiplicador, // Mantém o multiplicador
+              multiplicador: produtoPedido.multiplicador,
             });
           }
 
@@ -186,7 +203,7 @@ export async function PUT(request: NextRequest) {
               multiplicador:
                 produtoRecebido.multiplicador ||
                 produtoPedido.multiplicador ||
-                1, // Usa o multiplicador enviado ou o existente
+                1,
             },
           });
 
@@ -270,7 +287,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);

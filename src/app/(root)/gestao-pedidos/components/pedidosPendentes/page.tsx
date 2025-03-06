@@ -5,6 +5,7 @@ import { ptBR } from "date-fns/locale";
 import { Pedido, PedidoProduto, Armazem } from "../../types";
 import { useFetch } from "../../../../hooks/useFetch";
 import { FaEdit, FaTrash, FaCheck, FaChevronDown } from "react-icons/fa";
+import { brlToCents, centsToBRL, formatBRL } from "@/utils/currency";
 
 const PedidosPendentes = () => {
   const {
@@ -22,7 +23,7 @@ const PedidosPendentes = () => {
 
   const [filteredPedidos, setFilteredPedidos] = useState<Pedido[]>([]);
   const [editPedido, setEditPedido] = useState<Pedido | null>(null);
-  const [armazemId, setArmazemId] = useState<number | null>(null);
+  const [armazemId, setArmazemId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
 
@@ -66,7 +67,7 @@ const PedidosPendentes = () => {
             produtoId: p.produtoId,
             quantidade: p.quantidade,
             custo: p.custo,
-            multiplicador: p.multiplicador || p.produto?.multiplicador || 1, // Usa o multiplicador do pedidoProduto
+            multiplicador: p.multiplicador || p.produto?.multiplicador || 1,
           })),
         }),
       });
@@ -93,7 +94,7 @@ const PedidosPendentes = () => {
     const produtosRecebidos = editPedido.produtos.map((produto) => ({
       produtoId: produto.produtoId,
       quantidade: produto.quantidade,
-      custo: produto.custo,
+      custo: brlToCents(produto.custo),
       multiplicador:
         produto.multiplicador || produto.produto?.multiplicador || 1, // Usa o multiplicador do pedidoProduto
     }));
@@ -142,7 +143,7 @@ const PedidosPendentes = () => {
   };
 
   const handleProdutoChange = (
-    produtoId: number,
+    produtoId: string,
     field: keyof PedidoProduto,
     value: number
   ) => {
@@ -234,8 +235,8 @@ const PedidosPendentes = () => {
               </p>
             )}
             <p className="text-gray-700 dark:text-gray-300 mt-2">
-              <span className="font-medium">Valor Total:</span> R${" "}
-              {calcularValorTotalPedido(pedido).toFixed(2)}
+              <span className="font-medium">Valor Total:</span>{" "}
+              {formatBRL(calcularValorTotalPedido(pedido) * 100)}
             </p>
           </li>
         ))}
@@ -257,7 +258,7 @@ const PedidosPendentes = () => {
           <div className="relative mt-4">
             <select
               value={armazemId || ""}
-              onChange={(e) => setArmazemId(Number(e.target.value) || null)}
+              onChange={(e) => setArmazemId(e.target.value || null)}
               className="w-full p-3 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
             >
               <option value="">Selecione um Armazém</option>
@@ -294,29 +295,30 @@ const PedidosPendentes = () => {
                   />
                   <input
                     type="number"
+                    step="0.01"
                     value={produto.custo}
                     onChange={(e) =>
                       handleProdutoChange(
                         produto.produtoId,
                         "custo",
-                        Number(e.target.value)
+                        brlToCents(e.target.value)
                       )
                     }
                     className="p-3 bg-gray-50 dark:bg-gray-600 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                    placeholder="Custo"
+                    placeholder="Custo (R$)"
                   />
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
                   Multiplicador:{" "}
                   {produto.multiplicador || produto.produto?.multiplicador || 1}{" "}
-                  | Total: R${" "}
-                  {(
+                  | Total{" "}
+                  {formatBRL(
                     produto.quantidade *
-                    produto.custo *
-                    (produto.multiplicador ||
-                      produto.produto?.multiplicador ||
-                      1)
-                  ).toFixed(2)}
+                      produto.custo *
+                      (produto.multiplicador ||
+                        produto.produto?.multiplicador ||
+                        1)
+                  )}
                 </p>
               </div>
             ))}
@@ -339,7 +341,7 @@ const PedidosPendentes = () => {
       )}
       <div className="mt-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Total Geral: R$ {calcularValorTotal().toFixed(2)}
+          Total Geral: {formatBRL(calcularValorTotal() * 100)}
         </h3>
       </div>
     </div>

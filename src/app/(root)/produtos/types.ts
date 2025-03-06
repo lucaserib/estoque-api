@@ -1,6 +1,6 @@
 // app/produtos/types.ts
 export interface Produto {
-  id: number;
+  id: string;
   nome: string;
   sku: string;
   ean?: string; // Opcional
@@ -10,7 +10,7 @@ export interface Produto {
 }
 
 export interface KitComponente {
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
 }
 

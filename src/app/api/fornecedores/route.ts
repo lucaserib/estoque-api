@@ -59,7 +59,7 @@ export async function DELETE(req: NextRequest) {
     }
 
     const fornecedor = await prisma.fornecedor.findUnique({
-      where: { id: Number(id) },
+      where: { id: id },
     });
 
     if (!fornecedor) {
@@ -69,7 +69,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    await prisma.fornecedor.delete({ where: { id: Number(id) } });
+    await prisma.fornecedor.delete({ where: { id: id } });
 
     return NextResponse.json({}, { status: 204 });
   } catch (error) {

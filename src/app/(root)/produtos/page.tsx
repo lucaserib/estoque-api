@@ -25,7 +25,7 @@ const ProdutosPage = () => {
 
   const kits = produtos.filter((p) => p.isKit);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string | number) => {
     try {
       const response = await fetch(`/api/produtos?id=${id}`, {
         method: "DELETE",

@@ -30,10 +30,10 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const user = await verifyUser(req);
-    const armazem = await prisma.armazem.findMany({
+    const armazens = await prisma.armazem.findMany({
       where: { userId: user.id },
     });
-    return NextResponse.json(armazem, { status: 200 });
+    return NextResponse.json(armazens, { status: 200 });
   } catch {
     NextResponse.json({ error: "Erro ao buscar Armazém" }, { status: 500 });
   }

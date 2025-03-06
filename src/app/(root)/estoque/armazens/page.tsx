@@ -30,22 +30,22 @@ import { useEffect, useState } from "react";
 import { FaEdit, FaTrash } from "react-icons/fa";
 
 interface Produto {
-  id: number;
+  id: string;
   nome: string;
   sku: string;
   custoMedio: number;
 }
 
 interface Estoque {
-  id: number;
-  produtoId: number;
+  id: string;
+  produtoId: string;
   produto: Produto;
   quantidade: number;
   estoqueSeguranca: number;
 }
 
 interface Armazem {
-  id: number;
+  id: string;
   nome: string;
 }
 
@@ -72,13 +72,13 @@ const Armazens = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedArmazemId) fetchEstoque(Number(selectedArmazemId));
+    if (selectedArmazemId) fetchEstoque(selectedArmazemId);
   }, [selectedArmazemId]);
 
   const fetchArmazens = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/estoque/armazens");
+      const response = await fetch("/api/estoque/criarArmazem"); //NOT SURE
       const data = await response.json();
       setArmazens(data);
     } catch (error) {
@@ -88,7 +88,7 @@ const Armazens = () => {
     }
   };
 
-  const fetchEstoque = async (armazemId: number) => {
+  const fetchEstoque = async (armazemId: string) => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/estoque/${armazemId}`);
@@ -118,7 +118,7 @@ const Armazens = () => {
     }
   };
 
-  const handleAtualizarEstoque = async (produtoId: number) => {
+  const handleAtualizarEstoque = async (produtoId: string) => {
     if (!selectedArmazemId) return;
 
     try {

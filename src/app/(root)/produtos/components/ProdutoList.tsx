@@ -9,16 +9,16 @@ import { useFetch } from "@/app/hooks/useFetch";
 
 interface ProdutoListProps {
   produtos: Produto[];
-  onDelete: (id: number) => void;
+  onDelete: (id: string) => void;
   onEdit: (produto: Produto) => void;
 }
 
 interface StockItem {
-  produtoId: number;
-  armazemId: number;
+  produtoId: string;
+  armazemId: string;
   quantidade: number;
   estoqueSeguranca?: number;
-  armazem?: { id: number; nome: string }; // Updated to single object
+  armazem?: { id: string; nome: string };
 }
 
 const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
@@ -28,16 +28,15 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
-  const [stockData, setStockData] = useState<{ [key: number]: number }>({}); // Total por produto
-  const [stockDetails, setStockDetails] = useState<StockItem[]>([]); // Detalhes por armazém
+  const [stockData, setStockData] = useState<{ [key: string]: number }>({});
+  const [stockDetails, setStockDetails] = useState<StockItem[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const { data: armazens } = useFetch<{ id: number; nome: string }[]>(
+  const { data: armazens } = useFetch<{ id: string; nome: string }[]>(
     "/api/estoque/criarArmazem"
-  ); // Fetch armazéns
+  );
 
-  // Fetch total stock quantities for all products
   useEffect(() => {
     const fetchStockTotals = async () => {
       try {
@@ -56,7 +55,7 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
             acc[produtoId] = totalQuantity;
             return acc;
           },
-          {} as { [key: number]: number }
+          {} as { [key: string]: number }
         );
         setStockData(stockMap);
       } catch (error) {
@@ -66,11 +65,10 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
     fetchStockTotals();
   }, [produtos]);
 
-  const fetchStockDetails = async (produtoId: number) => {
+  const fetchStockDetails = async (produtoId: string) => {
     try {
       const response = await fetch(`/api/estoque/produto/${produtoId}`);
       const stockItems: StockItem[] = await response.json();
-      // Não precisamos enriquecer manualmente, pois o API já inclui armazem
       setStockDetails(stockItems);
       setShowStockModal(true);
     } catch (error) {
@@ -234,8 +232,8 @@ const ProdutoList = ({ produtos, onDelete, onEdit }: ProdutoListProps) => {
             </p>
             <p>
               <strong>Custo Médio:</strong>{" "}
-              {selectedProduto.custoMedio
-                ? `R$ ${selectedProduto.custoMedio.toFixed(2)}`
+              {selectedProduto.custoMedio !== undefined
+                ? `R$ ${(selectedProduto.custoMedio / 100).toFixed(2)}`
                 : "N/A"}
             </p>
             <div className="mt-6 flex justify-end">

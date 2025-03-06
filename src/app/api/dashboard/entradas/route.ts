@@ -62,7 +62,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Agrupar dados conforme o período selecionado
     const groupedData: {
       [key: string]: { totalQuantidade: number; totalCusto: number };
     } = {};

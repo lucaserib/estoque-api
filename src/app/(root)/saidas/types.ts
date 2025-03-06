@@ -1,19 +1,19 @@
 export interface Produto {
-  id: number;
+  id: string;
   nome: string;
   sku: string;
   isKit?: boolean;
 }
 
 export interface KitComponente {
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
   sku: string;
   produto?: Produto;
 }
 
 export interface SaidaProduto {
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
   sku: string;
   isKit?: boolean;
@@ -23,7 +23,7 @@ export interface SaidaProduto {
 export interface Saida {
   id: number;
   data: string;
-  armazem: { id: number; nome: string };
+  armazem: { id: string; nome: string };
   detalhes: {
     id: number;
     produto: Produto;
@@ -33,6 +33,6 @@ export interface Saida {
 }
 
 export interface Armazem {
-  id: number;
+  id: string;
   nome: string;
 }

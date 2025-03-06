@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 export async function GET(req: Request) {
   const produtoId = req.url.split("/").pop();
 
-  if (!produtoId || isNaN(Number(produtoId))) {
+  if (!produtoId) {
     console.error("ID do produto inválido:", produtoId);
     return NextResponse.json(
       { error: "ID do produto inválido" },
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
 
   try {
     const estoque = await prisma.estoque.findMany({
-      where: { produtoId: Number(produtoId) },
+      where: { produtoId: produtoId },
       include: { armazem: true }, // Inclui informações do armazém
     });
 

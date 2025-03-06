@@ -11,7 +11,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Dados incompletos" }, { status: 400 });
   }
 
-  // Verificar se o usuário já existe
   const existingUser = await prisma.user.findUnique({
     where: { email },
   });
@@ -23,10 +22,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Hash da senha
   const hashedPassword = await bcrypt.hash(password, 10);
 
-  // Criar usuário
   const user = await prisma.user.create({
     data: {
       email,

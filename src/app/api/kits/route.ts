@@ -5,7 +5,7 @@ import { NextRequest } from "next/server";
 const prisma = new PrismaClient();
 
 interface Componente {
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
 }
 
@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
           isKit: true,
           estoques: {
             some: {
-              armazemId: Number(armazemId),
+              armazemId: armazemId,
             },
           },
         },
@@ -86,7 +86,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Handler para o método POST
 export async function POST(req: NextRequest) {
   const user = await verifyUser(req);
   const body = await req.json();
@@ -118,7 +117,6 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Atualizar o estoque dos produtos componentes
       for (const componente of componentes) {
         await prisma.estoque.updateMany({
           where: { produtoId: componente.produtoId },
@@ -156,7 +154,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Handler para o método DELETE
 export async function DELETE(req: NextRequest) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
@@ -169,7 +166,7 @@ export async function DELETE(req: NextRequest) {
 
   try {
     await prisma.produto.delete({
-      where: { id: Number(id) },
+      where: { id: id },
     });
 
     return new Response(null, { status: 204 });

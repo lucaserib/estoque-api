@@ -2,13 +2,14 @@
 import { useState, useEffect } from "react";
 import { Fornecedor, FornecedorProduto } from "../../types";
 import { FaPlus, FaTrash, FaChevronDown } from "react-icons/fa";
+import { brlToCents, centsToBRL, formatBRL } from "@/utils/currency";
 
 const NovoPedido = () => {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [fornecedorProduto, setFornecedorProduto] = useState<
     FornecedorProduto[]
   >([]);
-  const [fornecedorId, setFornecedorId] = useState<number | null>(null);
+  const [fornecedorId, setFornecedorId] = useState<string | null>(null);
   const [novoProduto, setNovoProduto] = useState({
     produtoId: "",
     quantidade: "",
@@ -76,7 +77,7 @@ const NovoPedido = () => {
     const pedido = {
       fornecedorId,
       produtos: produtosPedido.map((p) => ({
-        produtoId: Number(p.produtoId),
+        produtoId: p.produtoId,
         quantidade: Number(p.quantidade),
         custo: Number(p.custo),
         multiplicador: Number(p.multiplicador) || 1, // Inclui o multiplicador
@@ -127,7 +128,7 @@ const NovoPedido = () => {
         ...novoProduto,
         sku: produtoFornecedor.produto.sku,
         produtoId: produtoFornecedor.produtoId.toString(),
-        custo: produtoFornecedor.preco.toString(),
+        custo: centsToBRL(produtoFornecedor.preco),
         codigoNF: produtoFornecedor.codigoNF,
         multiplicador: produtoFornecedor.multiplicador.toString(),
       });
@@ -161,10 +162,12 @@ const NovoPedido = () => {
   const calcularValorTotal = () =>
     produtosPedido.reduce((total, produto) => {
       const quantidade = Number(produto.quantidade);
-      const custo = Number(produto.custo);
+      const custo = brlToCents(produto.custo);
       const multiplicador = Number(produto.multiplicador) || 1;
       return total + quantidade * custo * multiplicador;
     }, 0);
+
+  const custoProdutoPedido = produtosPedido.map((produto) => produto.custo);
 
   return (
     <div className="bg-white dark:bg-gray-900 shadow-xl rounded-xl p-6">
@@ -180,9 +183,7 @@ const NovoPedido = () => {
             <div className="relative">
               <select
                 value={fornecedorId || ""}
-                onChange={(e) =>
-                  setFornecedorId(Number(e.target.value) || null)
-                }
+                onChange={(e) => setFornecedorId(e.target.value || null)}
                 className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
               >
                 <option value="">Selecione um fornecedor</option>
@@ -279,11 +280,10 @@ const NovoPedido = () => {
                       Qtd: {produto.quantidade}
                     </span>
                     <span className="text-gray-700 dark:text-gray-300">
-                      R${" "}
-                      {(
-                        Number(produto.custo) *
-                        Number(produto.multiplicador || 1)
-                      ).toFixed(2)}
+                      {formatBRL(
+                        brlToCents(Number(produto.custo)) *
+                          Number(produto.multiplicador || 1)
+                      )}
                     </span>
                   </div>
                   <button
@@ -300,7 +300,7 @@ const NovoPedido = () => {
 
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-            Valor Total: R$ {calcularValorTotal().toFixed(2)}
+            Valor Total: {formatBRL(calcularValorTotal())}
           </h3>
           <button
             type="submit"

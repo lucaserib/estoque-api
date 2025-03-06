@@ -27,7 +27,7 @@ model User {
 }
 
 model Account {
-  id                String   @id @default(cuid())
+  id                String   @id @default(uuid())
   userId            String
   type              String
   provider          String
@@ -45,7 +45,7 @@ model Account {
 }
 
 model Session {
-  id           String   @id @default(cuid())
+  id           String   @id @default(uuid())
   sessionToken String   @unique
   userId       String
   expires      DateTime
@@ -55,7 +55,7 @@ model Session {
 }
 
 model Produto {
-  id              Int                 @id @default(autoincrement())
+  id              String              @id @default(uuid())
   nome            String
   sku             String              @unique
   isKit           Boolean             @default(false)
@@ -64,7 +64,7 @@ model Produto {
   user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   componentes     Componente[]        @relation("KitToComponente")
   kitsComponentes Componente[]        @relation("ProdutoToComponente")
-  custoMedio      Float?              @default(0)
+  custoMedio      Int?                @default(0)
   detalhesSaida   DetalhesSaida[]
   estoques        Estoque[]
   pedidos         PedidoProduto[]
@@ -75,15 +75,15 @@ model Produto {
 model Componente {
   id         Int     @id @default(autoincrement())
   quantidade Int
-  produtoId  Int
-  kitId      Int
+  produtoId  String
+  kitId      String
   kit        Produto @relation("KitToComponente", fields: [kitId], references: [id])
   produto    Produto @relation("ProdutoToComponente", fields: [produtoId], references: [id])
 }
 
 model Estoque {
-  produtoId        Int
-  armazemId        Int
+  produtoId        String
+  armazemId        String
   quantidade       Int
   estoqueSeguranca Int?
   armazem          Armazem @relation(fields: [armazemId], references: [id])
@@ -93,10 +93,10 @@ model Estoque {
 }
 
 model Saida {
-  id        Int             @id @default(autoincrement())
+  id        String          @id @default(uuid())
   data      DateTime        @default(now())
-  armazemId Int
-  produtoId Int?
+  armazemId String
+  produtoId String?
   userId    String
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   detalhes  DetalhesSaida[]
@@ -106,8 +106,8 @@ model Saida {
 
 model DetalhesSaida {
   id         Int     @id @default(autoincrement())
-  saidaId    Int
-  produtoId  Int
+  saidaId    String
+  produtoId  String
   quantidade Int
   isKit      Boolean
   produto    Produto @relation(fields: [produtoId], references: [id])
@@ -115,7 +115,7 @@ model DetalhesSaida {
 }
 
 model Armazem {
-  id       Int       @id @default(autoincrement())
+  id       String    @id @default(uuid())
   nome     String
   userId   String
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -124,7 +124,7 @@ model Armazem {
 }
 
 model Fornecedor {
-  id                Int                 @id @default(autoincrement())
+  id                String              @id @default(uuid())
   nome              String
   cnpj              String?
   inscricaoEstadual String?
@@ -138,12 +138,12 @@ model Fornecedor {
 
 model PedidoCompra {
   id            Int             @id @default(autoincrement())
-  fornecedorId  Int
+  fornecedorId  String
   userId        String
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   comentarios   String?
   status        String
-  armazemId     Int?
+  armazemId     String?
   dataPrevista  DateTime?
   dataConclusao DateTime?
   fornecedor    Fornecedor      @relation(fields: [fornecedorId], references: [id])
@@ -153,9 +153,9 @@ model PedidoCompra {
 model PedidoProduto {
   id            Int          @id @default(autoincrement())
   pedidoId      Int
-  produtoId     Int
+  produtoId     String
   quantidade    Int
-  custo         Float
+  custo         Int
   multiplicador Int          @default(1)
   pedido        PedidoCompra @relation(fields: [pedidoId], references: [id])
   produto       Produto      @relation(fields: [produtoId], references: [id])
@@ -163,9 +163,9 @@ model PedidoProduto {
 
 model ProdutoFornecedor {
   id            Int        @id @default(autoincrement())
-  produtoId     Int
-  fornecedorId  Int
-  preco         Float
+  produtoId     String
+  fornecedorId  String
+  preco         Int
   multiplicador Float
   codigoNF      String?
   fornecedor    Fornecedor @relation(fields: [fornecedorId], references: [id])

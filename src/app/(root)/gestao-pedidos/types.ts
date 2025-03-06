@@ -1,18 +1,18 @@
 export interface Fornecedor {
-  id: number;
+  id: string;
   nome: string;
 }
 
 export interface Produto {
-  id: number;
+  id: string;
   nome: string;
   sku: string;
   multiplicador?: number;
 }
 
 export interface FornecedorProduto {
-  produtoId: number;
-  fornecedorId: number;
+  produtoId: string;
+  fornecedorId: string;
   preco: number;
   multiplicador: number;
   codigoNF: string;
@@ -20,7 +20,7 @@ export interface FornecedorProduto {
 }
 
 export interface PedidoProduto {
-  produtoId: number;
+  produtoId: string;
   quantidade: number;
   custo: number;
   multiplicador?: number;

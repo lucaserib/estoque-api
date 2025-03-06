@@ -8,8 +8,8 @@ export async function PUT(request: Request) {
   const { produtoId, armazemId, estoqueSeguranca } = body;
 
   if (
-    typeof produtoId !== "number" ||
-    typeof armazemId !== "number" ||
+    typeof produtoId !== "string" ||
+    typeof armazemId !== "string" ||
     typeof estoqueSeguranca !== "number"
   ) {
     return NextResponse.json(

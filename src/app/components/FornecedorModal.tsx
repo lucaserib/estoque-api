@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 
 interface Fornecedor {
-  id: number;
+  id: string;
   nome: string;
 }
 
 interface ProdutoFornecedor {
-  id: number;
+  id: string;
   fornecedor: Fornecedor;
   preco: number;
   multiplicador: number;
@@ -14,7 +14,7 @@ interface ProdutoFornecedor {
 }
 
 interface Produto {
-  id: number;
+  id: string;
   nome: string;
   sku: string;
 }
@@ -29,14 +29,14 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
   const [fornecedoresVinculados, setFornecedoresVinculados] = useState<
     ProdutoFornecedor[]
   >([]);
-  const [fornecedorId, setFornecedorId] = useState<number | null>(null);
+  const [fornecedorId, setFornecedorId] = useState<string | null>(null);
   const [preco, setPreco] = useState("");
   const [multiplicador, setMultiplicador] = useState("");
   const [codigoNF, setCodigoNF] = useState("");
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
 
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchFornecedores = async () => {
@@ -89,8 +89,8 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
         body: JSON.stringify({
           produtoId: produto.id,
           fornecedorId,
-          preco: parseFloat(preco),
-          multiplicador: parseFloat(multiplicador),
+          preco: parseInt(preco),
+          multiplicador: parseInt(multiplicador),
           codigoNF,
         }),
       });
@@ -117,7 +117,7 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
     }
   };
 
-  const handleDelete = async (vinculoId: number) => {
+  const handleDelete = async (vinculoId: string) => {
     try {
       const response = await fetch(`/api/produto-fornecedor?id=${vinculoId}`, {
         method: "DELETE",
@@ -141,14 +141,13 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
   };
 
   const handleEdit = (vinculo: ProdutoFornecedor) => {
-    // Entra em modo de edição
     setEditingId(vinculo.id);
     setPreco(vinculo.preco.toString());
     setMultiplicador(vinculo.multiplicador.toString());
     setCodigoNF(vinculo.codigoNF);
   };
 
-  const handleSaveEdit = async (vinculoId: number) => {
+  const handleSaveEdit = async (vinculoId: string) => {
     if (!preco || !multiplicador || !codigoNF) {
       setMessage("Preencha todos os campos para salvar a edição");
       setMessageType("error");
@@ -244,7 +243,7 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
                         style: "currency",
                         currency: "BRL",
                       }).format(fornecedor.preco)}{" "}
-                      | Multiplicador:{" "}
+                      //NOT SURE | Multiplicador:{" "}
                       {fornecedor?.multiplicador ??
                         "Multiplicador não disponível"}
                     </p>
@@ -294,7 +293,7 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
 
           <select
             value={fornecedorId || ""}
-            onChange={(e) => setFornecedorId(Number(e.target.value))}
+            onChange={(e) => setFornecedorId(e.target.value)}
             className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 dark:bg-gray-700"
           >
             <option value="">Selecione um fornecedor</option>

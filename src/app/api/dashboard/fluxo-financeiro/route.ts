@@ -9,11 +9,9 @@ export async function GET(request: NextRequest) {
     const user = await verifyUser(request);
     const { searchParams } = new URL(request.url);
 
-    // Garantir que as datas recebidas sejam válidas
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
-    // Converter para objetos Date, garantindo que sejam válidos
     const startDate = startDateParam
       ? new Date(startDateParam)
       : new Date("2000-01-01");
@@ -23,7 +21,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Datas inválidas" }, { status: 400 });
     }
 
-    // Definir período anterior para comparação
     const previousStartDate = new Date(startDate);
     const previousEndDate = new Date(startDate);
     previousStartDate.setDate(
@@ -31,7 +28,6 @@ export async function GET(request: NextRequest) {
         (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    // Buscar total de ENTRADAS (compras feitas)
     const entradas = await prisma.pedidoProduto.aggregate({
       where: {
         pedido: {
@@ -42,7 +38,6 @@ export async function GET(request: NextRequest) {
       _sum: { custo: true },
     });
 
-    // Buscar total de SAÍDAS (vendas feitas)
     const saidas = await prisma.detalhesSaida.aggregate({
       where: {
         saida: {
@@ -53,7 +48,6 @@ export async function GET(request: NextRequest) {
       _sum: { quantidade: true },
     });
 
-    // Buscar custo total das saídas (custo médio dos produtos vendidos)
     const custoSaidas = await prisma.detalhesSaida.findMany({
       where: {
         saida: {
@@ -67,14 +61,12 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Somar o custo total das saídas corretamente
     const totalCustoSaidas = custoSaidas.reduce(
       (total, item) =>
         total + (item.produto?.custoMedio ?? 0) * item.quantidade,
       0
     );
 
-    // Buscar saídas no período ANTERIOR para comparação
     const saidasAnterior = await prisma.detalhesSaida.aggregate({
       where: {
         saida: {
@@ -89,7 +81,6 @@ export async function GET(request: NextRequest) {
     const totalSaidas = saidas._sum.quantidade ?? 0;
     const totalSaidasAnterior = saidasAnterior._sum.quantidade ?? 0;
 
-    // Cálculo da variação percentual das saídas
     const variacaoSaidas =
       totalSaidasAnterior > 0
         ? ((totalSaidas - totalSaidasAnterior) / totalSaidasAnterior) * 100

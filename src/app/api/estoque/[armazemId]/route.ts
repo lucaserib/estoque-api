@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
   try {
     const estoque = await prisma.estoque.findMany({
-      where: { armazemId: Number(armazemId) },
+      where: { armazemId: armazemId },
       include: { produto: true },
     });
 

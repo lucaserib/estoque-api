@@ -3,14 +3,14 @@ import { useState } from "react";
 
 interface EditarProdutoModalProps {
   produto: {
-    id: number;
+    id: string;
     nome: string;
     sku: string;
     ean?: string;
   };
   onClose: () => void;
   onSave: (produto: {
-    id: number;
+    id: string;
     nome: string;
     sku: string;
     ean: string;
