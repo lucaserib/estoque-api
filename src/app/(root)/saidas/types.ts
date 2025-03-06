@@ -9,7 +9,7 @@ export interface KitComponente {
   produtoId: string;
   quantidade: number;
   sku: string;
-  produto?: Produto;
+  produto: Produto;
 }
 
 export interface SaidaProduto {

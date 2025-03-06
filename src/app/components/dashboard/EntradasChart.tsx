@@ -43,7 +43,7 @@ const EntradasChart = () => {
 
   useEffect(() => {
     fetchData();
-  }, [period]);
+  }, [fetchData]);
 
   return (
     <Card className="shadow-md">

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { FaPlus, FaTrash, FaChevronDown } from "react-icons/fa";
 import { useFetch } from "@/app/hooks/useFetch";
-import { Produto, Armazem, SaidaProduto } from "../types";
+import { Produto, Armazem, SaidaProduto, KitComponente } from "../types";
 
 interface NovaSaidaModalProps {
   onClose: () => void;
@@ -91,10 +91,12 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
             );
             if (existing) {
               existing.quantidade += qty;
-              existing.componentes = kit.componentes.map((c: any) => ({
-                ...c,
-                quantidade: c.quantidade * (existing.quantidade + qty),
-              }));
+              existing.componentes = kit.componentes.map(
+                (c: KitComponente) => ({
+                  ...c,
+                  quantidade: c.quantidade * (existing.quantidade + qty),
+                })
+              );
               return [...prev];
             }
             return [
@@ -104,7 +106,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
                 quantidade: qty,
                 sku: kit.sku,
                 isKit: true,
-                componentes: kit.componentes.map((c: any) => ({
+                componentes: kit.componentes.map((c: KitComponente) => ({
                   produtoId: c.produto.id,
                   quantidade: c.quantidade * qty,
                   sku: c.produto.sku,
