@@ -18,6 +18,6 @@ export const useFetch = <T>(url: string, filter?: (data: T[]) => T[]) => {
       }
     };
     fetchData();
-  }, [url]);
+  }, [url, filter]);
   return { data, loading, error };
 };

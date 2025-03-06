@@ -78,7 +78,7 @@ const Armazens = () => {
   const fetchArmazens = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/estoque/criarArmazem"); //NOT SURE
+      const response = await fetch("/api/estoque/criarArmazem"); //Not Sure
       const data = await response.json();
       setArmazens(data);
     } catch (error) {

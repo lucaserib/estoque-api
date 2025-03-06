@@ -243,7 +243,7 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
                         style: "currency",
                         currency: "BRL",
                       }).format(fornecedor.preco)}{" "}
-                      //NOT SURE | Multiplicador:{" "}
+                      | Multiplicador:{" "}
                       {fornecedor?.multiplicador ??
                         "Multiplicador não disponível"}
                     </p>

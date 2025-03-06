@@ -14,7 +14,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
   const [sku, setSku] = useState("");
   const [quantidade, setQuantidade] = useState("");
   const [saidaProdutos, setSaidaProdutos] = useState<SaidaProduto[]>([]);
-  const [armazemId, setArmazemId] = useState<number | null>(null);
+  const [armazemId, setArmazemId] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -25,14 +25,12 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
     armazemId ? `/api/produtos?armazemId=${armazemId}` : ""
   );
 
-  // Filtra produtos com base no SKU ou nome digitado
   const filteredProdutos = produtos.filter(
     (produto) =>
       produto.sku.toLowerCase().includes(sku.toLowerCase()) ||
       produto.nome.toLowerCase().includes(sku.toLowerCase())
   );
 
-  // Fecha o dropdown ao clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -47,8 +45,8 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
   }, []);
 
   const handleSelectProduto = (produto: Produto) => {
-    setSku(produto.sku); // Preenche o input com o SKU selecionado
-    setIsDropdownOpen(false); // Fecha o dropdown
+    setSku(produto.sku);
+    setIsDropdownOpen(false);
   };
 
   const handleAddProduto = async () => {
@@ -63,7 +61,6 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
 
     try {
       if (produtoToAdd) {
-        // Produto normal encontrado
         setSaidaProdutos((prev) => {
           const existing = prev.find(
             (p) => p.produtoId === produtoToAdd.id && !p.isKit
@@ -83,7 +80,6 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
           ];
         });
       } else {
-        // Verifica se é um kit
         const kitResponse = await fetch(`/api/kits?sku=${sku}`);
         const kitData = await kitResponse.json();
 
@@ -182,7 +178,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
             <div className="relative">
               <select
                 value={armazemId || ""}
-                onChange={(e) => setArmazemId(Number(e.target.value) || null)}
+                onChange={(e) => setArmazemId(e.target.value || null)}
                 className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
               >
                 <option value="">Selecione um armazém</option>

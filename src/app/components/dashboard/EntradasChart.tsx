@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { formatBRL } from "@/utils/currency";
 
 const EntradasChart = () => {
   const [data, setData] = useState<
@@ -27,11 +28,7 @@ const EntradasChart = () => {
   const [period, setPeriod] = useState("hoje");
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, [period]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch(`/api/dashboard/entradas?period=${period}`);
@@ -42,7 +39,11 @@ const EntradasChart = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [period]);
+
+  useEffect(() => {
+    fetchData();
+  }, [period]);
 
   return (
     <Card className="shadow-md">
@@ -72,9 +73,7 @@ const EntradasChart = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="periodo" />
               <YAxis />
-              <Tooltip
-                formatter={(value) => `R$ ${value.toLocaleString("pt-BR")}`}
-              />
+              <Tooltip formatter={(value: number) => formatBRL(value)} />
               <Bar dataKey="quantidade" fill="#34D399" name="Quantidade" />
               <Bar dataKey="valor" fill="#2563EB" name="Valor Total" />
             </BarChart>
