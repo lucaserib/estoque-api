@@ -1,67 +1,144 @@
 "use client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { TrendingDown, TrendingUp } from "lucide-react";
-import React, { useEffect, useState } from "react";
 
-interface ValorEstoque {
+import React, { useEffect, useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { BarChart, TrendingUp, AlertCircle } from "lucide-react";
+
+interface ValorEstoqueData {
   valorTotal: string;
   quantidadeTotal: number;
+  valorMedio?: string;
 }
 
 const CardValorEstoque = () => {
-  const [data, setData] = useState<ValorEstoque | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<ValorEstoqueData>({
+    valorTotal: "0.00",
+    quantidadeTotal: 0,
+    valorMedio: "0.00",
+  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch("/api/dashboard/valor-estoque");
+
+        if (!response.ok) {
+          throw new Error("Falha ao obter dados do estoque");
+        }
+
+        const result = await response.json();
+
+        // Calcular valor médio por item
+        const valorMedio =
+          result.quantidadeTotal > 0
+            ? (parseFloat(result.valorTotal) / result.quantidadeTotal).toFixed(
+                2
+              )
+            : "0.00";
+
+        setData({
+          ...result,
+          valorMedio,
+        });
+      } catch (err) {
+        console.error("Erro ao carregar valor de estoque:", err);
+        setError("Não foi possível carregar os dados do estoque");
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/dashboard/valor-estoque`);
-      const result = await response.json();
-      setData(result);
-    } catch (error) {
-      console.error("Erro ao buscar valor do estoque:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  if (error) {
+    return (
+      <Card className="shadow-md border-orange-200 bg-orange-50">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-bold flex items-center">
+            <AlertCircle className="mr-2 h-5 w-5 text-orange-600" />
+            Erro ao Carregar Dados
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-orange-700">{error}</p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
-    <Card className="shadow-md p-4">
-      {isLoading ? (
-        <Skeleton className="h-10 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
-      ) : data ? (
-        <>
-          <CardHeader>
-            <CardTitle className="text-lg font-bold">
-              Valor total em estoque
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center mb-2">
-              <div>
-                <p className="text-gray-500 text-sm">Custo Total Armazenado</p>
-                <p className="text-2xl font-bold">
-                  R$ {parseFloat(data.valorTotal).toLocaleString("pt-BR")}
-                </p>
+    <Card className="shadow-md h-full">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg font-bold flex items-center">
+          <TrendingUp className="mr-2 h-5 w-5 text-blue-600" />
+          Valor do Estoque
+        </CardTitle>
+        <CardDescription>Análise do valor atual do seu estoque</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-3/4" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg">
+                <p className="text-sm font-medium text-blue-600">Valor Total</p>
+                <h3 className="text-2xl font-bold mt-1">
+                  R${" "}
+                  {parseFloat(data.valorTotal).toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2,
+                  })}
+                </h3>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg">
+                <p className="text-sm font-medium text-green-600">Quantidade</p>
+                <h3 className="text-2xl font-bold mt-1">
+                  {data.quantidadeTotal.toLocaleString("pt-BR")} itens
+                </h3>
               </div>
             </div>
 
-            <p className="text-gray-500 text-sm">
-              Quantidade Total de Produtos
-            </p>
-            <p className="text-xl font-semibold">
-              {data.quantidadeTotal} itens
-            </p>
-          </CardContent>
-        </>
-      ) : (
-        <p className="text-center text-gray-500">Nenhum dado encontrado</p>
-      )}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm font-medium text-gray-600">
+                Valor Médio por Item
+              </p>
+              <h3 className="text-2xl font-bold mt-1">
+                R${" "}
+                {parseFloat(data.valorMedio || "0").toLocaleString("pt-BR", {
+                  minimumFractionDigits: 2,
+                })}
+              </h3>
+              <p className="text-xs text-gray-500 mt-2">
+                Representa o custo médio por item no seu estoque
+              </p>
+            </div>
+
+            <div className="flex items-center text-sm text-gray-500 mt-2">
+              <BarChart className="h-4 w-4 mr-1 text-blue-500" />
+              Atualizado em{" "}
+              {new Date().toLocaleDateString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </div>
+          </div>
+        )}
+      </CardContent>
     </Card>
   );
 };

@@ -24,6 +24,7 @@ import {
   PackageIcon,
   TrendingUp,
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Dashboard = () => {
   const [summaryData, setSummaryData] = useState({
@@ -32,20 +33,25 @@ const Dashboard = () => {
     totalValue: "0.00",
     lowStockCount: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const [dateFilter, setDateFilter] = useState({
+    startDate: new Date(
+      new Date().setDate(new Date().getDate() - 30)
+    ).toISOString(),
+    endDate: new Date().toISOString(),
+  });
 
   // Fetch summary data on load
   useEffect(() => {
     const fetchSummaryData = async () => {
+      setLoading(true);
       try {
         // These could be combined into a single API endpoint for better performance
         const [valorResponse, fluxoResponse, estoqueResponse] =
           await Promise.all([
             fetch("/api/dashboard/valor-estoque"),
             fetch(
-              "/api/dashboard/fluxo-financeiro?startDate=" +
-                new Date(
-                  new Date().setDate(new Date().getDate() - 30)
-                ).toISOString()
+              `/api/dashboard/fluxo-financeiro?startDate=${dateFilter.startDate}&endDate=${dateFilter.endDate}`
             ),
             fetch("/api/dashboard/estoque-seguranca"),
           ]);
@@ -62,11 +68,13 @@ const Dashboard = () => {
         });
       } catch (error) {
         console.error("Erro ao buscar dados resumidos:", error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchSummaryData();
-  }, []);
+  }, [dateFilter]);
 
   return (
     <div className="max-w-[1400px] mx-auto p-6">
@@ -79,78 +87,96 @@ const Dashboard = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Valor Total
-                </p>
-                <h3 className="text-2xl font-bold mt-1">
-                  R${" "}
-                  {parseFloat(summaryData.totalValue).toLocaleString("pt-BR")}
-                </h3>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                <TrendingUp className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {loading ? (
+          Array(4)
+            .fill(0)
+            .map((_, i) => (
+              <Card key={i} className="shadow-sm">
+                <CardContent className="p-6">
+                  <Skeleton className="h-20 w-full" />
+                </CardContent>
+              </Card>
+            ))
+        ) : (
+          <>
+            <Card className="shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Valor Total
+                    </p>
+                    <h3 className="text-2xl font-bold mt-1">
+                      R${" "}
+                      {parseFloat(summaryData.totalValue).toLocaleString(
+                        "pt-BR",
+                        { minimumFractionDigits: 2 }
+                      )}
+                    </h3>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
+                    <TrendingUp className="h-6 w-6 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Entradas (30d)
-                </p>
-                <h3 className="text-2xl font-bold mt-1">
-                  {summaryData.entriesCount} itens
-                </h3>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                <ArrowUpIcon className="h-6 w-6 text-emerald-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Entradas (30d)
+                    </p>
+                    <h3 className="text-2xl font-bold mt-1">
+                      {summaryData.entriesCount.toLocaleString("pt-BR")} itens
+                    </h3>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <ArrowUpIcon className="h-6 w-6 text-emerald-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Saídas (30d)
-                </p>
-                <h3 className="text-2xl font-bold mt-1">
-                  {summaryData.outputsCount} itens
-                </h3>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
-                <ArrowDownIcon className="h-6 w-6 text-orange-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Saídas (30d)
+                    </p>
+                    <h3 className="text-2xl font-bold mt-1">
+                      {summaryData.outputsCount.toLocaleString("pt-BR")} itens
+                    </h3>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center">
+                    <ArrowDownIcon className="h-6 w-6 text-orange-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
-        <Card className="shadow-sm hover:shadow-md transition-shadow">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">
-                  Estoque Crítico
-                </p>
-                <h3 className="text-2xl font-bold mt-1">
-                  {summaryData.lowStockCount} produtos
-                </h3>
-              </div>
-              <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="h-6 w-6 text-red-600" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Card className="shadow-sm hover:shadow-md transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Estoque Crítico
+                    </p>
+                    <h3 className="text-2xl font-bold mt-1">
+                      {summaryData.lowStockCount.toLocaleString("pt-BR")}{" "}
+                      {summaryData.lowStockCount === 1 ? "produto" : "produtos"}
+                    </h3>
+                  </div>
+                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                    <AlertTriangle className="h-6 w-6 text-red-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </>
+        )}
       </div>
 
       {/* Main Dashboard Content */}
@@ -189,7 +215,6 @@ const Dashboard = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Safety Stock - Always Visible */}
       <Card className="shadow-md border-red-200 bg-red-50 mb-6">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold flex items-center">
