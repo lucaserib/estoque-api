@@ -24,9 +24,16 @@ interface FluxoFinanceiro {
   variacaoSaidas: string;
 }
 
+interface ChartDataItem {
+  date: string;
+  entradas: number;
+  saidas: number;
+  custoSaidas: string;
+}
+
 const FluxoFinanceiroChart = () => {
   const [data, setData] = useState<FluxoFinanceiro | null>(null);
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [chartData, setChartData] = useState<ChartDataItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [period, setPeriod] = useState("mensal");
 
@@ -54,7 +61,7 @@ const FluxoFinanceiroChart = () => {
 
         // Data for the trend chart - mock data for demonstration
         // In a real app, you would fetch this historical data from the API
-        const mockHistoricalData = [];
+        const mockHistoricalData: ChartDataItem[] = [];
         const daysInPeriod =
           period === "semanal" ? 7 : period === "mensal" ? 30 : 12;
 
@@ -101,6 +108,21 @@ const FluxoFinanceiroChart = () => {
   const isPositiveVariation = data
     ? parseFloat(data.variacaoSaidas) >= 0
     : false;
+
+  // Formatter para o tooltip - corrigindo o erro de tipo
+  const formatTooltipValue = (value: any) => {
+    if (typeof value === "number") {
+      return value.toLocaleString("pt-BR") + " itens";
+    }
+    return value;
+  };
+
+  const formatTooltipCurrency = (value: any) => {
+    if (value) {
+      return "R$ " + parseFloat(String(value)).toLocaleString("pt-BR");
+    }
+    return value;
+  };
 
   return (
     <Card className="shadow-md overflow-hidden h-full">
@@ -259,9 +281,7 @@ const FluxoFinanceiroChart = () => {
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
-                      formatter={(value) => [
-                        parseInt(value).toLocaleString("pt-BR") + " itens",
-                      ]}
+                      formatter={formatTooltipValue}
                       labelFormatter={(label) => `Data: ${label}`}
                     />
                     <Legend />
@@ -315,9 +335,7 @@ const FluxoFinanceiroChart = () => {
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
-                      formatter={(value) => [
-                        "R$ " + parseFloat(value).toLocaleString("pt-BR"),
-                      ]}
+                      formatter={formatTooltipCurrency}
                       labelFormatter={(label) => `Data: ${label}`}
                     />
                     <Legend />
