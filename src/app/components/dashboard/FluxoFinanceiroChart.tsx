@@ -110,14 +110,26 @@ const FluxoFinanceiroChart = () => {
     : false;
 
   // Formatter para o tooltip - corrigindo o erro de tipo
-  const formatTooltipValue = (value: any) => {
+  const formatTooltipValue = (
+    value: number | string | (number | string)[] | undefined
+  ) => {
     if (typeof value === "number") {
       return value.toLocaleString("pt-BR") + " itens";
+    }
+    if (Array.isArray(value)) {
+      return value.map((v) => v.toLocaleString("pt-BR")).join(", ") + " itens";
     }
     return value;
   };
 
-  const formatTooltipCurrency = (value: any) => {
+  const formatTooltipCurrency = (
+    value: number | string | (number | string)[] | undefined
+  ) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((v) => "R$ " + parseFloat(String(v)).toLocaleString("pt-BR"))
+        .join(", ");
+    }
     if (value) {
       return "R$ " + parseFloat(String(value)).toLocaleString("pt-BR");
     }

@@ -37,12 +37,10 @@ const TopProdutosList = () => {
     }
   }, [startDate, endDate]);
 
-  // Executa fetchData quando o componente é montado
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  // Formatando a data atual para o campo de data
   useEffect(() => {
     if (!endDate) {
       const today = new Date();
@@ -54,9 +52,8 @@ const TopProdutosList = () => {
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
       setStartDate(thirtyDaysAgo.toISOString().split("T")[0]);
     }
-  }, []);
+  }, [endDate, startDate]);
 
-  // Determina a cor do badge com base na posição do ranking
   const getBadgeColor = (index: number) => {
     if (index === 0) return "bg-amber-500";
     if (index === 1) return "bg-gray-400";
