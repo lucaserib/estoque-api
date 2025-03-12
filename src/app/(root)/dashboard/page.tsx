@@ -13,6 +13,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -23,8 +24,11 @@ import {
   AlertTriangle,
   PackageIcon,
   TrendingUp,
+  Calendar,
+  RefreshCcw,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 const Dashboard = () => {
   const [summaryData, setSummaryData] = useState({
@@ -77,15 +81,25 @@ const Dashboard = () => {
   }, [dateFilter]);
 
   return (
-    <div className="max-w-[1400px] mx-auto p-6">
-      <div className="mb-6">
-        <Header name="Dashboard" />
-        <p className="text-muted-foreground mt-1">
-          Visão geral do seu sistema de estoque e movimentações
-        </p>
+    <div className="max-w-[1400px] mx-auto p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div>
+          <Header name="Dashboard" />
+          <p className="text-muted-foreground mt-1">
+            Visão geral do seu sistema de estoque e movimentações
+          </p>
+        </div>
+
+        {/* Indicador simples do período */}
+        <div className="mt-4 sm:mt-0">
+          <Badge variant="outline" className="text-sm py-1 px-3">
+            <Calendar className="h-3 w-3 mr-1 inline" />
+            Últimos 30 dias
+          </Badge>
+        </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards - Reorganized for better logical grouping */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {loading ? (
           Array(4)
@@ -99,6 +113,7 @@ const Dashboard = () => {
             ))
         ) : (
           <>
+            {/* Movimentação de valor - Card mais importante */}
             <Card className="shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
@@ -121,12 +136,13 @@ const Dashboard = () => {
               </CardContent>
             </Card>
 
+            {/* Cards de movimentação física agrupados juntos */}
             <Card className="shadow-sm hover:shadow-md transition-shadow">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Entradas (30d)
+                      Entradas
                     </p>
                     <h3 className="text-2xl font-bold mt-1">
                       {summaryData.entriesCount.toLocaleString("pt-BR")} itens
@@ -137,6 +153,9 @@ const Dashboard = () => {
                   </div>
                 </div>
               </CardContent>
+              <CardFooter className="py-2 px-6 bg-emerald-50 text-xs text-emerald-700 rounded-b-lg">
+                Últimos 30 dias
+              </CardFooter>
             </Card>
 
             <Card className="shadow-sm hover:shadow-md transition-shadow">
@@ -144,7 +163,7 @@ const Dashboard = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">
-                      Saídas (30d)
+                      Saídas
                     </p>
                     <h3 className="text-2xl font-bold mt-1">
                       {summaryData.outputsCount.toLocaleString("pt-BR")} itens
@@ -155,21 +174,25 @@ const Dashboard = () => {
                   </div>
                 </div>
               </CardContent>
+              <CardFooter className="py-2 px-6 bg-orange-50 text-xs text-orange-700 rounded-b-lg">
+                Últimos 30 dias
+              </CardFooter>
             </Card>
 
-            <Card className="shadow-sm hover:shadow-md transition-shadow">
+            {/* Alerta de estoque como elemento que requer atenção */}
+            <Card className="shadow-sm hover:shadow-md transition-shadow border-red-200 bg-red-50">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">
+                    <p className="text-sm font-medium text-red-600">
                       Estoque Crítico
                     </p>
-                    <h3 className="text-2xl font-bold mt-1">
+                    <h3 className="text-2xl font-bold mt-1 text-red-700">
                       {summaryData.lowStockCount.toLocaleString("pt-BR")}{" "}
                       {summaryData.lowStockCount === 1 ? "produto" : "produtos"}
                     </h3>
                   </div>
-                  <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-full bg-red-200 flex items-center justify-center">
                     <AlertTriangle className="h-6 w-6 text-red-600" />
                   </div>
                 </div>
@@ -192,29 +215,31 @@ const Dashboard = () => {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="mt-0">
+        <TabsContent value="overview" className="mt-0 space-y-6">
+          {/* Reorganizando para melhor utilização do espaço em telas grandes */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="col-span-1">
-              <TopProdutosChart />
-            </div>
-            <div className="col-span-1 lg:col-span-2">
+            <div className="lg:col-span-2 order-2 lg:order-1">
               <FluxoFinanceiroChart />
+            </div>
+            <div className="order-1 lg:order-2">
+              <TopProdutosChart />
             </div>
           </div>
         </TabsContent>
 
-        <TabsContent value="analytics" className="mt-0">
+        <TabsContent value="analytics" className="mt-0 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="col-span-1">
-              <CardValorEstoque />
-            </div>
-            <div className="col-span-1 lg:col-span-2">
+            <div className="lg:col-span-2 order-2 lg:order-1">
               <EntradasChart />
+            </div>
+            <div className="order-1 lg:order-2">
+              <CardValorEstoque />
             </div>
           </div>
         </TabsContent>
       </Tabs>
 
+      {/* Alerta de Estoque de Segurança */}
       <Card className="shadow-md border-red-200 bg-red-50 mb-6">
         <CardHeader className="pb-2">
           <CardTitle className="text-lg font-bold flex items-center">
