@@ -18,26 +18,27 @@ export function PedidoPagination({
   totalPages,
   onPageChange,
   totalItems,
-  itemsPerPage,
   currentFirstItem,
   currentLastItem,
 }: PedidoPaginationProps) {
-  // Função para gerar o array de páginas a exibir
-  const getPageNumbers = (): (number | "ellipsis")[] => {
-    const pageNumbers: (number | "ellipsis")[] = [];
+  // Função para gerar o array de páginas a exibir de forma eficiente
+  const getPageNumbers = (): Array<number | "ellipsis"> => {
+    // Para um número baixo de páginas, mostramos todas
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
 
-    // Sempre mostrar primeira e última página
-    // E mostrar 1 página antes e depois da atual
+    const pageNumbers: Array<number | "ellipsis"> = [];
 
-    // Primeira página
+    // Sempre mostrar a primeira página
     pageNumbers.push(1);
 
-    // Ellipsis antes da página atual
+    // Se a página atual estiver depois das primeiras 3 páginas, adicionar reticências
     if (currentPage > 3) {
       pageNumbers.push("ellipsis");
     }
 
-    // Página anterior (se não for a primeira)
+    // Mostrar uma página antes da atual (se não for a primeira)
     if (currentPage > 2) {
       pageNumbers.push(currentPage - 1);
     }
@@ -47,17 +48,17 @@ export function PedidoPagination({
       pageNumbers.push(currentPage);
     }
 
-    // Próxima página (se não for a última)
+    // Mostrar uma página depois da atual (se não for a última)
     if (currentPage < totalPages - 1) {
       pageNumbers.push(currentPage + 1);
     }
 
-    // Ellipsis depois da página atual
+    // Se a página atual estiver antes das últimas 3 páginas, adicionar reticências
     if (currentPage < totalPages - 2) {
       pageNumbers.push("ellipsis");
     }
 
-    // Última página (se não for a primeira)
+    // Sempre mostrar a última página
     if (totalPages > 1) {
       pageNumbers.push(totalPages);
     }
@@ -68,55 +69,64 @@ export function PedidoPagination({
   const pageNumbers = getPageNumbers();
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="text-sm text-gray-600 dark:text-gray-400">
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-2">
+      <div className="text-sm text-gray-600 dark:text-gray-400 order-2 sm:order-1">
         Mostrando {currentFirstItem}-{currentLastItem} de {totalItems} pedido(s)
       </div>
-      <div className="flex items-center space-x-1">
+
+      <div className="flex items-center space-x-1 order-1 sm:order-2">
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
           className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700"
         >
           <ChevronLeft className="h-4 w-4" />
+          <span className="sr-only">Página anterior</span>
         </Button>
 
-        {pageNumbers.map((page, index) => {
-          if (page === "ellipsis") {
-            return (
-              <span key={`ellipsis-${index}`} className="px-2">
-                ...
-              </span>
-            );
-          }
+        <div className="flex items-center space-x-1">
+          {pageNumbers.map((page, index) => {
+            if (page === "ellipsis") {
+              return (
+                <span
+                  key={`ellipsis-${index}`}
+                  className="px-2 text-gray-500 dark:text-gray-400"
+                >
+                  …
+                </span>
+              );
+            }
 
-          return (
-            <Button
-              key={page}
-              variant={currentPage === page ? "default" : "outline"}
-              size="sm"
-              onClick={() => onPageChange(page)}
-              className={`h-8 w-8 p-0 ${
-                currentPage === page
-                  ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                  : "border-gray-200 dark:border-gray-700"
-              }`}
-            >
-              {page}
-            </Button>
-          );
-        })}
+            return (
+              <Button
+                key={page}
+                variant={currentPage === page ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPageChange(page)}
+                className={`h-8 w-8 p-0 ${
+                  currentPage === page
+                    ? "bg-indigo-600 hover:bg-indigo-700 text-white"
+                    : "border-gray-200 dark:border-gray-700"
+                }`}
+              >
+                {page}
+                <span className="sr-only">Página {page}</span>
+              </Button>
+            );
+          })}
+        </div>
 
         <Button
           variant="outline"
-          size="sm"
+          size="icon"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
           className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700"
         >
           <ChevronRight className="h-4 w-4" />
+          <span className="sr-only">Próxima página</span>
         </Button>
       </div>
     </div>

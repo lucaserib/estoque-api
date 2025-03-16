@@ -3,8 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { DateRange } from "react-day-picker";
 import { formatBRL } from "@/utils/currency";
-
-// Sub-componentes
+import { toast } from "sonner";
 
 // UI Components
 import {
@@ -23,7 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { AlertCircle, RefreshCw, PlusCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Armazem, Pedido } from "@/app/(root)/gestao-pedidos/types";
 import { PedidoLoadingSkeleton } from "./PedidoLoadingSkeleton";
@@ -31,8 +30,7 @@ import { PedidoRow } from "./PedidoRow";
 import { PedidoPagination } from "./PedidoPagination";
 import { PedidoDetalhesDialog } from "./PedidoDetalhesDialog";
 import { PedidoConfirmDialog } from "./PedidoConfirmDialog";
-
-// Tipos
+import Link from "next/link";
 
 interface PedidosTableProps {
   status: string;
@@ -56,7 +54,6 @@ const PedidosTable = ({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<number | null>(null);
   const [armazens, setArmazens] = useState<Armazem[]>([]);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Carregar dados de armazéns
@@ -78,7 +75,6 @@ const PedidosTable = ({
   const fetchPedidos = useCallback(async () => {
     setLoading(true);
     setError(null);
-    setSuccessMessage(null);
 
     try {
       const response = await fetch(`/api/pedidos-compra`);
@@ -94,17 +90,11 @@ const PedidosTable = ({
         (pedido: Pedido) => pedido.status === status
       );
 
-      console.log(
-        `Pedidos ${
-          status === "confirmado" ? "confirmados" : "pendentes"
-        } encontrados:`,
-        filteredPedidos.length
-      );
-
+      // Filtrar por data apenas se houver um intervalo selecionado
       if (dateRange?.from && dateRange?.to) {
         const fromDate = new Date(dateRange.from);
         const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999); // Fim do dia
+        toDate.setHours(23, 59, 59, 999);
 
         filteredPedidos = filteredPedidos.filter((pedido: Pedido) => {
           const pedidoDate = pedido.dataPrevista
@@ -113,9 +103,7 @@ const PedidosTable = ({
             ? new Date(pedido.dataConclusao)
             : null;
 
-          // Se não houver data no pedido, mantém o pedido quando não há filtro de data
           if (!pedidoDate) return true;
-
           return pedidoDate >= fromDate && pedidoDate <= toDate;
         });
       }
@@ -138,7 +126,6 @@ const PedidosTable = ({
       }
 
       setData(filteredPedidos);
-      // Resetar para a primeira página quando os dados mudam
       setCurrentPage(1);
     } catch (error) {
       console.error("Erro ao buscar pedidos:", error);
@@ -152,16 +139,6 @@ const PedidosTable = ({
   useEffect(() => {
     fetchPedidos();
   }, [fetchPedidos]);
-
-  // Efeito para limpar mensagem de sucesso após 5 segundos
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => {
-        setSuccessMessage(null);
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
 
   // Calcular valor total do pedido
   const calcularValorPedido = (produtos: Pedido["produtos"]) => {
@@ -195,10 +172,10 @@ const PedidosTable = ({
 
       // Atualizar a lista após exclusão
       setData(data.filter((pedido) => pedido.id !== id));
-      setSuccessMessage(`Pedido #${id} excluído com sucesso`);
+      toast.success(`Pedido #${id} excluído com sucesso`);
     } catch (error) {
       console.error("Erro ao excluir pedido:", error);
-      setError(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Erro ao excluir pedido. Tente novamente."
@@ -217,7 +194,7 @@ const PedidosTable = ({
       message += ` Um novo pedido #${novoPedidoId} foi criado para os itens não recebidos.`;
     }
 
-    setSuccessMessage(message);
+    toast.success(message);
     fetchPedidos();
 
     if (onRefresh) {
@@ -255,53 +232,57 @@ const PedidosTable = ({
   // Se houver erro, mostrar mensagem
   if (error) {
     return (
-      <Card className="w-full bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
-            <AlertCircle size={18} />
-            Erro ao carregar pedidos
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-red-600 dark:text-red-400">{error}</p>
-        </CardContent>
-        <CardFooter>
-          <Button
-            variant="outline"
-            onClick={fetchPedidos}
-            className="border-red-200 text-red-700 hover:bg-red-100 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-          >
-            Tentar novamente
-          </Button>
-        </CardFooter>
-      </Card>
+      <Alert variant="destructive" className="animate-fade-in">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchPedidos}
+          className="ml-auto"
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Tentar novamente
+        </Button>
+      </Alert>
     );
   }
 
   // Se não houver dados, mostrar mensagem
   if (data.length === 0) {
     return (
-      <Card className="w-full bg-gray-50 dark:bg-gray-900/50 border-dashed border-gray-300 dark:border-gray-700">
-        <CardHeader className="text-center">
+      <Card className="w-full border-dashed border-2 bg-gray-50/50 dark:bg-gray-900/10 shadow-sm animate-fade-in">
+        <CardHeader className="text-center pb-2">
           <CardTitle className="text-xl font-semibold text-gray-700 dark:text-gray-300">
-            Nenhum pedido {status === "pendente" ? "pendente" : "concluído"}{" "}
-            encontrado
+            Nenhum pedido {status === "pendente" ? "pendente" : "concluído"}
           </CardTitle>
-          <CardDescription className="text-gray-500 dark:text-gray-400">
+          <CardDescription>
             {status === "pendente"
-              ? "Crie um novo pedido de compra para começar."
-              : "Confirme seus pedidos pendentes para vê-los aqui."}
+              ? "Crie um novo pedido de compra para começar"
+              : "Confirme seus pedidos pendentes para vê-los aqui"}
           </CardDescription>
         </CardHeader>
-        <CardFooter className="justify-center pb-6">
-          <Button
-            variant="outline"
-            onClick={fetchPedidos}
-            className="flex items-center gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Atualizar
-          </Button>
+        <CardContent className="flex justify-center pb-0">
+          {status === "pendente" ? (
+            <Link href="/gestao-pedidos">
+              <Button className="bg-indigo-600 hover:bg-indigo-700">
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Novo Pedido
+              </Button>
+            </Link>
+          ) : (
+            <Button variant="outline" onClick={fetchPedidos}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Atualizar
+            </Button>
+          )}
+        </CardContent>
+        <CardFooter className="opacity-70 pt-6 pb-8 px-8 text-center text-sm">
+          <div className="mx-auto max-w-md">
+            {status === "pendente"
+              ? "Os pedidos pendentes mostram todos os pedidos que ainda não foram recebidos. Você pode confirmar recebimentos parciais e um novo pedido será criado automaticamente para os itens restantes."
+              : "Os pedidos concluídos mostram todo o histórico de pedidos recebidos no sistema."}
+          </div>
         </CardFooter>
       </Card>
     );
@@ -309,18 +290,11 @@ const PedidosTable = ({
 
   // Renderizar a tabela
   return (
-    <div className="space-y-4">
-      {/* Mensagem de sucesso */}
-      {successMessage && (
-        <Alert variant="success">
-          <AlertDescription>{successMessage}</AlertDescription>
-        </Alert>
-      )}
-
+    <div className="space-y-4 animate-fade-in">
       <Card className="w-full border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-100 dark:bg-gray-800">
+            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
                 <TableHead className="font-medium">Pedido #</TableHead>
                 <TableHead className="font-medium">Fornecedor</TableHead>

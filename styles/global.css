@@ -29,3 +29,150 @@ body,
     grid-template-rows: repeat(8, 7.5vh);
   }
 }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+/* Backdrop blur para modais */
+[data-radix-popper-content-wrapper] {
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Correção para os modais backdrop blur */
+.fixed.inset-0.z-50,
+[data-radix-dialog-overlay] {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* Correção para Calendário e Dropdowns */
+.rdp,
+[data-radix-select-content],
+[data-radix-popper-content] {
+  background-color: white !important;
+  opacity: 1 !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  z-index: 100 !important;
+}
+
+.dark .rdp,
+.dark [data-radix-select-content],
+.dark [data-radix-popper-content] {
+  background-color: #1f2937 !important; /* gray-800 */
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.rdp-day:hover:not([aria-disabled="true"]),
+.rdp-day_selected {
+  opacity: 1 !important;
+}
+
+.rdp-day_selected,
+.rdp-day_selected:hover {
+  background-color: #4f46e5 !important; /* indigo-600 */
+  color: white !important;
+}
+
+.dark .rdp-day_selected,
+.dark .rdp-day_selected:hover {
+  background-color: #6366f1 !important; /* indigo-500 */
+}
+
+/* Correção para z-index de menus e dropdowns */
+.rdp,
+[data-radix-select-content],
+[data-radix-popper-content],
+[data-radix-dialog-content] {
+  z-index: 9999 !important;
+}
+
+/* Correção para animações */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Correção para scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode scrollbars */
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Correção para diálogos aninhados */
+[data-radix-dialog-content] {
+  max-height: 90vh !important;
+  position: relative !important;
+}
+
+/* Prevenção de recursão infinita em FocusScope */
+.fixed.inset-0.z-50 > div {
+  position: fixed !important;
+  inset: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+}
