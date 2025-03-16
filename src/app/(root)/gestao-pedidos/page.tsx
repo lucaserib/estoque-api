@@ -5,7 +5,6 @@ import { DateRange } from "react-day-picker";
 import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-// Components
 import Header from "@/app/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,13 +23,11 @@ import {
 import NovoPedidoForm from "./components/novoPedido/page";
 import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 
-// Tipo para o filtro
 interface PedidoFilter {
   dateRange: DateRange | undefined;
   searchTerm: string;
 }
 
-// Stats interface
 interface PedidosStats {
   pendentes: number;
   concluidos: number;
@@ -56,7 +53,6 @@ const GestaoPedidos = () => {
     searchTerm: "",
   });
 
-  // Carregar estatísticas
   useEffect(() => {
     const fetchStats = async () => {
       setIsLoadingStats(true);
@@ -76,12 +72,10 @@ const GestaoPedidos = () => {
     fetchStats();
   }, []);
 
-  // Função para atualizar filtros
   const handleFilterChange = (partialFilter: Partial<PedidoFilter>) => {
     setFilter({ ...filter, ...partialFilter });
   };
 
-  // Função para exportar dados
   const handleExport = () => {
     // Implementação da exportação (CSV, PDF, etc.)
     console.log("Exportando dados...");

@@ -37,10 +37,17 @@ import {
   Loader2,
   ShoppingBag,
   Warehouse,
+  HelpCircle,
 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // Tipos
 interface Fornecedor {
@@ -83,7 +90,7 @@ const formSchema = z.object({
   produtos: z.array(
     z.object({
       produtoId: z.string(),
-      quantidade: z.number().min(1, "Quantidade deve ser maior que zero"),
+      quantidade: z.number().min(0, "Quantidade não pode ser negativa"),
       custo: z.number().min(1, "Custo deve ser maior que zero"),
       multiplicador: z.number().optional(),
     })
@@ -95,7 +102,7 @@ type FormValues = z.infer<typeof formSchema>;
 interface ConfirmarPedidoFormProps {
   pedido: Pedido;
   armazens: { id: string; nome: string }[];
-  onSuccess: () => void;
+  onSuccess: (pedidoId: number, novoPedidoId?: number) => void;
   onCancel: () => void;
 }
 
@@ -144,13 +151,14 @@ const ConfirmarPedidoForm = ({
         }),
       });
 
+      const responseData = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Falha ao confirmar o pedido");
+        throw new Error(responseData.error || "Falha ao confirmar o pedido");
       }
 
-      // Chamar callback de sucesso
-      onSuccess();
+      // Chamar callback de sucesso com ID do pedido e possivelmente do novo pedido para itens faltantes
+      onSuccess(pedido.id, responseData.novoPedidoId);
     } catch (error) {
       console.error("Erro ao confirmar pedido:", error);
       setError(
@@ -188,6 +196,15 @@ const ConfirmarPedidoForm = ({
     }, 0);
   };
 
+  // Verificar se algum produto tem quantidade menor que a original
+  const hasMenorQuantidade = () => {
+    const produtos = form.getValues("produtos");
+    return produtos.some(
+      (produto, index) =>
+        produto.quantidade < defaultValues.produtos[index].quantidade
+    );
+  };
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -216,7 +233,7 @@ const ConfirmarPedidoForm = ({
               <FormItem>
                 <FormLabel className="flex items-center gap-2 text-base font-medium text-gray-700 dark:text-gray-300">
                   <Warehouse className="h-4 w-4 text-indigo-500" />
-                  Armazém de Destino
+                  Armazém de Destino <span className="text-red-500">*</span>
                 </FormLabel>
                 <Select
                   onValueChange={field.onChange}
@@ -229,11 +246,17 @@ const ConfirmarPedidoForm = ({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
-                    {armazens.map((armazem) => (
-                      <SelectItem key={armazem.id} value={armazem.id}>
-                        {armazem.nome}
-                      </SelectItem>
-                    ))}
+                    {armazens.length > 0 ? (
+                      armazens.map((armazem) => (
+                        <SelectItem key={armazem.id} value={armazem.id}>
+                          {armazem.nome}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <div className="p-2 text-gray-500 dark:text-gray-400 text-center">
+                        Nenhum armazém encontrado
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
                 <FormMessage className="text-red-500" />
@@ -278,10 +301,22 @@ const ConfirmarPedidoForm = ({
                 Confirmando Recebimento
               </Badge>
             </div>
+
             <div className="text-gray-700 dark:text-gray-300">
               <span className="font-medium">Fornecedor:</span>{" "}
               {pedido.fornecedor.nome}
             </div>
+
+            {hasMenorQuantidade() && (
+              <Alert className="mt-2 bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800">
+                <HelpCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-blue-700 dark:text-blue-300 text-sm">
+                  Se confirmar quantidades menores que as pedidas, um novo
+                  pedido pendente será criado automaticamente com os itens
+                  faltantes.
+                </AlertDescription>
+              </Alert>
+            )}
           </CardContent>
         </Card>
 
@@ -295,8 +330,37 @@ const ConfirmarPedidoForm = ({
                     <TableHead className="font-medium text-gray-700 dark:text-gray-300">
                       Produto
                     </TableHead>
-                    <TableHead className="w-24 text-right font-medium text-gray-700 dark:text-gray-300">
-                      Quantidade
+                    <TableHead className="w-24 text-center font-medium text-gray-700 dark:text-gray-300">
+                      <div className="flex items-center justify-center gap-1">
+                        Qtd. Pedida
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-3 w-3 text-gray-400" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white dark:bg-gray-800 p-2 text-xs max-w-xs">
+                              Quantidade original do pedido
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    </TableHead>
+                    <TableHead className="w-24 text-center font-medium text-gray-700 dark:text-gray-300">
+                      <div className="flex items-center justify-center gap-1">
+                        Qtd. Recebida
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <HelpCircle className="h-3 w-3 text-gray-400" />
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-white dark:bg-gray-800 p-2 text-xs max-w-xs">
+                              Quantidade que você realmente recebeu. Se for
+                              menor que a quantidade pedida, um novo pedido será
+                              criado automaticamente para os itens faltantes.
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
                     </TableHead>
                     <TableHead className="w-32 text-right font-medium text-gray-700 dark:text-gray-300">
                       Custo Unitário
@@ -334,10 +398,13 @@ const ConfirmarPedidoForm = ({
                             SKU: {produto.produto?.sku || "N/A"}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-center text-gray-700 dark:text-gray-300">
+                          {produto.quantidade}
+                        </TableCell>
+                        <TableCell className="text-center">
                           <Input
                             type="number"
-                            min="1"
+                            min="0"
                             value={quantidade}
                             onChange={(e) =>
                               handleQuantityChange(
@@ -346,7 +413,11 @@ const ConfirmarPedidoForm = ({
                               )
                             }
                             disabled={isSubmitting}
-                            className="w-20 text-right ml-auto bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                            className={`w-20 text-center mx-auto bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 ${
+                              quantidade < produto.quantidade
+                                ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20"
+                                : ""
+                            }`}
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -354,9 +425,12 @@ const ConfirmarPedidoForm = ({
                             type="number"
                             min="0"
                             step="0.01"
-                            value={custo}
+                            value={(custo / 100).toFixed(2)}
                             onChange={(e) =>
-                              handleCostChange(index, Number(e.target.value))
+                              handleCostChange(
+                                index,
+                                Math.round(parseFloat(e.target.value) * 100)
+                              )
                             }
                             disabled={isSubmitting}
                             className="w-24 text-right ml-auto bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
@@ -375,7 +449,7 @@ const ConfirmarPedidoForm = ({
                   {/* Linha do total */}
                   <TableRow className="border-t-2 bg-gray-50 dark:bg-gray-900/50">
                     <TableCell
-                      colSpan={4}
+                      colSpan={5}
                       className="text-right font-semibold text-gray-800 dark:text-gray-200"
                     >
                       Valor Total:
@@ -403,8 +477,8 @@ const ConfirmarPedidoForm = ({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting}
-            className="gap-2 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
+            disabled={isSubmitting || !form.getValues("armazemId")}
+            className="gap-2 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? (
               <>

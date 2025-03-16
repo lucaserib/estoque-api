@@ -34,11 +34,11 @@ export interface Pedido {
   comentarios: string;
   status: string;
   dataPrevista?: string;
-  armazemId?: number;
+  armazemId?: string;
   dataConclusao: string;
 }
 
 export interface Armazem {
-  id: number;
+  id: string;
   nome: string;
 }

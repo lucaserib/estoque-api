@@ -52,7 +52,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Retorna as estatísticas
     return NextResponse.json(
       {
         pendentes: pendingOrdersCount,

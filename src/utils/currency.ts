@@ -1,13 +1,27 @@
-// utils/currency.ts
-export const centsToBRL = (cents: number): string => {
-  return (cents / 100).toFixed(2); // Convert to BRL string with 2 decimals
-};
+export function centsToBRL(cents: number): string {
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
 
-export const brlToCents = (brl: string | number): number => {
-  const value = typeof brl === "string" ? parseFloat(brl) : brl;
-  return Math.round(value * 100); // Convert to cents, round to avoid floating-point issues
-};
+export function formatBRL(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
 
-export const formatBRL = (cents: number): string => {
-  return `R$ ${centsToBRL(cents)}`; // Format with R$ prefix
-};
+export function brlToCents(value: string | number): number {
+  if (typeof value === "number") {
+    return Math.round(value * 100);
+  }
+
+  const cleanValue = value.replace(/[^\d.,]/g, "");
+
+  const normalizedValue = cleanValue.replace(",", ".");
+
+  return Math.round(parseFloat(normalizedValue) * 100);
+}

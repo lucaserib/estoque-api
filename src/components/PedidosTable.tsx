@@ -1,33 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { useEffect, useState, useCallback } from "react";
 import { DateRange } from "react-day-picker";
 import { formatBRL } from "@/utils/currency";
+
+// Sub-componentes
 
 // UI Components
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -36,52 +23,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  AlertCircle,
-  Check,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  MoreHorizontal,
-  Trash2,
-  Loader2,
-} from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import ConfirmarPedidoForm from "./ConfirmarPedidoForm";
-import { Badge } from "@/components/ui/badge";
+import { AlertCircle, RefreshCw } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Armazem, Pedido } from "@/app/(root)/gestao-pedidos/types";
+import { PedidoLoadingSkeleton } from "./PedidoLoadingSkeleton";
+import { PedidoRow } from "./PedidoRow";
+import { PedidoPagination } from "./PedidoPagination";
+import { PedidoDetalhesDialog } from "./PedidoDetalhesDialog";
+import { PedidoConfirmDialog } from "./PedidoConfirmDialog";
 
-// Defina os tipos
-interface Fornecedor {
-  id: string;
-  nome: string;
-}
-
-interface Produto {
-  id: string;
-  nome: string;
-  sku: string;
-  multiplicador?: number;
-}
-
-interface PedidoProduto {
-  produtoId: string;
-  quantidade: number;
-  custo: number;
-  multiplicador?: number;
-  produto?: Produto;
-}
-
-interface Pedido {
-  id: number;
-  fornecedor: Fornecedor;
-  produtos: PedidoProduto[];
-  comentarios: string;
-  status: string;
-  dataPrevista?: string;
-  armazemId?: string;
-  dataConclusao?: string;
-}
+// Tipos
 
 interface PedidosTableProps {
   status: string;
@@ -104,7 +55,8 @@ const PedidosTable = ({
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<number | null>(null);
-  const [armazens, setArmazens] = useState<{ id: string; nome: string }[]>([]);
+  const [armazens, setArmazens] = useState<Armazem[]>([]);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const itemsPerPage = 10;
 
   // Carregar dados de armazéns
@@ -123,16 +75,17 @@ const PedidosTable = ({
     fetchArmazens();
   }, []);
 
-  // Função para buscar pedidos com filtros
-  const fetchPedidos = async () => {
+  const fetchPedidos = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
 
     try {
-      let url = `/api/pedidos-compra`;
+      const response = await fetch(`/api/pedidos-compra`);
 
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Falha ao carregar pedidos");
+      if (!response.ok) {
+        throw new Error("Falha ao carregar pedidos");
+      }
 
       const allPedidos = await response.json();
 
@@ -141,7 +94,13 @@ const PedidosTable = ({
         (pedido: Pedido) => pedido.status === status
       );
 
-      // Aplicar filtro de data
+      console.log(
+        `Pedidos ${
+          status === "confirmado" ? "confirmados" : "pendentes"
+        } encontrados:`,
+        filteredPedidos.length
+      );
+
       if (dateRange?.from && dateRange?.to) {
         const fromDate = new Date(dateRange.from);
         const toDate = new Date(dateRange.to);
@@ -152,7 +111,10 @@ const PedidosTable = ({
             ? new Date(pedido.dataPrevista)
             : pedido.dataConclusao
             ? new Date(pedido.dataConclusao)
-            : new Date(0);
+            : null;
+
+          // Se não houver data no pedido, mantém o pedido quando não há filtro de data
+          if (!pedidoDate) return true;
 
           return pedidoDate >= fromDate && pedidoDate <= toDate;
         });
@@ -165,27 +127,44 @@ const PedidosTable = ({
           (pedido: Pedido) =>
             pedido.fornecedor.nome.toLowerCase().includes(term) ||
             pedido.id.toString().includes(term) ||
+            pedido.produtos.some(
+              (p) =>
+                p.produto?.nome?.toLowerCase().includes(term) ||
+                p.produto?.sku?.toLowerCase().includes(term)
+            ) ||
             (pedido.comentarios &&
               pedido.comentarios.toLowerCase().includes(term))
         );
       }
 
       setData(filteredPedidos);
+      // Resetar para a primeira página quando os dados mudam
+      setCurrentPage(1);
     } catch (error) {
       console.error("Erro ao buscar pedidos:", error);
       setError("Não foi possível carregar os pedidos. Tente novamente.");
     } finally {
       setLoading(false);
     }
-  };
+  }, [status, dateRange, searchTerm]);
 
   // Buscar pedidos quando os filtros mudam
   useEffect(() => {
     fetchPedidos();
-  }, [status, dateRange, searchTerm]);
+  }, [fetchPedidos]);
+
+  // Efeito para limpar mensagem de sucesso após 5 segundos
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
   // Calcular valor total do pedido
-  const calcularValorPedido = (produtos: PedidoProduto[]) => {
+  const calcularValorPedido = (produtos: Pedido["produtos"]) => {
     return produtos.reduce((total, produto) => {
       const valor =
         produto.quantidade *
@@ -200,6 +179,7 @@ const PedidosTable = ({
     if (!confirm("Tem certeza que deseja excluir este pedido?")) return;
 
     setLoadingAction(id);
+    setError(null);
 
     try {
       const response = await fetch("/api/pedidos-compra", {
@@ -208,15 +188,40 @@ const PedidosTable = ({
         body: JSON.stringify({ pedidoId: id }),
       });
 
-      if (!response.ok) throw new Error("Falha ao excluir pedido");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Falha ao excluir pedido");
+      }
 
       // Atualizar a lista após exclusão
       setData(data.filter((pedido) => pedido.id !== id));
+      setSuccessMessage(`Pedido #${id} excluído com sucesso`);
     } catch (error) {
       console.error("Erro ao excluir pedido:", error);
-      alert("Erro ao excluir pedido. Tente novamente.");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Erro ao excluir pedido. Tente novamente."
+      );
     } finally {
       setLoadingAction(null);
+    }
+  };
+
+  // Confirmar pedido (callbacks)
+  const handleConfirmSuccess = (pedidoId: number, novoPedidoId?: number) => {
+    setIsConfirmOpen(false);
+
+    let message = `Pedido #${pedidoId} confirmado com sucesso!`;
+    if (novoPedidoId) {
+      message += ` Um novo pedido #${novoPedidoId} foi criado para os itens não recebidos.`;
+    }
+
+    setSuccessMessage(message);
+    fetchPedidos();
+
+    if (onRefresh) {
+      onRefresh();
     }
   };
 
@@ -226,33 +231,25 @@ const PedidosTable = ({
   const currentItems = data.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(data.length / itemsPerPage);
 
-  const paginate = (pageNumber: number) => {
+  // Handler de paginação
+  const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
+  };
+
+  // Handlers de ações
+  const handleViewDetails = (pedido: Pedido) => {
+    setSelectedPedido(pedido);
+    setIsDetailsOpen(true);
+  };
+
+  const handleConfirmPedido = (pedido: Pedido) => {
+    setSelectedPedido(pedido);
+    setIsConfirmOpen(true);
   };
 
   // Se estiver carregando, mostrar esqueleto
   if (loading) {
-    return (
-      <div className="space-y-3">
-        <Card className="w-full border-gray-200 dark:border-gray-800">
-          <CardContent className="p-6">
-            <div className="flex flex-col space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <div className="flex items-center justify-center my-4">
-                <Loader2 className="h-8 w-8 animate-spin text-indigo-600 dark:text-indigo-400" />
-                <span className="ml-2 text-gray-600 dark:text-gray-400">
-                  Carregando pedidos...
-                </span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <PedidoLoadingSkeleton />;
   }
 
   // Se houver erro, mostrar mensagem
@@ -296,6 +293,16 @@ const PedidosTable = ({
               : "Confirme seus pedidos pendentes para vê-los aqui."}
           </CardDescription>
         </CardHeader>
+        <CardFooter className="justify-center pb-6">
+          <Button
+            variant="outline"
+            onClick={fetchPedidos}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Atualizar
+          </Button>
+        </CardFooter>
       </Card>
     );
   }
@@ -303,6 +310,13 @@ const PedidosTable = ({
   // Renderizar a tabela
   return (
     <div className="space-y-4">
+      {/* Mensagem de sucesso */}
+      {successMessage && (
+        <Alert variant="success">
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      )}
+
       <Card className="w-full border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <Table>
@@ -322,97 +336,16 @@ const PedidosTable = ({
             </TableHeader>
             <TableBody>
               {currentItems.map((pedido) => (
-                <TableRow
+                <PedidoRow
                   key={pedido.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                >
-                  <TableCell className="font-medium">#{pedido.id}</TableCell>
-                  <TableCell>{pedido.fornecedor.nome}</TableCell>
-                  <TableCell className="text-center">
-                    {pedido.produtos.length}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {formatBRL(calcularValorPedido(pedido.produtos) * 100)}
-                  </TableCell>
-                  <TableCell>
-                    {(
-                      status === "pendente"
-                        ? pedido.dataPrevista
-                        : pedido.dataConclusao
-                    ) ? (
-                      format(
-                        new Date(
-                          status === "pendente"
-                            ? pedido.dataPrevista!
-                            : pedido.dataConclusao!
-                        ),
-                        "dd/MM/yyyy",
-                        { locale: ptBR }
-                      )
-                    ) : (
-                      <span className="text-gray-500 dark:text-gray-400">
-                        Não definida
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                          >
-                            {loadingAction === pedido.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <MoreHorizontal className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md"
-                        >
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedPedido(pedido);
-                              setIsDetailsOpen(true);
-                            }}
-                            className="flex items-center cursor-pointer"
-                          >
-                            <Eye className="mr-2 h-4 w-4 text-indigo-500" /> Ver
-                            detalhes
-                          </DropdownMenuItem>
-
-                          {status === "pendente" && (
-                            <>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  setSelectedPedido(pedido);
-                                  setIsConfirmOpen(true);
-                                }}
-                                className="flex items-center cursor-pointer"
-                              >
-                                <Check className="mr-2 h-4 w-4 text-green-500" />{" "}
-                                Confirmar
-                              </DropdownMenuItem>
-
-                              <DropdownMenuItem
-                                onClick={() => handleDeletePedido(pedido.id)}
-                                className="flex items-center cursor-pointer"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4 text-red-500" />{" "}
-                                Excluir
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                  pedido={pedido}
+                  status={status}
+                  loadingAction={loadingAction === pedido.id}
+                  onViewDetails={() => handleViewDetails(pedido)}
+                  onConfirm={() => handleConfirmPedido(pedido)}
+                  onDelete={() => handleDeletePedido(pedido.id)}
+                  calcularValorPedido={calcularValorPedido}
+                />
               ))}
             </TableBody>
           </Table>
@@ -421,252 +354,36 @@ const PedidosTable = ({
 
       {/* Paginação */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600 dark:text-gray-400">
-            Mostrando {indexOfFirstItem + 1}-
-            {Math.min(indexOfLastItem, data.length)} de {data.length} pedido(s)
-          </div>
-          <div className="flex items-center space-x-1">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => paginate(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-
-            {Array.from({ length: Math.min(5, totalPages) }).map((_, i) => {
-              const pageNum = i + 1;
-              const isVisible =
-                pageNum === 1 ||
-                pageNum === totalPages ||
-                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1);
-
-              if (!isVisible && pageNum === 2) {
-                return (
-                  <span key="ellipsis-start" className="px-2">
-                    ...
-                  </span>
-                );
-              }
-
-              if (!isVisible && pageNum === totalPages - 1) {
-                return (
-                  <span key="ellipsis-end" className="px-2">
-                    ...
-                  </span>
-                );
-              }
-
-              if (!isVisible) return null;
-
-              return (
-                <Button
-                  key={pageNum}
-                  variant={currentPage === pageNum ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => paginate(pageNum)}
-                  className={`h-8 w-8 p-0 ${
-                    currentPage === pageNum
-                      ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                      : "border-gray-200 dark:border-gray-700"
-                  }`}
-                >
-                  {pageNum}
-                </Button>
-              );
-            })}
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => paginate(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
+        <PedidoPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+          totalItems={data.length}
+          itemsPerPage={itemsPerPage}
+          currentFirstItem={indexOfFirstItem + 1}
+          currentLastItem={Math.min(indexOfLastItem, data.length)}
+        />
       )}
 
       {/* Modal de Detalhes */}
       {selectedPedido && (
-        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                <span className="h-6 w-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-                  <span className="text-indigo-600 dark:text-indigo-400 text-sm">
-                    #
-                  </span>
-                </span>
-                Detalhes do Pedido #{selectedPedido.id}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
-              <div className="space-y-2">
-                <div>
-                  <span className="font-semibold">Fornecedor:</span>{" "}
-                  {selectedPedido.fornecedor.nome}
-                </div>
-                <div>
-                  <span className="font-semibold">Status:</span>{" "}
-                  <Badge
-                    className={
-                      selectedPedido.status === "confirmado"
-                        ? "bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300"
-                        : "bg-amber-100 text-amber-800 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300"
-                    }
-                  >
-                    {selectedPedido.status === "confirmado"
-                      ? "Concluído"
-                      : "Pendente"}
-                  </Badge>
-                </div>
-                {selectedPedido.dataPrevista && (
-                  <div>
-                    <span className="font-semibold">Data prevista:</span>{" "}
-                    {format(
-                      new Date(selectedPedido.dataPrevista),
-                      "dd/MM/yyyy",
-                      { locale: ptBR }
-                    )}
-                  </div>
-                )}
-                {selectedPedido.dataConclusao && (
-                  <div>
-                    <span className="font-semibold">Data de conclusão:</span>{" "}
-                    {format(
-                      new Date(selectedPedido.dataConclusao),
-                      "dd/MM/yyyy",
-                      { locale: ptBR }
-                    )}
-                  </div>
-                )}
-              </div>
-              <div className="space-y-2">
-                <div>
-                  <span className="font-semibold">Comentários:</span>{" "}
-                  {selectedPedido.comentarios || (
-                    <span className="text-gray-400">Nenhum comentário</span>
-                  )}
-                </div>
-                <div>
-                  <span className="font-semibold">Valor total:</span>{" "}
-                  {formatBRL(
-                    calcularValorPedido(selectedPedido.produtos) * 100
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <Card className="w-full border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-gray-100 dark:bg-gray-800">
-                    <TableRow>
-                      <TableHead className="font-medium">Produto</TableHead>
-                      <TableHead className="font-medium text-right">
-                        Quantidade
-                      </TableHead>
-                      <TableHead className="font-medium text-right">
-                        Custo Unitário
-                      </TableHead>
-                      <TableHead className="font-medium text-right">
-                        Multiplicador
-                      </TableHead>
-                      <TableHead className="font-medium text-right">
-                        Subtotal
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedPedido.produtos.map((produto) => {
-                      const multiplicador =
-                        produto.multiplicador ||
-                        produto.produto?.multiplicador ||
-                        1;
-                      const subtotal =
-                        produto.quantidade * produto.custo * multiplicador;
-
-                      return (
-                        <TableRow
-                          key={produto.produtoId}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                        >
-                          <TableCell>
-                            <div className="font-medium">
-                              {produto.produto?.nome ||
-                                "Produto não encontrado"}
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
-                              SKU: {produto.produto?.sku || "N/A"}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {produto.quantidade}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatBRL(produto.custo)}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {multiplicador}x
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatBRL(subtotal)}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-
-                    {/* Linha do total */}
-                    <TableRow className="bg-gray-50 dark:bg-gray-900/50 font-medium">
-                      <TableCell colSpan={4} className="text-right">
-                        Valor Total:
-                      </TableCell>
-                      <TableCell className="text-right font-bold">
-                        {formatBRL(
-                          calcularValorPedido(selectedPedido.produtos)
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
-          </DialogContent>
-        </Dialog>
+        <PedidoDetalhesDialog
+          isOpen={isDetailsOpen}
+          onClose={() => setIsDetailsOpen(false)}
+          pedido={selectedPedido}
+          calcularValorPedido={calcularValorPedido}
+        />
       )}
 
       {/* Modal de Confirmação de Pedido */}
       {selectedPedido && (
-        <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-xl">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
-                <span className="h-6 w-6 rounded-full bg-green-100 dark:bg-green-900/50 flex items-center justify-center">
-                  <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
-                </span>
-                Confirmar Recebimento do Pedido #{selectedPedido.id}
-              </DialogTitle>
-            </DialogHeader>
-
-            <ConfirmarPedidoForm
-              pedido={selectedPedido}
-              armazens={armazens}
-              onSuccess={() => {
-                setIsConfirmOpen(false);
-                fetchPedidos();
-                if (onRefresh) onRefresh();
-              }}
-              onCancel={() => setIsConfirmOpen(false)}
-            />
-          </DialogContent>
-        </Dialog>
+        <PedidoConfirmDialog
+          isOpen={isConfirmOpen}
+          onClose={() => setIsConfirmOpen(false)}
+          pedido={selectedPedido}
+          armazens={armazens}
+          onSuccess={handleConfirmSuccess}
+        />
       )}
     </div>
   );
