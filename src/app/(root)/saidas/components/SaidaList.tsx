@@ -16,7 +16,7 @@ const SaidaList = () => {
     );
   }
 
-  if (error || !saidas.length) {
+  if (error || !saidas?.length) {
     return (
       <p className="text-center mt-10 text-gray-500 dark:text-gray-400">
         {error || "Nenhuma saída registrada."}
@@ -27,7 +27,7 @@ const SaidaList = () => {
   return (
     <div className="space-y-6">
       <ul className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-        {saidas.map((saida) => (
+        {(saidas ?? []).map((saida) => (
           <li
             key={saida.id}
             className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
