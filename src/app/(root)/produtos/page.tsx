@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useFetch } from "@/app/hooks/useFetch";
 import Header from "@/app/components/Header";
 import ProdutoList from "./components/ProdutoList";
-import KitList from "./components/KitList";
 import ProdutoFormModal from "./components/ProdutoFormModal";
 import { ProdutoDeleteDialog } from "./components/dialogs/ProdutoDeleteDialog";
 import { Produto } from "./types";
@@ -15,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { KitList } from "./components/KitList";
 
 const ProdutosPage = () => {
   const [activeTab, setActiveTab] = useState<"produtos" | "kits">("produtos");

@@ -1,4 +1,5 @@
-// app/produtos/types.ts
+import { Fornecedor } from "@prisma/client";
+
 export interface Produto {
   id: string;
   nome: string;
@@ -47,4 +48,23 @@ export interface ProdutoFornecedor {
     id: string;
     nome: string;
   };
+}
+
+export interface Pedido {
+  id: number;
+  fornecedor: Fornecedor;
+  produtos: PedidoProduto[];
+  comentarios?: string; // Deve ser opcional conforme o schema
+  status: string;
+  dataPrevista?: string;
+  armazemId?: string;
+  dataConclusao?: string; // Deve ser opcional conforme o schema
+}
+
+export interface PedidoProduto {
+  produtoId: string;
+  quantidade: number;
+  custo: number; // Garantir que seja sempre um número inteiro (centavos)
+  multiplicador: number; // Não opcional conforme o schema do Prisma
+  produto?: Produto;
 }

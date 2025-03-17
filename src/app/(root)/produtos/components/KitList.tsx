@@ -24,7 +24,11 @@ interface KitListProps {
   refreshTrigger?: number;
 }
 
-const KitList = ({ kits, onDelete, refreshTrigger = 0 }: KitListProps) => {
+export const KitList = ({
+  kits,
+  onDelete,
+  refreshTrigger = 0,
+}: KitListProps) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedKit, setSelectedKit] = useState<Produto | null>(null);
@@ -80,7 +84,7 @@ const KitList = ({ kits, onDelete, refreshTrigger = 0 }: KitListProps) => {
   );
 
   const indexOfLastKit = currentPage * itemsPerPage;
-  const indexOfFirstKit = indexOfLastItem - itemsPerPage;
+  const indexOfFirstKit = indexOfLastKit - itemsPerPage;
   const currentKits = filteredKits.slice(indexOfFirstKit, indexOfLastKit);
   const totalPages = Math.ceil(filteredKits.length / itemsPerPage);
 

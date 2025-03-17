@@ -57,9 +57,8 @@ export function ProdutoEstoqueDialog({
     };
   }, [isOpen]);
 
-  // Calculate stock safety percentage
-  const calcularPorcentual = (atual: number, seguranca: number) => {
-    if (seguranca === 0) return 100;
+  const calcularPorcentual = (atual: number, seguranca: number = 0) => {
+    if (!seguranca || seguranca === 0) return 100;
     return Math.min((atual / seguranca) * 100, 100);
   };
 

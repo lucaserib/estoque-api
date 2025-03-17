@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { FaTrash, FaEdit, FaEye, FaLink, FaWarehouse } from "react-icons/fa";
 import { Search, Loader2, AlertTriangle } from "lucide-react";
-import { ProdutoFilterBar } from "./ProdutoFilterBar";
 import { Produto } from "../types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -15,13 +14,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+import { ProdutoEstoqueDialog } from "./dialogs/ProdutoEstoqueDialog";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
+import { ProdutoPagination } from "./ProdutoPagination";
 import { ProdutoDetalhesDialog } from "./dialogs/ProdutoDetalhesDialog";
 import { ProdutoEditarDialog } from "./dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "./dialogs/ProdutoFornecedorDialog";
-import { ProdutoEstoqueDialog } from "./dialogs/ProdutoEstoqueDialog";
-import { ProdutoPagination } from "./ProdutoPagination";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 
 interface ProdutoListProps {
   produtos: Produto[];
@@ -187,13 +186,6 @@ const ProdutoList = ({
 
   return (
     <div>
-      <ProdutoFilterBar
-        onFilterChange={setFilterOptions}
-        totalProdutos={produtos.length}
-        totalFiltrados={filteredProdutos.length}
-        filterOptions={filterOptions}
-      />
-
       <Card className="border-gray-200 dark:border-gray-700 shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -251,7 +243,7 @@ const ProdutoList = ({
                               stockData[produto.id] > 0 && (
                                 <AlertTriangle
                                   className="h-4 w-4 text-amber-500"
-                                  title="Estoque abaixo do nível mínimo"
+                                  data-tooltip="Estoque abaixo do nível mínimo"
                                 />
                               )}
                           </div>
@@ -325,7 +317,7 @@ const ProdutoList = ({
                       colSpan={6}
                       className="text-center py-8 text-gray-500 dark:text-gray-400"
                     >
-                      {searchTerm
+                      {filterOptions.searchTerm
                         ? "Nenhum produto encontrado com os critérios de busca."
                         : "Nenhum produto cadastrado. Adicione seu primeiro produto usando o botão 'Novo Produto'."}
                     </TableCell>
