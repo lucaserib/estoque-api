@@ -1,15 +1,35 @@
+// Modificação para src/app/api/produtos/route.ts
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
+// Função para serializar BigInt como string
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
       typeof value === "bigint" ? value.toString() : value
     )
   );
+};
+
+// Função para converter EAN para BigInt de forma segura
+const safeEANConversion = (ean: string | null): bigint | null => {
+  if (!ean) return null;
+
+  // Remove caracteres não numéricos
+  const cleanEAN = String(ean).replace(/[^0-9]/g, "");
+
+  // Se não houver dígitos após a limpeza, retorna null
+  if (!cleanEAN) return null;
+
+  try {
+    return BigInt(cleanEAN);
+  } catch (error) {
+    console.error("Erro ao converter EAN para BigInt:", error);
+    return null;
+  }
 };
 
 export async function GET(req: NextRequest) {
@@ -80,14 +100,14 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { nome, sku, ean, componentes } = body;
 
-    if (!nome || !sku || !ean) {
+    if (!nome || !sku) {
       return new Response(
-        JSON.stringify({ error: "Nome, SKU e EAN são obrigatórios" }),
+        JSON.stringify({ error: "Nome e SKU são obrigatórios" }),
         { status: 400 }
       );
     }
 
-    const existingProduto = await prisma.produto.findUnique({
+    const existingProduto = await prisma.produto.findFirst({
       where: { sku, userId: user.id },
     });
 
@@ -103,7 +123,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           nome,
           sku,
-          ean: BigInt(ean),
+          ean: safeEANConversion(ean), // Usando nossa função segura
           isKit: true,
           componentes: {
             create: componentes.map(
@@ -135,7 +155,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           nome,
           sku,
-          ean: BigInt(ean),
+          ean: safeEANConversion(ean), // Usando nossa função segura
           isKit: false,
         },
       });
@@ -159,10 +179,10 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
 
     const { id, nome, sku, ean } = body;
-    if (!id || !nome || !sku || !ean) {
+    if (!id || !nome || !sku) {
       return NextResponse.json(
         {
-          error: "ID, Nome, SKU e  EAN são obrigatórios",
+          error: "ID, Nome, SKU são obrigatórios",
         },
         { status: 400 }
       );
@@ -173,7 +193,7 @@ export async function PUT(req: NextRequest) {
       data: {
         nome,
         sku,
-        ean: BigInt(ean),
+        ean: safeEANConversion(ean), // Usando nossa função segura
       },
     });
     return new Response(JSON.stringify(serializeBigInt(produtoAtualizado)), {
