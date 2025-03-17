@@ -18,11 +18,12 @@ const ProdutosPage = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
 
   useEffect(() => {
-    setProdutos(
-      initialProdutos.map((p) => ({ ...p, ean: p.ean?.toString() || "" }))
-    );
+    if (initialProdutos) {
+      setProdutos(
+        initialProdutos.map((p) => ({ ...p, ean: p.ean?.toString() || "" }))
+      );
+    }
   }, [initialProdutos]);
-
   const kits = produtos.filter((p) => p.isKit);
 
   const handleDelete = async (id: string | number) => {
