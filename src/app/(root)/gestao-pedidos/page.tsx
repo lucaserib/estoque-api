@@ -46,10 +46,7 @@ const GestaoPedidos = () => {
 
   // Estado para filtros
   const [filter, setFilter] = useState<PedidoFilter>({
-    dateRange: {
-      from: subDays(new Date(), 30),
-      to: new Date(),
-    },
+    dateRange: undefined,
     searchTerm: "",
   });
 

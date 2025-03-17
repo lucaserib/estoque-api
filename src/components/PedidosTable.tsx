@@ -2,10 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { DateRange } from "react-day-picker";
-import { formatBRL } from "@/utils/currency";
 import { toast } from "sonner";
-
-// UI Components
 import {
   Table,
   TableBody,
@@ -108,7 +105,6 @@ const PedidosTable = ({
         });
       }
 
-      // Aplicar filtro de pesquisa
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         filteredPedidos = filteredPedidos.filter(

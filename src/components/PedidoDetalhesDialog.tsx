@@ -1,5 +1,3 @@
-"use client";
-
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBRL } from "@/utils/currency";
@@ -57,10 +55,10 @@ export function PedidoDetalhesDialog({
     return formatBRL(valorCentavos / 100);
   };
 
-  // Cleanup para evitar recursão infinita quando o modal é fechado
+  // Important fix: Cleanup for focus management to prevent infinite recursion
   useEffect(() => {
     return () => {
-      // Força o foco de volta para o documento quando o componente é desmontado
+      // Force focus back to the document when component unmounts
       if (!isOpen) {
         setTimeout(() => {
           document.body.focus();
@@ -74,7 +72,7 @@ export function PedidoDetalhesDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Assegura que focamos em algo neutro antes de fechar
+          // Important fix: Ensure we focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();
@@ -119,8 +117,8 @@ export function PedidoDetalhesDialog({
               <Badge
                 className={`px-3 py-1 ${
                   pedido.status === "confirmado"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
-                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
+                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
                 }`}
               >
                 {pedido.status === "confirmado" ? (

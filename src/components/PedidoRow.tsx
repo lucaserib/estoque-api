@@ -65,7 +65,6 @@ export function PedidoRow({
     </span>
   );
 
-  // Valor total do pedido
   const valorTotal = calcularValorPedido(pedido.produtos);
 
   return (
@@ -166,53 +165,6 @@ export function PedidoRow({
               <Eye className="h-4 w-4" />
             </Button>
           )}
-
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={`h-8 w-8 p-0 ml-1 ${
-                  loadingAction ? "bg-gray-100 dark:bg-gray-800" : ""
-                }`}
-              >
-                {loadingAction ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MoreHorizontal className="h-4 w-4" />
-                )}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="w-40 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-md"
-            >
-              <DropdownMenuItem
-                onClick={onViewDetails}
-                className="flex items-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              >
-                <Eye className="mr-2 h-4 w-4 text-indigo-500" /> Ver detalhes
-              </DropdownMenuItem>
-
-              {status === "pendente" && (
-                <>
-                  <DropdownMenuItem
-                    onClick={onConfirm}
-                    className="flex items-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <Check className="mr-2 h-4 w-4 text-green-500" /> Confirmar
-                  </DropdownMenuItem>
-
-                  <DropdownMenuItem
-                    onClick={onDelete}
-                    className="flex items-center cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-red-600 dark:text-red-400"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                  </DropdownMenuItem>
-                </>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </TableCell>
     </TableRow>
