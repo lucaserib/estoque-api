@@ -48,7 +48,6 @@ export function PedidoRow({
 }: PedidoRowProps) {
   const [isHovered, setIsHovered] = useState(false);
 
-  // Formatar data
   const formattedDate = (
     status === "pendente" ? pedido.dataPrevista : pedido.dataConclusao
   ) ? (
