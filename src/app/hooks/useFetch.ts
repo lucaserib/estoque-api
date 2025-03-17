@@ -11,7 +11,7 @@ interface UseFetchResult<T> {
 export const useFetch = <T>(
   url: string,
   transform?: (data: T[]) => T[],
-  dependencies: any[] = []
+  dependencies: unknown[] = []
 ): UseFetchResult<T> => {
   const [data, setData] = useState<T[] | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
