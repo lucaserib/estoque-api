@@ -25,7 +25,7 @@ const KitList = () => {
     return <p className="text-red-500 text-center">{error}</p>;
   }
 
-  const filteredKits = kits.filter(
+  const filteredKits = (kits ?? []).filter(
     (kit) =>
       kit.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       kit.sku.toLowerCase().includes(searchTerm.toLowerCase())
@@ -175,7 +175,6 @@ const KitList = () => {
         </div>
       </div>
 
-      {/* Paginação */}
       {filteredKits.length > itemsPerPage && (
         <div className="flex justify-center items-center space-x-1 mt-6">
           <button
