@@ -20,7 +20,7 @@ import {
   Clock,
   ShoppingCart,
 } from "lucide-react";
-import NovoPedidoForm from "./components/novoPedido/page";
+import NovoPedidoForm from "./components/NovoPedidoForm";
 import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 
 interface PedidoFilter {
