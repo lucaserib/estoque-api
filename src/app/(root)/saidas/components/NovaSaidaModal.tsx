@@ -20,12 +20,12 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: armazens } = useFetch<Armazem>("/api/estoque/armazens");
-  const { data: produtos, loading: produtosLoading } = useFetch<Produto>(
+  const { data: armazens = [] } = useFetch<Armazem>("/api/estoque/armazens");
+  const { data: produtos = [], loading: produtosLoading } = useFetch<Produto>(
     armazemId ? `/api/produtos?armazemId=${armazemId}` : ""
   );
 
-  const filteredProdutos = produtos.filter(
+  const filteredProdutos = (produtos ?? []).filter(
     (produto) =>
       produto.sku.toLowerCase().includes(sku.toLowerCase()) ||
       produto.nome.toLowerCase().includes(sku.toLowerCase())
@@ -57,7 +57,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
     }
 
     const qty = Number(quantidade);
-    const produtoToAdd = produtos.find((p) => p.sku === sku);
+    const produtoToAdd = (produtos ?? []).find((p) => p.sku === sku);
 
     try {
       if (produtoToAdd) {
@@ -184,7 +184,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
                 className="w-full p-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none"
               >
                 <option value="">Selecione um armazém</option>
-                {armazens.map((armazem) => (
+                {(armazens ?? []).map((armazem) => (
                   <option key={armazem.id} value={armazem.id}>
                     {armazem.nome}
                   </option>
@@ -214,7 +214,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
                   <li className="p-3 text-gray-500 dark:text-gray-400 text-sm">
                     Carregando...
                   </li>
-                ) : filteredProdutos.length > 0 ? (
+                ) : (filteredProdutos ?? []).length > 0 ? (
                   filteredProdutos.map((produto) => (
                     <li
                       key={produto.id}
