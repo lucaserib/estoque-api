@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import { FaTrash, FaEdit, FaEye, FaLink, FaWarehouse } from "react-icons/fa";
-import { Search, Loader2 } from "lucide-react";
+import { Search, Loader2, AlertTriangle } from "lucide-react";
+import { ProdutoFilterBar } from "./ProdutoFilterBar";
 import { Produto } from "../types";
-import { useFetch } from "@/app/hooks/useFetch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +20,8 @@ import { ProdutoEditarDialog } from "./dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "./dialogs/ProdutoFornecedorDialog";
 import { ProdutoEstoqueDialog } from "./dialogs/ProdutoEstoqueDialog";
 import { ProdutoPagination } from "./ProdutoPagination";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 
 interface ProdutoListProps {
   produtos: Produto[];
@@ -42,7 +44,10 @@ const ProdutoList = ({
   onEdit,
   refreshTrigger = 0,
 }: ProdutoListProps) => {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [filterOptions, setFilterOptions] = useState({
+    searchTerm: "",
+    stockFilter: "all" as "all" | "low" | "none" | "available",
+  });
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -52,6 +57,9 @@ const ProdutoList = ({
   const [isLoadingStock, setIsLoadingStock] = useState(false);
   const [stockDetails, setStockDetails] = useState<StockItem[]>([]);
   const [stockData, setStockData] = useState<{ [key: string]: number }>({});
+  const [estoqueSegurancaData, setEstoqueSegurancaData] = useState<{
+    [key: string]: number;
+  }>({});
   const itemsPerPage = 10;
 
   // Fetch stock data when component mounts or refreshTrigger changes
@@ -67,10 +75,22 @@ const ProdutoList = ({
             (sum, item) => sum + item.quantidade,
             0
           );
-          return { produtoId: produto.id, totalQuantity };
+
+          // Coletar os valores de estoque de segurança também
+          const estoqueSeguranca = stockItems.reduce(
+            (sum, item) => Math.max(sum, item.estoqueSeguranca || 0),
+            0
+          );
+
+          return {
+            produtoId: produto.id,
+            totalQuantity,
+            estoqueSeguranca,
+          };
         });
 
         const stockResults = await Promise.all(stockPromises);
+
         const stockMap = stockResults.reduce(
           (acc, { produtoId, totalQuantity }) => {
             acc[produtoId] = totalQuantity;
@@ -79,7 +99,16 @@ const ProdutoList = ({
           {} as { [key: string]: number }
         );
 
+        const estoqueSegurancaMap = stockResults.reduce(
+          (acc, { produtoId, estoqueSeguranca }) => {
+            acc[produtoId] = estoqueSeguranca;
+            return acc;
+          },
+          {} as { [key: string]: number }
+        );
+
         setStockData(stockMap);
+        setEstoqueSegurancaData(estoqueSegurancaMap);
       } catch (error) {
         console.error("Erro ao buscar estoque:", error);
       }
@@ -108,11 +137,41 @@ const ProdutoList = ({
     }
   };
 
-  const filteredProdutos = produtos.filter(
-    (produto) =>
-      produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProdutos = produtos.filter((produto) => {
+    // Filtro de texto
+    const matchesSearch =
+      produto.nome
+        .toLowerCase()
+        .includes(filterOptions.searchTerm.toLowerCase()) ||
+      produto.sku
+        .toLowerCase()
+        .includes(filterOptions.searchTerm.toLowerCase()) ||
+      (produto.ean &&
+        produto.ean
+          .toLowerCase()
+          .includes(filterOptions.searchTerm.toLowerCase()));
+
+    if (!matchesSearch) return false;
+
+    // Filtro de estoque
+    if (filterOptions.stockFilter !== "all") {
+      const estoque = stockData[produto.id] || 0;
+      const estoqueMinimo = estoqueSegurancaData[produto.id] || 0;
+
+      switch (filterOptions.stockFilter) {
+        case "low":
+          return estoque <= estoqueMinimo && estoque > 0;
+        case "none":
+          return estoque === 0;
+        case "available":
+          return estoque > 0;
+        default:
+          return true;
+      }
+    }
+
+    return true;
+  });
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -126,26 +185,14 @@ const ProdutoList = ({
     setCurrentPage(pageNumber);
   };
 
-  const handleDeleteClick = async (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir este produto?")) {
-      onDelete(id);
-    }
-  };
-
   return (
     <div>
-      <div className="mb-6 relative">
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-          <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
-        </div>
-        <Input
-          type="text"
-          placeholder="Buscar por nome ou SKU..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 w-full border-gray-300 dark:border-gray-600"
-        />
-      </div>
+      <ProdutoFilterBar
+        onFilterChange={setFilterOptions}
+        totalProdutos={produtos.length}
+        totalFiltrados={filteredProdutos.length}
+        filterOptions={filterOptions}
+      />
 
       <Card className="border-gray-200 dark:border-gray-700 shadow-sm">
         <CardContent className="p-0">
@@ -186,9 +233,28 @@ const ProdutoList = ({
                       </TableCell>
                       <TableCell>
                         {stockData[produto.id] !== undefined ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100">
-                            {stockData[produto.id]}
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <Badge
+                              className={
+                                stockData[produto.id] === 0
+                                  ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
+                                  : stockData[produto.id] <=
+                                    (estoqueSegurancaData[produto.id] || 0)
+                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                                  : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                              }
+                            >
+                              {stockData[produto.id]}
+                            </Badge>
+                            {stockData[produto.id] <=
+                              (estoqueSegurancaData[produto.id] || 0) &&
+                              stockData[produto.id] > 0 && (
+                                <AlertTriangle
+                                  className="h-4 w-4 text-amber-500"
+                                  title="Estoque abaixo do nível mínimo"
+                                />
+                              )}
+                          </div>
                         ) : (
                           <div className="flex items-center">
                             <Loader2 className="h-4 w-4 animate-spin mr-1 text-gray-400" />
@@ -244,7 +310,7 @@ const ProdutoList = ({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => handleDeleteClick(produto.id)}
+                            onClick={() => onDelete(produto.id)}
                             className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                           >
                             <FaTrash className="w-4 h-4" />

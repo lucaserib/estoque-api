@@ -33,7 +33,6 @@ const KitList = ({ kits, onDelete, refreshTrigger = 0 }: KitListProps) => {
   const [kitsWithComponents, setKitsWithComponents] = useState<Produto[]>([]);
   const itemsPerPage = 10;
 
-  // Fetch kit components when component mounts or refreshTrigger changes
   useEffect(() => {
     const fetchKitComponents = async () => {
       if (kits.length === 0) return;
