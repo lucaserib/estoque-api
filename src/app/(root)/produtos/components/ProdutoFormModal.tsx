@@ -23,6 +23,9 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: produtos, loading } = useFetch<Produto>("/api/produtos");
+
+  if (!produtos) return null;
+
   const filteredProdutos = produtos.filter(
     (produto) =>
       produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
