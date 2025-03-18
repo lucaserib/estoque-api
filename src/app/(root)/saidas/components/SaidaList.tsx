@@ -52,8 +52,8 @@ export function SaidaList({ saidas }: SaidaListProps) {
           Nenhuma saída registrada
         </h3>
         <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
-          Não há registros de saída no período selecionado. Use o botão "Nova
-          Saída" para registrar a movimentação de produtos.
+          Não há registros de saída no período selecionado. Use o botão
+          &quot;Nova Saída&quot; para registrar a movimentação de produtos.
         </p>
       </div>
     );
