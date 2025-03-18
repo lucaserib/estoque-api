@@ -21,7 +21,7 @@ const FornecedoresPage = () => {
     data: initialFornecedores,
     loading,
     error,
-  } = useFetch<Fornecedor>("/api/fornecedores");
+  } = useFetch<Fornecedor[]>("/api/fornecedores");
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
