@@ -75,6 +75,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
               produtoId: produtoToAdd.id,
               quantidade: qty,
               sku: produtoToAdd.sku,
+              nome: produtoToAdd.nome, // Add the nome property
               isKit: false,
             },
           ];
@@ -105,11 +106,13 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
                 produtoId: kit.id,
                 quantidade: qty,
                 sku: kit.sku,
+                nome: kit.nome, // Add the nome property for the kit
                 isKit: true,
                 componentes: kit.componentes.map((c: KitComponente) => ({
                   produtoId: c.produto.id,
                   quantidade: c.quantidade * qty,
                   sku: c.produto.sku,
+                  nome: c.produto.nome, // Add the nome property for kit components
                 })),
               },
             ];
