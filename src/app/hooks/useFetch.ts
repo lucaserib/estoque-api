@@ -7,16 +7,9 @@ interface FetchState<T> {
   error: string | null;
 }
 
-// Utilizando unknown em vez de any
-// unknown é mais seguro que any, mas não quebra a compatibilidade
-type JsonPrimitive = string | number | boolean | null | undefined | bigint;
-type JsonCompatible = JsonPrimitive | JsonMap | JsonCompatible[];
-interface JsonMap {
-  [key: string]: JsonCompatible;
-}
-
 // Função para processar valores BigInt e converter para string
-const processBigIntValues = (data: unknown): unknown => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const processBigIntValues = (data: any): any => {
   if (data === null || data === undefined) {
     return data;
   }
@@ -30,12 +23,11 @@ const processBigIntValues = (data: unknown): unknown => {
   }
 
   if (typeof data === "object") {
-    const result: Record<string, unknown> = {};
-    for (const key in data as Record<string, unknown>) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const result: { [key: string]: any } = {};
+    for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
-        result[key] = processBigIntValues(
-          (data as Record<string, unknown>)[key]
-        );
+        result[key] = processBigIntValues(data[key]);
       }
     }
     return result;
@@ -66,7 +58,7 @@ export function useFetch<T>(url: string) {
       const responseData = await response.json();
 
       // Processar valores BigInt, convertendo para string
-      const processedData = processBigIntValues(responseData) as T[];
+      const processedData = processBigIntValues(responseData);
 
       setState({
         data: processedData,
