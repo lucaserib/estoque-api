@@ -7,46 +7,44 @@ interface FetchState<T> {
   error: string | null;
 }
 
-// Definindo um tipo recursivo para os dados que podem conter BigInt
-type JsonValue =
-  | string
-  | number
-  | boolean
-  | null
-  | bigint
-  | { [key: string]: JsonValue }
-  | JsonValue[];
+// Utilizando unknown em vez de any
+// unknown é mais seguro que any, mas não quebra a compatibilidade
+type JsonPrimitive = string | number | boolean | null | undefined | bigint;
+type JsonCompatible = JsonPrimitive | JsonMap | JsonCompatible[];
+interface JsonMap {
+  [key: string]: JsonCompatible;
+}
 
 // Função para processar valores BigInt e converter para string
-const processBigIntValues = <T extends JsonValue>(data: T): T => {
+const processBigIntValues = (data: unknown): unknown => {
   if (data === null || data === undefined) {
     return data;
   }
 
   if (typeof data === "bigint") {
-    return data.toString() as unknown as T;
+    return data.toString();
   }
 
   if (Array.isArray(data)) {
-    return data.map((item) => processBigIntValues(item)) as unknown as T;
+    return data.map((item) => processBigIntValues(item));
   }
 
   if (typeof data === "object") {
-    const result: Record<string, JsonValue> = {};
-    for (const key in data) {
+    const result: Record<string, unknown> = {};
+    for (const key in data as Record<string, unknown>) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
         result[key] = processBigIntValues(
-          (data as Record<string, JsonValue>)[key]
+          (data as Record<string, unknown>)[key]
         );
       }
     }
-    return result as unknown as T;
+    return result;
   }
 
   return data;
 };
 
-export function useFetch<T extends JsonValue>(url: string) {
+export function useFetch<T>(url: string) {
   const [state, setState] = useState<FetchState<T>>({
     data: null,
     loading: true,
@@ -68,7 +66,7 @@ export function useFetch<T extends JsonValue>(url: string) {
       const responseData = await response.json();
 
       // Processar valores BigInt, convertendo para string
-      const processedData = processBigIntValues<T[]>(responseData);
+      const processedData = processBigIntValues(responseData) as T[];
 
       setState({
         data: processedData,
