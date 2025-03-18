@@ -6,10 +6,10 @@ const prisma = new PrismaClient();
 export async function GET(req: Request) {
   const armazemId = req.url.split("/").pop(); // Captura o último segmento da URL
 
-  if (!armazemId || isNaN(Number(armazemId))) {
-    console.error("ID do armazém inválido:", armazemId);
+  if (!armazemId) {
+    console.error("ID do armazém não fornecido");
     return NextResponse.json(
-      { error: "ID do armazém inválido" },
+      { error: "ID do armazém não fornecido" },
       { status: 400 }
     );
   }
