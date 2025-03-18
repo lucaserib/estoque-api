@@ -6,7 +6,6 @@ import { Pedido, PedidoProduto, Armazem } from "../../types";
 import { useFetch } from "../../../../hooks/useFetch";
 import { brlToCents, formatBRL } from "@/utils/currency";
 
-// UI Components
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -44,7 +43,8 @@ const PedidosPendentes = () => {
     refetch: refetchPedidos,
   } = useFetch<Pedido[]>(
     "/api/pedidos-compra",
-    (data) => data.filter((pedido) => pedido.status === "pendente"),
+    (data: unknown[]) =>
+      (data as Pedido[]).filter((pedido) => pedido.status === "pendente"),
     [refreshTrigger]
   );
 

@@ -16,9 +16,10 @@ const PedidosConcluidos = () => {
     refetch,
   } = useFetch<Pedido[]>(
     "/api/pedidos-compra",
-    (data) => {
-      // Filtrar apenas pedidos confirmados
-      return data.filter((pedido) => pedido.status === "confirmado");
+    (data: unknown[]) => {
+      return (data as Pedido[]).filter(
+        (pedido) => pedido.status === "confirmado"
+      );
     },
     [refreshTrigger]
   );

@@ -20,8 +20,8 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { data: armazens = [] } = useFetch<Armazem>("/api/estoque/armazens");
-  const { data: produtos = [], loading: produtosLoading } = useFetch<Produto>(
+  const { data: armazens = [] } = useFetch<Armazem[]>("/api/estoque/armazens");
+  const { data: produtos = [], loading: produtosLoading } = useFetch<Produto[]>(
     armazemId ? `/api/produtos?armazemId=${armazemId}` : ""
   );
 

@@ -6,7 +6,7 @@ import { ptBR } from "date-fns/locale";
 import { Saida } from "../types";
 
 const SaidaList = () => {
-  const { data: saidas, loading, error } = useFetch<Saida>("/api/saida");
+  const { data: saidas, loading, error } = useFetch<Saida[]>("/api/saida");
 
   if (loading) {
     return (

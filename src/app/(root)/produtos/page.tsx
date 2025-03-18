@@ -25,7 +25,7 @@ const ProdutosPage = () => {
     loading,
     error,
     refetch,
-  } = useFetch<Produto>("/api/produtos");
+  } = useFetch<Produto[]>("/api/produtos");
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
