@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, DependencyList } from "react";
 
 interface FetchState<T> {
   data: T;
@@ -7,8 +7,17 @@ interface FetchState<T> {
   error: string | null;
 }
 
+// Use Record and unknown instead of any
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | JsonValue[]
+  | { [key: string]: JsonValue };
+
 // Function to process BigInt values and convert to string
-const processBigIntValues = (data: any): any => {
+const processBigIntValues = (data: unknown): unknown => {
   if (data === null || data === undefined) {
     return data;
   }
@@ -21,11 +30,13 @@ const processBigIntValues = (data: any): any => {
     return data.map((item) => processBigIntValues(item));
   }
 
-  if (typeof data === "object") {
-    const result: { [key: string]: any } = {};
-    for (const key in data) {
+  if (typeof data === "object" && data !== null) {
+    const result: Record<string, unknown> = {};
+    for (const key in data as Record<string, unknown>) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
-        result[key] = processBigIntValues(data[key]);
+        result[key] = processBigIntValues(
+          (data as Record<string, unknown>)[key]
+        );
       }
     }
     return result;
@@ -40,10 +51,10 @@ const processBigIntValues = (data: any): any => {
  * @param processData Optional function to process the response data
  * @param deps Additional dependencies for the useEffect hook
  */
-export function useFetch<T extends any[]>(
+export function useFetch<T extends unknown[]>(
   url: string,
-  processData?: (data: any[]) => T,
-  deps: any[] = []
+  processData?: (data: unknown[]) => T,
+  deps: DependencyList = []
 ) {
   // Initialize with empty array of the correct type
   const [state, setState] = useState<FetchState<T>>({
@@ -52,6 +63,7 @@ export function useFetch<T extends any[]>(
     error: null,
   });
 
+  // Explicitly list deps to avoid the spread warning
   const refetch = useCallback(async () => {
     // If URL is empty, don't fetch
     if (!url) {
@@ -82,12 +94,12 @@ export function useFetch<T extends any[]>(
       }
 
       // Process BigInt values
-      responseData = processBigIntValues(responseData);
+      const processedResponse = processBigIntValues(responseData) as unknown[];
 
       // Apply processData function if provided
       const processedData = processData
-        ? processData(responseData)
-        : (responseData as T);
+        ? processData(processedResponse)
+        : (processedResponse as unknown as T);
 
       setState({
         data: processedData,
@@ -102,6 +114,7 @@ export function useFetch<T extends any[]>(
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [url, processData, ...deps]);
 
   useEffect(() => {
