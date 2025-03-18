@@ -15,6 +15,7 @@ export interface KitComponente {
 export interface SaidaProduto {
   produtoId: string;
   quantidade: number;
+
   sku: string;
   isKit?: boolean;
   componentes?: KitComponente[];
