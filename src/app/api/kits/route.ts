@@ -241,7 +241,12 @@ export async function POST(req: NextRequest) {
           );
 
           await prisma.estoque.update({
-            where: { id: estoque.id },
+            where: {
+              produtoId_armazemId: {
+                produtoId: estoque.produtoId,
+                armazemId: estoque.armazemId,
+              },
+            },
             data: { quantidade: { decrement: quantidadeReduzir } },
           });
 

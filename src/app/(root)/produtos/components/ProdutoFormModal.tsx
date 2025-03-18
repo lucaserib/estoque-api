@@ -56,11 +56,23 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
 
     setIsSearching(true);
     try {
-      const response = await fetch(`/api/produtos?=${produtoSearch}`);
+      // Busca produtos pelo nome ou SKU
+      const response = await fetch(
+        `/api/produtos?search=${encodeURIComponent(produtoSearch)}`
+      );
       if (!response.ok) throw new Error("Erro ao buscar produtos");
 
       const data = await response.json();
-      const filteredData = data.filter((p: Produto) => !p.isKit);
+
+      // Filtra localmente para garantir que apenas produtos (não kits) sejam mostrados
+      // e que correspondam ao termo de busca (no nome ou SKU)
+      const filteredData = data.filter(
+        (p) =>
+          !p.isKit &&
+          (p.nome.toLowerCase().includes(produtoSearch.toLowerCase()) ||
+            p.sku.toLowerCase().includes(produtoSearch.toLowerCase()))
+      );
+
       setSearchResults(filteredData);
     } catch (error) {
       console.error("Erro ao buscar produtos:", error);

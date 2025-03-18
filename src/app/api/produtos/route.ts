@@ -38,6 +38,7 @@ export async function GET(req: NextRequest) {
   const sku = searchParams.get("sku");
   const armazemId = searchParams.get("armazemId");
   const id = searchParams.get("id");
+  const search = searchParams.get("search"); // Novo parâmetro para busca
 
   try {
     const user = await verifyUser(req);
@@ -68,12 +69,24 @@ export async function GET(req: NextRequest) {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
-    } else if (sku) {
+    } else if (search) {
+      // Busca por termo em nome ou SKU
       produtos = await prisma.produto.findMany({
         where: {
-          sku: {
-            contains: sku,
-          },
+          OR: [
+            {
+              nome: {
+                contains: search,
+                mode: "insensitive", // Case insensitive
+              },
+            },
+            {
+              sku: {
+                contains: search,
+                mode: "insensitive", // Case insensitive
+              },
+            },
+          ],
           userId: user.id,
         },
         include: {
@@ -89,13 +102,11 @@ export async function GET(req: NextRequest) {
           },
         },
       });
-    } else if (armazemId) {
+    } else if (sku) {
       produtos = await prisma.produto.findMany({
         where: {
-          estoques: {
-            some: {
-              armazemId: armazemId,
-            },
+          sku: {
+            contains: sku,
           },
           userId: user.id,
         },
