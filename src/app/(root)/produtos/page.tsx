@@ -31,31 +31,54 @@ const ProdutosPage = () => {
 
   useEffect(() => {
     if (initialProdutos) {
+      // Garantir que todos os produtos tenham o campo EAN como string
       setProdutos(
-        initialProdutos.map((p) => ({ ...p, ean: p.ean?.toString() || "" }))
+        initialProdutos.map((p) => ({
+          ...p,
+          ean: p.ean?.toString() || "",
+        }))
       );
     }
   }, [initialProdutos]);
 
+  // Separar produtos e kits
   const kits = produtos.filter((p) => p.isKit);
   const regularProducts = produtos.filter((p) => !p.isKit);
 
+  // Função para atualizar todo o estado após mudanças
+  const refreshData = async () => {
+    await refetch();
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`/api/produtos?id=${id}`, {
+      // Determinar se estamos excluindo um produto ou um kit
+      const produtoADeletar = produtos.find((p) => p.id === id);
+      const endpoint = produtoADeletar?.isKit
+        ? `/api/kits?id=${id}`
+        : `/api/produtos?id=${id}`;
+
+      const response = await fetch(endpoint, {
         method: "DELETE",
       });
+
       if (response.ok) {
         setProdutos((prev) => prev.filter((p) => p.id !== id));
-        toast.success("Produto excluído com sucesso");
+        toast.success(
+          `${produtoADeletar?.isKit ? "Kit" : "Produto"} excluído com sucesso`
+        );
         setRefreshTrigger((prev) => prev + 1);
       } else {
         const errorData = await response.json();
-        toast.error(errorData.error || "Erro ao excluir produto");
+        toast.error(
+          errorData.error ||
+            `Erro ao excluir ${produtoADeletar?.isKit ? "kit" : "produto"}`
+        );
       }
     } catch (error) {
       console.error("Erro ao deletar produto:", error);
-      toast.error("Erro ao excluir produto");
+      toast.error("Erro ao excluir item");
     }
   };
 
@@ -67,16 +90,15 @@ const ProdutosPage = () => {
   };
 
   const handleSave = (newProduto: Produto) => {
-    setProdutos((prev) => [
-      ...prev,
-      { ...newProduto, ean: newProduto.ean?.toString() || "" },
-    ]);
-    toast.success("Produto cadastrado com sucesso");
-    setRefreshTrigger((prev) => prev + 1);
-  };
+    // Adicionar o novo produto ao estado local
+    setProdutos((prev) => [...prev, newProduto]);
 
-  const refreshData = () => {
-    refetch();
+    // Mostrar mensagem de sucesso
+    toast.success(
+      `${newProduto.isKit ? "Kit" : "Produto"} cadastrado com sucesso`
+    );
+
+    // Atualizar os dados
     setRefreshTrigger((prev) => prev + 1);
   };
 
@@ -201,7 +223,7 @@ const ProdutosPage = () => {
         />
       )}
 
-      {/* Dialogo de confirmação de exclusão */}
+      {/* Diálogo de confirmação de exclusão */}
       {produtoToDelete && (
         <ProdutoDeleteDialog
           isOpen={!!produtoToDelete}

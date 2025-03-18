@@ -1,53 +1,84 @@
-// src/hooks/useFetch.ts
+"use client";
 import { useState, useEffect, useCallback } from "react";
 
-interface UseFetchResult<T> {
+interface FetchState<T> {
   data: T[] | null;
   loading: boolean;
   error: string | null;
-  refetch: () => Promise<void>;
 }
 
-export const useFetch = <T>(
-  url: string,
-  transform?: (data: T[]) => T[],
-  dependencies: unknown[] = []
-): UseFetchResult<T> => {
-  const [data, setData] = useState<T[] | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+// Função para processar valores BigInt e converter para string
+const processBigIntValues = (data: any): any => {
+  if (data === null || data === undefined) {
+    return data;
+  }
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  if (typeof data === "bigint") {
+    return data.toString();
+  }
+
+  if (Array.isArray(data)) {
+    return data.map((item) => processBigIntValues(item));
+  }
+
+  if (typeof data === "object") {
+    const result: { [key: string]: any } = {};
+    for (const key in data) {
+      if (Object.prototype.hasOwnProperty.call(data, key)) {
+        result[key] = processBigIntValues(data[key]);
+      }
+    }
+    return result;
+  }
+
+  return data;
+};
+
+export function useFetch<T>(url: string) {
+  const [state, setState] = useState<FetchState<T>>({
+    data: null,
+    loading: true,
+    error: null,
+  });
+
+  const refetch = useCallback(async () => {
+    setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
       const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error(
-          `Erro ao buscar dados: ${response.status} ${response.statusText}`
+          `Erro na requisição: ${response.status} ${response.statusText}`
         );
       }
 
-      const result = await response.json();
+      const responseData = await response.json();
 
-      const transformedData = transform ? transform(result) : result;
+      // Processar valores BigInt, convertendo para string
+      const processedData = processBigIntValues(responseData);
 
-      setData(transformedData);
-    } catch (err) {
-      console.error("Erro no useFetch:", err);
-      setError(
-        err instanceof Error ? err.message : "Erro desconhecido ao buscar dados"
-      );
-    } finally {
-      setLoading(false);
+      setState({
+        data: processedData,
+        loading: false,
+        error: null,
+      });
+    } catch (error) {
+      console.error("Erro no fetch:", error);
+      setState({
+        data: null,
+        loading: false,
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+      });
     }
-  }, [url, transform]);
+  }, [url]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData, ...dependencies]);
+    refetch();
+  }, [refetch]);
 
-  return { data, loading, error, refetch: fetchData };
-};
+  return {
+    ...state,
+    refetch,
+  };
+}

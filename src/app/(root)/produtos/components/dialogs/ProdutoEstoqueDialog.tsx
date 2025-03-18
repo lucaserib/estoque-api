@@ -212,8 +212,7 @@ export function ProdutoEstoqueDialog({
                                 <Progress
                                   value={percentual}
                                   max={100}
-                                  className="h-2 bg-gray-200 dark:bg-gray-700"
-                                  barClassName={progressClass}
+                                  className={`h-2 bg-gray-200 dark:bg-gray-700 ${progressClass}`}
                                 />
                                 {isCritical && (
                                   <div className="mt-1 flex items-center">

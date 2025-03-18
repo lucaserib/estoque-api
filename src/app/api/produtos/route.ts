@@ -1,11 +1,11 @@
-// Modificação para src/app/api/produtos/route.ts
+// src/app/api/produtos/route.ts
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
 
-// Função para serializar BigInt como string
+// Função para serializar BigInt como string de forma segura
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
@@ -14,9 +14,10 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
-// Função para converter EAN para BigInt de forma segura
+// Função melhorada para converter EAN para BigInt de forma segura
 const safeEANConversion = (ean: string | null): bigint | null => {
   if (!ean) return null;
+  if (ean === "") return null;
 
   // Remove caracteres não numéricos
   const cleanEAN = String(ean).replace(/[^0-9]/g, "");
@@ -36,28 +37,61 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const sku = searchParams.get("sku");
   const armazemId = searchParams.get("armazemId");
+  const id = searchParams.get("id");
 
   try {
     const user = await verifyUser(req);
     let produtos = [];
 
-    if (sku) {
+    if (id) {
+      // Buscar um produto específico pelo ID
+      const produto = await prisma.produto.findUnique({
+        where: {
+          id: id,
+          userId: user.id,
+        },
+        include: {
+          estoques: {
+            include: {
+              armazem: true,
+            },
+          },
+          componentes: {
+            include: {
+              produto: true,
+            },
+          },
+        },
+      });
+
+      return new Response(JSON.stringify(serializeBigInt(produto)), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } else if (sku) {
       produtos = await prisma.produto.findMany({
         where: {
-          isKit: false,
           sku: {
             contains: sku,
           },
           userId: user.id,
         },
         include: {
-          estoques: true,
+          estoques: {
+            include: {
+              armazem: true,
+            },
+          },
+          componentes: {
+            include: {
+              produto: true,
+            },
+          },
         },
       });
     } else if (armazemId) {
       produtos = await prisma.produto.findMany({
         where: {
-          isKit: false,
           estoques: {
             some: {
               armazemId: armazemId,
@@ -66,17 +100,34 @@ export async function GET(req: NextRequest) {
           userId: user.id,
         },
         include: {
-          estoques: true,
+          estoques: {
+            include: {
+              armazem: true,
+            },
+          },
+          componentes: {
+            include: {
+              produto: true,
+            },
+          },
         },
       });
     } else {
       produtos = await prisma.produto.findMany({
         where: {
-          isKit: false,
           userId: user.id,
         },
         include: {
-          estoques: true,
+          estoques: {
+            include: {
+              armazem: true,
+            },
+          },
+          componentes: {
+            include: {
+              produto: true,
+            },
+          },
         },
       });
     }
@@ -98,7 +149,7 @@ export async function POST(req: NextRequest) {
     const user = await verifyUser(req);
 
     const body = await req.json();
-    const { nome, sku, ean, componentes } = body;
+    const { nome, sku, ean, componentes, isKit = false } = body;
 
     if (!nome || !sku) {
       return new Response(
@@ -117,13 +168,14 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (componentes && componentes.length > 0) {
+    if (isKit || (componentes && componentes.length > 0)) {
+      // Criar um kit
       const novoKit = await prisma.produto.create({
         data: {
           userId: user.id,
           nome,
           sku,
-          ean: safeEANConversion(ean), // Usando nossa função segura
+          ean: safeEANConversion(ean),
           isKit: true,
           componentes: {
             create: componentes.map(
@@ -136,13 +188,23 @@ export async function POST(req: NextRequest) {
             ),
           },
         },
+        include: {
+          componentes: {
+            include: {
+              produto: true,
+            },
+          },
+        },
       });
 
-      for (const componente of componentes) {
-        await prisma.estoque.updateMany({
-          where: { produtoId: componente.produtoId },
-          data: { quantidade: { decrement: componente.quantidade } },
-        });
+      // Atualizar o estoque dos componentes (opcional - depende da regra de negócio)
+      if (componentes && componentes.length > 0) {
+        for (const componente of componentes) {
+          await prisma.estoque.updateMany({
+            where: { produtoId: componente.produtoId },
+            data: { quantidade: { decrement: componente.quantidade } },
+          });
+        }
       }
 
       return new Response(JSON.stringify(serializeBigInt(novoKit)), {
@@ -150,12 +212,13 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     } else {
+      // Criar um produto simples
       const novoProduto = await prisma.produto.create({
         data: {
           userId: user.id,
           nome,
           sku,
-          ean: safeEANConversion(ean), // Usando nossa função segura
+          ean: safeEANConversion(ean),
           isKit: false,
         },
       });
@@ -193,7 +256,7 @@ export async function PUT(req: NextRequest) {
       data: {
         nome,
         sku,
-        ean: safeEANConversion(ean), // Usando nossa função segura
+        ean: safeEANConversion(ean),
       },
     });
     return new Response(JSON.stringify(serializeBigInt(produtoAtualizado)), {
