@@ -2,13 +2,12 @@
 import { useState, useEffect, useCallback } from "react";
 
 interface FetchState<T> {
-  data: T[] | null;
+  data: T;
   loading: boolean;
   error: string | null;
 }
 
-// Função para processar valores BigInt e converter para string
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// Function to process BigInt values and convert to string
 const processBigIntValues = (data: any): any => {
   if (data === null || data === undefined) {
     return data;
@@ -23,7 +22,6 @@ const processBigIntValues = (data: any): any => {
   }
 
   if (typeof data === "object") {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result: { [key: string]: any } = {};
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
@@ -36,14 +34,34 @@ const processBigIntValues = (data: any): any => {
   return data;
 };
 
-export function useFetch<T>(url: string) {
+/**
+ * Custom hook to fetch data from an API endpoint
+ * @param url The URL to fetch data from
+ * @param processData Optional function to process the response data
+ * @param deps Additional dependencies for the useEffect hook
+ */
+export function useFetch<T extends any[]>(
+  url: string,
+  processData?: (data: any[]) => T,
+  deps: any[] = []
+) {
+  // Initialize with empty array of the correct type
   const [state, setState] = useState<FetchState<T>>({
-    data: null,
+    data: [] as unknown as T,
     loading: true,
     error: null,
   });
 
   const refetch = useCallback(async () => {
+    // If URL is empty, don't fetch
+    if (!url) {
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+      }));
+      return;
+    }
+
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
     try {
@@ -55,10 +73,21 @@ export function useFetch<T>(url: string) {
         );
       }
 
-      const responseData = await response.json();
+      let responseData = await response.json();
 
-      // Processar valores BigInt, convertendo para string
-      const processedData = processBigIntValues(responseData);
+      // Ensure responseData is an array
+      if (!Array.isArray(responseData)) {
+        console.warn("API response is not an array, converting to array");
+        responseData = [responseData];
+      }
+
+      // Process BigInt values
+      responseData = processBigIntValues(responseData);
+
+      // Apply processData function if provided
+      const processedData = processData
+        ? processData(responseData)
+        : (responseData as T);
 
       setState({
         data: processedData,
@@ -68,12 +97,12 @@ export function useFetch<T>(url: string) {
     } catch (error) {
       console.error("Erro no fetch:", error);
       setState({
-        data: null,
+        data: [] as unknown as T,
         loading: false,
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });
     }
-  }, [url]);
+  }, [url, processData, ...deps]);
 
   useEffect(() => {
     refetch();

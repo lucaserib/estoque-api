@@ -147,7 +147,6 @@ const PedidosTable = ({
     }, 0);
   };
 
-  // Deletar pedido
   const handleDeletePedido = async (id: number) => {
     if (!confirm("Tem certeza que deseja excluir este pedido?")) return;
 
@@ -181,7 +180,6 @@ const PedidosTable = ({
     }
   };
 
-  // Confirmar pedido (callbacks)
   const handleConfirmSuccess = (pedidoId: number, novoPedidoId?: number) => {
     setIsConfirmOpen(false);
 
@@ -198,18 +196,15 @@ const PedidosTable = ({
     }
   };
 
-  // Paginação
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = data.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(data.length / itemsPerPage);
 
-  // Handler de paginação
   const handlePageChange = (pageNumber: number) => {
     setCurrentPage(pageNumber);
   };
 
-  // Handlers de ações
   const handleViewDetails = (pedido: Pedido) => {
     setSelectedPedido(pedido);
     setIsDetailsOpen(true);
@@ -220,12 +215,10 @@ const PedidosTable = ({
     setIsConfirmOpen(true);
   };
 
-  // Se estiver carregando, mostrar esqueleto
   if (loading) {
     return <PedidoLoadingSkeleton />;
   }
 
-  // Se houver erro, mostrar mensagem
   if (error) {
     return (
       <Alert variant="destructive" className="animate-fade-in">
@@ -244,7 +237,6 @@ const PedidosTable = ({
     );
   }
 
-  // Se não houver dados, mostrar mensagem
   if (data.length === 0) {
     return (
       <Card className="w-full border-dashed border-2 bg-gray-50/50 dark:bg-gray-900/10 shadow-sm animate-fade-in">
@@ -284,7 +276,6 @@ const PedidosTable = ({
     );
   }
 
-  // Renderizar a tabela
   return (
     <div className="space-y-4 animate-fade-in">
       <Card className="w-full border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
@@ -322,7 +313,6 @@ const PedidosTable = ({
         </div>
       </Card>
 
-      {/* Paginação */}
       {totalPages > 1 && (
         <PedidoPagination
           currentPage={currentPage}
@@ -335,7 +325,6 @@ const PedidosTable = ({
         />
       )}
 
-      {/* Modal de Detalhes */}
       {selectedPedido && (
         <PedidoDetalhesDialog
           isOpen={isDetailsOpen}
@@ -345,7 +334,6 @@ const PedidosTable = ({
         />
       )}
 
-      {/* Modal de Confirmação de Pedido */}
       {selectedPedido && (
         <PedidoConfirmDialog
           isOpen={isConfirmOpen}

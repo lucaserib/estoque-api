@@ -14,7 +14,7 @@ const PedidosConcluidos = () => {
     loading,
     error,
     refetch,
-  } = useFetch<Pedido>(
+  } = useFetch<Pedido[]>(
     "/api/pedidos-compra",
     (data) => {
       // Filtrar apenas pedidos confirmados

@@ -67,7 +67,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
       // Filtra localmente para garantir que apenas produtos (não kits) sejam mostrados
       // e que correspondam ao termo de busca (no nome ou SKU)
       const filteredData = data.filter(
-        (p) =>
+        (p: Produto) =>
           !p.isKit &&
           (p.nome.toLowerCase().includes(produtoSearch.toLowerCase()) ||
             p.sku.toLowerCase().includes(produtoSearch.toLowerCase()))

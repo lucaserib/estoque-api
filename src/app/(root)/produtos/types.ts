@@ -4,7 +4,7 @@ export interface Produto {
   id: string;
   nome: string;
   sku: string;
-  ean?: string; // Opcional
+  ean?: string;
   custoMedio?: number;
   isKit?: boolean;
   componentes?: Array<{

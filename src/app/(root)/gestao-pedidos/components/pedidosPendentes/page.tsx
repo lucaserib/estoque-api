@@ -42,7 +42,7 @@ const PedidosPendentes = () => {
     loading: pedidosLoading,
     error: pedidosError,
     refetch: refetchPedidos,
-  } = useFetch<Pedido>(
+  } = useFetch<Pedido[]>(
     "/api/pedidos-compra",
     (data) => data.filter((pedido) => pedido.status === "pendente"),
     [refreshTrigger]
@@ -53,7 +53,7 @@ const PedidosPendentes = () => {
     data: armazens,
     loading: armazensLoading,
     error: armazensError,
-  } = useFetch<Armazem>("/api/estoque/criarArmazem");
+  } = useFetch<Armazem[]>("/api/estoque/criarArmazem");
 
   const [filteredPedidos, setFilteredPedidos] = useState<Pedido[]>([]);
   const [editPedido, setEditPedido] = useState<Pedido | null>(null);
