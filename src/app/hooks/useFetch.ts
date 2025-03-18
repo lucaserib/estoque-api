@@ -7,34 +7,46 @@ interface FetchState<T> {
   error: string | null;
 }
 
+// Definindo um tipo recursivo para os dados que podem conter BigInt
+type JsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | bigint
+  | { [key: string]: JsonValue }
+  | JsonValue[];
+
 // Função para processar valores BigInt e converter para string
-const processBigIntValues = (data: any): any => {
+const processBigIntValues = <T extends JsonValue>(data: T): T => {
   if (data === null || data === undefined) {
     return data;
   }
 
   if (typeof data === "bigint") {
-    return data.toString();
+    return data.toString() as unknown as T;
   }
 
   if (Array.isArray(data)) {
-    return data.map((item) => processBigIntValues(item));
+    return data.map((item) => processBigIntValues(item)) as unknown as T;
   }
 
   if (typeof data === "object") {
-    const result: { [key: string]: any } = {};
+    const result: Record<string, JsonValue> = {};
     for (const key in data) {
       if (Object.prototype.hasOwnProperty.call(data, key)) {
-        result[key] = processBigIntValues(data[key]);
+        result[key] = processBigIntValues(
+          (data as Record<string, JsonValue>)[key]
+        );
       }
     }
-    return result;
+    return result as unknown as T;
   }
 
   return data;
 };
 
-export function useFetch<T>(url: string) {
+export function useFetch<T extends JsonValue>(url: string) {
   const [state, setState] = useState<FetchState<T>>({
     data: null,
     loading: true,
@@ -56,7 +68,7 @@ export function useFetch<T>(url: string) {
       const responseData = await response.json();
 
       // Processar valores BigInt, convertendo para string
-      const processedData = processBigIntValues(responseData);
+      const processedData = processBigIntValues<T[]>(responseData);
 
       setState({
         data: processedData,
