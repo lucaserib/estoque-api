@@ -236,12 +236,6 @@ export function ProdutoEstoqueDialog({
             </div>
           </div>
         </ScrollArea>
-
-        <DialogFooter className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl">
-          <Button onClick={onClose} className="px-6">
-            Fechar
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

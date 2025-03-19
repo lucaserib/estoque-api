@@ -110,7 +110,7 @@ const FornecedoresPage = () => {
         isSidebarCollapsed ? "md:ml-16" : "md:ml-64"
       }`}
     >
-      <main className="max-w-6xl mx-auto p-6">
+      <main className="max-w-6xl mx-auto p-6 ">
         <Header name="Gestão de Fornecedores" />
 
         {/* Search and Add Button */}

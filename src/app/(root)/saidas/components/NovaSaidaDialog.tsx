@@ -510,42 +510,41 @@ export function NovaSaidaDialog({
                 </div>
               )}
             </div>
-          </div>
+          </div>{" "}
+          <DialogFooter className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl">
+            <div className="flex justify-between w-full">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="border-gray-300 dark:border-gray-600"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleRegistrarSaida}
+                disabled={
+                  saidaProdutos.length === 0 || !armazemId || isSubmitting
+                }
+                className="gap-2 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Processando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Registrar Saída
+                  </>
+                )}
+              </Button>
+            </div>
+          </DialogFooter>
         </ScrollArea>
-
-        <DialogFooter className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl">
-          <div className="flex justify-between w-full">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isSubmitting}
-              className="border-gray-300 dark:border-gray-600"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              onClick={handleRegistrarSaida}
-              disabled={
-                saidaProdutos.length === 0 || !armazemId || isSubmitting
-              }
-              className="gap-2 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Processando...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-4 w-4" />
-                  Registrar Saída
-                </>
-              )}
-            </Button>
-          </div>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -249,7 +249,7 @@ export function PedidoDetalhesDialog({
                       return (
                         <TableRow
                           key={produto.produtoId}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-800/50 group"
+                          className=" dark:hover:bg-gray-800/50 "
                         >
                           <TableCell>
                             <div className="font-medium text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
@@ -294,12 +294,6 @@ export function PedidoDetalhesDialog({
             </div>
           </div>
         </ScrollArea>
-
-        <DialogFooter className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl">
-          <Button onClick={onClose} className="px-6">
-            Fechar
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
