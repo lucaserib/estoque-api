@@ -283,7 +283,6 @@ export function PedidoConfirmDialog({
             <div>
               <BarcodeReader
                 onScan={(barcode) => {
-                  // Buscar o produto no pedido atual
                   const produtoIndex = produtos.findIndex(
                     (p) => p.produto?.sku === barcode
                   );
@@ -437,36 +436,35 @@ export function PedidoConfirmDialog({
               </div>
             </div>
           </div>
+          <DialogFooter className="sticky bottom-0 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl flex justify-between w-full">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={isSubmitting}
+              className="gap-2"
+            >
+              <X className="h-4 w-4" />
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting || !armazemId}
+              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Confirmar Recebimento
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </ScrollArea>
-
-        <DialogFooter className="sticky bottom-0 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl flex justify-between w-full">
-          <Button
-            variant="outline"
-            onClick={onClose}
-            disabled={isSubmitting}
-            className="gap-2"
-          >
-            <X className="h-4 w-4" />
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting || !armazemId}
-            className="gap-2 bg-green-600 hover:bg-green-700 text-white"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Processando...
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-4 w-4" />
-                Confirmar Recebimento
-              </>
-            )}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
