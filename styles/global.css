@@ -162,13 +162,11 @@ body,
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Correção para diálogos aninhados */
 [data-radix-dialog-content] {
   max-height: 90vh !important;
   position: relative !important;
 }
 
-/* Prevenção de recursão infinita em FocusScope */
 .fixed.inset-0.z-50 > div {
   position: fixed !important;
   inset: 0 !important;

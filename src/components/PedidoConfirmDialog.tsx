@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { Armazem, Pedido } from "@/app/(root)/gestao-pedidos/types";
 import { ScrollArea } from "./ui/scroll-area";
+import BarcodeReader from "./BarCodeReader";
 
 interface PedidoConfirmDialogProps {
   isOpen: boolean;
@@ -190,6 +191,7 @@ export function PedidoConfirmDialog({
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 Confirmar Recebimento - Pedido #{pedido.id}
               </DialogTitle>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -279,7 +281,23 @@ export function PedidoConfirmDialog({
 
             {/* Tabela de produtos */}
             <div>
-              <div className="flex items-center justify-between mb-3">
+              <BarcodeReader
+                onScan={(barcode) => {
+                  // Buscar o produto no pedido atual
+                  const produtoIndex = produtos.findIndex(
+                    (p) => p.produto?.sku === barcode
+                  );
+
+                  if (produtoIndex >= 0) {
+                    const newProdutos = [...produtos];
+                    newProdutos[produtoIndex].quantidade += 1;
+                    setProdutos(newProdutos);
+                  }
+                }}
+                continuousMode={true}
+                scanButtonLabel="Escanear Produtos"
+              />
+              <div className="flex items-center justify-between mb-3 mt-10">
                 <h3 className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <Package className="h-4 w-4 text-indigo-500" />
                   Produtos Recebidos
