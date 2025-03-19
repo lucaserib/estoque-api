@@ -99,10 +99,8 @@ const BarcodeReader = ({
     useState<boolean | null>(null);
 
   useEffect(() => {
-    // Check if the browser supports the Barcode Detection API
     const checkBarcodeDetectionSupport = async () => {
       try {
-        // @ts-ignore - The API is still experimental
         if ("BarcodeDetector" in window) {
           setIsBarcodeDetectionSupported(true);
         } else {
@@ -177,7 +175,7 @@ const BarcodeReader = ({
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     try {
-      // @ts-ignore - The API is still experimental
+      //@ts-expect-error - The API is still experimental
       const barcodeDetector = new BarcodeDetector({
         formats: [
           "ean_13",
@@ -276,11 +274,17 @@ const BarcodeReader = ({
 
   // Play beep sound
   const playBeepSound = () => {
-    const audioContext = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
+    // Define a classe AudioContext para suporte entre navegadores
+    const AudioContextClass: typeof AudioContext =
+      window.AudioContext ||
+      // @ts-expect-error - Suporte a Safari e navegadores mais antigos
+      window.webkitAudioContext;
+
+    const audioContext = new AudioContextClass();
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
+    // Resto do código permanece igual
     oscillator.type = "square";
     oscillator.frequency.value = 800;
     gainNode.gain.value = 0.1;
@@ -293,7 +297,6 @@ const BarcodeReader = ({
       oscillator.stop();
     }, 100);
   };
-
   // Clean up resources when unmounting
   useEffect(() => {
     return () => {
