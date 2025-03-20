@@ -57,7 +57,7 @@ model Session {
 model Produto {
   id              String              @id @default(uuid())
   nome            String
-  sku             String              @unique
+  sku             String
   isKit           Boolean             @default(false)
   ean             BigInt?
   userId          String
@@ -70,6 +70,8 @@ model Produto {
   pedidos         PedidoProduto[]
   fornecedores    ProdutoFornecedor[]
   saidas          Saida[]
+
+  @@unique([sku, userId])
 }
 
 model Componente {

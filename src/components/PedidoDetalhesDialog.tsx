@@ -189,7 +189,7 @@ export function PedidoDetalhesDialog({
                     Valor total:
                   </span>
                   <span className="text-green-600 dark:text-green-400 font-medium">
-                    {exibirEmReais(valorTotal)}
+                    {formatBRL(valorTotal)}
                   </span>
                 </div>
 
@@ -264,13 +264,13 @@ export function PedidoDetalhesDialog({
                             {produto.quantidade}
                           </TableCell>
                           <TableCell className="text-right text-gray-600 dark:text-gray-300">
-                            {exibirEmReais(produto.custo)}
+                            {formatBRL(produto.custo)}
                           </TableCell>
                           <TableCell className="text-right text-gray-600 dark:text-gray-300">
                             {multiplicador}x
                           </TableCell>
                           <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
-                            {exibirEmReais(subtotal)}
+                            {formatBRL(subtotal)}
                           </TableCell>
                         </TableRow>
                       );
@@ -285,7 +285,7 @@ export function PedidoDetalhesDialog({
                         Total do Pedido:
                       </TableCell>
                       <TableCell className="text-right font-bold text-green-600 dark:text-green-400">
-                        {exibirEmReais(valorTotal)}
+                        {formatBRL(valorTotal)}
                       </TableCell>
                     </TableRow>
                   </TableBody>

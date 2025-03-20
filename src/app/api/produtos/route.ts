@@ -170,7 +170,10 @@ export async function POST(req: NextRequest) {
     }
 
     const existingProduto = await prisma.produto.findFirst({
-      where: { sku, userId: user.id },
+      where: {
+        sku,
+        userId: user.id,
+      },
     });
 
     if (existingProduto) {

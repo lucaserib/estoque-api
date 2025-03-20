@@ -123,8 +123,15 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
     setMessageType("");
 
     // Validação básica
-    if (!nome.trim() || !sku.trim()) {
-      setMessage("Nome e SKU são obrigatórios");
+    if (!nome.trim()) {
+      setMessage("Nome é obrigatório");
+      setMessageType("error");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!sku.trim()) {
+      setMessage("SKU é obrigatório");
       setMessageType("error");
       setIsSubmitting(false);
       return;
@@ -141,33 +148,29 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
     try {
       // Construir o objeto para a API
       const produtoData = {
-        nome,
-        sku,
-        ean: ean || null,
+        nome: nome.trim(),
+        sku: sku.trim(),
+        ean: ean.trim() || null,
         isKit: formType === "kit",
         componentes: formType === "kit" ? kitProdutos : undefined,
       };
 
-      // Endpoint correto com base no tipo
-      const endpoint = formType === "kit" ? "/api/kits" : "/api/produtos";
-
-      const response = await fetch(endpoint, {
+      const response = await fetch("/api/produtos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(produtoData),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Erro ao criar ${formType}`);
-      }
+      const data = await response.json();
 
-      const novoProduto = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || `Erro ao criar ${formType}`);
+      }
 
       // Transformar o BigInt EAN para string
       const produtoComEANString = {
-        ...novoProduto,
-        ean: novoProduto.ean ? novoProduto.ean.toString() : "",
+        ...data,
+        ean: data.ean ? data.ean.toString() : "",
       };
 
       setMessage(
@@ -183,7 +186,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
         onClose();
       }, 1500);
     } catch (error) {
-      console.error(`Erro ao criar ${formType}:`, error);
+      console.error("Erro ao criar produto:", error);
       setMessage(
         error instanceof Error ? error.message : `Erro ao criar ${formType}`
       );

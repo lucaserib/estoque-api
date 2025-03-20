@@ -624,7 +624,7 @@ const PedidosPendentes = () => {
                         />
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {exibirValorEmReais(subtotal)}
+                        {formatBRL(subtotal)}
                       </TableCell>
                     </TableRow>
                   );
@@ -634,7 +634,7 @@ const PedidosPendentes = () => {
                     Total:
                   </TableCell>
                   <TableCell className="text-right font-bold">
-                    {exibirValorEmReais(calcularValorTotalPedido(editPedido))}
+                    {formatBRL(calcularValorTotalPedido(editPedido))}
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -671,7 +671,7 @@ const PedidosPendentes = () => {
 
       <div className="mt-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Total Geral: {exibirValorEmReais(calcularValorTotal())}
+          Total Geral: {calcularValorTotal()}
         </h3>
       </div>
     </div>

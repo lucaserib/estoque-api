@@ -61,6 +61,11 @@ interface BarcodeReaderProps {
    * Function to check if a scanned barcode is valid
    */
   validateBarcode?: (barcode: string) => boolean | Promise<boolean>;
+
+  /**
+   * Maximum length of the barcode input
+   */
+  maxLength?: number;
 }
 
 /**
@@ -70,7 +75,7 @@ interface BarcodeReaderProps {
  */
 const BarcodeReader = ({
   onScan,
-  placeholder = "Barcode...",
+  placeholder = "EAN-13...",
   disabled = false,
   scanButtonLabel = "Scan",
   allowManualInput = true,
@@ -78,6 +83,7 @@ const BarcodeReader = ({
   continuousMode = false,
   className = "",
   validateBarcode,
+  maxLength = 13,
 }: BarcodeReaderProps) => {
   const [barcode, setBarcode] = useState<string>(initialValue);
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -89,6 +95,7 @@ const BarcodeReader = ({
   const [continuousModeActive, setContinuousModeActive] =
     useState<boolean>(continuousMode);
   const [scannedItems, setScannedItems] = useState<string[]>([]);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -118,31 +125,61 @@ const BarcodeReader = ({
     checkBarcodeDetectionSupport();
   }, []);
 
-  // Function to start the scanner
+  // Função para validar EAN-13
+  const validateEAN13 = (code: string): boolean => {
+    if (code.length !== 13) return false;
+    if (!/^\d+$/.test(code)) return false;
+
+    const digits = code.split("").map(Number);
+    const checkDigit = digits[12];
+    const sum = digits.slice(0, 12).reduce((acc, digit, index) => {
+      return acc + (index % 2 === 0 ? digit : digit * 3);
+    }, 0);
+    const calculatedCheckDigit = (10 - (sum % 10)) % 10;
+
+    return checkDigit === calculatedCheckDigit;
+  };
+
+  // Função para iniciar o scanner com suporte a câmeras móveis
   const startScanner = async () => {
     try {
       setIsScanning(true);
       setError(null);
+      setCameraError(null);
 
-      // Access the camera
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
+      // Tentar primeiro a câmera traseira
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 },
+          },
+        });
+      } catch (backCameraError) {
+        // Se falhar, tentar qualquer câmera disponível
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+      }
 
       streamRef.current = stream;
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play();
+        await videoRef.current.play();
       }
 
-      // Start detection after 1s to give time to initialize the camera
+      // Iniciar detecção após 1s para dar tempo de inicializar a câmera
       setTimeout(() => {
         detectBarcode();
       }, 1000);
     } catch (error) {
-      console.error("Error accessing camera:", error);
-      setError("Could not access camera. Please check permissions.");
+      console.error("Erro ao acessar câmera:", error);
+      setCameraError(
+        "Não foi possível acessar a câmera. Verifique as permissões."
+      );
       setIsScanning(false);
     }
   };
@@ -196,27 +233,38 @@ const BarcodeReader = ({
       if (barcodes.length > 0) {
         const detectedBarcode = barcodes[0].rawValue;
 
-        // Validate barcode if validation function is provided
+        // Validar EAN-13
+        if (!validateEAN13(detectedBarcode)) {
+          if (continuousModeActive) {
+            requestAnimationFrame(detectBarcode);
+            return;
+          } else {
+            setError("Código de barras inválido. Use um EAN-13 válido.");
+            stopScanner();
+            return;
+          }
+        }
+
+        // Validar barcode se função de validação for fornecida
         if (validateBarcode) {
           setValidationInProgress(true);
           try {
             const isValid = await validateBarcode(detectedBarcode);
             if (!isValid) {
-              // If validation fails in continuous mode, just continue scanning
               if (continuousModeActive) {
                 requestAnimationFrame(detectBarcode);
                 setValidationInProgress(false);
                 return;
               } else {
-                setError("Invalid barcode detected. Please try again.");
+                setError("Código de barras inválido. Tente novamente.");
                 stopScanner();
                 setValidationInProgress(false);
                 return;
               }
             }
           } catch (error) {
-            console.error("Error validating barcode:", error);
-            setError("Error validating barcode. Please try again.");
+            console.error("Erro ao validar código de barras:", error);
+            setError("Erro ao validar código de barras. Tente novamente.");
             stopScanner();
             setValidationInProgress(false);
             return;
@@ -308,19 +356,25 @@ const BarcodeReader = ({
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (barcode && barcode.trim() !== "") {
-      // Validate barcode if validation function is provided
+      // Validar EAN-13
+      if (!validateEAN13(barcode)) {
+        setError("Código de barras inválido. Use um EAN-13 válido.");
+        return;
+      }
+
+      // Validar barcode se função de validação for fornecida
       if (validateBarcode) {
         setValidationInProgress(true);
         try {
           const isValid = await validateBarcode(barcode);
           if (!isValid) {
-            setError("Invalid barcode entered. Please try again.");
+            setError("Código de barras inválido. Tente novamente.");
             setValidationInProgress(false);
             return;
           }
         } catch (error) {
-          console.error("Error validating barcode:", error);
-          setError("Error validating barcode. Please try again.");
+          console.error("Erro ao validar código de barras:", error);
+          setError("Erro ao validar código de barras. Tente novamente.");
           setValidationInProgress(false);
           return;
         }
@@ -357,6 +411,7 @@ const BarcodeReader = ({
             className="absolute inset-0 w-full h-full object-cover"
             muted
             playsInline
+            autoFocus
           />
           <canvas ref={canvasRef} className="hidden" />
 
@@ -366,7 +421,7 @@ const BarcodeReader = ({
               <div className="absolute top-0 left-0 w-full h-1 bg-green-500 animate-scan"></div>
             </div>
             <p className="text-white mt-2 font-medium">
-              Position barcode in frame
+              Posicione o código de barras no quadro
             </p>
           </div>
 
@@ -376,15 +431,15 @@ const BarcodeReader = ({
             className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6"
             onClick={stopScanner}
           >
-            Cancel
+            Cancelar
           </Button>
         </div>
       )}
 
       {/* Error message */}
-      {error && (
+      {(error || cameraError) && (
         <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{error || cameraError}</AlertDescription>
         </Alert>
       )}
 
@@ -394,21 +449,21 @@ const BarcodeReader = ({
           <div className="flex items-center gap-2 mb-1">
             <Barcode className="h-4 w-4 text-gray-500" />
             <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Barcode / EAN
+              EAN-13
             </span>
 
             {/* Success indicator */}
             {successScan && (
               <Badge className="ml-2 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
-                Scan successful
+                Scan bem-sucedido
               </Badge>
             )}
 
             {validationInProgress && (
               <Badge className="ml-2 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                Validating...
+                Validando...
               </Badge>
             )}
           </div>
@@ -418,7 +473,15 @@ const BarcodeReader = ({
               type="text"
               placeholder={placeholder}
               value={barcode}
-              onChange={(e) => setBarcode(e.target.value)}
+              onChange={(e) => {
+                const value = e.target.value
+                  .replace(/\D/g, "")
+                  .slice(0, maxLength);
+                setBarcode(value);
+              }}
+              maxLength={maxLength}
+              pattern="[0-9]*"
+              inputMode="numeric"
               disabled={
                 disabled ||
                 isScanning ||
@@ -451,7 +514,11 @@ const BarcodeReader = ({
           <Button
             type="submit"
             disabled={
-              disabled || isScanning || !barcode.trim() || validationInProgress
+              disabled ||
+              isScanning ||
+              !barcode.trim() ||
+              validationInProgress ||
+              barcode.length !== 13
             }
             className="dark:bg-green-700 dark:hover:bg-green-600"
           >
@@ -460,7 +527,7 @@ const BarcodeReader = ({
             ) : (
               <CheckCircle2 className="h-4 w-4 mr-2" />
             )}
-            Confirm
+            Confirmar
           </Button>
         )}
 
@@ -475,7 +542,7 @@ const BarcodeReader = ({
             {isScanning ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Scanning...
+                Escaneando...
               </>
             ) : (
               <>

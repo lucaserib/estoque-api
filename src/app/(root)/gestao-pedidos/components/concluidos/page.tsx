@@ -172,7 +172,7 @@ const PedidosConcluidos = () => {
               </p>
               <p className="text-gray-700 dark:text-gray-300 mt-2">
                 <span className="font-medium">Valor Total:</span>{" "}
-                {exibirValorEmReais(calcularValorTotalPedido(pedido))}
+                {calcularValorTotalPedido(pedido)}
               </p>
               <ul className="mt-3 space-y-2">
                 {pedido.produtos.map((produto) => (
@@ -184,18 +184,16 @@ const PedidosConcluidos = () => {
                     - {produto.produto?.nome}
                     <br />
                     Qtd: {produto.quantidade} | Custo:{" "}
-                    {exibirValorEmReais(produto.custo)} | Mult:{" "}
+                    {formatBRL(produto.custo)} | Mult:{" "}
                     {produto.multiplicador ||
                       produto.produto?.multiplicador ||
                       1}{" "}
                     | Total:{" "}
-                    {exibirValorEmReais(
-                      produto.quantidade *
-                        produto.custo *
-                        (produto.multiplicador ||
-                          produto.produto?.multiplicador ||
-                          1)
-                    )}
+                    {produto.quantidade *
+                      produto.custo *
+                      (produto.multiplicador ||
+                        produto.produto?.multiplicador ||
+                        1)}
                   </li>
                 ))}
               </ul>
@@ -206,7 +204,7 @@ const PedidosConcluidos = () => {
 
       <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Total Geral: {exibirValorEmReais(calcularValorTotal())}
+          Total Geral: {formatBRL(calcularValorTotal())}
         </h3>
       </div>
     </div>
