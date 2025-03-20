@@ -13,18 +13,25 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
-interface Produto {
-  sku: string;
+interface SaidaProduto {
+  produtoId: string;
   quantidade: number;
-  isKit: boolean;
+  nome?: string;
+  sku: string;
+  isKit?: boolean;
+  componentes?: {
+    produtoId: string;
+    quantidade: number;
+    sku?: string;
+    nome?: string;
+  }[];
 }
 
 interface RequestBody {
-  produtos: Produto[];
+  produtos: SaidaProduto[];
   armazemId: string;
 }
 
-// POST
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -60,11 +67,11 @@ export async function POST(request: NextRequest) {
 
     // Processamento da saída dos produtos
     for (const produto of produtos) {
-      const { sku, quantidade, isKit } = produto;
+      const { produtoId, quantidade, isKit = false } = produto;
 
       if (isKit) {
         const kitEncontrado = await prisma.produto.findUnique({
-          where: { sku },
+          where: { id: produtoId },
           include: {
             componentes: {
               include: { produto: true },
@@ -79,6 +86,17 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // Registrar a saída do kit
+        await prisma.detalhesSaida.create({
+          data: {
+            saidaId: saida.id,
+            produtoId: kitEncontrado.id,
+            quantidade,
+            isKit: true,
+          },
+        });
+
+        // Processar os componentes do kit
         for (const componente of kitEncontrado.componentes) {
           const estoqueComponente = await prisma.estoque.findFirst({
             where: {
@@ -92,7 +110,9 @@ export async function POST(request: NextRequest) {
             estoqueComponente.quantidade < componente.quantidade * quantidade
           ) {
             return NextResponse.json(
-              { error: "Estoque insuficiente para o componente" },
+              {
+                error: `Estoque insuficiente para o componente ${componente.produto.nome}`,
+              },
               { status: 400 }
             );
           }
@@ -110,22 +130,13 @@ export async function POST(request: NextRequest) {
               },
             },
           });
-
-          await prisma.detalhesSaida.create({
-            data: {
-              saidaId: saida.id,
-              produtoId: componente.produtoId,
-              quantidade: componente.quantidade * quantidade,
-              isKit: true,
-            },
-          });
         }
       } else {
         const produtoEncontrado = await prisma.produto.findUnique({
-          where: { sku },
+          where: { id: produtoId },
         });
 
-        if (!produtoEncontrado) {
+        if (!produtoEncontrado || produtoEncontrado.userId !== user.id) {
           return NextResponse.json(
             { error: "Produto não encontrado" },
             { status: 404 }
@@ -134,7 +145,7 @@ export async function POST(request: NextRequest) {
 
         const estoqueProduto = await prisma.estoque.findFirst({
           where: {
-            produtoId: produtoEncontrado.id,
+            produtoId: produtoId,
             armazemId: armazemId,
           },
         });
@@ -149,7 +160,7 @@ export async function POST(request: NextRequest) {
         await prisma.estoque.update({
           where: {
             produtoId_armazemId: {
-              produtoId: produtoEncontrado.id,
+              produtoId: produtoId,
               armazemId: armazemId,
             },
           },
@@ -163,7 +174,7 @@ export async function POST(request: NextRequest) {
         await prisma.detalhesSaida.create({
           data: {
             saidaId: saida.id,
-            produtoId: produtoEncontrado.id,
+            produtoId: produtoId,
             quantidade,
             isKit: false,
           },

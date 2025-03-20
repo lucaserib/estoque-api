@@ -89,8 +89,8 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
         body: JSON.stringify({
           produtoId: produto.id,
           fornecedorId,
-          preco: parseInt(preco),
-          multiplicador: parseInt(multiplicador),
+          preco: parseInt((parseFloat(preco) * 100).toString()),
+          multiplicador: parseFloat(multiplicador),
           codigoNF,
         }),
       });
@@ -162,7 +162,7 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
         },
         body: JSON.stringify({
           id: vinculoId,
-          preco: parseFloat(preco),
+          preco: parseInt((parseFloat(preco) * 100).toString()),
           multiplicador: parseFloat(multiplicador),
           codigoNF,
         }),

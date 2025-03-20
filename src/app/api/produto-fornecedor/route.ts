@@ -155,7 +155,7 @@ export async function PUT(request: NextRequest) {
     const vinculo = await prisma.produtoFornecedor.update({
       where: { id: Number(id) },
       data: {
-        preco,
+        preco: brlToCents(preco),
         multiplicador,
         codigoNF,
       },

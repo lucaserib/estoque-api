@@ -212,10 +212,28 @@ export function NovaSaidaDialog({
     setIsSubmitting(true);
 
     try {
+      // Garantir que temos todos os campos necessários em um formato correto
+      const produtosFormatados = saidaProdutos.map((produto) => ({
+        produtoId: produto.produtoId,
+        quantidade: produto.quantidade,
+        sku: produto.sku,
+        nome: produto.nome,
+        isKit: produto.isKit || false,
+        // Incluir componentes apenas se existirem e for um kit
+        ...(produto.isKit && produto.componentes
+          ? { componentes: produto.componentes }
+          : {}),
+      }));
+
+      console.log("Enviando produtos para a API:", produtosFormatados);
+
       const response = await fetch("/api/saida", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ produtos: saidaProdutos, armazemId }),
+        body: JSON.stringify({
+          produtos: produtosFormatados,
+          armazemId,
+        }),
       });
 
       if (response.ok) {
@@ -230,6 +248,7 @@ export function NovaSaidaDialog({
         setMessageType("error");
       }
     } catch (error) {
+      console.error("Erro ao registrar saída:", error);
       setMessage("Erro ao registrar saída.");
       setMessageType("error");
     } finally {

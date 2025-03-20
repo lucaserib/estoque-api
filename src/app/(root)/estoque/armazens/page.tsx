@@ -170,9 +170,9 @@ const EstoquePage = () => {
 
       if (quantidadeProduto !== null) {
         console.log(
-          "Sending update with armazemId:",
+          "Enviando atualização com armazemId:",
           activeWarehouse,
-          "type:",
+          "tipo:",
           typeof activeWarehouse
         );
         const response = await fetch("/api/estoque/armazens", {
@@ -180,7 +180,7 @@ const EstoquePage = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             produtoId,
-            armazemId: activeWarehouse, // Mantém como string, sem conversão para número
+            armazemId: activeWarehouse,
             quantidade: quantidadeProduto,
           }),
         });
@@ -193,13 +193,23 @@ const EstoquePage = () => {
       }
 
       if (estoqueSeguranca !== null) {
+        // Garantir que estoqueSeguranca seja número
+        const estoqueSegurancaNumber = Number(estoqueSeguranca);
+
+        console.log("Enviando estoque de segurança:", {
+          produtoId,
+          armazemId: activeWarehouse,
+          estoqueSeguranca: estoqueSegurancaNumber,
+          tipo: typeof estoqueSegurancaNumber,
+        });
+
         const response = await fetch(`/api/estoque/estoqueSeguranca`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             produtoId,
-            armazemId: activeWarehouse, // Mantém como string, sem conversão para número
-            estoqueSeguranca,
+            armazemId: activeWarehouse,
+            estoqueSeguranca: estoqueSegurancaNumber,
           }),
         });
 

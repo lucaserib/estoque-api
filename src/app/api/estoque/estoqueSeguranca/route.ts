@@ -7,15 +7,27 @@ export async function PUT(request: Request) {
   const body = await request.json();
   const { produtoId, armazemId, estoqueSeguranca } = body;
 
-  if (
-    typeof produtoId !== "string" ||
-    typeof armazemId !== "string" ||
-    typeof estoqueSeguranca !== "number"
-  ) {
+  // Validação de tipos mais rigorosa
+  if (typeof produtoId !== "string") {
+    return NextResponse.json(
+      { message: "produtoId deve ser uma string" },
+      { status: 400 }
+    );
+  }
+
+  if (typeof armazemId !== "string") {
+    return NextResponse.json(
+      { message: "armazemId deve ser uma string" },
+      { status: 400 }
+    );
+  }
+
+  if (typeof estoqueSeguranca !== "number") {
     return NextResponse.json(
       {
-        message:
-          "Produto ID, Armazém ID e estoque de segurança devem ser números válidos",
+        message: "estoqueSeguranca deve ser um número",
+        received: estoqueSeguranca,
+        type: typeof estoqueSeguranca,
       },
       { status: 400 }
     );
@@ -40,8 +52,12 @@ export async function PUT(request: Request) {
 
     return NextResponse.json(estoque);
   } catch (error) {
+    console.error("Erro ao atualizar estoque de segurança:", error);
     return NextResponse.json(
-      { message: "Erro ao atualizar estoque de segurança" },
+      {
+        message: "Erro ao atualizar estoque de segurança",
+        error: String(error),
+      },
       { status: 500 }
     );
   } finally {

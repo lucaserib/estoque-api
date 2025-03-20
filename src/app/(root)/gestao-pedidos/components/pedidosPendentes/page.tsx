@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Pedido, PedidoProduto, Armazem } from "../../types";
 import { useFetch } from "../../../../hooks/useFetch";
-import { brlToCents, formatBRL } from "@/utils/currency";
+import { brlToCents, formatBRL, exibirValorEmReais } from "@/utils/currency";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -198,10 +198,7 @@ const PedidosPendentes = () => {
     const produtosRecebidos = editPedido.produtos.map((produto) => ({
       produtoId: produto.produtoId,
       quantidade: produto.quantidade,
-      custo:
-        typeof produto.custo === "number"
-          ? produto.custo
-          : brlToCents(produto.custo),
+      custo: produto.custo,
       multiplicador:
         produto.multiplicador || produto.produto?.multiplicador || 1,
     }));
@@ -295,10 +292,7 @@ const PedidosPendentes = () => {
   const calcularValorTotalPedido = (pedido: Pedido) =>
     pedido.produtos.reduce((subtotal, produto) => {
       const quantidade = produto.quantidade;
-      const custo =
-        typeof produto.custo === "number"
-          ? produto.custo
-          : parseInt(produto.custo);
+      const custo = produto.custo;
       const multiplicador =
         produto.multiplicador || produto.produto?.multiplicador || 1;
       return subtotal + quantidade * custo * multiplicador;
@@ -444,7 +438,8 @@ const PedidosPendentes = () => {
                     </p>
                   )}
                   <p className="font-medium">
-                    Valor Total: {formatBRL(calcularValorTotalPedido(pedido))}
+                    Valor Total:{" "}
+                    {exibirValorEmReais(calcularValorTotalPedido(pedido))}
                   </p>
                 </div>
 
@@ -456,8 +451,8 @@ const PedidosPendentes = () => {
                     {pedido.produtos.slice(0, 3).map((produto) => (
                       <li key={produto.produtoId}>
                         {produto.produto?.sku}: {produto.quantidade} un. ×{" "}
-                        {formatBRL(produto.custo)} ={" "}
-                        {formatBRL(produto.quantidade * produto.custo)}
+                        {exibirValorEmReais(produto.custo)} ={" "}
+                        {exibirValorEmReais(produto.quantidade * produto.custo)}
                       </li>
                     ))}
                     {pedido.produtos.length > 3 && (
@@ -629,7 +624,7 @@ const PedidosPendentes = () => {
                         />
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatBRL(subtotal)}
+                        {exibirValorEmReais(subtotal)}
                       </TableCell>
                     </TableRow>
                   );
@@ -639,7 +634,7 @@ const PedidosPendentes = () => {
                     Total:
                   </TableCell>
                   <TableCell className="text-right font-bold">
-                    {formatBRL(calcularValorTotalPedido(editPedido))}
+                    {exibirValorEmReais(calcularValorTotalPedido(editPedido))}
                   </TableCell>
                 </TableRow>
               </TableBody>
@@ -676,7 +671,7 @@ const PedidosPendentes = () => {
 
       <div className="mt-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Total Geral: {formatBRL(calcularValorTotal())}
+          Total Geral: {exibirValorEmReais(calcularValorTotal())}
         </h3>
       </div>
     </div>

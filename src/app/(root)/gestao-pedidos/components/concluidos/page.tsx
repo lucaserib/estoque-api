@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Pedido } from "../../types";
 import { useFetch } from "../../../../hooks/useFetch";
-import { formatBRL } from "@/utils/currency";
+import { formatBRL, exibirValorEmReais } from "@/utils/currency";
 
 const PedidosConcluidos = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -41,7 +41,7 @@ const PedidosConcluidos = () => {
   const calcularValorTotalPedido = (pedido: Pedido) =>
     pedido.produtos.reduce((subtotal, produto) => {
       const quantidade = produto.quantidade;
-      const custo = produto.custo / 100;
+      const custo = produto.custo;
       const multiplicador =
         produto.multiplicador || produto.produto?.multiplicador || 1;
       return subtotal + quantidade * custo * multiplicador;
@@ -172,7 +172,7 @@ const PedidosConcluidos = () => {
               </p>
               <p className="text-gray-700 dark:text-gray-300 mt-2">
                 <span className="font-medium">Valor Total:</span>{" "}
-                {formatBRL(calcularValorTotalPedido(pedido) * 100)}
+                {exibirValorEmReais(calcularValorTotalPedido(pedido))}
               </p>
               <ul className="mt-3 space-y-2">
                 {pedido.produtos.map((produto) => (
@@ -184,12 +184,12 @@ const PedidosConcluidos = () => {
                     - {produto.produto?.nome}
                     <br />
                     Qtd: {produto.quantidade} | Custo:{" "}
-                    {formatBRL(produto.custo)} | Mult:{" "}
+                    {exibirValorEmReais(produto.custo)} | Mult:{" "}
                     {produto.multiplicador ||
                       produto.produto?.multiplicador ||
                       1}{" "}
                     | Total:{" "}
-                    {formatBRL(
+                    {exibirValorEmReais(
                       produto.quantidade *
                         produto.custo *
                         (produto.multiplicador ||
@@ -206,7 +206,7 @@ const PedidosConcluidos = () => {
 
       <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Total Geral: {formatBRL(calcularValorTotal() * 100)}
+          Total Geral: {exibirValorEmReais(calcularValorTotal())}
         </h3>
       </div>
     </div>
