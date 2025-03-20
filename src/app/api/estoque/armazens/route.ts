@@ -131,7 +131,28 @@ export async function PUT(request: NextRequest) {
       include: { produto: true },
     });
 
-    return NextResponse.json(estoque, { status: 200 });
+    // Converter valores BigInt para números regulares
+    const serializedEstoque = {
+      produtoId: estoque.produtoId,
+      armazemId: estoque.armazemId,
+      quantidade: Number(estoque.quantidade),
+      estoqueSeguranca: estoque.estoqueSeguranca
+        ? Number(estoque.estoqueSeguranca)
+        : null,
+      produto: {
+        id: estoque.produto.id,
+        nome: estoque.produto.nome,
+        sku: estoque.produto.sku,
+        custoMedio: estoque.produto.custoMedio
+          ? Number(estoque.produto.custoMedio)
+          : null,
+        isKit: estoque.produto.isKit,
+        ean: estoque.produto.ean ? estoque.produto.ean.toString() : null,
+        userId: estoque.produto.userId,
+      },
+    };
+
+    return NextResponse.json(serializedEstoque, { status: 200 });
   } catch (error) {
     console.error("Erro ao atualizar estoque:", error);
     return NextResponse.json(

@@ -105,13 +105,21 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          if (
-            !estoqueComponente ||
-            estoqueComponente.quantidade < componente.quantidade * quantidade
-          ) {
+          const quantidadeNecessaria = componente.quantidade * quantidade;
+
+          if (!estoqueComponente) {
             return NextResponse.json(
               {
-                error: `Estoque insuficiente para o componente ${componente.produto.nome}`,
+                error: `Estoque não encontrado para o componente ${componente.produto.nome}`,
+              },
+              { status: 400 }
+            );
+          }
+
+          if (estoqueComponente.quantidade < quantidadeNecessaria) {
+            return NextResponse.json(
+              {
+                error: `Estoque insuficiente para o componente ${componente.produto.nome}. Necessário: ${quantidadeNecessaria}, Disponível: ${estoqueComponente.quantidade}`,
               },
               { status: 400 }
             );
@@ -126,7 +134,7 @@ export async function POST(request: NextRequest) {
             },
             data: {
               quantidade: {
-                decrement: componente.quantidade * quantidade,
+                decrement: quantidadeNecessaria,
               },
             },
           });
@@ -182,7 +190,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ message: "Saída registrada com sucesso!" });
+    // Buscar a saída completa com todos os detalhes para retornar
+    const saidaCompleta = await prisma.saida.findUnique({
+      where: { id: saida.id },
+      include: {
+        armazem: true,
+        detalhes: {
+          include: {
+            produto: true,
+          },
+        },
+      },
+    });
+
+    return NextResponse.json(serializeBigInt(saidaCompleta), { status: 201 });
   } catch (error) {
     console.error("Erro ao registrar saída:", error);
     return NextResponse.json(

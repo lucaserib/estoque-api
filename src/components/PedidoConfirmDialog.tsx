@@ -283,18 +283,15 @@ export function PedidoConfirmDialog({
             <div>
               <BarcodeReader
                 onScan={(barcode) => {
-                  const produtoIndex = produtos.findIndex(
-                    (p) => p.produto?.sku === barcode
-                  );
-
-                  if (produtoIndex >= 0) {
-                    const newProdutos = [...produtos];
-                    newProdutos[produtoIndex].quantidade += 1;
-                    setProdutos(newProdutos);
-                  }
+                  // O barcode já estará validado como EAN-13
+                  console.log(barcode);
                 }}
-                continuousMode={true}
-                scanButtonLabel="Escanear Produtos"
+                validateBarcode={async (barcode) => {
+                  // Validação adicional opcional
+                  return true;
+                }}
+                maxLength={13} // Opcional, já é 13 por padrão
+                continuousMode={true} // Para escanear múltiplos códigos
               />
               <div className="flex items-center justify-between mb-3 mt-10">
                 <h3 className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
