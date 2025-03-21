@@ -30,11 +30,14 @@ import {
   Search,
   Settings,
   Warehouse,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/app/components/Header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import LoadingSpinner from "@/app/components/LoadingSpinner";
+import { EstoqueDeleteDialog } from "@/components/EstoqueDeleteDialog";
+import { toast } from "sonner";
 
 interface Produto {
   id: string;
@@ -74,6 +77,11 @@ const EstoquePage = () => {
   const [isNewWarehouseOpen, setIsNewWarehouseOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [estoqueToDelete, setEstoqueToDelete] = useState<{
+    produtoId: string;
+    produtoNome: string;
+    armazemNome: string;
+  } | null>(null);
 
   // Fetch warehouses on component mount
   useEffect(() => {
@@ -286,6 +294,39 @@ const EstoquePage = () => {
     } catch (error) {
       console.error("Erro ao excluir armazém:", error);
       setErrorMessage("Não foi possível excluir o armazém. Tente novamente.");
+    }
+  };
+
+  const handleDeleteEstoque = async () => {
+    if (!estoqueToDelete || !activeWarehouse) return;
+
+    try {
+      const response = await fetch(
+        `/api/estoque?produtoId=${estoqueToDelete.produtoId}&armazemId=${activeWarehouse}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.hasVinculos) {
+          toast.error(
+            "Não é possível excluir o estoque pois existem saídas registradas"
+          );
+          return;
+        }
+        throw new Error(errorData.message || "Erro ao excluir estoque");
+      }
+
+      setEstoque((prev) =>
+        prev.filter((item) => item.produto.id !== estoqueToDelete.produtoId)
+      );
+      toast.success("Estoque excluído com sucesso!");
+      setEstoqueToDelete(null);
+    } catch (error) {
+      console.error("Erro ao excluir estoque:", error);
+      toast.error("Não foi possível excluir o estoque. Tente novamente.");
     }
   };
 
@@ -517,16 +558,32 @@ const EstoquePage = () => {
                                         )}
                                       </TableCell>
                                       <TableCell className="text-right">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() =>
-                                            handleEditarProduto(item)
-                                          }
-                                          className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0"
-                                        >
-                                          <Settings className="h-4 w-4" />
-                                        </Button>
+                                        <div className="flex items-center justify-end gap-2">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              handleEditarProduto(item)
+                                            }
+                                            className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0"
+                                          >
+                                            <Settings className="h-4 w-4" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() =>
+                                              setEstoqueToDelete({
+                                                produtoId: item.produto.id,
+                                                produtoNome: item.produto.nome,
+                                                armazemNome: armazem.nome,
+                                              })
+                                            }
+                                            className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
                                       </TableCell>
                                     </TableRow>
                                   );
@@ -675,6 +732,17 @@ const EstoquePage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Dialog */}
+      {estoqueToDelete && (
+        <EstoqueDeleteDialog
+          isOpen={!!estoqueToDelete}
+          onClose={() => setEstoqueToDelete(null)}
+          produtoNome={estoqueToDelete.produtoNome}
+          armazemNome={estoqueToDelete.armazemNome}
+          onConfirm={handleDeleteEstoque}
+        />
+      )}
     </div>
   );
 };

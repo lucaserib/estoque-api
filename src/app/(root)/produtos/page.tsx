@@ -5,7 +5,7 @@ import { useFetch } from "@/app/hooks/useFetch";
 import Header from "@/app/components/Header";
 import ProdutoList from "./components/ProdutoList";
 import ProdutoFormModal from "./components/ProdutoFormModal";
-import { ProdutoDeleteDialog } from "./components/dialogs/ProdutoDeleteDialog";
+import { ProdutoDeleteDialog } from "@/components/ProdutoDeleteDialog";
 import { Produto } from "./types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,10 +16,22 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KitList } from "./components/KitList";
 
+interface ProdutoToDelete {
+  id: string;
+  nome: string;
+  vinculos?: {
+    hasKits: boolean;
+    hasEstoque: boolean;
+    hasPedidos: boolean;
+    hasSaidas: boolean;
+  };
+}
+
 const ProdutosPage = () => {
   const [activeTab, setActiveTab] = useState<"produtos" | "kits">("produtos");
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [produtoToDelete, setProdutoToDelete] = useState<Produto | null>(null);
+  const [produtoToDelete, setProdutoToDelete] =
+    useState<ProdutoToDelete | null>(null);
   const {
     data: initialProdutos,
     loading,
@@ -51,34 +63,37 @@ const ProdutosPage = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDeleteProduto = async (forceDelete: boolean) => {
+    if (!produtoToDelete) return;
+
     try {
-      // Determinar se estamos excluindo um produto ou um kit
-      const produtoADeletar = produtos.find((p) => p.id === id);
-      const endpoint = produtoADeletar?.isKit
-        ? `/api/kits?id=${id}`
-        : `/api/produtos?id=${id}`;
+      const response = await fetch(
+        `/api/produtos?id=${produtoToDelete.id}&forceDelete=${forceDelete}`,
+        {
+          method: "DELETE",
+        }
+      );
 
-      const response = await fetch(endpoint, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        setProdutos((prev) => prev.filter((p) => p.id !== id));
-        toast.success(
-          `${produtoADeletar?.isKit ? "Kit" : "Produto"} excluído com sucesso`
-        );
-        setRefreshTrigger((prev) => prev + 1);
-      } else {
+      if (!response.ok) {
         const errorData = await response.json();
-        toast.error(
-          errorData.error ||
-            `Erro ao excluir ${produtoADeletar?.isKit ? "kit" : "produto"}`
-        );
+        if (errorData.hasVinculos) {
+          setProdutoToDelete({
+            ...produtoToDelete,
+            vinculos: errorData.vinculos,
+          });
+          return;
+        }
+        throw new Error(errorData.message || "Erro ao excluir produto");
       }
+
+      setProdutos((prev) =>
+        prev.filter((produto) => produto.id !== produtoToDelete.id)
+      );
+      toast.success("Produto excluído com sucesso!");
+      setProdutoToDelete(null);
     } catch (error) {
-      console.error("Erro ao deletar produto:", error);
-      toast.error("Erro ao excluir item");
+      console.error("Erro ao excluir produto:", error);
+      toast.error("Não foi possível excluir o produto. Tente novamente.");
     }
   };
 
@@ -192,9 +207,11 @@ const ProdutosPage = () => {
                 <ProdutoList
                   produtos={regularProducts}
                   onDelete={(id) =>
-                    setProdutoToDelete(
-                      produtos.find((p) => p.id === id) || null
-                    )
+                    setProdutoToDelete({
+                      id,
+                      nome:
+                        regularProducts.find((p) => p.id === id)?.nome || "",
+                    })
                   }
                   onEdit={handleEdit}
                   refreshTrigger={refreshTrigger}
@@ -204,9 +221,10 @@ const ProdutosPage = () => {
                 <KitList
                   kits={kits}
                   onDelete={(id) =>
-                    setProdutoToDelete(
-                      produtos.find((p) => p.id === id) || null
-                    )
+                    setProdutoToDelete({
+                      id,
+                      nome: kits.find((p) => p.id === id)?.nome || "",
+                    })
                   }
                   refreshTrigger={refreshTrigger}
                 />
@@ -223,13 +241,14 @@ const ProdutosPage = () => {
         />
       )}
 
-      {/* Diálogo de confirmação de exclusão */}
+      {/* Delete Dialog */}
       {produtoToDelete && (
         <ProdutoDeleteDialog
           isOpen={!!produtoToDelete}
           onClose={() => setProdutoToDelete(null)}
-          produto={produtoToDelete}
-          onConfirm={handleDelete}
+          produtoNome={produtoToDelete.nome}
+          onConfirm={handleDeleteProduto}
+          hasVinculos={produtoToDelete.vinculos}
         />
       )}
     </div>

@@ -286,25 +286,120 @@ export async function PUT(req: NextRequest) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const id = searchParams.get("id");
-
-  if (!id) {
-    return new Response(JSON.stringify({ error: "ID é obrigatório" }), {
-      status: 400,
-    });
-  }
-
+export async function DELETE(request: NextRequest) {
   try {
-    await prisma.produto.delete({
-      where: { id: id },
+    const user = await verifyUser(request);
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    const forceDelete = searchParams.get("forceDelete") === "true";
+
+    if (!id) {
+      return NextResponse.json(
+        { message: "ID do produto é obrigatório" },
+        { status: 400 }
+      );
+    }
+
+    // Verificar se o produto pertence ao usuário
+    const produto = await prisma.produto.findFirst({
+      where: {
+        id,
+        userId: user.id,
+      },
+      include: {
+        _count: {
+          select: {
+            componentes: true,
+            estoques: true,
+            pedidos: true,
+            saidas: true,
+          },
+        },
+      },
     });
-    return new Response(null, { status: 204 });
+
+    if (!produto) {
+      return NextResponse.json(
+        { message: "Produto não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    // Verificar vínculos
+    const hasVinculos =
+      produto._count.componentes > 0 ||
+      produto._count.estoques > 0 ||
+      produto._count.pedidos > 0 ||
+      produto._count.saidas > 0;
+
+    if (hasVinculos && !forceDelete) {
+      return NextResponse.json(
+        {
+          message: "Produto possui vínculos ativos",
+          hasVinculos: true,
+          vinculos: {
+            hasKits: produto._count.componentes > 0,
+            hasEstoque: produto._count.estoques > 0,
+            hasPedidos: produto._count.pedidos > 0,
+            hasSaidas: produto._count.saidas > 0,
+          },
+        },
+        { status: 409 }
+      );
+    }
+
+    // Excluir o produto e seus vínculos em uma transação
+    await prisma.$transaction(async (tx) => {
+      // Primeiro, excluir os componentes onde este produto é usado como componente
+      await tx.componente.deleteMany({
+        where: { produtoId: id },
+      });
+
+      // Depois, excluir os componentes onde este produto é um kit
+      await tx.componente.deleteMany({
+        where: { kitId: id },
+      });
+
+      // Excluir detalhes de saída
+      await tx.detalhesSaida.deleteMany({
+        where: { produtoId: id },
+      });
+
+      // Excluir saídas
+      await tx.saida.deleteMany({
+        where: { produtoId: id },
+      });
+
+      // Excluir pedidos de compra
+      await tx.pedidoProduto.deleteMany({
+        where: { produtoId: id },
+      });
+
+      // Excluir estoque
+      await tx.estoque.deleteMany({
+        where: { produtoId: id },
+      });
+
+      // Excluir vínculos com fornecedores
+      await tx.produtoFornecedor.deleteMany({
+        where: { produtoId: id },
+      });
+
+      // Por fim, excluir o produto
+      await tx.produto.delete({
+        where: { id },
+      });
+    });
+
+    return NextResponse.json(
+      { message: "Produto excluído com sucesso" },
+      { status: 200 }
+    );
   } catch (error) {
-    console.error("Erro ao deletar produto:", error);
-    return new Response(JSON.stringify({ error: "Erro ao deletar produto" }), {
-      status: 500,
-    });
+    console.error("Erro ao excluir produto:", error);
+    return NextResponse.json(
+      { message: "Erro ao excluir produto" },
+      { status: 500 }
+    );
   }
 }
