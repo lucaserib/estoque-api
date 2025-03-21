@@ -157,7 +157,7 @@ export function ProdutoFornecedorDialog({
         body: JSON.stringify({
           produtoId: produto.id,
           fornecedorId,
-          preco: parseInt(parseFloat(preco).toString()), // Convert to cents
+          preco: parseFloat(preco),
           multiplicador: parseFloat(multiplicador),
           codigoNF,
         }),
@@ -242,7 +242,7 @@ export function ProdutoFornecedorDialog({
         },
         body: JSON.stringify({
           id: vinculoId,
-          preco: parseInt((parseFloat(preco) * 100).toString()),
+          preco: parseFloat(preco),
           multiplicador: parseFloat(multiplicador),
           codigoNF,
         }),

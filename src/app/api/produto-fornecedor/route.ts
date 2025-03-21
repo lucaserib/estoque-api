@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       data: {
         produtoId,
         fornecedorId,
-        preco: brlToCents(preco),
+        preco: Math.round(preco * 100),
         multiplicador,
         codigoNF,
       },
@@ -155,7 +155,7 @@ export async function PUT(request: NextRequest) {
     const vinculo = await prisma.produtoFornecedor.update({
       where: { id: Number(id) },
       data: {
-        preco: brlToCents(preco),
+        preco: Math.round(preco * 100),
         multiplicador,
         codigoNF,
       },
