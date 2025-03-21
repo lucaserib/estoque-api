@@ -104,7 +104,6 @@ export function NovaSaidaDialog({
     };
   }, [isOpen]);
 
-  // Handler for adding a product to the outflow
   const handleAddProduto = async () => {
     if (!sku || quantidade <= 0) {
       setMessage("Insira um SKU válido e uma quantidade maior que zero.");
@@ -116,13 +115,14 @@ export function NovaSaidaDialog({
     const produtoToAdd = produtos.find((p) => p.sku === sku);
 
     try {
-      if (produtoToAdd) {
+      if (produtoToAdd && !produtoToAdd.isKit) {
+        // Adicionar produto simples
         setSaidaProdutos((prev) => {
           const existing = prev.find(
             (p) => p.produtoId === produtoToAdd.id && !p.isKit
           );
           if (existing) {
-            existing.quantidade += qty; // Sum the new quantity
+            existing.quantidade += qty;
             return [...prev];
           }
           return [
@@ -137,30 +137,44 @@ export function NovaSaidaDialog({
           ];
         });
       } else {
-        // Try to find a kit with the provided SKU
-        const kitResponse = await fetch(`/api/kits?sku=${sku}`);
-        const kitData = await kitResponse.json();
+        // Tentar buscar um kit com o SKU informado
+        setMessage("Buscando kit...");
+        setMessageType("");
 
-        if (kitData && kitData.length > 0) {
+        try {
+          const kitResponse = await fetch(
+            `/api/kits?sku=${encodeURIComponent(sku)}`
+          );
+
+          if (!kitResponse.ok) {
+            const errorData = await kitResponse.json();
+            setMessage(errorData.error || "Erro ao buscar o kit.");
+            setMessageType("error");
+            return;
+          }
+
+          const kitData = await kitResponse.json();
+
+          if (!kitData || kitData.length === 0) {
+            setMessage("Produto ou kit não encontrado.");
+            setMessageType("error");
+            return;
+          }
+
           const kit = kitData[0];
+          console.log("Kit encontrado:", kit);
+
+          // Adicionar kit à lista de saída
           setSaidaProdutos((prev) => {
             const existing = prev.find(
               (p) => p.produtoId === kit.id && p.isKit
             );
+
             if (existing) {
               existing.quantidade += qty;
-              if (existing.componentes) {
-                existing.componentes = kit.componentes.map(
-                  (c: KitComponente) => ({
-                    produtoId: c.produto.id,
-                    quantidade: c.quantidade * (existing.quantidade + qty),
-                    sku: c.produto.sku,
-                    nome: c.produto.nome,
-                  })
-                );
-              }
               return [...prev];
             }
+
             return [
               ...prev,
               {
@@ -169,39 +183,32 @@ export function NovaSaidaDialog({
                 sku: kit.sku,
                 nome: kit.nome,
                 isKit: true,
-                componentes: kit.componentes.map((c: KitComponente) => ({
-                  produtoId: c.produto.id,
-                  quantidade: c.quantidade * qty,
-                  sku: c.produto.sku,
-                  nome: c.produto.nome,
-                })),
               },
             ];
           });
-        } else {
-          setMessage("Produto ou kit não encontrado.");
+
+          setSku("");
+          setSearchTerm("");
+          setQuantidade(1);
+          setMessage("");
+          setOpenCombobox(false);
+        } catch (error) {
+          console.error("Erro ao buscar kit:", error);
+          setMessage(
+            "Erro ao buscar o kit. Verifique o console para mais detalhes."
+          );
           setMessageType("error");
-          return;
         }
       }
-
-      setSku("");
-      setSearchTerm("");
-      setQuantidade(1);
-      setMessage("");
-      setOpenCombobox(false);
     } catch (error) {
-      setMessage("Erro ao adicionar item.");
+      console.error("Erro ao adicionar item:", error);
+      setMessage(
+        "Erro ao adicionar item. Verifique o console para mais detalhes."
+      );
       setMessageType("error");
     }
   };
 
-  // Handler for removing a product from the list
-  const handleRemoveProduto = (sku: string) => {
-    setSaidaProdutos((prev) => prev.filter((p) => p.sku !== sku));
-  };
-
-  // Handler for registering the outflow
   const handleRegistrarSaida = async () => {
     if (saidaProdutos.length === 0 || !armazemId) {
       setMessage("Adicione itens e selecione um armazém.");
@@ -212,20 +219,19 @@ export function NovaSaidaDialog({
     setIsSubmitting(true);
 
     try {
-      // Garantir que temos todos os campos necessários em um formato correto
+      // Preparar dados para envio
       const produtosFormatados = saidaProdutos.map((produto) => ({
         produtoId: produto.produtoId,
         quantidade: produto.quantidade,
         sku: produto.sku,
         nome: produto.nome,
-        isKit: produto.isKit || false,
-        // Incluir componentes apenas se existirem e for um kit
-        ...(produto.isKit && produto.componentes
-          ? { componentes: produto.componentes }
-          : {}),
+        isKit: produto.isKit,
       }));
 
-      console.log("Enviando produtos para a API:", produtosFormatados);
+      console.log("Enviando dados para API:", {
+        produtos: produtosFormatados,
+        armazemId,
+      });
 
       const response = await fetch("/api/saida", {
         method: "POST",
@@ -236,6 +242,9 @@ export function NovaSaidaDialog({
         }),
       });
 
+      const responseData = await response.json();
+      console.log("Resposta da API:", responseData);
+
       if (response.ok) {
         setMessage("Saída registrada com sucesso!");
         setMessageType("success");
@@ -243,17 +252,40 @@ export function NovaSaidaDialog({
         onSave();
         setTimeout(() => onClose(), 1500);
       } else {
-        const errorData = await response.json();
-        setMessage(errorData.error || "Erro ao registrar saída.");
+        setMessage(responseData.error || "Erro ao registrar saída.");
         setMessageType("error");
       }
     } catch (error) {
       console.error("Erro ao registrar saída:", error);
-      setMessage("Erro ao registrar saída.");
+      setMessage(
+        "Erro ao registrar saída. Verifique o console para mais detalhes."
+      );
       setMessageType("error");
     } finally {
       setIsSubmitting(false);
     }
+  };
+  {
+    message && (
+      <Alert
+        variant={messageType === "success" ? "success" : "destructive"}
+        className="mb-4"
+      >
+        {messageType === "success" ? (
+          <CheckCircle className="h-4 w-4" />
+        ) : (
+          <AlertCircle className="h-4 w-4" />
+        )}
+        <AlertDescription className="whitespace-pre-line">
+          {message}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
+  // Handler for removing a product from the list
+  const handleRemoveProduto = (sku: string) => {
+    setSaidaProdutos((prev) => prev.filter((p) => p.sku !== sku));
   };
 
   return (

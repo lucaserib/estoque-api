@@ -9,11 +9,14 @@ import {
   MapPin,
   Building,
   CreditCard,
+  Pencil,
 } from "lucide-react";
 import { useLayout } from "@/app/context/LayoutContext";
 import { useFetch } from "@/app/hooks/useFetch";
 import { Fornecedor } from "./types";
 import Header from "@/app/components/Header";
+import { toast } from "sonner";
+import { FornecedorEditDialog } from "@/components/FornecedorEditDialog";
 
 const FornecedoresPage = () => {
   const { isSidebarCollapsed } = useLayout();
@@ -25,8 +28,13 @@ const FornecedoresPage = () => {
   const [fornecedores, setFornecedores] = useState<Fornecedor[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [fornecedorToDelete, setFornecedorToDelete] =
+    useState<Fornecedor | null>(null);
+  const [deleteVinculos, setDeleteVinculos] = useState<{
+    hasOrders: boolean;
+    hasProducts: boolean;
+  } | null>(null);
 
-  // Form state
   const [nome, setNome] = useState("");
   const [inscricaoEstadual, setInscricaoEstadual] = useState("");
   const [cnpj, setCnpj] = useState("");
@@ -36,6 +44,10 @@ const FornecedoresPage = () => {
   const [formMessageType, setFormMessageType] = useState<
     "success" | "error" | ""
   >("");
+
+  const [fornecedorToEdit, setFornecedorToEdit] = useState<Fornecedor | null>(
+    null
+  );
 
   useEffect(() => {
     if (initialFornecedores) {
@@ -91,17 +103,69 @@ const FornecedoresPage = () => {
     }
   };
 
-  const handleDeleteFornecedor = async (id: number) => {
+  const handleDeleteFornecedor = async (id: string) => {
     try {
+      // Primeira tentativa de deleção
       const response = await fetch(`/api/fornecedores?id=${id}`, {
         method: "DELETE",
       });
-      if (response.ok) {
-        setFornecedores((prev) => prev.filter((f) => f.id !== id));
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        // Se o erro for 409 (Conflict), significa que o fornecedor tem vínculos
+        if (response.status === 409) {
+          // Mostrar diálogo de confirmação
+          const confirmDelete = window.confirm(
+            "Este fornecedor possui vínculos com pedidos ou produtos. Deseja excluir mesmo assim? Isso removerá todos os vínculos."
+          );
+
+          if (confirmDelete) {
+            // Tentar novamente com force=true
+            const forceResponse = await fetch(
+              `/api/fornecedores?id=${id}&force=true`,
+              {
+                method: "DELETE",
+              }
+            );
+
+            if (!forceResponse.ok) {
+              throw new Error("Erro ao excluir fornecedor");
+            }
+
+            // Atualizar a lista de fornecedores
+            setFornecedores((prev) =>
+              prev.filter((f) => f.id.toString() !== id)
+            );
+            toast.success(
+              "O fornecedor e seus vínculos foram excluídos com sucesso."
+            );
+          }
+        } else {
+          throw new Error(data.error || "Erro ao excluir fornecedor");
+        }
+      } else {
+        // Se a deleção foi bem sucedida na primeira tentativa
+        setFornecedores((prev) => prev.filter((f) => f.id.toString() !== id));
+        toast.success("O fornecedor foi excluído com sucesso.");
       }
     } catch (error) {
-      console.error("Erro ao deletar fornecedor:", error);
+      console.error("Erro ao excluir fornecedor:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao excluir fornecedor"
+      );
     }
+  };
+
+  const handleEditFornecedor = (fornecedor: Fornecedor) => {
+    setFornecedorToEdit(fornecedor);
+  };
+
+  const handleSaveFornecedor = (updatedFornecedor: Fornecedor) => {
+    setFornecedores((prev) =>
+      prev.map((f) => (f.id === updatedFornecedor.id ? updatedFornecedor : f))
+    );
+    setFornecedorToEdit(null);
   };
 
   return (
@@ -209,13 +273,24 @@ const FornecedoresPage = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleDeleteFornecedor(fornecedor.id)}
-                      className="mt-4 md:mt-0 ml-auto flex items-center gap-1 text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                      <span className="text-sm">Remover</span>
-                    </button>
+                    <div className="flex items-center gap-2 mt-4 md:mt-0">
+                      <button
+                        onClick={() => handleEditFornecedor(fornecedor)}
+                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        onClick={() =>
+                          handleDeleteFornecedor(fornecedor.id.toString())
+                        }
+                        className="flex items-center gap-1 text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Excluir</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -226,7 +301,7 @@ const FornecedoresPage = () => {
 
       {/* Modal for adding new supplier */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto ">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             {/* Background overlay */}
             <div
@@ -235,10 +310,7 @@ const FornecedoresPage = () => {
             ></div>
 
             {/* Modal content */}
-            <div
-              className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full 
-            "
-            >
+            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <div className="absolute top-0 right-0 pt-4 pr-4">
                 <button
                   onClick={() => setIsModalOpen(false)}
@@ -343,6 +415,16 @@ const FornecedoresPage = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Dialog */}
+      {fornecedorToEdit && (
+        <FornecedorEditDialog
+          isOpen={!!fornecedorToEdit}
+          onClose={() => setFornecedorToEdit(null)}
+          fornecedor={fornecedorToEdit}
+          onSave={handleSaveFornecedor}
+        />
       )}
     </div>
   );

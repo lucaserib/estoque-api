@@ -1,5 +1,6 @@
+// src/app/api/saida/route.ts
 import { verifyUser } from "@/helpers/verifyUser";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Produto } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
 const prisma = new PrismaClient();
@@ -16,15 +17,9 @@ const serializeBigInt = (obj: unknown): unknown => {
 interface SaidaProduto {
   produtoId: string;
   quantidade: number;
-  nome?: string;
   sku: string;
-  isKit?: boolean;
-  componentes?: {
-    produtoId: string;
-    quantidade: number;
-    sku?: string;
-    nome?: string;
-  }[];
+  nome?: string;
+  isKit: boolean;
 }
 
 interface RequestBody {
@@ -35,188 +30,216 @@ interface RequestBody {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
-
     const body: RequestBody = await request.json();
+
+    console.log(
+      "Recebendo requisição de saída:",
+      JSON.stringify(body, null, 2)
+    );
+
     const { produtos, armazemId } = body;
 
-    if (!produtos || !armazemId) {
+    if (!produtos || !produtos.length || !armazemId) {
       return NextResponse.json(
-        { error: "Produtos e Armazém são obrigatórios" },
+        { error: "Produtos e armazém são obrigatórios" },
         { status: 400 }
       );
     }
+
+    // Verificar se o armazém existe e pertence ao usuário
     const armazem = await prisma.armazem.findUnique({
-      where: { id: armazemId },
+      where: { id: armazemId, userId: user.id },
     });
 
-    if (!armazem || armazem.userId !== user.id) {
+    if (!armazem) {
       return NextResponse.json(
         { error: "Armazém não encontrado ou não pertence ao usuário" },
         { status: 403 }
       );
     }
 
-    // Criar uma nova saída
-    const saida = await prisma.saida.create({
-      data: {
-        userId: user.id,
-        data: new Date(),
-        armazemId: armazemId,
-      },
-    });
+    // Usar uma transação para garantir que todas as operações sejam realizadas ou nenhuma
+    const result = await prisma.$transaction(async (tx) => {
+      // Criar o registro de saída principal
+      const saida = await tx.saida.create({
+        data: {
+          userId: user.id,
+          armazemId: armazemId,
+          data: new Date(),
+        },
+      });
 
-    // Processamento da saída dos produtos
-    for (const produto of produtos) {
-      const { produtoId, quantidade, isKit = false } = produto;
+      console.log(`Saída criada com ID: ${saida.id}`);
 
-      if (isKit) {
-        const kitEncontrado = await prisma.produto.findUnique({
-          where: { id: produtoId },
-          include: {
-            componentes: {
-              include: { produto: true },
-            },
+      // Processar cada produto/kit na saída
+      for (const produto of produtos) {
+        const { produtoId, quantidade, isKit } = produto;
+
+        // Verificar se o produto/kit existe e pertence ao usuário
+        const produtoInfo = (await tx.produto.findFirst({
+          where: {
+            id: produtoId,
+            userId: user.id,
           },
-        });
+          include: isKit
+            ? {
+                componentes: {
+                  include: {
+                    produto: true,
+                  },
+                },
+              }
+            : undefined,
+        })) as
+          | (Produto & {
+              componentes?: {
+                quantidade: number;
+                produtoId: string;
+                produto: Produto;
+              }[];
+            })
+          | null;
 
-        if (!kitEncontrado || kitEncontrado.userId !== user.id) {
-          return NextResponse.json(
-            { error: "Kit não encontrado" },
-            { status: 404 }
-          );
+        if (!produtoInfo) {
+          throw new Error(`Produto/kit com ID ${produtoId} não encontrado`);
         }
 
-        // Registrar a saída do kit
-        await prisma.detalhesSaida.create({
+        console.log(
+          `Processando ${isKit ? "kit" : "produto"}: ${produtoInfo.nome}`
+        );
+
+        // Registrar o detalhe da saída
+        await tx.detalhesSaida.create({
           data: {
             saidaId: saida.id,
-            produtoId: kitEncontrado.id,
-            quantidade,
-            isKit: true,
+            produtoId: produtoId,
+            quantidade: quantidade,
+            isKit: isKit,
           },
         });
 
-        // Processar os componentes do kit
-        for (const componente of kitEncontrado.componentes) {
-          const estoqueComponente = await prisma.estoque.findFirst({
+        // Se for um kit, processa a saída dos componentes
+        if (isKit && produtoInfo.componentes) {
+          for (const componente of produtoInfo.componentes) {
+            const quantidadeComponente = componente.quantidade * quantidade;
+
+            // Verificar estoque do componente
+            const estoqueComponente = await tx.estoque.findFirst({
+              where: {
+                produtoId: componente.produtoId,
+                armazemId: armazemId,
+              },
+            });
+
+            if (!estoqueComponente) {
+              throw new Error(
+                `Estoque do componente ${componente.produto.nome} não encontrado no armazém especificado`
+              );
+            }
+
+            if (estoqueComponente.quantidade < quantidadeComponente) {
+              throw new Error(
+                `Estoque insuficiente para o componente ${componente.produto.nome}. Necessário: ${quantidadeComponente}, Disponível: ${estoqueComponente.quantidade}`
+              );
+            }
+
+            // Atualizar o estoque do componente
+            await tx.estoque.update({
+              where: {
+                produtoId_armazemId: {
+                  produtoId: componente.produtoId,
+                  armazemId: armazemId,
+                },
+              },
+              data: {
+                quantidade: {
+                  decrement: quantidadeComponente,
+                },
+              },
+            });
+
+            console.log(
+              `Estoque do componente ${componente.produto.nome} atualizado: -${quantidadeComponente}`
+            );
+          }
+        } else if (!isKit) {
+          // Produto simples - verificar e atualizar estoque
+          const estoqueProduto = await tx.estoque.findFirst({
             where: {
-              produtoId: componente.produtoId,
+              produtoId: produtoId,
               armazemId: armazemId,
             },
           });
 
-          const quantidadeNecessaria = componente.quantidade * quantidade;
-
-          if (!estoqueComponente) {
-            return NextResponse.json(
-              {
-                error: `Estoque não encontrado para o componente ${componente.produto.nome}`,
-              },
-              { status: 400 }
+          if (!estoqueProduto) {
+            throw new Error(
+              `Estoque do produto ${produtoInfo.nome} não encontrado no armazém especificado`
             );
           }
 
-          if (estoqueComponente.quantidade < quantidadeNecessaria) {
-            return NextResponse.json(
-              {
-                error: `Estoque insuficiente para o componente ${componente.produto.nome}. Necessário: ${quantidadeNecessaria}, Disponível: ${estoqueComponente.quantidade}`,
-              },
-              { status: 400 }
+          if (estoqueProduto.quantidade < quantidade) {
+            throw new Error(
+              `Estoque insuficiente para o produto ${produtoInfo.nome}. Necessário: ${quantidade}, Disponível: ${estoqueProduto.quantidade}`
             );
           }
 
-          await prisma.estoque.update({
+          // Atualizar o estoque do produto
+          await tx.estoque.update({
             where: {
               produtoId_armazemId: {
-                produtoId: componente.produtoId,
+                produtoId: produtoId,
                 armazemId: armazemId,
               },
             },
             data: {
               quantidade: {
-                decrement: quantidadeNecessaria,
+                decrement: quantidade,
               },
             },
           });
-        }
-      } else {
-        const produtoEncontrado = await prisma.produto.findUnique({
-          where: { id: produtoId },
-        });
 
-        if (!produtoEncontrado || produtoEncontrado.userId !== user.id) {
-          return NextResponse.json(
-            { error: "Produto não encontrado" },
-            { status: 404 }
+          console.log(
+            `Estoque do produto ${produtoInfo.nome} atualizado: -${quantidade}`
           );
         }
-
-        const estoqueProduto = await prisma.estoque.findFirst({
-          where: {
-            produtoId: produtoId,
-            armazemId: armazemId,
-          },
-        });
-
-        if (!estoqueProduto || estoqueProduto.quantidade < quantidade) {
-          return NextResponse.json(
-            { error: "Estoque insuficiente" },
-            { status: 400 }
-          );
-        }
-
-        await prisma.estoque.update({
-          where: {
-            produtoId_armazemId: {
-              produtoId: produtoId,
-              armazemId: armazemId,
-            },
-          },
-          data: {
-            quantidade: {
-              decrement: quantidade,
-            },
-          },
-        });
-
-        await prisma.detalhesSaida.create({
-          data: {
-            saidaId: saida.id,
-            produtoId: produtoId,
-            quantidade,
-            isKit: false,
-          },
-        });
       }
-    }
 
-    // Buscar a saída completa com todos os detalhes para retornar
-    const saidaCompleta = await prisma.saida.findUnique({
-      where: { id: saida.id },
-      include: {
-        armazem: true,
-        detalhes: {
-          include: {
-            produto: true,
+      // Buscar a saída completa com todos os detalhes
+      const saidaCompleta = await tx.saida.findUnique({
+        where: { id: saida.id },
+        include: {
+          armazem: true,
+          detalhes: {
+            include: {
+              produto: true,
+            },
           },
         },
-      },
+      });
+
+      return saidaCompleta;
     });
 
-    return NextResponse.json(serializeBigInt(saidaCompleta), { status: 201 });
+    // Retornar o resultado completo
+    return NextResponse.json(serializeBigInt(result), { status: 201 });
   } catch (error) {
     console.error("Erro ao registrar saída:", error);
-    return NextResponse.json(
-      { error: "Erro ao registrar saída" },
-      { status: 500 }
-    );
+
+    // Extrair a mensagem de erro
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : "Erro desconhecido ao registrar saída";
+
+    return NextResponse.json({ error: errorMessage }, { status: 400 });
   }
 }
 
-// GET
+// GET - Buscar saídas
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+
     const saidas = await prisma.saida.findMany({
       where: { userId: user.id },
       include: {
@@ -226,6 +249,9 @@ export async function GET(request: NextRequest) {
             produto: true,
           },
         },
+      },
+      orderBy: {
+        data: "desc",
       },
     });
 

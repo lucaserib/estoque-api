@@ -1,3 +1,4 @@
+// src/app/(root)/saidas/types.ts
 export interface Produto {
   id: string;
   nome: string;
@@ -17,12 +18,12 @@ export interface SaidaProduto {
   quantidade: number;
   nome: string;
   sku: string;
-  isKit?: boolean;
+  isKit: boolean;
   componentes?: KitComponente[];
 }
 
 export interface Saida {
-  id: number;
+  id: string; // Note: Mudado de number para string conforme migração
   data: string;
   armazem: { id: string; nome: string };
   detalhes: {
