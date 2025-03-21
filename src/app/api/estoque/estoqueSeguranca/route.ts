@@ -51,7 +51,6 @@ export async function PUT(request: NextRequest) {
 
     // Converter valores BigInt para números regulares
     const serializedEstoque = {
-      id: estoque.id,
       produtoId: estoque.produtoId,
       armazemId: estoque.armazemId,
       quantidade: Number(estoque.quantidade),
@@ -62,12 +61,9 @@ export async function PUT(request: NextRequest) {
         id: estoque.produto.id,
         nome: estoque.produto.nome,
         sku: estoque.produto.sku,
-        custoMedio: estoque.produto.custoMedio
-          ? Number(estoque.produto.custoMedio)
-          : null,
         isKit: estoque.produto.isKit,
-        ean: estoque.produto.ean ? estoque.produto.ean.toString() : null,
-        userId: estoque.produto.userId,
+        ean: estoque.produto.ean ? Number(estoque.produto.ean) : null,
+        custoMedio: estoque.produto.custoMedio,
       },
     };
 
