@@ -112,7 +112,7 @@ export function PedidoRow({
 
       <TableCell className="font-medium">
         <span className="text-green-600 dark:text-green-400">
-          {formatBRL(valorTotal)}
+          {formatBRL(valorTotal / 100)}
         </span>
       </TableCell>
 
@@ -169,3 +169,11 @@ export function PedidoRow({
     </TableRow>
   );
 }
+
+const calcularValorPedido = (produtos: Pedido["produtos"]) => {
+  return produtos.reduce((total, produto) => {
+    const valor =
+      produto.quantidade * produto.custo * (produto.multiplicador || 1);
+    return total + valor;
+  }, 0);
+};

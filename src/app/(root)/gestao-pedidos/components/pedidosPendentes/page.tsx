@@ -4,7 +4,12 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Pedido, PedidoProduto, Armazem } from "../../types";
 import { useFetch } from "../../../../hooks/useFetch";
-import { brlToCents, formatBRL, exibirValorEmReais } from "@/utils/currency";
+import {
+  brlToCents,
+  formatBRL,
+  exibirValorEmReais,
+  centsToBRL,
+} from "@/utils/currency";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,10 +37,8 @@ import { Check, ChevronDown, Loader2, RefreshCw, X } from "lucide-react";
 import { FaEdit, FaTrash } from "react-icons/fa";
 
 const PedidosPendentes = () => {
-  // Estado para controlar a atualização dos dados
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Buscar pedidos pendentes
   const {
     data: pedidos,
     loading: pedidosLoading,
@@ -48,7 +51,6 @@ const PedidosPendentes = () => {
     [refreshTrigger]
   );
 
-  // Buscar armazéns
   const {
     data: armazens,
     loading: armazensLoading,
@@ -64,7 +66,6 @@ const PedidosPendentes = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingPedidoId, setDeletingPedidoId] = useState<number | null>(null);
 
-  // Atualizar pedidos filtrados quando os pedidos mudarem
   useEffect(() => {
     if (pedidos) {
       console.log("Pedidos pendentes recebidos:", pedidos.length);
@@ -72,7 +73,6 @@ const PedidosPendentes = () => {
     }
   }, [pedidos]);
 
-  // Forçar atualização dos dados
   const refreshData = useCallback(() => {
     setRefreshTrigger((prev) => prev + 1);
     setSuccessMessage("");
@@ -81,7 +81,6 @@ const PedidosPendentes = () => {
     setArmazemId(null);
   }, []);
 
-  // Limpar mensagens após um tempo
   useEffect(() => {
     if (successMessage || error) {
       const timer = setTimeout(() => {
@@ -92,7 +91,6 @@ const PedidosPendentes = () => {
     }
   }, [successMessage, error]);
 
-  // Filtrar pedidos com base na pesquisa
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value;
     setSearch(value);
@@ -172,7 +170,6 @@ const PedidosPendentes = () => {
   };
 
   const handleEdit = (pedido: Pedido) => {
-    // Cria uma cópia profunda do pedido para edição
     setEditPedido(JSON.parse(JSON.stringify(pedido)));
     setArmazemId(null);
     setError("");
@@ -184,7 +181,6 @@ const PedidosPendentes = () => {
       return;
     }
 
-    // Validar quantidades
     const invalidProducts = editPedido.produtos.filter((p) => p.quantidade < 0);
     if (invalidProducts.length > 0) {
       setError(
@@ -220,7 +216,6 @@ const PedidosPendentes = () => {
       if (response.ok) {
         setSuccessMessage(`Pedido #${editPedido.id} confirmado com sucesso!`);
 
-        // Se um novo pedido foi criado para itens faltantes, mostrar isso na mensagem
         if (data.novoPedidoId) {
           setSuccessMessage(
             (prev) =>
@@ -228,7 +223,7 @@ const PedidosPendentes = () => {
           );
         }
 
-        refreshData(); // Atualizar a lista de pedidos
+        refreshData();
         setEditPedido(null);
         setArmazemId(null);
       } else {
@@ -265,7 +260,7 @@ const PedidosPendentes = () => {
 
       if (response.ok) {
         setSuccessMessage(`Pedido #${id} excluído com sucesso!`);
-        refreshData(); // Atualizar a lista de pedidos
+        refreshData();
       } else {
         setError(data.error || "Erro ao deletar pedido");
       }
@@ -307,7 +302,6 @@ const PedidosPendentes = () => {
   const loading = pedidosLoading || armazensLoading;
   const systemError = pedidosError || armazensError;
 
-  // Mostrar o carregamento
   if (loading) {
     return (
       <div className="flex justify-center items-center p-8">
@@ -319,7 +313,6 @@ const PedidosPendentes = () => {
     );
   }
 
-  // Mostrar erro do sistema (não o erro de operação)
   if (systemError) {
     return (
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-4 rounded-md">
@@ -438,8 +431,7 @@ const PedidosPendentes = () => {
                     </p>
                   )}
                   <p className="font-medium">
-                    Valor Total:{" "}
-                    {exibirValorEmReais(calcularValorTotalPedido(pedido))}
+                    Valor Total: {centsToBRL(calcularValorTotalPedido(pedido))}
                   </p>
                 </div>
 
@@ -451,8 +443,7 @@ const PedidosPendentes = () => {
                     {pedido.produtos.slice(0, 3).map((produto) => (
                       <li key={produto.produtoId}>
                         {produto.produto?.sku}: {produto.quantidade} un. ×{" "}
-                        {exibirValorEmReais(produto.custo)} ={" "}
-                        {exibirValorEmReais(produto.quantidade * produto.custo)}
+                        {produto.custo} = {produto.quantidade * produto.custo}
                       </li>
                     ))}
                     {pedido.produtos.length > 3 && (
@@ -634,7 +625,7 @@ const PedidosPendentes = () => {
                     Total:
                   </TableCell>
                   <TableCell className="text-right font-bold">
-                    {formatBRL(calcularValorTotalPedido(editPedido))}
+                    {brlToCents(calcularValorTotalPedido(editPedido))}
                   </TableCell>
                 </TableRow>
               </TableBody>

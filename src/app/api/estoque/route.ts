@@ -11,7 +11,6 @@ export async function DELETE(request: NextRequest) {
     const produtoId = searchParams.get("produtoId");
     const armazemId = searchParams.get("armazemId");
 
-    // Validação dos parâmetros
     if (!produtoId || !armazemId) {
       return NextResponse.json(
         { message: "Produto e armazém são obrigatórios" },
@@ -19,7 +18,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verificar se o armazém pertence ao usuário
     const armazem = await prisma.armazem.findFirst({
       where: {
         id: armazemId,

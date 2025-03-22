@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { centsToBRL, formatBRL } from "@/utils/currency";
+import { brlToCents, centsToBRL, formatBRL } from "@/utils/currency";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -203,29 +203,27 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     produtoFornecedor: ProdutoFornecedor,
     quantidade: number
   ) => {
-    const produtos = form.getValues("produtos") || [];
+    const produtoExistente = form
+      .getValues("produtos")
+      .findIndex((p) => p.produtoId === produtoFornecedor.produtoId);
 
-    // Verificar se o produto já existe no pedido
-    const existingIndex = produtos.findIndex(
-      (p) => p.produtoId === produtoFornecedor.produtoId
-    );
-
-    if (existingIndex >= 0) {
-      // Atualizar quantidade se o produto já existe
-      produtos[existingIndex].quantidade += quantidade;
+    if (produtoExistente >= 0) {
+      const produtos = form.getValues("produtos");
+      produtos[produtoExistente].quantidade += quantidade;
+      form.setValue("produtos", produtos);
     } else {
-      // Adicionar novo produto
+      const produtos = form.getValues("produtos");
       produtos.push({
         produtoId: produtoFornecedor.produtoId,
-        quantidade: quantidade,
-        custo: produtoFornecedor.preco,
+        quantidade,
+        custo: produtoFornecedor.preco, // Já está em centavos
         multiplicador: produtoFornecedor.multiplicador,
         sku: produtoFornecedor.produto.sku,
         nome: produtoFornecedor.produto.nome,
       });
+      form.setValue("produtos", produtos);
     }
 
-    form.setValue("produtos", produtos);
     setNewProduct(null);
   };
 
@@ -469,7 +467,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatBRL(pf.preco)}
+                            {centsToBRL(pf.preco)}
                             {pf.multiplicador > 1 && (
                               <span className="text-xs text-muted-foreground block">
                                 Mult: {pf.multiplicador}x
@@ -535,7 +533,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
             </>
           )}
 
-          {/* Lista de produtos adicionados */}
           <FormField
             control={form.control}
             name="produtos"
@@ -594,7 +591,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                                   />
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  {formatBRL(produto.custo)}
+                                  {centsToBRL(produto.custo)}
                                   {produto.multiplicador &&
                                     produto.multiplicador > 1 && (
                                       <span className="text-xs text-muted-foreground block">
@@ -603,7 +600,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right font-medium">
-                                  {formatBRL(subtotal)}
+                                  {centsToBRL(subtotal)}
                                 </TableCell>
                                 <TableCell>
                                   <Button
@@ -620,7 +617,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                             );
                           })}
 
-                          {/* Linha do total */}
                           <TableRow className="border-t-2">
                             <TableCell
                               colSpan={3}
@@ -629,7 +625,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                               Valor Total:
                             </TableCell>
                             <TableCell className="text-right font-bold">
-                              {formatBRL(calculateTotal())}
+                              {centsToBRL(calculateTotal())}
                             </TableCell>
                             <TableCell></TableCell>
                           </TableRow>

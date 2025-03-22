@@ -6,10 +6,7 @@ export function centsToBRL(cents: number): string {
 }
 
 export function formatBRL(value: number): string {
-  // Verificar se o valor já parece estar em centavos (maior que 100x o valor comum)
-  const valueToFormat = value > 1000 ? value / 100 : value;
-
-  return valueToFormat.toLocaleString("pt-BR", {
+  return value.toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
     minimumFractionDigits: 2,
@@ -27,7 +24,6 @@ export function brlToCents(value: string | number): number {
   return Math.round(parseFloat(normalizedValue) * 100);
 }
 
-// Função auxiliar que garantidamente converte para centavos → reais
 export function exibirValorEmReais(valorEmCentavos: number): string {
   return (valorEmCentavos / 100).toLocaleString("pt-BR", {
     style: "currency",

@@ -71,9 +71,9 @@ export async function POST(request: NextRequest) {
     }
 
     for (const produto of produtos) {
-      if (!Number.isInteger(produto.custo) || produto.custo < 0) {
+      if (!produto.custo || produto.custo < 0) {
         return NextResponse.json(
-          { error: "Custo deve ser um valor inteiro não-negativo em centavos" },
+          { error: "Custo deve ser um valor não-negativo" },
           { status: 400 }
         );
       }
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
           create: produtos.map((produto) => ({
             produtoId: produto.produtoId,
             quantidade: produto.quantidade,
-            custo: produto.custo,
+            custo: Math.round(produto.custo * 100),
             multiplicador: produto.multiplicador || 1,
           })),
         },
