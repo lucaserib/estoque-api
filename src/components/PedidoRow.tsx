@@ -112,7 +112,7 @@ export function PedidoRow({
 
       <TableCell className="font-medium">
         <span className="text-green-600 dark:text-green-400">
-          {formatBRL(valorTotal / 100)}
+          {formatBRL(valorTotal)}
         </span>
       </TableCell>
 

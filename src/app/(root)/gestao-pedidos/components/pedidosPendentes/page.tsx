@@ -628,7 +628,7 @@ const PedidosPendentes = () => {
                     Total:
                   </TableCell>
                   <TableCell className="text-right font-bold">
-                    {brlToCents(calcularValorTotalPedido(editPedido))}
+                    {formatBRL(calcularValorTotalPedido(editPedido))}
                   </TableCell>
                 </TableRow>
               </TableBody>

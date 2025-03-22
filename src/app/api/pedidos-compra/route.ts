@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
           create: produtos.map((produto) => ({
             produtoId: produto.produtoId,
             quantidade: produto.quantidade,
-            custo: Math.round(produto.custo * 100),
+            custo: Math.round(produto.custo),
             multiplicador: produto.multiplicador || 1,
           })),
         },
