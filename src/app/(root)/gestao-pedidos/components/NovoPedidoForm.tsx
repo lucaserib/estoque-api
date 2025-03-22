@@ -50,13 +50,6 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-} from "@/components/ui/command";
 
 interface Fornecedor {
   id: string;
@@ -88,7 +81,6 @@ interface PedidoProduto {
   nome?: string;
 }
 
-// Schema de validação do formulário
 const formSchema = z.object({
   fornecedorId: z.string({
     required_error: "Selecione um fornecedor",
@@ -111,7 +103,6 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-// Props do componente
 interface NovoPedidoFormProps {
   onSuccess: () => void;
 }
@@ -135,7 +126,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     multiplicador: number;
   } | null>(null);
 
-  // Inicializar formulário
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -145,7 +135,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     },
   });
 
-  // Carregar fornecedores ao carregar o componente
   useEffect(() => {
     const fetchFornecedores = async () => {
       setIsLoadingFornecedores(true);
@@ -166,7 +155,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     fetchFornecedores();
   }, []);
 
-  // Carregar produtos do fornecedor quando um fornecedor é selecionado
   const loadProdutosFornecedor = useCallback(async (fornecedorId: string) => {
     if (!fornecedorId) return;
 
@@ -203,45 +191,41 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     produtoFornecedor: ProdutoFornecedor,
     quantidade: number
   ) => {
-    const produtoExistente = form
-      .getValues("produtos")
-      .findIndex((p) => p.produtoId === produtoFornecedor.produtoId);
+    const produtos = form.getValues("produtos") || [];
 
-    if (produtoExistente >= 0) {
-      const produtos = form.getValues("produtos");
-      produtos[produtoExistente].quantidade += quantidade;
-      form.setValue("produtos", produtos);
+    const existingIndex = produtos.findIndex(
+      (p) => p.produtoId === produtoFornecedor.produtoId
+    );
+
+    if (existingIndex >= 0) {
+      produtos[existingIndex].quantidade += quantidade;
     } else {
-      const produtos = form.getValues("produtos");
       produtos.push({
         produtoId: produtoFornecedor.produtoId,
-        quantidade,
-        custo: produtoFornecedor.preco, // Já está em centavos
+        quantidade: quantidade,
+        custo: produtoFornecedor.preco,
         multiplicador: produtoFornecedor.multiplicador,
         sku: produtoFornecedor.produto.sku,
         nome: produtoFornecedor.produto.nome,
       });
-      form.setValue("produtos", produtos);
     }
 
+    form.setValue("produtos", produtos);
     setNewProduct(null);
   };
 
-  // Remover produto do pedido
   const removeProduct = (index: number) => {
     const produtos = form.getValues("produtos");
     produtos.splice(index, 1);
     form.setValue("produtos", produtos);
   };
 
-  // Atualizar quantidade de um produto
   const updateQuantity = (index: number, quantidade: number) => {
     const produtos = form.getValues("produtos");
     produtos[index].quantidade = quantidade;
     form.setValue("produtos", produtos);
   };
 
-  // Calcular valor total do pedido
   const calculateTotal = () => {
     const produtos = form.getValues("produtos") || [];
     return produtos.reduce((total, produto) => {
@@ -252,14 +236,12 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     }, 0);
   };
 
-  // Filtrar produtos do fornecedor com base no termo de busca
   const filteredProducts = produtosFornecedor.filter(
     (pf) =>
       pf.produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pf.produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Enviar formulário
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
     setError(null);
@@ -304,7 +286,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Mostrar erro se houver */}
         {error && (
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
@@ -314,7 +295,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Seleção de fornecedor */}
           <FormField
             control={form.control}
             name="fornecedorId"
@@ -354,7 +334,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
             )}
           />
 
-          {/* Seleção de data prevista */}
           <FormField
             control={form.control}
             name="dataPrevista"
@@ -395,7 +374,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
           />
         </div>
 
-        {/* Comentários */}
         <FormField
           control={form.control}
           name="comentarios"
@@ -416,7 +394,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
           )}
         />
 
-        {/* Adicionar produtos */}
         <div className="border rounded-md p-4 bg-muted/30">
           <h3 className="text-lg font-semibold mb-4">Adicionar Produtos</h3>
 
@@ -467,7 +444,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            {centsToBRL(pf.preco)}
+                            {formatBRL(pf.preco)}
                             {pf.multiplicador > 1 && (
                               <span className="text-xs text-muted-foreground block">
                                 Mult: {pf.multiplicador}x
@@ -600,7 +577,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                                     )}
                                 </TableCell>
                                 <TableCell className="text-right font-medium">
-                                  {centsToBRL(subtotal)}
+                                  {formatBRL(subtotal)}
                                 </TableCell>
                                 <TableCell>
                                   <Button
@@ -625,7 +602,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                               Valor Total:
                             </TableCell>
                             <TableCell className="text-right font-bold">
-                              {centsToBRL(calculateTotal())}
+                              {formatBRL(calculateTotal())}
                             </TableCell>
                             <TableCell></TableCell>
                           </TableRow>
@@ -644,7 +621,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
           />
         </div>
 
-        {/* Botões */}
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="submit" className="gap-2" disabled={isSubmitting}>
             {isSubmitting ? (

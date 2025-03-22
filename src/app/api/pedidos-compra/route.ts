@@ -71,9 +71,9 @@ export async function POST(request: NextRequest) {
     }
 
     for (const produto of produtos) {
-      if (!produto.custo || produto.custo < 0) {
+      if (!Number.isInteger(produto.custo) || produto.custo < 0) {
         return NextResponse.json(
-          { error: "Custo deve ser um valor não-negativo" },
+          { error: "Custo deve ser um valor inteiro não-negativo em centavos" },
           { status: 400 }
         );
       }

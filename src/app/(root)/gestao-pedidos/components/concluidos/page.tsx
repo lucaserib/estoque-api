@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Pedido } from "../../types";
 import { useFetch } from "../../../../hooks/useFetch";
-import { formatBRL, exibirValorEmReais } from "@/utils/currency";
+import { formatBRL } from "@/utils/currency";
 
 const PedidosConcluidos = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -172,7 +172,7 @@ const PedidosConcluidos = () => {
               </p>
               <p className="text-gray-700 dark:text-gray-300 mt-2">
                 <span className="font-medium">Valor Total:</span>{" "}
-                {calcularValorTotalPedido(pedido)}
+                {formatBRL(calcularValorTotalPedido(pedido))}
               </p>
               <ul className="mt-3 space-y-2">
                 {pedido.produtos.map((produto) => (
@@ -189,11 +189,13 @@ const PedidosConcluidos = () => {
                       produto.produto?.multiplicador ||
                       1}{" "}
                     | Total:{" "}
-                    {produto.quantidade *
-                      produto.custo *
-                      (produto.multiplicador ||
-                        produto.produto?.multiplicador ||
-                        1)}
+                    {formatBRL(
+                      produto.quantidade *
+                        produto.custo *
+                        (produto.multiplicador ||
+                          produto.produto?.multiplicador ||
+                          1)
+                    )}
                   </li>
                 ))}
               </ul>

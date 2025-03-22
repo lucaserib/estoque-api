@@ -343,7 +343,6 @@ const PedidosPendentes = () => {
         </Button>
       </div>
 
-      {/* Mensagens de sucesso ou erro */}
       {successMessage && (
         <Alert variant="success" className="mb-4">
           <AlertDescription>{successMessage}</AlertDescription>
@@ -431,7 +430,7 @@ const PedidosPendentes = () => {
                     </p>
                   )}
                   <p className="font-medium">
-                    Valor Total: {centsToBRL(calcularValorTotalPedido(pedido))}
+                    Valor Total: {formatBRL(calcularValorTotalPedido(pedido))}
                   </p>
                 </div>
 
@@ -615,7 +614,11 @@ const PedidosPendentes = () => {
                         />
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {formatBRL(subtotal)}
+                        {formatBRL(
+                          produto.quantidade *
+                            produto.custo *
+                            (produto.multiplicador || 1)
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -662,7 +665,7 @@ const PedidosPendentes = () => {
 
       <div className="mt-6">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-          Total Geral: {calcularValorTotal()}
+          Total Geral: {formatBRL(calcularValorTotal())}
         </h3>
       </div>
     </div>

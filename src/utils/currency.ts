@@ -5,8 +5,8 @@ export function centsToBRL(cents: number): string {
   });
 }
 
-export function formatBRL(value: number): string {
-  return value.toLocaleString("pt-BR", {
+export function formatBRL(cents: number): string {
+  return (cents / 100).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
     minimumFractionDigits: 2,
@@ -25,10 +25,5 @@ export function brlToCents(value: string | number): number {
 }
 
 export function exibirValorEmReais(valorEmCentavos: number): string {
-  return (valorEmCentavos / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  return formatBRL(valorEmCentavos);
 }

@@ -131,12 +131,10 @@ const PedidosTable = ({
     }
   }, [status, dateRange, searchTerm]);
 
-  // Buscar pedidos quando os filtros mudam
   useEffect(() => {
     fetchPedidos();
   }, [fetchPedidos]);
 
-  // Calcular valor total do pedido
   const calcularValorPedido = (produtos: Pedido["produtos"]) => {
     return produtos.reduce((total, produto) => {
       const valor =

@@ -44,7 +44,6 @@ const GestaoPedidos = () => {
   });
   const [isLoadingStats, setIsLoadingStats] = useState(true);
 
-  // Estado para filtros
   const [filter, setFilter] = useState<PedidoFilter>({
     dateRange: undefined,
     searchTerm: "",

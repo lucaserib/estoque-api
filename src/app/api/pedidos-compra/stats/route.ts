@@ -9,10 +9,8 @@ export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
-    // Obtém data de 30 dias atrás para cálculos
     const thirtyDaysAgo = subDays(new Date(), 30);
 
-    // Busca número de pedidos pendentes
     const pendingOrdersCount = await prisma.pedidoCompra.count({
       where: {
         userId: user.id,
@@ -20,7 +18,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Busca número de pedidos concluídos
     const completedOrdersCount = await prisma.pedidoCompra.count({
       where: {
         userId: user.id,
@@ -28,7 +25,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Busca valor total de pedidos concluídos nos últimos 30 dias
     const recentCompletedOrders = await prisma.pedidoCompra.findMany({
       where: {
         userId: user.id,
@@ -42,7 +38,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Calcula o valor total
     let totalValue = 0;
 
     for (const pedido of recentCompletedOrders) {

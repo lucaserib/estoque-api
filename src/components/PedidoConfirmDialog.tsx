@@ -75,10 +75,8 @@ export function PedidoConfirmDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Important fix: Add cleanup for focus management
   useEffect(() => {
     return () => {
-      // Force focus back to the document when component unmounts
       if (!isOpen) {
         setTimeout(() => {
           document.body.focus();
@@ -87,14 +85,12 @@ export function PedidoConfirmDialog({
     };
   }, [isOpen]);
 
-  // Verificar se algum produto tem quantidade menor que a original
   const hasMenorQuantidade = () => {
     return produtos.some(
       (produto, index) => produto.quantidade < pedido.produtos[index].quantidade
     );
   };
 
-  // Atualizar quantidade de um produto
   const handleQuantityChange = (produtoId: string, value: number) => {
     setProdutos(
       produtos.map((produto) =>
@@ -105,7 +101,6 @@ export function PedidoConfirmDialog({
     );
   };
 
-  // Atualizar custo de um produto
   const handleCostChange = (produtoId: string, value: number) => {
     setProdutos(
       produtos.map((produto) =>
@@ -114,7 +109,6 @@ export function PedidoConfirmDialog({
     );
   };
 
-  // Calcular valor total do pedido
   const calcularValorTotal = () => {
     return produtos.reduce((total, produto) => {
       const subtotal =
@@ -123,9 +117,7 @@ export function PedidoConfirmDialog({
     }, 0);
   };
 
-  // Confirmar pedido
   const handleSubmit = async () => {
-    // Validação
     if (!armazemId) {
       setError("Selecione um armazém para receber os produtos");
       return;
@@ -416,7 +408,6 @@ export function PedidoConfirmDialog({
                       );
                     })}
 
-                    {/* Linha do total */}
                     <TableRow className="border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80">
                       <TableCell
                         colSpan={5}
