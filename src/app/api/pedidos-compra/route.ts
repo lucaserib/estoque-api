@@ -12,24 +12,64 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
-const calcularCustoMedio = async (produtoId: string) => {
-  const pedidos = await prisma.pedidoProduto.findMany({
-    where: { produtoId, pedido: { status: "confirmado" } },
-    select: { quantidade: true, custo: true },
-  });
+const calcularCustoMedioPonderado = async (
+  produtoId: string,
+  novaQuantidade: number,
+  novoCusto: number
+) => {
+  try {
+    const produto = await prisma.produto.findUnique({
+      where: { id: produtoId },
+      select: { custoMedio: true },
+    });
 
-  const totalValor = pedidos.reduce(
-    (acc, pedido) => acc + pedido.quantidade * (pedido.custo / 100),
-    0
-  );
-  const totalQuantidade = pedidos.reduce(
-    (acc, pedido) => acc + pedido.quantidade,
-    0
-  );
+    const estoques = await prisma.estoque.findMany({
+      where: { produtoId },
+      select: { quantidade: true },
+    });
 
-  return totalQuantidade > 0
-    ? Math.round((totalValor / totalQuantidade) * 100)
-    : 0;
+    const quantidadeAtual = estoques.reduce(
+      (total, estoque) => total + estoque.quantidade,
+      0
+    );
+
+    const custoMedioAtual = produto?.custoMedio || 0;
+
+    // Se não há estoque anterior ou o custo médio atual é zero,
+    // significa que é a primeira compra do produto
+    if (quantidadeAtual === 0 || custoMedioAtual === 0) {
+      console.log(
+        "Primeira compra do produto - definindo custo médio como:",
+        novoCusto
+      );
+      return novoCusto;
+    }
+
+    const valorTotal =
+      quantidadeAtual * custoMedioAtual + novaQuantidade * novoCusto;
+    const quantidadeTotal = quantidadeAtual + novaQuantidade;
+
+    if (quantidadeTotal <= 0) return 0;
+
+    const novoCustoMedio = Math.round(valorTotal / quantidadeTotal);
+
+    console.log({
+      quantidadeAtual,
+      custoMedioAtual,
+      valorEstoqueAtual: quantidadeAtual * custoMedioAtual,
+      novaQuantidade,
+      novoCusto,
+      valorNovoEstoque: novaQuantidade * novoCusto,
+      quantidadeTotal,
+      valorTotal,
+      novoCustoMedio,
+    });
+
+    return novoCustoMedio;
+  } catch (error) {
+    console.error("Erro ao calcular custo médio ponderado:", error);
+    throw error;
+  }
 };
 
 interface ProdutoRecebido {
@@ -258,12 +298,14 @@ export async function PUT(request: NextRequest) {
             });
           }
 
-          const custoMedio = await calcularCustoMedio(
-            produtoRecebido.produtoId
+          const novoCustoMedio = await calcularCustoMedioPonderado(
+            produtoRecebido.produtoId,
+            quantidadeFinal,
+            produtoRecebido.custo
           );
           await prisma.produto.update({
             where: { id: produtoRecebido.produtoId },
-            data: { custoMedio },
+            data: { custoMedio: novoCustoMedio },
           });
         }
       })

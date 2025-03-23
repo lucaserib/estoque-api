@@ -61,7 +61,6 @@ const ProdutoList = ({
   }>({});
   const itemsPerPage = 10;
 
-  // Fetch stock data when component mounts or refreshTrigger changes
   useEffect(() => {
     const fetchStockTotals = async () => {
       try {
@@ -75,7 +74,6 @@ const ProdutoList = ({
             0
           );
 
-          // Coletar os valores de estoque de segurança também
           const estoqueSeguranca = stockItems.reduce(
             (sum, item) => Math.max(sum, item.estoqueSeguranca || 0),
             0
@@ -137,7 +135,6 @@ const ProdutoList = ({
   };
 
   const filteredProdutos = produtos.filter((produto) => {
-    // Filtro de texto
     const matchesSearch =
       produto.nome
         .toLowerCase()
@@ -152,7 +149,6 @@ const ProdutoList = ({
 
     if (!matchesSearch) return false;
 
-    // Filtro de estoque
     if (filterOptions.stockFilter !== "all") {
       const estoque = stockData[produto.id] || 0;
       const estoqueMinimo = estoqueSegurancaData[produto.id] || 0;
@@ -221,7 +217,7 @@ const ProdutoList = ({
                       <TableCell className="text-gray-600 dark:text-gray-300">
                         {produto.custoMedio
                           ? `R$ ${(produto.custoMedio / 100).toFixed(2)}`
-                          : "N/A"}
+                          : "Não Definido"}
                       </TableCell>
                       <TableCell>
                         {stockData[produto.id] !== undefined ? (
