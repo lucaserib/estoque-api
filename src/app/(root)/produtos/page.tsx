@@ -9,7 +9,13 @@ import { ProdutoDeleteDialog } from "@/components/ProdutoDeleteDialog";
 import { Produto } from "./types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, Package, Box, RefreshCw } from "lucide-react";
+import {
+  PlusCircle,
+  Package,
+  Box,
+  RefreshCw,
+  LucideLoaderCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -113,29 +119,19 @@ const ProdutosPage = () => {
       `${newProduto.isKit ? "Kit" : "Produto"} cadastrado com sucesso`
     );
 
-    // Atualizar os dados
     setRefreshTrigger((prev) => prev + 1);
   };
 
   if (loading) {
     return (
       <div className="container max-w-6xl mx-auto p-6">
-        <div className="flex justify-between items-center mb-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-10 w-40" />
+        <Header name="Gestão de Produtos" />
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex items-center gap-2">
+            <LucideLoaderCircle className="h-6 w-6 animate-spin text-primary" />
+            <span className="text-muted-foreground">Carregando Produtos</span>
+          </div>
         </div>
-        <Card className="mb-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-          <Skeleton className="h-12 w-full rounded-t-lg" />
-          <CardContent className="p-6">
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex justify-between items-center">
-                  <Skeleton className="h-12 w-full" />
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     );
   }

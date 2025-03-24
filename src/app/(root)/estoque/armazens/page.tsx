@@ -31,6 +31,7 @@ import {
   Settings,
   Warehouse,
   Trash2,
+  LucideLoaderCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/app/components/Header";
@@ -83,12 +84,10 @@ const EstoquePage = () => {
     armazemNome: string;
   } | null>(null);
 
-  // Fetch warehouses on component mount
   useEffect(() => {
     fetchArmazens();
   }, [refreshTrigger]);
 
-  // Fetch stock data when warehouse changes
   useEffect(() => {
     if (activeWarehouse) fetchEstoque(activeWarehouse);
   }, [activeWarehouse, refreshTrigger]);
@@ -120,7 +119,6 @@ const EstoquePage = () => {
       const response = await fetch(`/api/estoque/${armazemId}`);
       const data = await response.json();
 
-      // Garantir que data seja sempre um array
       if (Array.isArray(data)) {
         setEstoque(data);
       } else {
@@ -201,7 +199,6 @@ const EstoquePage = () => {
       }
 
       if (estoqueSeguranca !== null) {
-        // Garantir que estoqueSeguranca seja número
         const estoqueSegurancaNumber = Number(estoqueSeguranca);
 
         console.log("Enviando estoque de segurança:", {
@@ -340,7 +337,6 @@ const EstoquePage = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
-      {/* Header */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -359,7 +355,6 @@ const EstoquePage = () => {
         </div>
       </div>
 
-      {/* Success and error messages */}
       {successMessage && (
         <Alert variant="success" className="animate-fade-in">
           <AlertDescription>{successMessage}</AlertDescription>
@@ -382,11 +377,17 @@ const EstoquePage = () => {
         </Alert>
       )}
 
-      {/* Main content */}
       {isLoading && armazens.length === 0 ? (
-        <Card className="flex items-center justify-center h-64">
-          <LoadingSpinner />
-        </Card>
+        <div className="container max-w-6xl mx-auto p-6">
+          <div className="flex items-center justify-center min-h-[60vh]">
+            <div className="flex items-center gap-2">
+              <LucideLoaderCircle className="h-6 w-6 animate-spin text-primary" />
+              <span className="text-muted-foreground">
+                Carregando Armazéns...
+              </span>
+            </div>
+          </div>
+        </div>
       ) : armazens.length === 0 ? (
         <Card className="border-dashed border-2">
           <CardContent className="flex flex-col items-center justify-center py-10">
@@ -441,7 +442,6 @@ const EstoquePage = () => {
                   ))}
                 </TabsList>
 
-                {/* Search bar for products */}
                 <div className="relative mb-4">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                   <Input
@@ -452,7 +452,6 @@ const EstoquePage = () => {
                   />
                 </div>
 
-                {/* Warehouse content tabs */}
                 {armazens.map((armazem) => (
                   <TabsContent
                     key={armazem.id}
@@ -478,7 +477,7 @@ const EstoquePage = () => {
                       <CardContent className="p-0">
                         {isLoading && activeWarehouse === armazem.id ? (
                           <div className="flex justify-center items-center py-12">
-                            <LoadingSpinner />
+                            <LucideLoaderCircle className="h-6 w-6 animate-spin text-primary" />
                           </div>
                         ) : (
                           <Table>

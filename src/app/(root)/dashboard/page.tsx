@@ -99,7 +99,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Summary Cards - Reorganized for better logical grouping */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {loading ? (
           Array(4)

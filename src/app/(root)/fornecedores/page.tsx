@@ -10,6 +10,7 @@ import {
   Building,
   CreditCard,
   Pencil,
+  LucideLoader2,
 } from "lucide-react";
 import { useLayout } from "@/app/context/LayoutContext";
 import { useFetch } from "@/app/hooks/useFetch";
@@ -105,7 +106,6 @@ const FornecedoresPage = () => {
 
   const handleDeleteFornecedor = async (id: string) => {
     try {
-      // Primeira tentativa de deleção
       const response = await fetch(`/api/fornecedores?id=${id}`, {
         method: "DELETE",
       });
@@ -113,15 +113,12 @@ const FornecedoresPage = () => {
       const data = await response.json();
 
       if (!response.ok) {
-        // Se o erro for 409 (Conflict), significa que o fornecedor tem vínculos
         if (response.status === 409) {
-          // Mostrar diálogo de confirmação
           const confirmDelete = window.confirm(
             "Este fornecedor possui vínculos com pedidos ou produtos. Deseja excluir mesmo assim? Isso removerá todos os vínculos."
           );
 
           if (confirmDelete) {
-            // Tentar novamente com force=true
             const forceResponse = await fetch(
               `/api/fornecedores?id=${id}&force=true`,
               {
@@ -133,7 +130,6 @@ const FornecedoresPage = () => {
               throw new Error("Erro ao excluir fornecedor");
             }
 
-            // Atualizar a lista de fornecedores
             setFornecedores((prev) =>
               prev.filter((f) => f.id.toString() !== id)
             );
@@ -145,7 +141,6 @@ const FornecedoresPage = () => {
           throw new Error(data.error || "Erro ao excluir fornecedor");
         }
       } else {
-        // Se a deleção foi bem sucedida na primeira tentativa
         setFornecedores((prev) => prev.filter((f) => f.id.toString() !== id));
         toast.success("O fornecedor foi excluído com sucesso.");
       }
@@ -177,7 +172,6 @@ const FornecedoresPage = () => {
       <main className="max-w-6xl mx-auto p-6 ">
         <Header name="Gestão de Fornecedores" />
 
-        {/* Search and Add Button */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-6 mb-8 gap-4">
           <div className="relative w-full sm:w-96">
             <input
@@ -199,10 +193,12 @@ const FornecedoresPage = () => {
           </button>
         </div>
 
-        {/* Content */}
         {loading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="flex items-center justify-center p-6 text-gray-500">
+            <LucideLoader2 className="h-6 w-6 animate-spin text-primary " />
+            <span className="ml-2 text-muted-foreground">
+              Carregando fornecedores...
+            </span>
           </div>
         ) : error ? (
           <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
