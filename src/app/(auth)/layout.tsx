@@ -1,10 +1,13 @@
 "use client";
+import { useTheme } from "next-themes";
 import { useEffect } from "react";
 
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
+  const { setTheme } = useTheme();
+
   useEffect(() => {
-    document.documentElement.classList.add("dark"); // Força o dark mode
-  }, []);
+    setTheme("dark");
+  }, [setTheme]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-gray-100 dark:bg-gray-900">

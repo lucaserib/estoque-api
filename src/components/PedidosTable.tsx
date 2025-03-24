@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { DateRange } from "react-day-picker";
-import { toast } from "sonner";
+import { toast } from "@/components/ui/sonner";
 import {
   Table,
   TableBody,
@@ -52,8 +52,6 @@ const PedidosTable = ({
   const [loadingAction, setLoadingAction] = useState<number | null>(null);
   const [armazens, setArmazens] = useState<Armazem[]>([]);
   const itemsPerPage = 10;
-
-  // Carregar dados de armazéns
   useEffect(() => {
     const fetchArmazens = async () => {
       try {
@@ -87,7 +85,6 @@ const PedidosTable = ({
         (pedido: Pedido) => pedido.status === status
       );
 
-      // Filtrar por data apenas se houver um intervalo selecionado
       if (dateRange?.from && dateRange?.to) {
         const fromDate = new Date(dateRange.from);
         const toDate = new Date(dateRange.to);
@@ -163,7 +160,6 @@ const PedidosTable = ({
         throw new Error(errorData.error || "Falha ao excluir pedido");
       }
 
-      // Atualizar a lista após exclusão
       setData(data.filter((pedido) => pedido.id !== id));
       toast.success(`Pedido #${id} excluído com sucesso`);
     } catch (error) {
@@ -273,9 +269,16 @@ const PedidosTable = ({
       </Card>
     );
   }
+  const handleClick = () => {
+    toast.success("Esta é uma mensagem de sucesso");
+    //toast.error("Esta é uma mensagem de erro");
+    // toast.warning("Esta é uma mensagem de aviso");
+    // toast.info("Esta é uma mensagem de informação");
+  };
 
   return (
     <div className="space-y-4 animate-fade-in">
+      <button onClick={handleClick}>Testar Toasts</button>
       <Card className="w-full border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <Table>
@@ -310,7 +313,6 @@ const PedidosTable = ({
           </Table>
         </div>
       </Card>
-
       {totalPages > 1 && (
         <PedidoPagination
           currentPage={currentPage}
@@ -322,7 +324,6 @@ const PedidosTable = ({
           currentLastItem={Math.min(indexOfLastItem, data.length)}
         />
       )}
-
       {selectedPedido && (
         <PedidoDetalhesDialog
           isOpen={isDetailsOpen}
@@ -331,7 +332,6 @@ const PedidosTable = ({
           calcularValorPedido={calcularValorPedido}
         />
       )}
-
       {selectedPedido && (
         <PedidoConfirmDialog
           isOpen={isConfirmOpen}

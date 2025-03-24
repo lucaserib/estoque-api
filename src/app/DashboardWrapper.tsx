@@ -13,6 +13,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     html.classList.toggle("dark", isDarkMode);
     html.classList.toggle("light", !isDarkMode);
   }, [isDarkMode]);
+
   return (
     <div
       className={`${
