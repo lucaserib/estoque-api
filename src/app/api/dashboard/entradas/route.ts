@@ -10,38 +10,63 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     const period = searchParams.get("period") || "hoje"; // padrão: hoje
+    const customStartDate = searchParams.get("startDate");
+    const customEndDate = searchParams.get("endDate");
+
     const now = new Date();
     let startDate, endDate, groupBy;
 
-    switch (period) {
-      case "hoje":
-        startDate = new Date(now.setHours(0, 0, 0, 0));
-        endDate = new Date();
-        groupBy = "hour"; // Agrupa por hora
-        break;
-      case "semanal":
-        startDate = new Date(now);
-        startDate.setDate(now.getDate() - now.getDay()); // Início da semana
-        endDate = new Date();
-        groupBy = "day"; // Agrupa por dia
-        break;
-      case "mensal":
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date();
-        groupBy = "week"; // Agrupa por semana
-        break;
-      case "tres-meses":
-        startDate = new Date(now);
-        startDate.setMonth(now.getMonth() - 2);
-        startDate.setDate(1);
-        endDate = new Date();
-        groupBy = "month"; // Agrupa por mês
-        break;
-      default:
-        return NextResponse.json(
-          { error: "Período inválido" },
-          { status: 400 }
-        );
+    // Se temos datas customizadas, usamos elas
+    if (period === "custom" && customStartDate && customEndDate) {
+      startDate = new Date(customStartDate);
+      endDate = new Date(customEndDate);
+
+      // Determinar o agrupamento baseado na diferença de dias
+      const diffDays = Math.ceil(
+        (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (diffDays <= 1) {
+        groupBy = "hour";
+      } else if (diffDays <= 31) {
+        groupBy = "day";
+      } else if (diffDays <= 90) {
+        groupBy = "week";
+      } else {
+        groupBy = "month";
+      }
+    } else {
+      // Configurações padrão para períodos pré-definidos
+      switch (period) {
+        case "hoje":
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+          endDate = new Date();
+          groupBy = "hour"; // Agrupa por hora
+          break;
+        case "semanal":
+          startDate = new Date(now);
+          startDate.setDate(now.getDate() - now.getDay()); // Início da semana
+          endDate = new Date();
+          groupBy = "day"; // Agrupa por dia
+          break;
+        case "mensal":
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date();
+          groupBy = "week"; // Agrupa por semana
+          break;
+        case "tres-meses":
+          startDate = new Date(now);
+          startDate.setMonth(now.getMonth() - 2);
+          startDate.setDate(1);
+          endDate = new Date();
+          groupBy = "month"; // Agrupa por mês
+          break;
+        default:
+          return NextResponse.json(
+            { error: "Período inválido" },
+            { status: 400 }
+          );
+      }
     }
 
     const compras = await prisma.pedidoProduto.findMany({
@@ -66,7 +91,13 @@ export async function GET(request: NextRequest) {
       [key: string]: { totalQuantidade: number; totalCusto: number };
     } = {};
 
+    let totalQuantidade = 0;
+    let totalCusto = 0;
+
     compras.forEach((compra) => {
+      totalQuantidade += compra.quantidade;
+      totalCusto += compra.custo;
+
       let key = "";
 
       const data = compra.pedido.dataConclusao
@@ -97,13 +128,25 @@ export async function GET(request: NextRequest) {
       groupedData[key].totalCusto += compra.custo;
     });
 
-    const finalData = Object.keys(groupedData).map((key) => ({
+    const chartData = Object.keys(groupedData).map((key) => ({
       periodo: key,
       quantidade: groupedData[key].totalQuantidade,
       valor: groupedData[key].totalCusto,
     }));
 
-    return NextResponse.json(finalData, { status: 200 });
+    return NextResponse.json(
+      {
+        chart: chartData,
+        totals: {
+          quantidade: totalQuantidade,
+          valor: totalCusto,
+        },
+        period: period,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      },
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Erro ao buscar entradas:", error);
     return NextResponse.json(

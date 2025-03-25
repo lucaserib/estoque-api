@@ -23,9 +23,16 @@ interface EstoqueCritico {
   armazem: string;
 }
 
-const EstoqueSegurancaCard = () => {
+interface EstoqueSegurancaCardProps {
+  searchTerm?: string;
+}
+
+const EstoqueSegurancaCard = ({
+  searchTerm = "",
+}: EstoqueSegurancaCardProps) => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<EstoqueCritico[]>([]);
+  const [filteredData, setFilteredData] = useState<EstoqueCritico[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -45,6 +52,24 @@ const EstoqueSegurancaCard = () => {
 
     fetchData();
   }, []);
+
+  // Filtrar dados quando searchTerm mudar
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredData(data);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase();
+    const filtered = data.filter(
+      (item) =>
+        item.nome.toLowerCase().includes(term) ||
+        item.sku.toLowerCase().includes(term) ||
+        item.armazem.toLowerCase().includes(term)
+    );
+
+    setFilteredData(filtered);
+  }, [searchTerm, data]);
 
   // Calcular o percentual de estoque em relação ao nível de segurança
   const calcularPercentual = (atual: number, seguranca: number) => {
@@ -67,16 +92,20 @@ const EstoqueSegurancaCard = () => {
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
         </div>
-      ) : data.length === 0 ? (
+      ) : filteredData.length === 0 ? (
         <div className="text-center py-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
             <AlertTriangle className="h-6 w-6 text-green-600" />
           </div>
           <h3 className="text-lg font-medium text-gray-900">
-            Nenhum produto em estoque crítico
+            {searchTerm
+              ? "Nenhum produto encontrado para a pesquisa"
+              : "Nenhum produto em estoque crítico"}
           </h3>
           <p className="text-gray-500 mt-2">
-            Todos os seus produtos estão com níveis de estoque adequados.
+            {searchTerm
+              ? `Sua pesquisa por &quot;${searchTerm}&quot; não retornou resultados.`
+              : "Todos os seus produtos estão com níveis de estoque adequados."}
           </p>
         </div>
       ) : (
@@ -92,7 +121,7 @@ const EstoqueSegurancaCard = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.map((item) => {
+              {filteredData.map((item) => {
                 const percentual = calcularPercentual(
                   item.quantidade,
                   item.estoqueSeguranca
@@ -141,11 +170,14 @@ const EstoqueSegurancaCard = () => {
         </div>
       )}
 
-      {data.length > 0 && (
+      {filteredData.length > 0 && (
         <div className="flex justify-between items-center mt-4">
           <div className="text-sm text-gray-500">
-            Mostrando {data.length} produto{data.length !== 1 ? "s" : ""} em
-            estoque crítico
+            Mostrando {filteredData.length} produto
+            {filteredData.length !== 1 ? "s" : ""} em estoque crítico
+            {searchTerm && (
+              <span> para a pesquisa &quot;{searchTerm}&quot;</span>
+            )}
           </div>
           <Link href="/estoque/produtos/comprar">
             <Button variant="default" className="flex items-center text-sm">

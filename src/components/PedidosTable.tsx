@@ -72,43 +72,64 @@ const PedidosTable = ({
     setError(null);
 
     try {
-      const response = await fetch(`/api/pedidos-compra`);
+      // Construir a URL com os parâmetros de consulta
+      const params = new URLSearchParams();
+
+      // Adicionar status como parâmetro
+      if (status) {
+        params.append("status", status);
+      }
+
+      // Adicionar parâmetros de data se existirem
+      if (dateRange?.from) {
+        params.append("startDate", dateRange.from.toISOString());
+      }
+
+      if (dateRange?.to) {
+        // Ajustar para fim do dia
+        const endDate = new Date(dateRange.to);
+        endDate.setHours(23, 59, 59, 999);
+        params.append("endDate", endDate.toISOString());
+      }
+
+      // Construir a URL final
+      const url = `/api/pedidos-compra?${params.toString()}`;
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         throw new Error("Falha ao carregar pedidos");
       }
 
-      const allPedidos = await response.json();
+      let pedidos = await response.json();
 
-      // Filtrar pedidos pelo status
-      let filteredPedidos = allPedidos.filter(
-        (pedido: Pedido) => pedido.status === status
-      );
+      // Verificar se os pedidos têm produtos e logar problemas
+      pedidos.forEach((pedido: Pedido) => {
+        if (!pedido.produtos || pedido.produtos.length === 0) {
+          console.warn(`Pedido #${pedido.id} não tem produtos associados`);
+        } else {
+          // Verificar se cada produto tem quantidade
+          pedido.produtos.forEach((produto, index) => {
+            if (
+              produto.quantidade === undefined ||
+              produto.quantidade === null
+            ) {
+              console.warn(
+                `Produto #${index} do pedido #${pedido.id} não tem quantidade definida`
+              );
+            }
+          });
+        }
+      });
 
-      if (dateRange?.from && dateRange?.to) {
-        const fromDate = new Date(dateRange.from);
-        const toDate = new Date(dateRange.to);
-        toDate.setHours(23, 59, 59, 999);
-
-        filteredPedidos = filteredPedidos.filter((pedido: Pedido) => {
-          const pedidoDate = pedido.dataPrevista
-            ? new Date(pedido.dataPrevista)
-            : pedido.dataConclusao
-            ? new Date(pedido.dataConclusao)
-            : null;
-
-          if (!pedidoDate) return true;
-          return pedidoDate >= fromDate && pedidoDate <= toDate;
-        });
-      }
-
+      // Filtrar pelo termo de pesquisa se existir
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
-        filteredPedidos = filteredPedidos.filter(
+        pedidos = pedidos.filter(
           (pedido: Pedido) =>
-            pedido.fornecedor.nome.toLowerCase().includes(term) ||
+            pedido.fornecedor?.nome?.toLowerCase().includes(term) ||
             pedido.id.toString().includes(term) ||
-            pedido.produtos.some(
+            pedido.produtos?.some(
               (p) =>
                 p.produto?.nome?.toLowerCase().includes(term) ||
                 p.produto?.sku?.toLowerCase().includes(term)
@@ -118,7 +139,7 @@ const PedidosTable = ({
         );
       }
 
-      setData(filteredPedidos);
+      setData(pedidos);
       setCurrentPage(1);
     } catch (error) {
       console.error("Erro ao buscar pedidos:", error);
@@ -133,11 +154,20 @@ const PedidosTable = ({
   }, [fetchPedidos]);
 
   const calcularValorPedido = (produtos: Pedido["produtos"]) => {
+    if (!produtos || !Array.isArray(produtos)) return 0;
+
     return produtos.reduce((total, produto) => {
-      const valor =
-        produto.quantidade *
-        produto.custo *
-        (produto.multiplicador || produto.produto?.multiplicador || 1);
+      // Verificar se produto e quantidade existem
+      if (!produto) return total;
+
+      const quantidade = produto.quantidade || 0;
+      const custo = produto.custo || 0;
+      const multiplicador =
+        produto.multiplicador ||
+        (produto.produto && produto.produto.multiplicador) ||
+        1;
+
+      const valor = quantidade * custo * multiplicador;
       return total + valor;
     }, 0);
   };

@@ -1,8 +1,9 @@
 import { verifyUser } from "@/helpers/verifyUser";
-import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
-
-const prisma = new PrismaClient();
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { prisma } from "../../../../lib/prisma";
+import { Prisma, PedidoCompra } from "@prisma/client";
 
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
@@ -157,23 +158,104 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
-    const pedidos = await prisma.pedidoCompra.findMany({
-      where: { userId: user.id },
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
+
+    // Obter parâmetros de consulta
+    const searchParams = request.nextUrl.searchParams;
+    const status = searchParams.get("status");
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    const fornecedorId = searchParams.get("fornecedorId");
+
+    // Construir a consulta base com todos os relacionamentos necessários
+    const baseQuery: Prisma.PedidoCompraFindManyArgs = {
+      where: {
+        userId: session.user.id,
+        ...(status && { status: status }),
+        ...(fornecedorId && { fornecedorId: fornecedorId }),
+      },
       include: {
+        fornecedor: true,
         produtos: {
           include: {
             produto: true,
           },
         },
-        fornecedor: true,
       },
       orderBy: {
         id: "desc",
       },
+    };
+
+    // Filtros de data exigem lógica específica baseada no status
+    if (startDate || endDate) {
+      const dateFilter: any = {};
+
+      // Se temos data de início
+      if (startDate) {
+        const parsedStartDate = new Date(startDate);
+
+        // Se temos status 'concluido', filtramos por dataConclusao
+        if (status === "concluido") {
+          dateFilter.dataConclusao = {
+            ...dateFilter.dataConclusao,
+            gte: parsedStartDate,
+          };
+        }
+        // Para outros status, filtramos por dataPrevista
+        else {
+          dateFilter.dataPrevista = {
+            ...dateFilter.dataPrevista,
+            gte: parsedStartDate,
+          };
+        }
+      }
+
+      // Se temos data de fim
+      if (endDate) {
+        const parsedEndDate = new Date(endDate);
+
+        // Ajustar para fim do dia
+        parsedEndDate.setHours(23, 59, 59, 999);
+
+        // Se temos status 'concluido', filtramos por dataConclusao
+        if (status === "concluido") {
+          dateFilter.dataConclusao = {
+            ...dateFilter.dataConclusao,
+            lte: parsedEndDate,
+          };
+        }
+        // Para outros status, filtramos por dataPrevista
+        else {
+          dateFilter.dataPrevista = {
+            ...dateFilter.dataPrevista,
+            lte: parsedEndDate,
+          };
+        }
+      }
+
+      // Adicionar filtro de data à consulta
+      baseQuery.where = {
+        ...baseQuery.where,
+        ...dateFilter,
+      };
+    }
+
+    const pedidos = await prisma.pedidoCompra.findMany(baseQuery);
+
+    // Verificar se os pedidos têm produtos
+    const pedidosWithProducts = pedidos.map((pedido: any) => {
+      if (!pedido.produtos || pedido.produtos.length === 0) {
+        console.warn(`Pedido #${pedido.id} não tem produtos associados`);
+      }
+      return pedido;
     });
 
-    return NextResponse.json(serializeBigInt(pedidos), { status: 200 });
+    return NextResponse.json(pedidosWithProducts);
   } catch (error) {
     console.error("Erro ao buscar pedidos:", error);
     return NextResponse.json(

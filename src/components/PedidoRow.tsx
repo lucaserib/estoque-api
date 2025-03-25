@@ -106,7 +106,9 @@ export function PedidoRow({
       <TableCell className="text-center">
         <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800">
           <Package className="w-3 h-3 mr-1" />
-          {pedido.produtos.length}
+          {pedido.produtos && Array.isArray(pedido.produtos)
+            ? pedido.produtos.length
+            : 0}
         </Badge>
       </TableCell>
 
@@ -171,9 +173,19 @@ export function PedidoRow({
 }
 
 const calcularValorPedido = (produtos: Pedido["produtos"]) => {
+  if (!produtos || !Array.isArray(produtos)) return 0;
+
   return produtos.reduce((total, produto) => {
-    const valor =
-      produto.quantidade * produto.custo * (produto.multiplicador || 1);
+    if (!produto) return total;
+
+    const quantidade = produto.quantidade || 0;
+    const custo = produto.custo || 0;
+    const multiplicador =
+      produto.multiplicador ||
+      (produto.produto && produto.produto.multiplicador) ||
+      1;
+
+    const valor = quantidade * custo * multiplicador;
     return total + valor;
   }, 0);
 };
