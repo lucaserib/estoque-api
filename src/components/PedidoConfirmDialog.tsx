@@ -55,8 +55,21 @@ interface PedidoConfirmDialogProps {
   onSuccess: (pedidoId: number, novoPedidoId?: number) => void;
 }
 
+interface Produto {
+  id: string;
+  nome: string;
+  sku: string;
+  codigosDeBarras?: {
+    id: string;
+    codigo: string;
+    tipo: string;
+  }[];
+  ean?: string | number; // Campo legado para compatibilidade
+  codigoEAN?: string; // Campo legado para compatibilidade
+}
+
 // Adicione o utilitário fora do componente principal para poder ser reutilizado
-const getCodigoEAN = (produto: any): string | undefined => {
+const getCodigoEAN = (produto: Produto): string | undefined => {
   // Se já tiver codigoEAN, retorna
   if (produto?.codigoEAN) {
     return produto.codigoEAN;
@@ -65,6 +78,14 @@ const getCodigoEAN = (produto: any): string | undefined => {
   // Se tiver ean como BigInt (ou string, após serialização), converte para string
   if (produto?.ean) {
     return produto.ean.toString();
+  }
+
+  // Verifica codigosDeBarras
+  if (produto.codigosDeBarras && Array.isArray(produto.codigosDeBarras)) {
+    const codigoEAN = produto.codigosDeBarras.find(
+      (codigo) => codigo.tipo === "EAN" || codigo.tipo === "GTIN"
+    );
+    if (codigoEAN) return codigoEAN.codigo;
   }
 
   // Senão, retorna undefined

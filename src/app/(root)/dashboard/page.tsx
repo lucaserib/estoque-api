@@ -216,7 +216,15 @@ const Dashboard = () => {
       // Incrementar o trigger para forçar o re-fetch
       setRefreshTrigger((prev) => prev + 1);
     }
-  }, [dateRange]);
+  }, [
+    dateRange,
+    periodoSelecionado,
+    setDateFilter,
+    setLoadingData,
+    setLoadingEntradas,
+    setLoadingSaidas,
+    setRefreshTrigger,
+  ]);
 
   // Função para aplicar período predefinido
   const aplicarPeriodoPredefinido = (periodo: string) => {
@@ -544,7 +552,20 @@ const Dashboard = () => {
       setLoadingSaidas(false);
       setLoadingData(false);
     }
-  }, [dateFilter, carregarDadosVisualizacoes]);
+  }, [
+    dateFilter,
+    carregarDadosVisualizacoes,
+    loading,
+    loadingData,
+    loadingEntradas,
+    loadingSaidas,
+    periodoSelecionado,
+    setLoading,
+    setLoadingData,
+    setLoadingEntradas,
+    setLoadingSaidas,
+    setSummaryData,
+  ]);
 
   return (
     <div className="container mx-auto px-4 py-6">

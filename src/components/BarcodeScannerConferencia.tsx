@@ -29,9 +29,13 @@ interface Produto {
   id: string;
   nome: string;
   sku: string;
-  multiplicador?: number;
-  codigoEAN?: string;
-  ean?: string | number;
+  codigosDeBarras?: {
+    id: string;
+    codigo: string;
+    tipo: string;
+  }[];
+  ean?: string | number; // Campo legado para compatibilidade
+  codigoEAN?: string; // Campo legado para compatibilidade
 }
 
 interface PedidoProduto {
@@ -72,19 +76,16 @@ const BarcodeScannerConferencia = ({
   >(new Map());
 
   // Adicionar função para mapear ean para codigoEAN (no início do componente)
-  const getCodigoEAN = (produto: any): string | undefined => {
-    // Se já tiver codigoEAN, retorna
-    if (produto?.codigoEAN) {
-      return produto.codigoEAN;
+  const getCodigoEAN = (produto: Produto): string | undefined => {
+    if (!produto.codigosDeBarras || !Array.isArray(produto.codigosDeBarras)) {
+      return undefined;
     }
 
-    // Se tiver ean como BigInt (ou string, após serialização), converte para string
-    if (produto?.ean) {
-      return produto.ean.toString();
-    }
+    const codigoEAN = produto.codigosDeBarras.find(
+      (codigo) => codigo.tipo === "EAN" || codigo.tipo === "GTIN"
+    );
 
-    // Senão, retorna undefined
-    return undefined;
+    return codigoEAN?.codigo;
   };
 
   // Modificar o useEffect para usar a função getCodigoEAN
