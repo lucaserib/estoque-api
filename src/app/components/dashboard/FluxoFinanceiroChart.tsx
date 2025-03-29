@@ -141,12 +141,12 @@ const FluxoFinanceiroChart = () => {
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-bold">Fluxo Financeiro</CardTitle>
-          <div className="flex space-x-1">
+          <div className="flex space-x-1 relative z-10">
             <Button
               variant={period === "semanal" ? "default" : "outline"}
               size="sm"
               onClick={() => setPeriod("semanal")}
-              className="h-8"
+              className="h-8 relative z-10"
             >
               7D
             </Button>
@@ -154,7 +154,7 @@ const FluxoFinanceiroChart = () => {
               variant={period === "mensal" ? "default" : "outline"}
               size="sm"
               onClick={() => setPeriod("mensal")}
-              className="h-8"
+              className="h-8 relative z-10"
             >
               30D
             </Button>
@@ -162,7 +162,7 @@ const FluxoFinanceiroChart = () => {
               variant={period === "anual" ? "default" : "outline"}
               size="sm"
               onClick={() => setPeriod("anual")}
-              className="h-8"
+              className="h-8 relative z-10"
             >
               12M
             </Button>
@@ -176,7 +176,7 @@ const FluxoFinanceiroChart = () => {
             <Skeleton className="h-40 w-full rounded-md" />
           </div>
         ) : data ? (
-          <div>
+          <div className="relative">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="rounded-lg bg-blue-50 dark:bg-blue-950 p-4 flex items-center space-x-4">
                 <div className="rounded-full bg-blue-100 dark:bg-blue-900 p-2">
@@ -239,14 +239,22 @@ const FluxoFinanceiroChart = () => {
               </div>
             </div>
 
-            <Tabs defaultValue="quantidade">
-              <TabsList className="mb-4">
-                <TabsTrigger value="quantidade">Quantidade</TabsTrigger>
-                <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
+            <Tabs defaultValue="quantidade" className="relative">
+              <TabsList className="mb-4 relative z-10">
+                <TabsTrigger value="quantidade" className="relative z-10">
+                  Quantidade
+                </TabsTrigger>
+                <TabsTrigger value="financeiro" className="relative z-10">
+                  Financeiro
+                </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="quantidade" className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <TabsContent value="quantidade" className="h-[300px] relative">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  className="relative"
+                >
                   <AreaChart
                     data={chartData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
@@ -317,8 +325,12 @@ const FluxoFinanceiroChart = () => {
                 </ResponsiveContainer>
               </TabsContent>
 
-              <TabsContent value="financeiro" className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
+              <TabsContent value="financeiro" className="h-[300px] relative">
+                <ResponsiveContainer
+                  width="100%"
+                  height="100%"
+                  className="relative"
+                >
                   <AreaChart
                     data={chartData}
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}

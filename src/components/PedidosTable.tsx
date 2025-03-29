@@ -204,20 +204,10 @@ const PedidosTable = ({
     }
   };
 
-  const handleConfirmSuccess = (pedidoId: number, novoPedidoId?: number) => {
+  const handleConfirmSuccess = () => {
     setIsConfirmOpen(false);
-
-    let message = `Pedido #${pedidoId} confirmado com sucesso!`;
-    if (novoPedidoId) {
-      message += ` Um novo pedido #${novoPedidoId} foi criado para os itens não recebidos.`;
-    }
-
-    toast.success(message);
+    if (onRefresh) onRefresh();
     fetchPedidos();
-
-    if (onRefresh) {
-      onRefresh();
-    }
   };
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -263,52 +253,31 @@ const PedidosTable = ({
 
   if (data.length === 0) {
     return (
-      <Card className="w-full border-dashed border-2 bg-gray-50/50 dark:bg-gray-900/10 shadow-sm animate-fade-in">
-        <CardHeader className="text-center pb-2">
-          <CardTitle className="text-xl font-semibold text-gray-700 dark:text-gray-300">
-            Nenhum pedido {status === "pendente" ? "pendente" : "concluído"}
-          </CardTitle>
-          <CardDescription>
-            {status === "pendente"
-              ? "Crie um novo pedido de compra para começar"
-              : "Confirme seus pedidos pendentes para vê-los aqui"}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center pb-0">
-          {status === "pendente" ? (
-            <Link href="/gestao-pedidos">
-              <Button className="bg-indigo-600 hover:bg-indigo-700">
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Novo Pedido
-              </Button>
-            </Link>
-          ) : (
-            <Button variant="outline" onClick={fetchPedidos}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Atualizar
-            </Button>
-          )}
-        </CardContent>
-        <CardFooter className="opacity-70 pt-6 pb-8 px-8 text-center text-sm">
-          <div className="mx-auto max-w-md">
-            {status === "pendente"
-              ? "Os pedidos pendentes mostram todos os pedidos que ainda não foram recebidos. Você pode confirmar recebimentos parciais e um novo pedido será criado automaticamente para os itens restantes."
-              : "Os pedidos concluídos mostram todo o histórico de pedidos recebidos no sistema."}
+      <div className="text-center p-8 bg-gray-50 rounded-md border border-gray-200">
+        <div className="flex flex-col items-center justify-center space-y-3">
+          <div className="rounded-full bg-gray-100 p-3">
+            <AlertCircle className="h-6 w-6 text-gray-500" />
           </div>
-        </CardFooter>
-      </Card>
+          <h3 className="text-lg font-medium text-gray-900">
+            Nenhum pedido encontrado
+          </h3>
+          <p className="text-sm text-gray-500 max-w-sm">
+            {status === "confirmado"
+              ? "Não há pedidos concluídos para o período selecionado."
+              : "Não há pedidos que correspondam aos critérios selecionados."}
+          </p>
+          <Link href="/gestao-pedidos/novo">
+            <Button className="mt-2">
+              <PlusCircle className="mr-2 h-4 w-4" /> Criar Novo Pedido
+            </Button>
+          </Link>
+        </div>
+      </div>
     );
   }
-  const handleClick = () => {
-    toast.success("Esta é uma mensagem de sucesso");
-    //toast.error("Esta é uma mensagem de erro");
-    // toast.warning("Esta é uma mensagem de aviso");
-    // toast.info("Esta é uma mensagem de informação");
-  };
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <button onClick={handleClick}>Testar Toasts</button>
       <Card className="w-full border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <Table>

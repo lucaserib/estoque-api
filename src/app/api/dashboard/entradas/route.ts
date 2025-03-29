@@ -79,6 +79,7 @@ export async function GET(request: NextRequest) {
       select: {
         quantidade: true,
         custo: true,
+        multiplicador: true,
         pedido: {
           select: {
             dataConclusao: true,
@@ -95,8 +96,11 @@ export async function GET(request: NextRequest) {
     let totalCusto = 0;
 
     compras.forEach((compra) => {
+      // Aplicar o multiplicador (valor padrão 1 se não existir)
+      const multiplicador = compra.multiplicador || 1;
+      // Calcular o valor total do item considerando quantidade e multiplicador
       totalQuantidade += compra.quantidade;
-      totalCusto += compra.custo;
+      totalCusto += compra.quantidade * compra.custo * multiplicador;
 
       let key = "";
 
@@ -125,7 +129,8 @@ export async function GET(request: NextRequest) {
         groupedData[key] = { totalQuantidade: 0, totalCusto: 0 };
       }
       groupedData[key].totalQuantidade += compra.quantidade;
-      groupedData[key].totalCusto += compra.custo;
+      groupedData[key].totalCusto +=
+        compra.quantidade * compra.custo * multiplicador;
     });
 
     const chartData = Object.keys(groupedData).map((key) => ({

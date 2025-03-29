@@ -28,15 +28,24 @@ export async function GET(request: NextRequest) {
         (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    const entradas = await prisma.pedidoProduto.aggregate({
+    const produtos = await prisma.pedidoProduto.findMany({
       where: {
         pedido: {
           userId: user.id,
           dataConclusao: { gte: startDate, lte: endDate },
         },
       },
-      _sum: { custo: true },
+      select: {
+        quantidade: true,
+        custo: true,
+        multiplicador: true,
+      },
     });
+
+    const totalEntradas = produtos.reduce((total, produto) => {
+      const multiplicador = produto.multiplicador || 1;
+      return total + produto.quantidade * produto.custo * multiplicador;
+    }, 0);
 
     const saidas = await prisma.detalhesSaida.aggregate({
       where: {
@@ -77,7 +86,6 @@ export async function GET(request: NextRequest) {
       _sum: { quantidade: true },
     });
 
-    const totalEntradas = entradas._sum.custo ?? 0;
     const totalSaidas = saidas._sum.quantidade ?? 0;
     const totalSaidasAnterior = saidasAnterior._sum.quantidade ?? 0;
 

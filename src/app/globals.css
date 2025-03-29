@@ -1,0 +1,32 @@
+/* Adicionar no final do arquivo */
+
+/* Garantir que elementos interativos sejam sempre clicáveis */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"],
+[tabindex="0"],
+.recharts-default-tooltip,
+.recharts-tooltip-cursor,
+.recharts-legend-item {
+  position: relative;
+  z-index: 10;
+}
+
+/* Garantir que elementos com position: absolute não bloqueiem a interação */
+*[class*="absolute"] {
+  pointer-events: none;
+}
+
+/* Mas permitir eventos de ponteiro para seus filhos interativos */
+*[class*="absolute"] a,
+*[class*="absolute"] button,
+*[class*="absolute"] input,
+*[class*="absolute"] select,
+*[class*="absolute"] textarea,
+*[class*="absolute"] [role="button"],
+*[class*="absolute"] [tabindex="0"] {
+  pointer-events: auto;
+}

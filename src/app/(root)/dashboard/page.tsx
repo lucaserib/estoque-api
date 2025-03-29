@@ -32,6 +32,15 @@ import {
   ChevronsUpDown,
   DollarSign,
   Loader2,
+  AlertCircle,
+  Package,
+  ArrowDownLeft,
+  ArrowUpRight,
+  XCircle,
+  Info,
+  CheckCircle,
+  ChevronUp,
+  ChevronDown,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -59,8 +68,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { exibirValorEmReais, centsToBRL, formatBRL } from "@/utils/currency";
+import { Separator } from "@/components/ui/separator";
 
-// Interfaces para a tipagem
+// Importar componentes modulares
+import DashboardFilters, {
+  PeriodoKey,
+  PERIODOS_PREDEFINIDOS_ARRAY,
+} from "./components/DashboardFilters";
+import SummaryCards from "./components/SummaryCards";
+
 interface DetalhesSaida {
   id: number;
   produto: {
@@ -106,56 +123,20 @@ interface Pedido {
   produtos: PedidoProduto[];
 }
 
-// Predefinições para períodos com tipagem correta
-type PeriodoKey = "7dias" | "15dias" | "30dias" | "90dias" | "custom";
-
-const PERIODOS_PREDEFINIDOS: Record<
-  PeriodoKey,
-  { label: string; range: DateRange }
-> = {
-  "7dias": {
-    label: "Últimos 7 dias",
-    range: {
-      from: subDays(new Date(), 7),
-      to: new Date(),
-    },
-  },
-  "15dias": {
-    label: "Últimos 15 dias",
-    range: {
-      from: subDays(new Date(), 15),
-      to: new Date(),
-    },
-  },
-  "30dias": {
-    label: "Últimos 30 dias",
-    range: {
-      from: subDays(new Date(), 30),
-      to: new Date(),
-    },
-  },
-  "90dias": {
-    label: "Últimos 90 dias",
-    range: {
-      from: subDays(new Date(), 90),
-      to: new Date(),
-    },
-  },
-  custom: {
-    label: "Personalizado",
-    range: {
-      from: subDays(new Date(), 30),
-      to: new Date(),
-    },
-  },
-};
+interface DashboardSummaryData {
+  entriesCount: number;
+  entriesValue: number;
+  outputsCount: number;
+  totalValue: number;
+  lowStockCount: number;
+}
 
 const Dashboard = () => {
-  const [summaryData, setSummaryData] = useState({
+  const [summaryData, setSummaryData] = useState<DashboardSummaryData>({
     entriesCount: 0,
     entriesValue: 0,
     outputsCount: 0,
-    totalValue: "0.00",
+    totalValue: 0,
     lowStockCount: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -178,10 +159,33 @@ const Dashboard = () => {
   const [loadingEntradas, setLoadingEntradas] = useState(false);
   const [loadingSaidas, setLoadingSaidas] = useState(false);
 
+  // Mover esta função para antes de fetchSummaryData que a utiliza
+  const carregarDadosVisualizacoes = useCallback(async () => {
+    try {
+      // Remoção da busca por categorias
+      console.log("Dados das visualizações atualizados");
+    } catch (error) {
+      console.error("Erro ao carregar dados das visualizações:", error);
+    }
+  }, []);
+
   // Efeito para buscar dados iniciais e quando houver refresh
   useEffect(() => {
+    // Ao montar o componente, definir período padrão para últimos 30 dias
+    if (!dateRange?.from && !dateRange?.to) {
+      const today = new Date();
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(today.getDate() - 30);
+      setDateRange({
+        from: thirtyDaysAgo,
+        to: today,
+      });
+      // A atualização dos dados ocorrerá no próximo efeito quando dateRange mudar
+      return;
+    }
+
     fetchSummaryData();
-  }, [refreshTrigger, dateRange]);
+  }, [refreshTrigger]);
 
   useEffect(() => {
     console.log("Dashboard montado - inicializando");
@@ -196,23 +200,105 @@ const Dashboard = () => {
     handleRefresh();
   }, []);
 
-  // Aplicar período predefinido com tipagem correta
-  const aplicarPeriodoPredefinido = (periodo: PeriodoKey) => {
-    setPeriodoSelecionado(periodo);
-    setDateRange(PERIODOS_PREDEFINIDOS[periodo].range);
-  };
-
-  // Atualiza o filtro de data quando o dateRange muda
+  // Atualizar useEffect para manipular as mudanças no dateRange
   useEffect(() => {
     if (dateRange?.from && dateRange?.to) {
+      // Criar cópias das datas para não modificar o objeto original
+      const startDate = new Date(dateRange.from);
+      startDate.setHours(0, 0, 0, 0);
+
+      const endDate = new Date(dateRange.to);
+      endDate.setHours(23, 59, 59, 999);
+
       setDateFilter({
-        startDate: dateRange.from.toISOString(),
-        endDate: dateRange.to.toISOString(),
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
       });
+
+      // Resetar estados de loading para mostrar os indicadores
+      setLoadingData(true);
+      setLoadingEntradas(true);
+      setLoadingSaidas(true);
+
+      // Log para depuração
+      console.log("Filtro de data atualizado:", {
+        de: startDate.toISOString(),
+        ate: endDate.toISOString(),
+        periodoSelecionado,
+      });
+
+      // Incrementar o trigger para forçar o re-fetch
+      setRefreshTrigger((prev) => prev + 1);
     }
   }, [dateRange]);
 
-  // Função para calcular o valor total das entradas
+  // Função para aplicar período predefinido
+  const aplicarPeriodoPredefinido = (periodo: string) => {
+    setPeriodoSelecionado(periodo as PeriodoKey);
+
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    let startDate = new Date();
+    let endDate = new Date(today);
+
+    switch (periodo) {
+      case "hoje":
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(today);
+        break;
+      case "ontem":
+        startDate = new Date();
+        startDate.setDate(today.getDate() - 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date();
+        endDate.setDate(today.getDate() - 1);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case "7dias":
+        startDate = new Date();
+        startDate.setDate(today.getDate() - 6); // 7 dias inclui hoje
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case "15dias":
+        startDate = new Date();
+        startDate.setDate(today.getDate() - 14); // 15 dias inclui hoje
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case "30dias":
+        startDate = new Date();
+        startDate.setDate(today.getDate() - 29); // 30 dias inclui hoje
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case "90dias":
+        startDate = new Date();
+        startDate.setDate(today.getDate() - 89); // 90 dias inclui hoje
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case "esteMes":
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case "mesPassado":
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      default:
+        startDate.setDate(today.getDate() - 29); // Padrão: últimos 30 dias
+        startDate.setHours(0, 0, 0, 0);
+    }
+
+    console.log(`Período aplicado: ${periodo}`, {
+      de: startDate.toISOString(),
+      ate: endDate.toISOString(),
+    });
+
+    setDateRange({ from: startDate, to: endDate });
+  };
+
   const calcularValorEntradas = (pedidos: Pedido[]) => {
     return pedidos.reduce((total, pedido) => {
       const valorPedido = pedido.produtos.reduce((sum, produto) => {
@@ -222,7 +308,6 @@ const Dashboard = () => {
     }, 0);
   };
 
-  // Função para contar os itens nas entradas
   const contarItensEntradas = (pedidos: Pedido[]) => {
     return pedidos.reduce((total, pedido) => {
       const itensPedido = pedido.produtos.reduce((sum, produto) => {
@@ -234,36 +319,45 @@ const Dashboard = () => {
 
   // Função para buscar dados do resumo
   const fetchSummaryData = useCallback(async () => {
-    if (!dateRange?.from || !dateRange?.to) {
-      console.warn("Intervalo de datas não definido");
+    if (!dateFilter.startDate || !dateFilter.endDate) {
+      console.warn("Filtro de datas não definido");
       return;
     }
 
-    // Store in local variables to remove 'undefined' from the type
-    const fromDate = dateRange.from;
-    const toDate = dateRange.to;
-
-    setLoading(true);
-    setLoadingEntradas(true);
-    setLoadingSaidas(true);
+    // Resetar estados de loading se ainda não foram definidos
+    if (!loading) setLoading(true);
+    if (!loadingEntradas) setLoadingEntradas(true);
+    if (!loadingSaidas) setLoadingSaidas(true);
+    if (!loadingData) setLoadingData(true);
 
     try {
+      // Debug log para verificar os filtros sendo aplicados
+      console.log("Buscando dados com filtros:", {
+        startDate: dateFilter.startDate,
+        endDate: dateFilter.endDate,
+        periodoSelecionado,
+      });
+
       // Buscar valor do estoque
       const stockValueResponse = await fetch("/api/dashboard/valor-estoque");
       const stockValueData = await stockValueResponse.json();
+
+      // A API retorna valorTotal já em centavos
+      const valorTotalEstoque = stockValueData.valorTotal || 0;
 
       // Buscar estoque crítico
       const lowStockResponse = await fetch("/api/dashboard/estoque-seguranca");
       const lowStockData = await lowStockResponse.json();
 
-      // Buscar pedidos concluídos
-      const startDate = fromDate.toISOString();
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      // Construir parâmetros para as APIs com filtros de data
+      const params = new URLSearchParams();
+      params.append("period", "custom");
+      params.append("startDate", dateFilter.startDate);
+      params.append("endDate", dateFilter.endDate);
 
-      // Usar a API específica de entradas para o dashboard
+      // Usar a API específica de entradas para o dashboard com os filtros de data
       const entradasResponse = await fetch(
-        `/api/dashboard/entradas?period=custom&startDate=${startDate}&endDate=${endDate.toISOString()}`
+        `/api/dashboard/entradas?${params.toString()}`
       );
 
       if (!entradasResponse.ok) {
@@ -273,14 +367,14 @@ const Dashboard = () => {
       const entradasDataResponse = await entradasResponse.json();
       console.log("Dados de entradas carregados:", entradasDataResponse);
 
-      // Para o componente PedidosTable, ainda precisamos dos pedidos concluídos
-      const params = new URLSearchParams();
-      params.append("status", "concluido");
-      params.append("startDate", startDate);
-      params.append("endDate", endDate.toISOString());
+      // Para o componente PedidosTable, buscar os pedidos concluídos
+      const pedidosParams = new URLSearchParams();
+      pedidosParams.append("status", "confirmado");
+      pedidosParams.append("startDate", dateFilter.startDate);
+      pedidosParams.append("endDate", dateFilter.endDate);
 
       const pedidosResponse = await fetch(
-        `/api/pedidos-compra?${params.toString()}`
+        `/api/pedidos-compra?${pedidosParams.toString()}`
       );
 
       if (!pedidosResponse.ok) {
@@ -290,7 +384,11 @@ const Dashboard = () => {
       const pedidosData = await pedidosResponse.json();
       console.log("Pedidos carregados:", pedidosData.length);
 
-      // Filtrar apenas os pedidos que estão dentro do intervalo de datas e têm produtos
+      // Filtrar apenas os pedidos dentro do intervalo de datas
+      const startDate = new Date(dateFilter.startDate);
+      const endDate = new Date(dateFilter.endDate);
+
+      // Filtrar pedidos para garantir que estejam dentro do intervalo de datas
       const filteredPedidos = pedidosData.filter((pedido: any) => {
         // Verificar se o pedido tem data de conclusão
         if (!pedido.dataConclusao) return false;
@@ -298,7 +396,7 @@ const Dashboard = () => {
         // Verificar se a data está no intervalo
         const conclusionDate = new Date(pedido.dataConclusao);
         const isInRange =
-          conclusionDate >= fromDate && conclusionDate <= endDate;
+          conclusionDate >= startDate && conclusionDate <= endDate;
 
         // Verificar se tem produtos
         const hasProducts =
@@ -309,20 +407,29 @@ const Dashboard = () => {
         return isInRange && hasProducts;
       });
 
-      console.log("Pedidos filtrados:", filteredPedidos.length);
+      console.log("Pedidos filtrados para exibição:", filteredPedidos.length);
       setEntradasData(filteredPedidos);
 
-      // Buscar saídas
-      const saidasResponse = await fetch("/api/saida");
-      let saidasData = await saidasResponse.json();
+      // Buscar saídas com filtro de data
+      const saidasParams = new URLSearchParams();
+      saidasParams.append("startDate", dateFilter.startDate);
+      saidasParams.append("endDate", dateFilter.endDate);
 
-      // Filtrar saídas pelo período
-      saidasData = saidasData.filter((saida: any) => {
+      const saidasResponse = await fetch(
+        `/api/saida?${saidasParams.toString()}`
+      );
+      const saidasData = await saidasResponse.json();
+
+      // Verificar se ainda precisamos de filtragem manual de datas
+      const filteredSaidas = saidasData.filter((saida: any) => {
+        if (!saida.data) return false;
+
         const dataSaida = new Date(saida.data);
-        return dataSaida >= fromDate && dataSaida <= endDate;
+        return dataSaida >= startDate && dataSaida <= endDate;
       });
-      setSaidasData(saidasData);
-      console.log("Saídas filtradas:", saidasData.length);
+
+      setSaidasData(filteredSaidas);
+      console.log("Saídas filtradas:", filteredSaidas.length);
 
       // Calcular contagens e valores das entradas usando os dados da API especializada
       let entriesCount = 0;
@@ -339,7 +446,13 @@ const Dashboard = () => {
         // Caso contrário, calcular dos pedidos filtrados (fallback)
         entriesCount = filteredPedidos.reduce((count: number, pedido: any) => {
           if (!pedido.produtos || !Array.isArray(pedido.produtos)) return count;
-          return count + pedido.produtos.length;
+
+          return (
+            count +
+            pedido.produtos.reduce((sum: number, produto: any) => {
+              return sum + (produto.quantidade || 0);
+            }, 0)
+          );
         }, 0);
 
         entriesValue = filteredPedidos.reduce((value: number, pedido: any) => {
@@ -365,33 +478,64 @@ const Dashboard = () => {
         }, 0);
       }
 
-      const outputsCount = saidasData.reduce((count: number, saida: any) => {
-        if (!saida.detalhes || !Array.isArray(saida.detalhes)) return count;
+      // Log detalhado para depuração
+      console.log("Comparação de valores:", {
+        entradasAPI: {
+          quantidade: entradasDataResponse?.totals?.quantidade || 0,
+          valor: entradasDataResponse?.totals?.valor || 0,
+        },
+        pedidosCalculados: {
+          quantidade: entriesCount,
+          valor: entriesValue,
+        },
+        pedidosNaTabela: filteredPedidos.length,
+        saidasNaTabela: filteredSaidas.length,
+        filtroDatas: {
+          de: dateFilter.startDate,
+          ate: dateFilter.endDate,
+        },
+      });
 
-        return (
-          count +
-          saida.detalhes.reduce(
-            (sum: number, detalhe: any) => sum + (detalhe.quantidade || 0),
-            0
-          )
-        );
-      }, 0);
+      // Calcular quantidade total de itens de saída
+      const outputsCount = filteredSaidas.reduce(
+        (count: number, saida: any) => {
+          if (!saida.detalhes || !Array.isArray(saida.detalhes)) return count;
+
+          return (
+            count +
+            saida.detalhes.reduce(
+              (sum: number, detalhe: any) => sum + (detalhe.quantidade || 0),
+              0
+            )
+          );
+        },
+        0
+      );
 
       // Atualizar dados de resumo
       setSummaryData({
-        totalValue: stockValueData.valorTotal || "0",
+        totalValue: valorTotalEstoque,
         lowStockCount: lowStockData.length || 0,
         entriesCount: entriesCount || 0,
         entriesValue: entriesValue || 0,
         outputsCount: outputsCount || 0,
       });
+
+      // Log para debug
+      console.log("Valor total do estoque:", {
+        valorEmCentavos: valorTotalEstoque,
+        valorFormatado: exibirValorEmReais(valorTotalEstoque),
+      });
+
+      // Buscar dados para os gráficos e visualizações adicionais
+      await carregarDadosVisualizacoes();
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
       toast.error("Erro ao carregar dados do dashboard");
 
       // Definir valores seguros em caso de erro
       setSummaryData({
-        totalValue: "0",
+        totalValue: 0,
         lowStockCount: 0,
         entriesCount: 0,
         entriesValue: 0,
@@ -403,165 +547,22 @@ const Dashboard = () => {
       setLoadingSaidas(false);
       setLoadingData(false);
     }
-  }, [dateRange]);
-
-  // Função para formatar valores monetários
-  const formatarValor = (valor: number) => {
-    return valor.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: "BRL",
-    });
-  };
+  }, [dateFilter, carregarDadosVisualizacoes]);
 
   // Função para atualizar os dados
   const handleRefresh = () => {
+    // Resetar estados de loading para mostrar os indicadores
+    setLoadingData(true);
+    setLoadingEntradas(true);
+    setLoadingSaidas(true);
+
+    // Incrementar o trigger para forçar o re-fetch
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  // Renderização dos filtros do dashboard
-  const renderFilters = () => {
-    return (
-      <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-            <div className="relative w-full md:w-[250px]">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Buscar produtos, fornecedores..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-10 w-full"
-              />
-            </div>
-
-            <Select
-              value={periodoSelecionado}
-              onValueChange={(value: string) =>
-                aplicarPeriodoPredefinido(value as PeriodoKey)
-              }
-            >
-              <SelectTrigger className="w-full md:w-[180px] h-10">
-                <SelectValue placeholder="Selecione o período" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(PERIODOS_PREDEFINIDOS).map(
-                  ([key, { label }]) =>
-                    key !== "custom" && (
-                      <SelectItem key={key} value={key}>
-                        {label}
-                      </SelectItem>
-                    )
-                )}
-              </SelectContent>
-            </Select>
-
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className="min-w-[240px] justify-start text-left font-normal h-10"
-                  id="date"
-                >
-                  <Calendar className="mr-2 h-4 w-4" />
-                  {dateRange?.from ? (
-                    dateRange.to ? (
-                      <>
-                        {format(dateRange.from, "dd/MM/yy", { locale: ptBR })} -{" "}
-                        {format(dateRange.to, "dd/MM/yy", { locale: ptBR })}
-                      </>
-                    ) : (
-                      format(dateRange.from, "dd/MM/yyyy", { locale: ptBR })
-                    )
-                  ) : (
-                    <span>Período personalizado</span>
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <DatePickerWithRange
-                  date={dateRange}
-                  onDateChange={(date) => {
-                    if (date === undefined) {
-                      // Se a data for limpa, definir para o período padrão
-                      const defaultDate: DateRange = {
-                        from: subDays(new Date(), 30),
-                        to: new Date(),
-                      };
-                      setDateRange(defaultDate);
-                      setPeriodoSelecionado("30dias");
-                    } else {
-                      setDateRange(date);
-                      // Verificar se corresponde a algum período predefinido
-                      const isDefaultPeriod = Object.entries(
-                        PERIODOS_PREDEFINIDOS
-                      ).find(([_, data]) => {
-                        // Verificamos se todos os valores existem para evitar erros
-                        if (
-                          !date.from ||
-                          !date.to ||
-                          !data.range.from ||
-                          !data.range.to
-                        ) {
-                          return false;
-                        }
-
-                        // Agora podemos comparar com segurança
-                        return (
-                          data.range.from.toDateString() ===
-                            date.from.toDateString() &&
-                          data.range.to.toDateString() ===
-                            date.to.toDateString()
-                        );
-                      });
-
-                      setPeriodoSelecionado(
-                        isDefaultPeriod
-                          ? (isDefaultPeriod[0] as PeriodoKey)
-                          : "custom"
-                      );
-                    }
-                  }}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            className="ml-auto h-10 whitespace-nowrap"
-          >
-            <RefreshCcw className="h-4 w-4 mr-2" />
-            Atualizar
-          </Button>
-        </div>
-
-        {/* Uma linha cinza clara para separar as opções de filtro */}
-        <div className="w-full border-t my-3 border-gray-100 dark:border-gray-700"></div>
-
-        {/* Conjunto de período rápido */}
-        <div className="flex flex-wrap gap-2 mt-1">
-          {Object.entries(PERIODOS_PREDEFINIDOS).map(
-            ([key, { label }]) =>
-              key !== "custom" && (
-                <Button
-                  key={key}
-                  variant={periodoSelecionado === key ? "default" : "outline"}
-                  className="h-8 px-3 text-xs"
-                  onClick={() => aplicarPeriodoPredefinido(key as PeriodoKey)}
-                >
-                  {label}
-                </Button>
-              )
-          )}
-        </div>
-      </div>
-    );
-  };
-
   return (
-    <div className="max-w-[1400px] mx-auto p-4 md:p-6">
+    <div className="container mx-auto px-4 py-6">
+      {/* Header do dashboard */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <Header name="Dashboard" />
@@ -570,285 +571,183 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Indicador do período - agora clicável */}
+        {/* Botão de atualização dos dados */}
         <div className="mt-4 sm:mt-0">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Badge
-                variant="outline"
-                className="text-sm py-1 px-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-              >
-                <Calendar className="h-3 w-3 mr-1 inline" />
-                {dateRange?.from && dateRange?.to ? (
-                  <>
-                    {format(dateRange.from, "dd/MM/yy", { locale: ptBR })} a{" "}
-                    {format(dateRange.to, "dd/MM/yy", { locale: ptBR })}
-                  </>
-                ) : (
-                  "Últimos 30 dias"
-                )}
-                <ChevronsUpDown className="h-3 w-3 ml-1 inline" />
-              </Badge>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <DatePickerWithRange
-                date={dateRange}
-                onDateChange={(date) => {
-                  if (date === undefined) {
-                    const defaultDate: DateRange = {
-                      from: subDays(new Date(), 30),
-                      to: new Date(),
-                    };
-                    setDateRange(defaultDate);
-                  } else {
-                    setDateRange(date);
-                  }
-                }}
-              />
-            </PopoverContent>
-          </Popover>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            className="gap-1.5"
+            disabled={
+              loading || loadingData || loadingEntradas || loadingSaidas
+            }
+          >
+            <RefreshCcw className="h-4 w-4" />
+            {loading || loadingData || loadingEntradas || loadingSaidas ? (
+              <span className="flex items-center">
+                <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                Atualizando...
+              </span>
+            ) : (
+              <span>Atualizar dados</span>
+            )}
+          </Button>
         </div>
       </div>
 
-      {/* Cards de resumo - ALTURA FIXA para evitar redimensionamento */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {loading ? (
-          Array(4)
-            .fill(0)
-            .map((_, i) => (
-              <Card key={i} className="shadow-sm h-[130px]">
-                <CardContent className="p-6">
-                  <Skeleton className="h-20 w-full" />
-                </CardContent>
-              </Card>
-            ))
-        ) : (
-          <>
-            {/* Movimentação de valor - Card mais importante */}
-            <Card
-              className={`shadow-sm transition-all duration-300 cursor-pointer transform hover:scale-[1.02] h-[130px] ${
-                activeView === "overview"
-                  ? "bg-blue-50 border-blue-300 ring-2 ring-blue-300"
-                  : "hover:shadow-md"
-              }`}
-              onClick={() => setActiveView("overview")}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Valor Total
-                    </p>
-                    <h3 className="text-2xl font-bold mt-1">
-                      {parseFloat(summaryData.totalValue).toLocaleString(
-                        "pt-BR",
-                        { style: "currency", currency: "BRL" }
-                      )}
-                    </h3>
-                  </div>
-                  <div
-                    className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                      activeView === "overview" ? "bg-blue-200" : "bg-blue-100"
-                    }`}
-                  >
-                    <DollarSign className="h-6 w-6 text-blue-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Filtros unificados usando o componente modular */}
+      <DashboardFilters
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        periodoSelecionado={periodoSelecionado}
+        setPeriodoSelecionado={setPeriodoSelecionado}
+        aplicarPeriodoPredefinido={aplicarPeriodoPredefinido}
+        isLoading={loading || loadingData || loadingEntradas || loadingSaidas}
+      />
 
-            {/* Cards de movimentação física agrupados juntos */}
-            <Card
-              className={`shadow-sm transition-all duration-300 cursor-pointer transform hover:scale-[1.02] h-[130px] ${
-                activeView === "entradas"
-                  ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-300"
-                  : "hover:shadow-md"
-              }`}
-              onClick={() => setActiveView("entradas")}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Entradas
-                    </p>
-                    <h3 className="text-2xl font-bold mt-1 flex items-center">
-                      <span className="mr-2">
-                        {summaryData.entriesCount.toLocaleString("pt-BR")}
-                      </span>
-                      <span className="text-sm font-normal text-muted-foreground">
-                        itens
-                      </span>
-                    </h3>
-                    <p className="text-xs text-emerald-600 font-medium mt-0.5">
-                      {formatarValor(summaryData.entriesValue)}
-                    </p>
-                  </div>
-                  <div
-                    className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                      activeView === "entradas"
-                        ? "bg-emerald-200"
-                        : "bg-emerald-100"
-                    }`}
-                  >
-                    <ArrowUpIcon className="h-6 w-6 text-emerald-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {/* Cards resumo com o componente */}
+      <SummaryCards
+        summaryData={summaryData}
+        activeView={activeView}
+        setActiveView={setActiveView}
+        loadingData={loadingData}
+        loadingEntradas={loadingEntradas}
+        loadingSaidas={loadingSaidas}
+      />
 
-            <Card
-              className={`shadow-sm transition-all duration-300 cursor-pointer transform hover:scale-[1.02] h-[130px] ${
-                activeView === "saidas"
-                  ? "bg-orange-50 border-orange-300 ring-2 ring-orange-300"
-                  : "hover:shadow-md"
-              }`}
-              onClick={() => setActiveView("saidas")}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Saídas
-                    </p>
-                    <h3 className="text-2xl font-bold mt-1 flex items-center">
-                      <span className="mr-2">
-                        {summaryData.outputsCount.toLocaleString("pt-BR")}
-                      </span>
-                      <span className="text-sm font-normal text-muted-foreground">
-                        itens
-                      </span>
-                    </h3>
-                  </div>
-                  <div
-                    className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                      activeView === "saidas"
-                        ? "bg-orange-200"
-                        : "bg-orange-100"
-                    }`}
-                  >
-                    <ArrowDownIcon className="h-6 w-6 text-orange-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Alerta de estoque como elemento que requer atenção */}
-            <Card
-              className={`shadow-sm transition-all duration-300 cursor-pointer transform hover:scale-[1.02] border-red-200 h-[130px] ${
-                activeView === "estoqueCritico"
-                  ? "bg-red-100 border-red-400 ring-2 ring-red-400"
-                  : "bg-red-50 hover:shadow-md"
-              }`}
-              onClick={() => setActiveView("estoqueCritico")}
-            >
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-red-600">
-                      Estoque Crítico
-                    </p>
-                    <h3 className="text-2xl font-bold mt-1 text-red-700 flex items-center">
-                      <span className="mr-2">
-                        {summaryData.lowStockCount.toLocaleString("pt-BR")}
-                      </span>
-                      <span className="text-sm font-normal text-red-600">
-                        {summaryData.lowStockCount === 1
-                          ? "produto"
-                          : "produtos"}
-                      </span>
-                    </h3>
-                  </div>
-                  <div
-                    className={`h-12 w-12 rounded-full flex items-center justify-center ${
-                      activeView === "estoqueCritico"
-                        ? "bg-red-300"
-                        : "bg-red-200"
-                    }`}
-                  >
-                    <AlertTriangle className="h-6 w-6 text-red-600" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
-
-      {/* Filtros unificados */}
-      {renderFilters()}
-
-      {/* IMPORTANTE: Div com altura fixa para evitar redimensionamento */}
-      <div className="transition-all duration-300 ease-in-out fixed-height-container min-h-[800px] relative">
+      {/* Container principal do dashboard com altura fixa otimizada */}
+      <div className="min-h-[650px] md:min-h-[700px] h-[calc(100vh-350px)] relative bg-white rounded-lg shadow-sm overflow-hidden">
+        {/* Visualização do Overview */}
         <div
-          className={`${
+          className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "overview"
-              ? "opacity-100 relative z-10"
-              : "opacity-0 absolute top-0 left-0 right-0 -z-10 pointer-events-none"
-          } transition-opacity duration-300 w-full`}
+              ? "opacity-100 z-10 visible pointer-events-auto"
+              : "opacity-0 z-0 invisible pointer-events-none"
+          }`}
         >
-          <Tabs defaultValue="overview" className="mb-6">
-            <TabsList className="mb-4">
-              <TabsTrigger value="overview" className="px-4 py-2">
-                <BarChart3 className="h-4 w-4 mr-2" />
-                Visão Geral
-              </TabsTrigger>
-              <TabsTrigger value="analytics" className="px-4 py-2">
-                <LineChart className="h-4 w-4 mr-2" />
-                Análise Detalhada
-              </TabsTrigger>
-            </TabsList>
+          <div className="h-full w-full flex flex-col bg-white rounded-lg overflow-hidden">
+            <Tabs
+              defaultValue="overview"
+              className="flex flex-col h-full w-full"
+            >
+              <TabsList className="mb-4 w-full justify-start p-4">
+                <TabsTrigger
+                  value="overview"
+                  className="px-4 py-2 relative z-10"
+                >
+                  <BarChart3 className="h-4 w-4 mr-2" />
+                  Visão Geral
+                </TabsTrigger>
+                <TabsTrigger
+                  value="analytics"
+                  className="px-4 py-2 relative z-10"
+                >
+                  <LineChart className="h-4 w-4 mr-2" />
+                  Análise Detalhada
+                </TabsTrigger>
+              </TabsList>
 
-            <TabsContent value="overview" className="mt-0 space-y-6">
-              {/* Reorganizando para melhor utilização do espaço em telas grandes */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 order-2 lg:order-1">
-                  <FluxoFinanceiroChart />
-                </div>
-                <div className="order-1 lg:order-2">
-                  <TopProdutosChart />
-                </div>
-              </div>
-            </TabsContent>
+              <div className="flex-grow h-full overflow-auto p-4">
+                <TabsContent
+                  value="overview"
+                  className="relative w-full min-h-[500px]"
+                >
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 order-2 lg:order-1">
+                      <Card className="h-full overflow-hidden">
+                        <CardHeader className="pb-2">
+                          <CardTitle>Fluxo Financeiro</CardTitle>
+                          <CardDescription>
+                            Entradas e saídas de valores
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[400px] md:h-[500px] overflow-hidden">
+                          <FluxoFinanceiroChart />
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div className="order-1 lg:order-2">
+                      <Card className="h-full overflow-hidden">
+                        <CardHeader className="pb-2">
+                          <CardTitle>Top Produtos</CardTitle>
+                          <CardDescription>
+                            Produtos mais movimentados
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[400px] md:h-[500px] overflow-hidden">
+                          <TopProdutosChart />
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </TabsContent>
 
-            <TabsContent value="analytics" className="mt-0 space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2 order-2 lg:order-1">
-                  <EntradasChart />
-                </div>
-                <div className="order-1 lg:order-2">
-                  <CardValorEstoque />
-                </div>
+                <TabsContent
+                  value="analytics"
+                  className="relative w-full min-h-[500px]"
+                >
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 order-2 lg:order-1">
+                      <Card className="h-full overflow-hidden">
+                        <CardHeader className="pb-2">
+                          <CardTitle>Entradas</CardTitle>
+                          <CardDescription>
+                            Histórico de entradas no período
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[400px] md:h-[500px] overflow-hidden">
+                          <EntradasChart />
+                        </CardContent>
+                      </Card>
+                    </div>
+                    <div className="order-1 lg:order-2 h-full w-full">
+                      <Card className="h-full overflow-hidden">
+                        <CardHeader className="pb-2">
+                          <CardTitle>Valor em Estoque</CardTitle>
+                          <CardDescription>
+                            Valor total dos produtos
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="h-[400px] md:h-[500px] overflow-hidden">
+                          <CardValorEstoque />
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </TabsContent>
               </div>
-            </TabsContent>
-          </Tabs>
+            </Tabs>
+          </div>
         </div>
 
+        {/* Visualização de Entradas */}
         <div
-          className={`${
+          className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "entradas"
-              ? "opacity-100 relative z-10"
-              : "opacity-0 absolute top-0 left-0 right-0 -z-10 pointer-events-none"
-          } transition-opacity duration-300 w-full`}
+              ? "opacity-100 z-10 visible pointer-events-auto"
+              : "opacity-0 z-0 invisible pointer-events-none"
+          }`}
         >
-          <Card className="shadow-md mb-6 overflow-hidden">
+          <Card className="shadow-md border-0 h-full flex flex-col">
             <CardHeader className="pb-0">
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold flex items-center">
-                    <ArrowUpIcon className="mr-2 h-5 w-5 text-emerald-600" />
+                    <ArrowDownLeft className="mr-2 h-5 w-5 text-emerald-600" />
                     Histórico de Entradas
                   </CardTitle>
                   <CardDescription>
                     Pedidos confirmados e entradas no estoque
                   </CardDescription>
                 </div>
-                <div className="bg-emerald-50 rounded-md px-3 py-2 text-right">
+                <div className="bg-emerald-50 rounded-md px-3 py-2 text-right mt-4 lg:mt-0">
                   <p className="text-sm text-emerald-700 font-medium">
                     Total no período:
                   </p>
                   <p className="text-lg font-bold text-emerald-700">
-                    {formatarValor(summaryData.entriesValue)}
+                    {exibirValorEmReais(summaryData.entriesValue)}
                   </p>
                   <p className="text-xs text-emerald-600 mt-1">
                     {summaryData.entriesCount.toLocaleString("pt-BR")} itens
@@ -856,48 +755,69 @@ const Dashboard = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="mt-4 relative">
-              {loadingEntradas ? (
-                <PedidoEntradasLoadingSkeleton />
-              ) : (
-                <div className="relative">
-                  <PedidosTable
-                    status="concluido"
-                    dateRange={dateRange}
-                    searchTerm={searchTerm}
-                    onRefresh={handleRefresh}
-                  />
-                  {loadingEntradas && (
-                    <div className="loading-overlay">
-                      <div className="spinner" />
-                    </div>
-                  )}
+            <CardContent
+              className="p-4 overflow-auto"
+              style={{ height: "calc(100% - 100px)" }}
+            >
+              {loadingEntradas && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-20">
+                  <Loader2 className="h-10 w-10 animate-spin text-emerald-500 mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    Carregando entradas...
+                  </p>
                 </div>
               )}
+              {entradasData.length === 0 && summaryData.entriesValue > 0 ? (
+                <div className="bg-blue-50 p-4 mb-4 rounded-md">
+                  <div className="flex items-start">
+                    <AlertCircle className="h-5 w-5 text-blue-600 mr-2 mt-0.5" />
+                    <div>
+                      <h4 className="text-sm font-medium text-blue-800">
+                        Informação sobre os dados
+                      </h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Existem {summaryData.entriesCount} itens registrados
+                        totalizando{" "}
+                        {exibirValorEmReais(summaryData.entriesValue)}, mas não
+                        há pedidos de compra concluídos para exibir na tabela.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              <div className="h-full overflow-auto">
+                <PedidosTable
+                  status="confirmado"
+                  dateRange={dateRange}
+                  searchTerm={searchTerm}
+                  onRefresh={handleRefresh}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Visualização de Saídas */}
         <div
-          className={`${
+          className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "saidas"
-              ? "opacity-100 relative z-10"
-              : "opacity-0 absolute top-0 left-0 right-0 -z-10 pointer-events-none"
-          } transition-opacity duration-300 w-full`}
+              ? "opacity-100 z-10 visible pointer-events-auto"
+              : "opacity-0 z-0 invisible pointer-events-none"
+          }`}
         >
-          <Card className="shadow-md mb-6 overflow-hidden">
+          <Card className="shadow-md border-0 h-full flex flex-col">
             <CardHeader className="pb-0">
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold flex items-center">
-                    <ArrowDownIcon className="mr-2 h-5 w-5 text-orange-600" />
+                    <ArrowUpRight className="mr-2 h-5 w-5 text-orange-600" />
                     Histórico de Saídas
                   </CardTitle>
                   <CardDescription>
                     Registros de saídas de produtos do estoque
                   </CardDescription>
                 </div>
-                <div className="bg-orange-50 rounded-md px-3 py-2 text-right">
+                <div className="bg-orange-50 rounded-md px-3 py-2 text-right mt-4 lg:mt-0">
                   <p className="text-sm text-orange-700 font-medium">
                     Itens no período:
                   </p>
@@ -910,36 +830,46 @@ const Dashboard = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="mt-4">
-              {loadingSaidas ? (
-                <SaidaLoadingSkeleton />
-              ) : (
-                <SaidaList saidas={saidasData} />
+            <CardContent
+              className="p-4 overflow-auto"
+              style={{ height: "calc(100% - 100px)" }}
+            >
+              {loadingSaidas && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-20">
+                  <Loader2 className="h-10 w-10 animate-spin text-orange-500 mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    Carregando saídas...
+                  </p>
+                </div>
               )}
+              <div className="h-full overflow-auto">
+                <SaidaList saidas={saidasData} />
+              </div>
             </CardContent>
           </Card>
         </div>
 
+        {/* Visualização de Estoque Crítico */}
         <div
-          className={`${
+          className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "estoqueCritico"
-              ? "opacity-100 relative z-10"
-              : "opacity-0 absolute top-0 left-0 right-0 -z-10 pointer-events-none"
-          } transition-opacity duration-300 w-full`}
+              ? "opacity-100 z-10 visible pointer-events-auto"
+              : "opacity-0 z-0 invisible pointer-events-none"
+          }`}
         >
-          <Card className="shadow-md border-red-200 bg-red-50 mb-6">
+          <Card className="shadow-md border-red-200 bg-red-50 h-full">
             <CardHeader className="pb-2">
-              <div className="flex items-start justify-between">
+              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <CardTitle className="text-lg font-bold flex items-center">
-                    <AlertTriangle className="mr-2 h-5 w-5 text-red-600" />
+                    <AlertCircle className="mr-2 h-5 w-5 text-red-600" />
                     Alerta de Estoque de Segurança
                   </CardTitle>
                   <CardDescription className="text-red-700">
                     Produtos que estão abaixo do estoque mínimo definido
                   </CardDescription>
                 </div>
-                <div className="bg-red-100 rounded-md px-3 py-2">
+                <div className="bg-red-100 rounded-md px-3 py-2 mt-4 lg:mt-0">
                   <p className="text-sm text-red-700 font-semibold text-right">
                     {summaryData.lowStockCount}{" "}
                     {summaryData.lowStockCount === 1 ? "produto" : "produtos"}{" "}
@@ -948,35 +878,25 @@ const Dashboard = () => {
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
-              <EstoqueSegurancaCard searchTerm={searchTerm} />
+            <CardContent
+              className="p-4 overflow-auto"
+              style={{ height: "calc(100% - 100px)" }}
+            >
+              {loadingData && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-20">
+                  <Loader2 className="h-10 w-10 animate-spin text-red-500 mb-4" />
+                  <p className="text-sm text-muted-foreground">
+                    Carregando alertas de estoque...
+                  </p>
+                </div>
+              )}
+              <div className="h-full overflow-auto">
+                <EstoqueSegurancaCard searchTerm={searchTerm} />
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
-
-      {/* Estilos CSS para animação e layout fixo */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .animate-fadeIn {
-          animation: fadeIn 0.4s ease-out;
-        }
-
-        .fixed-height-container > div {
-          min-height: 800px;
-          width: 100%;
-        }
-      `}</style>
     </div>
   );
 };

@@ -199,8 +199,8 @@ export async function GET(request: NextRequest) {
       if (startDate) {
         const parsedStartDate = new Date(startDate);
 
-        // Se temos status 'concluido', filtramos por dataConclusao
-        if (status === "concluido") {
+        // Se temos status 'confirmado', filtramos por dataConclusao
+        if (status === "confirmado") {
           dateFilter.dataConclusao = {
             ...dateFilter.dataConclusao,
             gte: parsedStartDate,
@@ -222,8 +222,8 @@ export async function GET(request: NextRequest) {
         // Ajustar para fim do dia
         parsedEndDate.setHours(23, 59, 59, 999);
 
-        // Se temos status 'concluido', filtramos por dataConclusao
-        if (status === "concluido") {
+        // Se temos status 'confirmado', filtramos por dataConclusao
+        if (status === "confirmado") {
           dateFilter.dataConclusao = {
             ...dateFilter.dataConclusao,
             lte: parsedEndDate,
@@ -255,7 +255,7 @@ export async function GET(request: NextRequest) {
       return pedido;
     });
 
-    return NextResponse.json(pedidosWithProducts);
+    return NextResponse.json(serializeBigInt(pedidosWithProducts));
   } catch (error) {
     console.error("Erro ao buscar pedidos:", error);
     return NextResponse.json(

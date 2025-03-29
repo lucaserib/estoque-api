@@ -19,10 +19,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    const valorTotalEstoque = estoques.reduce(
-      (total, item) => total + (item.produto.custoMedio ?? 0) * item.quantidade,
-      0
-    );
+    const valorTotalEstoque = estoques.reduce((total, item) => {
+      const custoMedioCentavos = item.produto.custoMedio ?? 0;
+      return total + custoMedioCentavos * item.quantidade;
+    }, 0);
 
     const quantidadeTotal = estoques.reduce(
       (total, item) => total + item.quantidade,
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       {
-        valorTotal: valorTotalEstoque.toFixed(2),
+        valorTotal: valorTotalEstoque,
         quantidadeTotal,
       },
       { status: 200 }

@@ -48,10 +48,15 @@ const EntradasChart = () => {
         }
 
         const result = await response.json();
-        setData(result);
+        if (result && result.chart) {
+          setData(result.chart);
+        } else {
+          setData([]);
+        }
       } catch (err) {
         console.error("Erro ao carregar entradas:", err);
         setError("Não foi possível carregar os dados de entradas");
+        setData([]);
       } finally {
         setLoading(false);
       }
@@ -61,8 +66,12 @@ const EntradasChart = () => {
   }, [period]);
 
   // Calcular totais
-  const totalValor = data.reduce((sum, item) => sum + item.valor, 0);
-  const totalQuantidade = data.reduce((sum, item) => sum + item.quantidade, 0);
+  const totalValor = Array.isArray(data)
+    ? data.reduce((sum, item) => sum + item.valor, 0)
+    : 0;
+  const totalQuantidade = Array.isArray(data)
+    ? data.reduce((sum, item) => sum + item.quantidade, 0)
+    : 0;
 
   // Calcular tendência (se está aumentando ou diminuindo)
   const getTendencia = () => {
