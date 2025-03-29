@@ -193,7 +193,18 @@ export async function GET(request: NextRequest) {
 
     // Filtros de data exigem lógica específica baseada no status
     if (startDate || endDate) {
-      const dateFilter: any = {};
+      type DateFilter = {
+        dataConclusao?: {
+          gte?: Date;
+          lte?: Date;
+        };
+        dataPrevista?: {
+          gte?: Date;
+          lte?: Date;
+        };
+      };
+
+      const dateFilter: DateFilter = {};
 
       // Se temos data de início
       if (startDate) {
@@ -247,12 +258,30 @@ export async function GET(request: NextRequest) {
 
     const pedidos = await prisma.pedidoCompra.findMany(baseQuery);
 
+    // Tipo para o pedido conforme retornado pelo Prisma
+    type PedidoCompra = (typeof pedidos)[0] & {
+      produtos?: {
+        id: string;
+        produtoId: string;
+        quantidade: number;
+        custo: number;
+        multiplicador: number;
+      }[];
+    };
+
     // Verificar se os pedidos têm produtos
-    const pedidosWithProducts = pedidos.map((pedido: any) => {
-      if (!pedido.produtos || pedido.produtos.length === 0) {
+    const pedidosWithProducts = pedidos.map((pedido) => {
+      // Estender o pedido com a propriedade produtos esperada
+      const pedidoWithProdutos = pedido as PedidoCompra;
+
+      if (
+        !pedidoWithProdutos.produtos ||
+        pedidoWithProdutos.produtos.length === 0
+      ) {
         console.warn(`Pedido #${pedido.id} não tem produtos associados`);
       }
-      return pedido;
+
+      return pedidoWithProdutos;
     });
 
     return NextResponse.json(serializeBigInt(pedidosWithProducts));

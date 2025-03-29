@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -84,15 +84,7 @@ const EstoquePage = () => {
     armazemNome: string;
   } | null>(null);
 
-  useEffect(() => {
-    fetchArmazens();
-  }, [refreshTrigger]);
-
-  useEffect(() => {
-    if (activeWarehouse) fetchEstoque(activeWarehouse);
-  }, [activeWarehouse, refreshTrigger]);
-
-  const fetchArmazens = async () => {
+  const fetchArmazens = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/estoque/criarArmazem");
@@ -111,7 +103,21 @@ const EstoquePage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [
+    activeWarehouse,
+    setArmazens,
+    setActiveWarehouse,
+    setIsLoading,
+    setErrorMessage,
+  ]);
+
+  useEffect(() => {
+    fetchArmazens();
+  }, [refreshTrigger, fetchArmazens]);
+
+  useEffect(() => {
+    if (activeWarehouse) fetchEstoque(activeWarehouse);
+  }, [activeWarehouse, refreshTrigger]);
 
   const fetchEstoque = async (armazemId: string) => {
     setIsLoading(true);

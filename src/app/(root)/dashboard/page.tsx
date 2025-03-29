@@ -78,14 +78,31 @@ import DashboardFilters, {
 } from "./components/DashboardFilters";
 import SummaryCards from "./components/SummaryCards";
 
+// Definir tipos para objetos vindos da API
+interface ProdutoPedido {
+  id: string;
+  quantidade: number;
+  custo: number;
+  multiplicador: number;
+  produto?: {
+    multiplicador?: number;
+  };
+}
+
+interface PedidoAPI {
+  id: string;
+  dataConclusao?: string | null;
+  produtos?: ProdutoPedido[];
+}
+
 interface DetalhesSaida {
   id: number;
+  quantidade: number;
   produto: {
     id: string;
     nome: string;
     sku: string;
   };
-  quantidade: number;
   isKit: boolean;
 }
 
@@ -97,30 +114,6 @@ interface Saida {
     nome: string;
   };
   detalhes: DetalhesSaida[];
-}
-
-interface PedidoProduto {
-  produtoId: string;
-  quantidade: number;
-  custo: number;
-  multiplicador: number;
-  produto: {
-    id: string;
-    nome: string;
-    sku: string;
-  };
-}
-
-interface Pedido {
-  id: number;
-  fornecedorId: string;
-  fornecedor: {
-    nome: string;
-  };
-  status: string;
-  dataPrevista: string | null;
-  dataConclusao: string | null;
-  produtos: PedidoProduto[];
 }
 
 interface DashboardSummaryData {
@@ -150,7 +143,7 @@ const Dashboard = () => {
   });
   const [activeView, setActiveView] = useState("overview");
   const [saidasData, setSaidasData] = useState<Saida[]>([]);
-  const [entradasData, setEntradasData] = useState<Pedido[]>([]);
+  const [entradasData, setEntradasData] = useState<PedidoAPI[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -169,23 +162,16 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Efeito para buscar dados iniciais e quando houver refresh
-  useEffect(() => {
-    // Ao montar o componente, definir período padrão para últimos 30 dias
-    if (!dateRange?.from && !dateRange?.to) {
-      const today = new Date();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(today.getDate() - 30);
-      setDateRange({
-        from: thirtyDaysAgo,
-        to: today,
-      });
-      // A atualização dos dados ocorrerá no próximo efeito quando dateRange mudar
-      return;
-    }
+  // Função para atualizar os dados
+  const handleRefresh = useCallback(() => {
+    // Resetar estados de loading para mostrar os indicadores
+    setLoadingData(true);
+    setLoadingEntradas(true);
+    setLoadingSaidas(true);
 
-    fetchSummaryData();
-  }, [refreshTrigger]);
+    // Incrementar o trigger para forçar o re-fetch
+    setRefreshTrigger((prev) => prev + 1);
+  }, [setLoadingData, setLoadingEntradas, setLoadingSaidas, setRefreshTrigger]);
 
   useEffect(() => {
     console.log("Dashboard montado - inicializando");
@@ -198,7 +184,7 @@ const Dashboard = () => {
     }
 
     handleRefresh();
-  }, []);
+  }, [dateRange, handleRefresh]);
 
   // Atualizar useEffect para manipular as mudanças no dateRange
   useEffect(() => {
@@ -299,20 +285,24 @@ const Dashboard = () => {
     setDateRange({ from: startDate, to: endDate });
   };
 
-  const calcularValorEntradas = (pedidos: Pedido[]) => {
+  const calcularValorEntradas = (pedidos: PedidoAPI[]) => {
     return pedidos.reduce((total, pedido) => {
-      const valorPedido = pedido.produtos.reduce((sum, produto) => {
-        return sum + produto.quantidade * produto.custo * produto.multiplicador;
-      }, 0);
+      const valorPedido =
+        pedido.produtos?.reduce((sum, produto) => {
+          return (
+            sum + produto.quantidade * produto.custo * produto.multiplicador
+          );
+        }, 0) || 0;
       return total + valorPedido;
     }, 0);
   };
 
-  const contarItensEntradas = (pedidos: Pedido[]) => {
+  const contarItensEntradas = (pedidos: PedidoAPI[]) => {
     return pedidos.reduce((total, pedido) => {
-      const itensPedido = pedido.produtos.reduce((sum, produto) => {
-        return sum + produto.quantidade;
-      }, 0);
+      const itensPedido =
+        pedido.produtos?.reduce((sum, produto) => {
+          return sum + produto.quantidade;
+        }, 0) || 0;
       return total + itensPedido;
     }, 0);
   };
@@ -389,7 +379,7 @@ const Dashboard = () => {
       const endDate = new Date(dateFilter.endDate);
 
       // Filtrar pedidos para garantir que estejam dentro do intervalo de datas
-      const filteredPedidos = pedidosData.filter((pedido: any) => {
+      const filteredPedidos = pedidosData.filter((pedido: PedidoAPI) => {
         // Verificar se o pedido tem data de conclusão
         if (!pedido.dataConclusao) return false;
 
@@ -421,7 +411,7 @@ const Dashboard = () => {
       const saidasData = await saidasResponse.json();
 
       // Verificar se ainda precisamos de filtragem manual de datas
-      const filteredSaidas = saidasData.filter((saida: any) => {
+      const filteredSaidas = saidasData.filter((saida: Saida) => {
         if (!saida.data) return false;
 
         const dataSaida = new Date(saida.data);
@@ -444,38 +434,46 @@ const Dashboard = () => {
         );
       } else {
         // Caso contrário, calcular dos pedidos filtrados (fallback)
-        entriesCount = filteredPedidos.reduce((count: number, pedido: any) => {
-          if (!pedido.produtos || !Array.isArray(pedido.produtos)) return count;
+        entriesCount = filteredPedidos.reduce(
+          (count: number, pedido: PedidoAPI) => {
+            if (!pedido.produtos || !Array.isArray(pedido.produtos))
+              return count;
 
-          return (
-            count +
-            pedido.produtos.reduce((sum: number, produto: any) => {
-              return sum + (produto.quantidade || 0);
-            }, 0)
-          );
-        }, 0);
+            return (
+              count +
+              pedido.produtos.reduce((sum: number, produto: ProdutoPedido) => {
+                return sum + (produto.quantidade || 0);
+              }, 0)
+            );
+          },
+          0
+        );
 
-        entriesValue = filteredPedidos.reduce((value: number, pedido: any) => {
-          if (!pedido.produtos || !Array.isArray(pedido.produtos)) return value;
+        entriesValue = filteredPedidos.reduce(
+          (value: number, pedido: PedidoAPI) => {
+            if (!pedido.produtos || !Array.isArray(pedido.produtos))
+              return value;
 
-          const pedidoValue = pedido.produtos.reduce(
-            (total: number, produto: any) => {
-              if (!produto) return total;
+            const pedidoValue = pedido.produtos.reduce(
+              (total: number, produto: ProdutoPedido) => {
+                if (!produto) return total;
 
-              const quantidade = produto.quantidade || 0;
-              const custo = produto.custo || 0;
-              const multiplicador =
-                produto.multiplicador ||
-                (produto.produto && produto.produto.multiplicador) ||
-                1;
+                const quantidade = produto.quantidade || 0;
+                const custo = produto.custo || 0;
+                const multiplicador =
+                  produto.multiplicador ||
+                  (produto.produto && produto.produto.multiplicador) ||
+                  1;
 
-              return total + quantidade * custo * multiplicador;
-            },
-            0
-          );
+                return total + quantidade * custo * multiplicador;
+              },
+              0
+            );
 
-          return value + pedidoValue;
-        }, 0);
+            return value + pedidoValue;
+          },
+          0
+        );
       }
 
       // Log detalhado para depuração
@@ -498,15 +496,14 @@ const Dashboard = () => {
 
       // Calcular quantidade total de itens de saída
       const outputsCount = filteredSaidas.reduce(
-        (count: number, saida: any) => {
+        (count: number, saida: Saida) => {
           if (!saida.detalhes || !Array.isArray(saida.detalhes)) return count;
 
           return (
             count +
-            saida.detalhes.reduce(
-              (sum: number, detalhe: any) => sum + (detalhe.quantidade || 0),
-              0
-            )
+            saida.detalhes.reduce((sum: number, detalhe: DetalhesSaida) => {
+              return sum + (detalhe.quantidade || 0);
+            }, 0)
           );
         },
         0
@@ -548,17 +545,6 @@ const Dashboard = () => {
       setLoadingData(false);
     }
   }, [dateFilter, carregarDadosVisualizacoes]);
-
-  // Função para atualizar os dados
-  const handleRefresh = () => {
-    // Resetar estados de loading para mostrar os indicadores
-    setLoadingData(true);
-    setLoadingEntradas(true);
-    setLoadingSaidas(true);
-
-    // Incrementar o trigger para forçar o re-fetch
-    setRefreshTrigger((prev) => prev + 1);
-  };
 
   return (
     <div className="container mx-auto px-4 py-6">

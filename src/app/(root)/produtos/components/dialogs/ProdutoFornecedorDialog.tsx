@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Produto } from "../../types";
 
 // UI Components
@@ -80,13 +80,33 @@ export function ProdutoFornecedorDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  const fetchFornecedoresVinculados = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch(
+        `/api/produto-fornecedor?produtoId=${produto.id}`
+      );
+      if (!response.ok)
+        throw new Error("Erro ao buscar fornecedores vinculados");
+
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setFornecedoresVinculados(data);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar fornecedores vinculados", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [produto.id, setFornecedoresVinculados, setIsLoading]);
+
   // Load suppliers and linked suppliers when component mounts
   useEffect(() => {
     if (isOpen) {
       fetchFornecedores();
       fetchFornecedoresVinculados();
     }
-  }, [isOpen, produto.id]);
+  }, [isOpen, produto.id, fetchFornecedoresVinculados]);
 
   // Effect for cleanup on unmounting to prevent focus issues
   useEffect(() => {
@@ -113,26 +133,6 @@ export function ProdutoFornecedorDialog({
       console.error("Erro ao buscar fornecedores", error);
       setMessage("Erro ao buscar fornecedores");
       setMessageType("error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchFornecedoresVinculados = async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `/api/produto-fornecedor?produtoId=${produto.id}`
-      );
-      if (!response.ok)
-        throw new Error("Erro ao buscar fornecedores vinculados");
-
-      const data = await response.json();
-      if (Array.isArray(data)) {
-        setFornecedoresVinculados(data);
-      }
-    } catch (error) {
-      console.error("Erro ao buscar fornecedores vinculados", error);
     } finally {
       setIsLoading(false);
     }

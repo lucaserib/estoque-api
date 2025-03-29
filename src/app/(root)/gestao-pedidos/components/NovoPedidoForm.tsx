@@ -181,10 +181,26 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
   // Quando o fornecedor muda, carregar seus produtos
   useEffect(() => {
     const fornecedorId = form.watch("fornecedorId");
-    if (fornecedorId) {
-      loadProdutosFornecedor(fornecedorId);
-    }
-  }, [form.watch("fornecedorId"), loadProdutosFornecedor]);
+
+    // Função para carregar os produtos quando o fornecedor muda
+    const carregarProdutos = () => {
+      if (fornecedorId) {
+        loadProdutosFornecedor(fornecedorId);
+      }
+    };
+
+    carregarProdutos();
+
+    // Registrar o watcher para monitorar mudanças no fornecedorId
+    const subscription = form.watch((value, { name }) => {
+      if (name === "fornecedorId") {
+        carregarProdutos();
+      }
+    });
+
+    // Cleanup: cancelar a subscrição ao desmontar o componente
+    return () => subscription.unsubscribe();
+  }, [form, loadProdutosFornecedor]);
 
   // Adicionar produto ao pedido
   const addProduct = (
