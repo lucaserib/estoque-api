@@ -146,7 +146,7 @@ export default function BarcodeScannerSelecaoProdutos({
   // Função para extrair o código EAN do texto escaneado
   const extrairEAN = (codigo: string): string => {
     // Remover espaços e caracteres especiais
-    let codigoNormalizado = codigo.trim().replace(/[^0-9a-zA-Z]/g, "");
+    const codigoNormalizado = codigo.trim().replace(/[^0-9a-zA-Z]/g, "");
 
     console.log(`Normalizando código: "${codigo}" -> "${codigoNormalizado}"`);
 
@@ -448,7 +448,7 @@ export default function BarcodeScannerSelecaoProdutos({
       console.log("Executando verificação de estrutura de dados...");
       verificarEstruturaDados();
     }
-  }, [produtos, eanParaProdutoId]);
+  }, [produtos, eanParaProdutoId, verificarEstruturaDados]);
 
   // Função chamada quando um código de barras é escaneado
   const handleScan = async (codigo: string) => {
@@ -567,11 +567,15 @@ export default function BarcodeScannerSelecaoProdutos({
 
     camposCodigo.forEach((campo) => {
       let contagemPresente = 0;
-      let exemplos: string[] = [];
+      const exemplos: string[] = [];
 
       produtos.forEach((produto) => {
-        // Usando type assertion para acessar propriedades dinâmicas
-        const valor = (produto as any)[campo];
+        // Usando type assertion de forma mais segura
+        const produtoObj = produto as unknown as Record<
+          string,
+          string | undefined
+        >;
+        const valor = produtoObj[campo];
         if (valor !== undefined) {
           contagemPresente++;
           if (exemplos.length < 3) {
@@ -593,7 +597,7 @@ export default function BarcodeScannerSelecaoProdutos({
 
     // Verificar estrutura de codigosBarrasAlternativos
     let produtosComCodigosAlternativos = 0;
-    let exemplosCodigosAlternativos: string[] = [];
+    const exemplosCodigosAlternativos: string[] = [];
 
     produtos.forEach((produto) => {
       if (produto.codigosBarrasAlternativos?.length) {
@@ -625,7 +629,7 @@ export default function BarcodeScannerSelecaoProdutos({
       // Função para análise detalhada dos dados
       analisarEstruturaProdutos();
     }
-  }, [produtos]);
+  }, [produtos, analisarEstruturaProdutos]);
 
   return (
     <div className="space-y-4">

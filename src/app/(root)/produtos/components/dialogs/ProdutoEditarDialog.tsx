@@ -30,7 +30,7 @@ export function ProdutoEditarDialog({
 }: ProdutoEditarDialogProps) {
   const [nome, setNome] = useState(produto.nome);
   const [sku, setSku] = useState(produto.sku);
-  const [ean, setEan] = useState(produto.ean || "");
+  const [ean, setEan] = useState(produto.codigoEAN || "");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -39,7 +39,7 @@ export function ProdutoEditarDialog({
     if (isOpen) {
       setNome(produto.nome);
       setSku(produto.sku);
-      setEan(produto.ean || "");
+      setEan(produto.codigoEAN || "");
       setError("");
     }
   }, [produto, isOpen]);
@@ -79,7 +79,7 @@ export function ProdutoEditarDialog({
           id: produto.id,
           nome,
           sku,
-          ean: ean || null,
+          codigoEAN: ean || null,
         }),
       });
 
@@ -91,7 +91,7 @@ export function ProdutoEditarDialog({
       const updatedProduto = await response.json();
       onSave({
         ...updatedProduto,
-        ean: updatedProduto.ean?.toString() || "",
+        codigoEAN: updatedProduto.codigoEAN?.toString() || "",
       });
       onClose();
     } catch (error) {

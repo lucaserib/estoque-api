@@ -159,7 +159,7 @@ export const KitList = ({
                         {kit.sku}
                       </TableCell>
                       <TableCell className="text-gray-600 dark:text-gray-300">
-                        {kit.ean || "N/A"}
+                        {kit.codigoEAN || "N/A"}
                       </TableCell>
                       <TableCell>
                         {kit.componentes ? (

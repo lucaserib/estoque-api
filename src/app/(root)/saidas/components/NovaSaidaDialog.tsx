@@ -67,6 +67,30 @@ interface NovaSaidaDialogProps {
   onSave: () => void;
 }
 
+// Interface para o tipo Kit
+interface Kit {
+  id: string;
+  nome: string;
+  sku: string;
+  componentes?: KitComponente[];
+}
+
+// Interface que representa um produto no estoque da aplicação
+interface ProdutoEstoque {
+  id: string;
+  nome: string;
+  sku: string;
+  preco: number;
+  quantidadeDisponivel: number;
+  unidade: string;
+  categoria?: string;
+  // Campos possíveis para EAN
+  ean?: string;
+  codigoEAN?: string;
+  codigoBarras?: string;
+  codigosBarrasAlternativos?: string[];
+}
+
 export function NovaSaidaDialog({
   isOpen,
   onClose,
@@ -207,7 +231,7 @@ export function NovaSaidaDialog({
     setOpenCombobox(false);
   };
 
-  const adicionarKitSaida = (kit: any, qty: number) => {
+  const adicionarKitSaida = (kit: Kit, qty: number) => {
     setSaidaProdutos((prev) => {
       const existing = prev.find((p) => p.produtoId === kit.id && p.isKit);
 
@@ -419,7 +443,7 @@ export function NovaSaidaDialog({
             {armazemId && modoBarcodeScanner ? (
               /* Modo de leitura por código de barras */
               <BarcodeScannerSelecaoProdutos
-                produtos={produtos}
+                produtos={produtos as unknown as ProdutoEstoque[]}
                 produtosSelecionados={saidaProdutos}
                 onAdicionarProduto={handleProdutoScaneado}
                 onRemoverProduto={handleRemoverProduto}

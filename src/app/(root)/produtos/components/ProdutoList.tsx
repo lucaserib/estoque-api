@@ -142,8 +142,8 @@ const ProdutoList = ({
       produto.sku
         .toLowerCase()
         .includes(filterOptions.searchTerm.toLowerCase()) ||
-      (produto.ean &&
-        produto.ean
+      (produto.codigoEAN &&
+        produto.codigoEAN
           .toLowerCase()
           .includes(filterOptions.searchTerm.toLowerCase()));
 
@@ -212,7 +212,7 @@ const ProdutoList = ({
                         {produto.sku}
                       </TableCell>
                       <TableCell className="text-gray-600 dark:text-gray-300">
-                        {produto.ean || "N/A"}
+                        {produto.codigoEAN || "N/A"}
                       </TableCell>
                       <TableCell className="text-gray-600 dark:text-gray-300">
                         {produto.custoMedio

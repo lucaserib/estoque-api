@@ -114,7 +114,9 @@ const BarcodeScannerSaidasConferencia = ({
       const codigoEAN = getCodigoEAN(detalhe.produto as ProdutoComEAN);
       console.log(`  codigoEAN: ${codigoEAN || "Não definido"}`);
       console.log(
-        `  ean original: ${(detalhe.produto as any).ean || "Não definido"}`
+        `  ean original: ${
+          (detalhe.produto as ProdutoComEAN).ean || "Não definido"
+        }`
       );
 
       // Se o produto tiver código EAN, mapeamos para o ID do detalhe

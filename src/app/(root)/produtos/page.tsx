@@ -53,7 +53,7 @@ const ProdutosPage = () => {
       setProdutos(
         initialProdutos.map((p) => ({
           ...p,
-          ean: p.ean?.toString() || "",
+          codigoEAN: p.codigoEAN?.toString() || "",
         }))
       );
     }

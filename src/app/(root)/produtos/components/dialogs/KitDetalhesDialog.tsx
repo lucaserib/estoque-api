@@ -107,7 +107,7 @@ export function KitDetalhesDialog({
                     EAN:
                   </span>
                   <span className="text-base font-medium text-gray-900 dark:text-gray-100">
-                    {kit.ean || "Não informado"}
+                    {kit.codigoEAN || "Não informado"}
                   </span>
                 </div>
               </div>

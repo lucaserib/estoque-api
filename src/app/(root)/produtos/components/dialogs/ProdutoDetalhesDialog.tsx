@@ -100,7 +100,7 @@ export function ProdutoDetalhesDialog({
                       EAN:
                     </span>
                     <span className="text-base font-medium text-gray-900 dark:text-gray-100">
-                      {produto.ean || "Não informado"}
+                      {produto.codigoEAN || "Não informado"}
                     </span>
                   </div>
                 </div>

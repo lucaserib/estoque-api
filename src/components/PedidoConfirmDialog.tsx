@@ -451,10 +451,13 @@ export function PedidoConfirmDialog({
                                   getCodigoEAN(produto.produto) && (
                                     <BarcodeReaderButton
                                       onScan={(barcode) => {
-                                        const produtoEAN = getCodigoEAN(
-                                          produto.produto
-                                        );
-                                        if (barcode === produtoEAN) {
+                                        const produtoEAN = produto.produto
+                                          ? getCodigoEAN(produto.produto)
+                                          : undefined;
+                                        if (
+                                          produtoEAN &&
+                                          barcode === produtoEAN
+                                        ) {
                                           handleQuantityChange(
                                             produto.produtoId,
                                             produto.quantidade + 1
@@ -465,10 +468,13 @@ export function PedidoConfirmDialog({
                                       buttonVariant="ghost"
                                       size="sm"
                                       className="h-8 w-8 p-0 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors"
-                                      validateBarcode={(barcode) =>
-                                        barcode ===
-                                        getCodigoEAN(produto.produto)
-                                      }
+                                      validateBarcode={(barcode) => {
+                                        return !!(
+                                          produto.produto &&
+                                          barcode ===
+                                            getCodigoEAN(produto.produto)
+                                        );
+                                      }}
                                     />
                                   )}
                               </div>
