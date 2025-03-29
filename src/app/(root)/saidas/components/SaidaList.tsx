@@ -15,14 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Eye,
-  Calendar,
-  Package,
-  Truck,
-  Warehouse,
-  AlertTriangle,
-} from "lucide-react";
+import { Eye, Calendar, Package, Warehouse } from "lucide-react";
 
 interface SaidaListProps {
   saidas: Saida[];
@@ -127,6 +120,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
                     size="sm"
                     onClick={() => handleViewDetails(saida)}
                     className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                    title="Ver detalhes"
                   >
                     <Eye className="h-4 w-4" />
                   </Button>

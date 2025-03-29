@@ -8,6 +8,7 @@ export interface Produto {
   nome: string;
   sku: string;
   multiplicador?: number;
+  codigoEAN?: string;
 }
 
 export interface FornecedorProduto {

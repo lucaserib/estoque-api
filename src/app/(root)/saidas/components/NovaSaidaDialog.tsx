@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useFetch } from "@/app/hooks/useFetch";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import { Produto, Armazem, SaidaProduto, KitComponente } from "../types";
+import BarcodeScannerSelecaoProdutos from "./BarcodeScannerSelecaoProdutos";
 
 // UI Components
 import {
@@ -43,6 +44,8 @@ import {
   ChevronDown,
   AlertCircle,
   CheckCircle,
+  QrCode,
+  Scan,
 } from "lucide-react";
 import {
   Command,
@@ -79,6 +82,7 @@ export function NovaSaidaDialog({
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
   const [openCombobox, setOpenCombobox] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modoBarcodeScanner, setModoBarcodeScanner] = useState(false);
 
   // Fetch armazens and produtos from API
   const { data: armazens = [] } = useFetch<Armazem[]>("/api/estoque/armazens");
@@ -117,25 +121,7 @@ export function NovaSaidaDialog({
     try {
       if (produtoToAdd && !produtoToAdd.isKit) {
         // Adicionar produto simples
-        setSaidaProdutos((prev) => {
-          const existing = prev.find(
-            (p) => p.produtoId === produtoToAdd.id && !p.isKit
-          );
-          if (existing) {
-            existing.quantidade += qty;
-            return [...prev];
-          }
-          return [
-            ...prev,
-            {
-              produtoId: produtoToAdd.id,
-              quantidade: qty,
-              sku: produtoToAdd.sku,
-              nome: produtoToAdd.nome,
-              isKit: false,
-            },
-          ];
-        });
+        adicionarProdutoSaida(produtoToAdd, qty);
       } else {
         // Tentar buscar um kit com o SKU informado
         setMessage("Buscando kit...");
@@ -165,27 +151,7 @@ export function NovaSaidaDialog({
           console.log("Kit encontrado:", kit);
 
           // Adicionar kit à lista de saída
-          setSaidaProdutos((prev) => {
-            const existing = prev.find(
-              (p) => p.produtoId === kit.id && p.isKit
-            );
-
-            if (existing) {
-              existing.quantidade += qty;
-              return [...prev];
-            }
-
-            return [
-              ...prev,
-              {
-                produtoId: kit.id,
-                quantidade: qty,
-                sku: kit.sku,
-                nome: kit.nome,
-                isKit: true,
-              },
-            ];
-          });
+          adicionarKitSaida(kit, qty);
 
           setSku("");
           setSearchTerm("");
@@ -207,6 +173,64 @@ export function NovaSaidaDialog({
       );
       setMessageType("error");
     }
+  };
+
+  const adicionarProdutoSaida = (produto: Produto, qty: number) => {
+    setSaidaProdutos((prev) => {
+      const existing = prev.find((p) => p.produtoId === produto.id && !p.isKit);
+
+      if (existing) {
+        const updated = prev.map((item) =>
+          item.produtoId === produto.id && !item.isKit
+            ? { ...item, quantidade: item.quantidade + qty }
+            : item
+        );
+        return updated;
+      }
+
+      return [
+        ...prev,
+        {
+          produtoId: produto.id,
+          quantidade: qty,
+          sku: produto.sku,
+          nome: produto.nome,
+          isKit: false,
+        },
+      ];
+    });
+
+    setSku("");
+    setSearchTerm("");
+    setQuantidade(1);
+    setMessage("");
+    setOpenCombobox(false);
+  };
+
+  const adicionarKitSaida = (kit: any, qty: number) => {
+    setSaidaProdutos((prev) => {
+      const existing = prev.find((p) => p.produtoId === kit.id && p.isKit);
+
+      if (existing) {
+        const updated = prev.map((item) =>
+          item.produtoId === kit.id && item.isKit
+            ? { ...item, quantidade: item.quantidade + qty }
+            : item
+        );
+        return updated;
+      }
+
+      return [
+        ...prev,
+        {
+          produtoId: kit.id,
+          quantidade: qty,
+          sku: kit.sku,
+          nome: kit.nome,
+          isKit: true,
+        },
+      ];
+    });
   };
 
   const handleRegistrarSaida = async () => {
@@ -265,26 +289,19 @@ export function NovaSaidaDialog({
       setIsSubmitting(false);
     }
   };
-  {
-    message && (
-      <Alert
-        variant={messageType === "success" ? "success" : "destructive"}
-        className="mb-4"
-      >
-        {messageType === "success" ? (
-          <CheckCircle className="h-4 w-4" />
-        ) : (
-          <AlertCircle className="h-4 w-4" />
-        )}
-        <AlertDescription className="whitespace-pre-line">
-          {message}
-        </AlertDescription>
-      </Alert>
-    );
-  }
 
-  // Handler for removing a product from the list
-  const handleRemoveProduto = (sku: string) => {
+  // Alternar entre modo manual e modo de scanner
+  const toggleScannerMode = () => {
+    setModoBarcodeScanner(!modoBarcodeScanner);
+  };
+
+  // Manejador de adição de produto via scanner
+  const handleProdutoScaneado = (produto: Produto, quantidade: number) => {
+    adicionarProdutoSaida(produto, quantidade);
+  };
+
+  // Manejador de remoção de produto
+  const handleRemoverProduto = (sku: string) => {
     setSaidaProdutos((prev) => prev.filter((p) => p.sku !== sku));
   };
 
@@ -309,15 +326,37 @@ export function NovaSaidaDialog({
                 <Package className="h-5 w-5 text-indigo-500" />
                 Registrar Nova Saída
               </DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                disabled={isSubmitting}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {armazemId && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={toggleScannerMode}
+                    className="flex items-center gap-1.5 h-8 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                  >
+                    {modoBarcodeScanner ? (
+                      <>
+                        <Search className="h-4 w-4" />
+                        Modo Manual
+                      </>
+                    ) : (
+                      <>
+                        <Scan className="h-4 w-4" />
+                        Ler Código de Barras
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                  className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </DialogHeader>
         </div>
@@ -377,119 +416,128 @@ export function NovaSaidaDialog({
               )}
             </div>
 
-            {/* Product search and quantity */}
-            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-              {/* Product search autocomplete */}
-              <div className="md:col-span-4">
-                <Label
-                  htmlFor="produto"
-                  className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1"
-                >
-                  Produto ou Kit (SKU ou Nome)
-                </Label>
-                <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      disabled={!armazemId || isSubmitting}
-                      className={`w-full justify-between h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 ${
-                        !armazemId ? "opacity-50" : ""
-                      }`}
+            {armazemId && modoBarcodeScanner ? (
+              /* Modo de leitura por código de barras */
+              <BarcodeScannerSelecaoProdutos
+                produtos={produtos}
+                produtosSelecionados={saidaProdutos}
+                onAdicionarProduto={handleProdutoScaneado}
+                onRemoverProduto={handleRemoverProduto}
+                onVoltarModoManual={() => setModoBarcodeScanner(false)}
+              />
+            ) : (
+              /* Modo de adição manual de produtos */
+              <>
+                {/* Product search and quantity */}
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+                  {/* Product search autocomplete */}
+                  <div className="md:col-span-4">
+                    <Label
+                      htmlFor="produto"
+                      className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1"
                     >
-                      {sku ? sku : "Selecione um produto ou kit..."}
-                      <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-full p-0">
-                    <Command>
-                      <CommandInput
-                        placeholder="Buscar produto..."
-                        value={searchTerm}
-                        onValueChange={setSearchTerm}
-                      />
-                      <CommandList>
-                        <CommandEmpty>
-                          {produtosLoading ? (
-                            <div className="flex items-center justify-center p-4">
-                              <Loader2 className="h-5 w-5 animate-spin text-indigo-500 mr-2" />
-                              <span>Carregando...</span>
-                            </div>
-                          ) : (
-                            "Nenhum produto encontrado"
-                          )}
-                        </CommandEmpty>
-                        <CommandGroup>
-                          {filteredProdutos.map((produto) => (
-                            <CommandItem
-                              key={produto.id}
-                              value={produto.sku}
-                              onSelect={(currentValue) => {
-                                setSku(currentValue);
-                                setOpenCombobox(false);
-                              }}
-                            >
-                              <div className="flex flex-col">
-                                <span>{produto.nome}</span>
-                                <span className="text-xs text-gray-500 dark:text-gray-400">
-                                  SKU: {produto.sku}
-                                </span>
-                              </div>
-                            </CommandItem>
-                          ))}
-                        </CommandGroup>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
+                      Produto ou Kit (SKU ou Nome)
+                    </Label>
+                    <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          disabled={!armazemId || isSubmitting}
+                          className={`w-full justify-between h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 ${
+                            !armazemId ? "opacity-50" : ""
+                          }`}
+                        >
+                          {sku ? sku : "Selecione um produto ou kit..."}
+                          <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-full p-0">
+                        <Command>
+                          <CommandInput
+                            placeholder="Buscar produto..."
+                            value={searchTerm}
+                            onValueChange={setSearchTerm}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              {produtosLoading ? (
+                                <div className="flex items-center justify-center p-4">
+                                  <Loader2 className="h-5 w-5 animate-spin text-indigo-500 mr-2" />
+                                  <span>Carregando...</span>
+                                </div>
+                              ) : (
+                                "Nenhum produto encontrado"
+                              )}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {filteredProdutos.map((produto) => (
+                                <CommandItem
+                                  key={produto.id}
+                                  value={produto.sku}
+                                  onSelect={(currentValue) => {
+                                    setSku(currentValue);
+                                    setOpenCombobox(false);
+                                  }}
+                                >
+                                  <div className="flex flex-col">
+                                    <span>{produto.nome}</span>
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                      SKU: {produto.sku}
+                                    </span>
+                                  </div>
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
 
-              {/* Quantity input */}
-              <div className="md:col-span-2">
-                <Label
-                  htmlFor="quantidade"
-                  className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1"
+                  {/* Quantity input */}
+                  <div className="md:col-span-2">
+                    <Label
+                      htmlFor="quantidade"
+                      className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1"
+                    >
+                      Quantidade
+                    </Label>
+                    <Input
+                      id="quantidade"
+                      type="number"
+                      min="1"
+                      value={quantidade}
+                      onChange={(e) => setQuantidade(Number(e.target.value))}
+                      disabled={!armazemId || isSubmitting}
+                      className="h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                    />
+                  </div>
+                </div>
+
+                {/* Add product button */}
+                <Button
+                  type="button"
+                  onClick={handleAddProduto}
+                  disabled={
+                    !armazemId || !sku || quantidade <= 0 || isSubmitting
+                  }
+                  className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-700 dark:hover:bg-indigo-600"
                 >
-                  Quantidade
-                </Label>
-                <Input
-                  id="quantidade"
-                  type="number"
-                  min="1"
-                  value={quantidade}
-                  onChange={(e) => setQuantidade(Number(e.target.value))}
-                  disabled={!armazemId || isSubmitting}
-                  className="h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
-                />
-              </div>
-            </div>
-
-            {/* Add product button */}
-            <Button
-              type="button"
-              onClick={handleAddProduto}
-              disabled={!armazemId || !sku || quantidade <= 0 || isSubmitting}
-              className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-700 dark:hover:bg-indigo-600"
-            >
-              <Plus className="h-4 w-4" />
-              Adicionar Item
-            </Button>
+                  <Plus className="h-4 w-4" />
+                  Adicionar Item
+                </Button>
+              </>
+            )}
 
             {/* List of added products */}
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                <Package className="h-5 w-5 text-indigo-500" />
-                Itens na Saída
-              </h3>
+            {!modoBarcodeScanner && saidaProdutos.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-indigo-500" />
+                  Itens na Saída
+                </h3>
 
-              {saidaProdutos.length === 0 ? (
-                <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
-                  <Package className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-500 dark:text-gray-400">
-                    Nenhum item adicionado ainda
-                  </p>
-                </div>
-              ) : (
                 <div className="border rounded-lg overflow-hidden">
                   <Table>
                     <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
@@ -547,7 +595,7 @@ export function NovaSaidaDialog({
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleRemoveProduto(item.sku)}
+                              onClick={() => handleRemoverProduto(item.sku)}
                               className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                               disabled={isSubmitting}
                             >
@@ -559,9 +607,10 @@ export function NovaSaidaDialog({
                     </TableBody>
                   </Table>
                 </div>
-              )}
-            </div>
-          </div>{" "}
+              </div>
+            )}
+          </div>
+
           <DialogFooter className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl">
             <div className="flex justify-between w-full">
               <Button

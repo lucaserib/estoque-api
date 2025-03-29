@@ -4,7 +4,7 @@ export interface Produto {
   id: string;
   nome: string;
   sku: string;
-  ean?: string;
+  codigoEAN?: string;
   custoMedio?: number;
   isKit?: boolean;
   componentes?: Array<{
@@ -33,7 +33,7 @@ export interface Kit {
   id: number;
   nome: string;
   sku: string;
-  ean?: string;
+  codigoEAN?: string;
   componentes: KitComponente[];
 }
 
