@@ -47,62 +47,60 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="w-full auth-container bg-indigo-950/30 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-indigo-500/20">
+    <div className="w-full">
       {/* Logo */}
-      <div className="mb-10">
+      <div className="mb-12">
         <div className="flex items-center space-x-3">
           <Image
             src="/vendexy-logo-white.svg"
             alt="Vendexy Gestão"
             width={50}
             height={50}
-            className="w-12 h-12"
+            className="w-10 h-10"
           />
           <h1 className="text-white text-2xl font-bold">vendexy gestão</h1>
         </div>
       </div>
 
       {/* Títulos grandes */}
-      <div className="mb-10">
+      <div className="mb-12">
         <h2 className="text-white text-5xl font-bold mb-2">Olá, seja</h2>
-        <h2 className="bg-gradient-to-r from-blue-400 to-indigo-500 text-transparent bg-clip-text text-5xl font-bold mb-10">
-          Bem-vindo
-        </h2>
+        <h2 className="text-white text-5xl font-bold mb-10">Bem-vindo</h2>
       </div>
 
       {/* Botão Google */}
       <button
         onClick={handleGoogleSignIn}
         disabled={isLoading}
-        className="auth-button w-full h-12 flex items-center justify-center gap-2 rounded-lg shadow-md hover:scale-[1.02] transition-all duration-200"
+        className="auth-button w-full h-12 flex items-center justify-center gap-2 rounded-lg shadow-md"
       >
         <FcGoogle size={24} />
         <span>Entrar com o Google</span>
       </button>
 
       {/* Separador */}
-      <div className="relative my-8">
+      <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-indigo-400/30"></span>
+          <span className="w-full border-t border-indigo-700"></span>
         </div>
         <div className="relative flex justify-center">
-          <span className="px-4 text-white text-sm bg-indigo-800/50 rounded-full backdrop-blur-sm">
+          <span className="px-4 text-white text-sm bg-indigo-900 rounded">
             Ou use seu e-mail
           </span>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-lg bg-red-900/50 border border-red-500/50 text-white text-sm mb-6 backdrop-blur-sm">
+        <div className="p-3 rounded-lg bg-red-800 border border-red-600 text-white text-sm mb-6">
           {error}
         </div>
       )}
 
       <form className="space-y-6" onSubmit={handleSubmit}>
-        <div className="space-y-2">
+        <div className="space-y-1">
           <label
             htmlFor="email"
-            className="block text-sm font-medium text-blue-100 mb-1"
+            className="block text-sm font-medium text-gray-200 mb-1"
           >
             Email
           </label>
@@ -113,14 +111,14 @@ const LoginPage = () => {
             autoComplete="email"
             placeholder="Seu email"
             required
-            className="auth-input w-full h-12 pl-4 rounded-lg bg-indigo-900/40 border-indigo-500/30 focus:border-blue-400 focus:ring-blue-400/50"
+            className="auth-input w-full h-11 pl-3 rounded-lg"
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1">
           <label
             htmlFor="password"
-            className="block text-sm font-medium text-blue-100 mb-1"
+            className="block text-sm font-medium text-gray-200 mb-1"
           >
             Senha
           </label>
@@ -131,25 +129,25 @@ const LoginPage = () => {
             autoComplete="current-password"
             placeholder="Sua senha"
             required
-            className="auth-input w-full h-12 pl-4 rounded-lg bg-indigo-900/40 border-indigo-500/30 focus:border-blue-400 focus:ring-blue-400/50"
+            className="auth-input w-full h-11 pl-3 rounded-lg"
           />
         </div>
 
         <button
           type="submit"
           disabled={isLoading}
-          className="auth-button w-full h-12 flex items-center justify-center rounded-lg shadow-lg bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition-all duration-300 hover:shadow-blue-500/20 hover:scale-[1.02]"
+          className="auth-button w-full h-11 flex items-center justify-center rounded-lg shadow-md"
         >
           {isLoading ? "Entrando..." : "Entrar"}
         </button>
       </form>
 
-      <div className="mt-8 flex items-center justify-between">
+      <div className="mt-6 flex items-center justify-between">
         <div className="text-sm">
-          <span className="text-indigo-200">Não tem uma conta? </span>
+          <span className="text-gray-400">Não tem uma conta? </span>
           <Link
             href="/register"
-            className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            className="text-blue-400 hover:text-blue-300 font-medium"
           >
             Cadastre-se
           </Link>
@@ -157,7 +155,7 @@ const LoginPage = () => {
         <div className="text-sm">
           <Link
             href="#"
-            className="text-blue-400 hover:text-blue-300 font-medium transition-colors"
+            className="text-blue-400 hover:text-blue-300 font-medium"
           >
             Esqueceu a senha?
           </Link>

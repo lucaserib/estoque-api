@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import CardValorEstoque from "@/app/components/dashboard/CardValorEstoque";
 import EntradasChart from "@/app/components/dashboard/EntradasChart";
 import EstoqueSegurancaCard from "@/app/components/dashboard/EstoqueSegurancaCard";
@@ -152,6 +152,10 @@ const Dashboard = () => {
   const [loadingEntradas, setLoadingEntradas] = useState(false);
   const [loadingSaidas, setLoadingSaidas] = useState(false);
 
+  // Referência para controlar atualizações
+  const lastRefreshTimestamp = useRef(0);
+  const isUpdating = useRef(false);
+
   // Mover esta função para antes de fetchSummaryData que a utiliza
   const carregarDadosVisualizacoes = useCallback(async () => {
     try {
@@ -162,171 +166,27 @@ const Dashboard = () => {
     }
   }, []);
 
-  // Função para atualizar os dados
-  const handleRefresh = useCallback(() => {
-    // Resetar estados de loading para mostrar os indicadores
-    setLoadingData(true);
-    setLoadingEntradas(true);
-    setLoadingSaidas(true);
-
-    // Incrementar o trigger para forçar o re-fetch
-    setRefreshTrigger((prev) => prev + 1);
-  }, [setLoadingData, setLoadingEntradas, setLoadingSaidas, setRefreshTrigger]);
-
-  useEffect(() => {
-    console.log("Dashboard montado - inicializando");
-
-    if (!dateRange) {
-      setDateRange({
-        from: subDays(new Date(), 30),
-        to: new Date(),
-      });
-    }
-
-    handleRefresh();
-  }, [dateRange, handleRefresh]);
-
-  // Atualizar useEffect para manipular as mudanças no dateRange
-  useEffect(() => {
-    if (dateRange?.from && dateRange?.to) {
-      // Criar cópias das datas para não modificar o objeto original
-      const startDate = new Date(dateRange.from);
-      startDate.setHours(0, 0, 0, 0);
-
-      const endDate = new Date(dateRange.to);
-      endDate.setHours(23, 59, 59, 999);
-
-      setDateFilter({
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-      });
-
-      // Resetar estados de loading para mostrar os indicadores
-      setLoadingData(true);
-      setLoadingEntradas(true);
-      setLoadingSaidas(true);
-
-      // Log para depuração
-      console.log("Filtro de data atualizado:", {
-        de: startDate.toISOString(),
-        ate: endDate.toISOString(),
-        periodoSelecionado,
-      });
-
-      // Incrementar o trigger para forçar o re-fetch
-      setRefreshTrigger((prev) => prev + 1);
-    }
-  }, [
-    dateRange,
-    periodoSelecionado,
-    setDateFilter,
-    setLoadingData,
-    setLoadingEntradas,
-    setLoadingSaidas,
-    setRefreshTrigger,
-  ]);
-
-  // Função para aplicar período predefinido
-  const aplicarPeriodoPredefinido = (periodo: string) => {
-    setPeriodoSelecionado(periodo as PeriodoKey);
-
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-
-    let startDate = new Date();
-    let endDate = new Date(today);
-
-    switch (periodo) {
-      case "hoje":
-        startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(today);
-        break;
-      case "ontem":
-        startDate = new Date();
-        startDate.setDate(today.getDate() - 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date();
-        endDate.setDate(today.getDate() - 1);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      case "7dias":
-        startDate = new Date();
-        startDate.setDate(today.getDate() - 6); // 7 dias inclui hoje
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "15dias":
-        startDate = new Date();
-        startDate.setDate(today.getDate() - 14); // 15 dias inclui hoje
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "30dias":
-        startDate = new Date();
-        startDate.setDate(today.getDate() - 29); // 30 dias inclui hoje
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "90dias":
-        startDate = new Date();
-        startDate.setDate(today.getDate() - 89); // 90 dias inclui hoje
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "esteMes":
-        startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case "mesPassado":
-        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(today.getFullYear(), today.getMonth(), 0);
-        endDate.setHours(23, 59, 59, 999);
-        break;
-      default:
-        startDate.setDate(today.getDate() - 29); // Padrão: últimos 30 dias
-        startDate.setHours(0, 0, 0, 0);
-    }
-
-    console.log(`Período aplicado: ${periodo}`, {
-      de: startDate.toISOString(),
-      ate: endDate.toISOString(),
-    });
-
-    setDateRange({ from: startDate, to: endDate });
-  };
-
-  const calcularValorEntradas = (pedidos: PedidoAPI[]) => {
-    return pedidos.reduce((total, pedido) => {
-      const valorPedido =
-        pedido.produtos?.reduce((sum, produto) => {
-          return (
-            sum + produto.quantidade * produto.custo * produto.multiplicador
-          );
-        }, 0) || 0;
-      return total + valorPedido;
-    }, 0);
-  };
-
-  const contarItensEntradas = (pedidos: PedidoAPI[]) => {
-    return pedidos.reduce((total, pedido) => {
-      const itensPedido =
-        pedido.produtos?.reduce((sum, produto) => {
-          return sum + produto.quantidade;
-        }, 0) || 0;
-      return total + itensPedido;
-    }, 0);
-  };
-
   // Função para buscar dados do resumo
   const fetchSummaryData = useCallback(async () => {
-    if (!dateFilter.startDate || !dateFilter.endDate) {
-      console.warn("Filtro de datas não definido");
+    // Evitar atualizações simultâneas
+    if (isUpdating.current) {
+      console.log("Já existe uma atualização em andamento, ignorando");
       return;
     }
 
-    // Resetar estados de loading se ainda não foram definidos
-    if (!loading) setLoading(true);
-    if (!loadingEntradas) setLoadingEntradas(true);
-    if (!loadingSaidas) setLoadingSaidas(true);
-    if (!loadingData) setLoadingData(true);
+    isUpdating.current = true;
+
+    if (!dateFilter.startDate || !dateFilter.endDate) {
+      console.warn("Filtro de datas não definido");
+      isUpdating.current = false;
+      return;
+    }
+
+    // Resetar estados de loading
+    setLoading(true);
+    setLoadingEntradas(true);
+    setLoadingSaidas(true);
+    setLoadingData(true);
 
     try {
       // Debug log para verificar os filtros sendo aplicados
@@ -334,6 +194,7 @@ const Dashboard = () => {
         startDate: dateFilter.startDate,
         endDate: dateFilter.endDate,
         periodoSelecionado,
+        refreshTrigger,
       });
 
       // Buscar valor do estoque
@@ -551,21 +412,216 @@ const Dashboard = () => {
       setLoadingEntradas(false);
       setLoadingSaidas(false);
       setLoadingData(false);
+      isUpdating.current = false;
     }
   }, [
     dateFilter,
     carregarDadosVisualizacoes,
-    loading,
-    loadingData,
-    loadingEntradas,
-    loadingSaidas,
     periodoSelecionado,
-    setLoading,
-    setLoadingData,
-    setLoadingEntradas,
-    setLoadingSaidas,
     setSummaryData,
   ]);
+
+  // Função para atualizar os dados - simplificada
+  const handleRefresh = useCallback(() => {
+    if (isUpdating.current) {
+      console.log("Já existe uma atualização em andamento, ignorando");
+      return;
+    }
+
+    // Armazenar timestamp da atualização
+    lastRefreshTimestamp.current = Date.now();
+
+    // Resetar estados de loading
+    setLoadingData(true);
+    setLoadingEntradas(true);
+    setLoadingSaidas(true);
+
+    // Incrementar o trigger
+    setRefreshTrigger((prev) => prev + 1);
+  }, []);
+
+  // *** ÚNICO useEffect para gerenciar inicialização e atualizações ***
+  useEffect(() => {
+    // Inicialização - executada apenas uma vez
+    if (refreshTrigger === 0) {
+      console.log("Dashboard montado - inicializando");
+
+      // Configurar período padrão se necessário
+      if (!dateRange) {
+        setDateRange({
+          from: subDays(new Date(), 30),
+          to: new Date(),
+        });
+      } else if (dateRange.from && dateRange.to) {
+        // Se já temos um dateRange com valores definidos, definir o dateFilter
+        const startDate = new Date(dateRange.from);
+        startDate.setHours(0, 0, 0, 0);
+
+        const endDate = new Date(dateRange.to);
+        endDate.setHours(23, 59, 59, 999);
+
+        setDateFilter({
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString(),
+        });
+      }
+
+      // Primeira carga de dados
+      handleRefresh();
+      return;
+    }
+
+    // Requisição de dados quando o refreshTrigger muda
+    if (dateFilter.startDate && dateFilter.endDate && refreshTrigger > 0) {
+      // Evitar atualizações duplicadas
+      const currentTime = Date.now();
+      const timeSinceLastRefresh = currentTime - lastRefreshTimestamp.current;
+
+      // Se faz menos de 100ms desde a última atualização ou já estamos atualizando, ignorar
+      if (timeSinceLastRefresh < 100 || isUpdating.current) {
+        console.log(
+          `Ignorando atualização duplicada (${timeSinceLastRefresh}ms desde a última)`
+        );
+        return;
+      }
+
+      console.log(`Atualizando dados (trigger: ${refreshTrigger})`);
+      fetchSummaryData();
+    }
+  }, [refreshTrigger, dateRange, dateFilter, handleRefresh, fetchSummaryData]);
+
+  // *** Manipulação de changes no dateRange ***
+  useEffect(() => {
+    // Ignorar a primeira renderização (quando refreshTrigger é 0) ou se não tiver datas
+    if (refreshTrigger === 0) return;
+    if (!dateRange || !dateRange.from || !dateRange.to) return;
+
+    // Agora sabemos que dateRange.from e dateRange.to são definidos
+    // Criar cópias das datas para não modificar o objeto original
+    const startDate = new Date(dateRange.from);
+    startDate.setHours(0, 0, 0, 0);
+
+    const endDate = new Date(dateRange.to);
+    endDate.setHours(23, 59, 59, 999);
+
+    console.log("Filtro de data atualizado:", {
+      de: startDate.toISOString(),
+      ate: endDate.toISOString(),
+      periodoSelecionado,
+    });
+
+    // Atualizar o filtro de data sem disparar o refreshTrigger imediatamente
+    setDateFilter({
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+    });
+
+    // Aguardar um pequeno delay antes de disparar o refresh para evitar loops
+    const timeoutId = setTimeout(() => {
+      handleRefresh();
+    }, 50);
+
+    return () => clearTimeout(timeoutId);
+  }, [dateRange, periodoSelecionado, handleRefresh]);
+
+  // Função para aplicar período predefinido
+  const aplicarPeriodoPredefinido = useCallback(
+    (periodo: string) => {
+      // Evitar redefinir o mesmo período
+      if (periodoSelecionado === periodo) {
+        console.log(`Período ${periodo} já está selecionado, ignorando`);
+        return;
+      }
+
+      setPeriodoSelecionado(periodo as PeriodoKey);
+
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+
+      let startDate = new Date();
+      let endDate = new Date(today);
+
+      switch (periodo) {
+        case "hoje":
+          startDate = new Date();
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(today);
+          break;
+        case "ontem":
+          startDate = new Date();
+          startDate.setDate(today.getDate() - 1);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date();
+          endDate.setDate(today.getDate() - 1);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        case "7dias":
+          startDate = new Date();
+          startDate.setDate(today.getDate() - 6); // 7 dias inclui hoje
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case "15dias":
+          startDate = new Date();
+          startDate.setDate(today.getDate() - 14); // 15 dias inclui hoje
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case "30dias":
+          startDate = new Date();
+          startDate.setDate(today.getDate() - 29); // 30 dias inclui hoje
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case "90dias":
+          startDate = new Date();
+          startDate.setDate(today.getDate() - 89); // 90 dias inclui hoje
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case "esteMes":
+          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case "mesPassado":
+          startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+          startDate.setHours(0, 0, 0, 0);
+          endDate = new Date(today.getFullYear(), today.getMonth(), 0);
+          endDate.setHours(23, 59, 59, 999);
+          break;
+        default:
+          startDate.setDate(today.getDate() - 29); // Padrão: últimos 30 dias
+          startDate.setHours(0, 0, 0, 0);
+      }
+
+      console.log(`Período aplicado: ${periodo}`, {
+        de: startDate.toISOString(),
+        ate: endDate.toISOString(),
+      });
+
+      // Atualizar o dateRange sem provocar loop
+      setDateRange({ from: startDate, to: endDate });
+    },
+    [periodoSelecionado]
+  );
+
+  const calcularValorEntradas = (pedidos: PedidoAPI[]) => {
+    return pedidos.reduce((total, pedido) => {
+      const valorPedido =
+        pedido.produtos?.reduce((sum, produto) => {
+          return (
+            sum + produto.quantidade * produto.custo * produto.multiplicador
+          );
+        }, 0) || 0;
+      return total + valorPedido;
+    }, 0);
+  };
+
+  const contarItensEntradas = (pedidos: PedidoAPI[]) => {
+    return pedidos.reduce((total, pedido) => {
+      const itensPedido =
+        pedido.produtos?.reduce((sum, produto) => {
+          return sum + produto.quantidade;
+        }, 0) || 0;
+      return total + itensPedido;
+    }, 0);
+  };
 
   return (
     <div className="container mx-auto px-4 py-6">

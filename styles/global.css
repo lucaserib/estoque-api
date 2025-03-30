@@ -325,45 +325,16 @@ textarea,
 
 /* Estilos específicos para páginas de autenticação */
 .auth-input {
-  @apply bg-indigo-900/50 border-indigo-500/30 text-white rounded-lg;
-  @apply focus:ring-blue-400/50 focus:border-blue-400;
-  @apply placeholder-indigo-300/40;
-  @apply transition-all duration-200;
-  @apply shadow-inner shadow-indigo-950/20;
+  @apply bg-indigo-900/50 border-indigo-700 text-white rounded-lg;
+  @apply focus:ring-blue-500 focus:border-blue-500;
 }
 
 .auth-button {
-  @apply bg-gradient-to-r from-blue-600 to-indigo-600;
-  @apply hover:from-blue-500 hover:to-indigo-500;
-  @apply text-white font-medium;
+  @apply bg-blue-600 hover:bg-blue-700 text-white font-medium;
   @apply transition-all duration-200 transform hover:scale-[1.02];
-  @apply shadow-lg shadow-indigo-900/20 hover:shadow-blue-500/30;
 }
 
 .auth-container {
-  @apply backdrop-blur-md;
-  @apply bg-indigo-950/30 border border-indigo-500/20;
-  @apply shadow-2xl shadow-indigo-900/30;
-  @apply rounded-2xl overflow-hidden;
-  @apply transition-all duration-300;
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-.auth-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.1),
-    transparent
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
 }
