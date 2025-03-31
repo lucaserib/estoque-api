@@ -26,18 +26,33 @@ const CardValorEstoque = () => {
     valorMedio: 0,
   });
   const [error, setError] = useState<string | null>(null);
+  const [requestAttempts, setRequestAttempts] = useState(0);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      console.log("Iniciando requisição para valor-estoque");
       try {
-        const response = await fetch("/api/dashboard/valor-estoque");
+        const response = await fetch("/api/dashboard/valor-estoque", {
+          credentials: "include", // Importante para incluir os cookies de autenticação
+          cache: "no-store", // Desabilita o cache para certificar requisições atualizadas
+        });
+
+        console.log("Resposta recebida, status:", response.status);
 
         if (!response.ok) {
-          throw new Error("Falha ao obter dados do estoque");
+          console.error(
+            "Resposta não OK:",
+            response.status,
+            response.statusText
+          );
+          throw new Error(
+            `Falha ao obter dados do estoque: ${response.status} ${response.statusText}`
+          );
         }
 
         const result = await response.json();
+        console.log("Dados recebidos:", result);
 
         // Calcular valor médio por item (em centavos)
         const valorMedio =
@@ -53,13 +68,24 @@ const CardValorEstoque = () => {
       } catch (err) {
         console.error("Erro ao carregar valor de estoque:", err);
         setError("Não foi possível carregar os dados do estoque");
+        // Tentar novamente após falha, até 3 tentativas
+        if (requestAttempts < 3) {
+          console.log(
+            `Tentativa ${
+              requestAttempts + 1
+            } falhou, tentando novamente em 2 segundos...`
+          );
+          setTimeout(() => {
+            setRequestAttempts((prev) => prev + 1);
+          }, 2000);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
+  }, [requestAttempts]);
 
   if (error) {
     return (
@@ -72,6 +98,12 @@ const CardValorEstoque = () => {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-orange-700">{error}</p>
+          <button
+            onClick={() => setRequestAttempts((prev) => prev + 1)}
+            className="mt-2 text-sm text-blue-600 hover:underline"
+          >
+            Tentar novamente
+          </button>
         </CardContent>
       </Card>
     );
