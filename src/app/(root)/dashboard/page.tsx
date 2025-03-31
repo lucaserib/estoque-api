@@ -124,6 +124,22 @@ interface DashboardSummaryData {
   lowStockCount: number;
 }
 
+// Adicionar interfaces para os dados dos cards individuais
+interface ValorEstoqueData {
+  valorTotal: number;
+  quantidadeTotal: number;
+  valorMedio?: number;
+}
+
+interface EstoqueCritico {
+  id: string;
+  nome: string;
+  sku: string;
+  quantidade: number;
+  estoqueSeguranca: number;
+  armazem: string;
+}
+
 const Dashboard = () => {
   const [summaryData, setSummaryData] = useState<DashboardSummaryData>({
     entriesCount: 0,
@@ -154,6 +170,22 @@ const Dashboard = () => {
 
   const lastRefreshTimestamp = useRef(0);
   const isUpdating = useRef(false);
+
+  // Adicionar estados para os dados específicos dos cards
+  const [valorEstoqueData, setValorEstoqueData] = useState<ValorEstoqueData>({
+    valorTotal: 0,
+    quantidadeTotal: 0,
+    valorMedio: 0,
+  });
+  const [estoqueCriticoData, setEstoqueCriticoData] = useState<
+    EstoqueCritico[]
+  >([]);
+  const [valorEstoqueError, setValorEstoqueError] = useState<string | null>(
+    null
+  );
+  const [estoqueCriticoError, setEstoqueCriticoError] = useState<string | null>(
+    null
+  );
 
   const carregarDadosVisualizacoes = useCallback(async () => {
     try {
@@ -190,147 +222,146 @@ const Dashboard = () => {
         refreshTrigger,
       });
 
-      // Função auxiliar para fazer fetch com timeout
-      const fetchWithTimeout = async (
-        url: string,
-        options = {},
-        timeout = 10000
-      ) => {
-        const controller = new AbortController();
-        const id = setTimeout(() => controller.abort(), timeout);
+      // Variáveis para armazenar os dados que serão usados no setSummaryData
+      let valorTotalEstoque = 0;
+      let lowStockCount = 0;
 
-        try {
-          const response = await fetch(url, {
-            ...options,
-            signal: controller.signal,
-          });
-          clearTimeout(id);
-          return response;
-        } catch (error) {
-          clearTimeout(id);
-          console.error(`Timeout ou erro ao buscar ${url}:`, error);
-          throw error;
+      // Buscar dados de valor de estoque centralizado
+      try {
+        const stockValueResponse = await fetch("/api/dashboard/valor-estoque", {
+          credentials: "include",
+          cache: "no-store",
+        });
+
+        if (!stockValueResponse.ok) {
+          throw new Error(
+            `Falha ao obter dados do estoque: ${stockValueResponse.status}`
+          );
         }
-      };
 
-      // Fazer requisições em paralelo
-      const [
-        stockValuePromise,
-        lowStockPromise,
-        entradasPromise,
-        pedidosPromise,
-        saidasPromise,
-      ] = [
-        fetchWithTimeout("/api/dashboard/valor-estoque")
-          .then((res) => res.json())
-          .catch((err) => {
-            console.error("Erro ao buscar valor do estoque:", err);
-            return { valorTotal: 0, quantidadeTotal: 0 };
-          }),
+        const stockValueData = await stockValueResponse.json();
+        console.log("Dados de valor de estoque recebidos:", stockValueData);
 
-        fetchWithTimeout("/api/dashboard/estoque-seguranca")
-          .then((res) => res.json())
-          .catch((err) => {
-            console.error("Erro ao buscar estoque de segurança:", err);
-            return [];
-          }),
+        valorTotalEstoque = stockValueData.valorTotal || 0;
+        const quantidadeTotal = stockValueData.quantidadeTotal || 0;
 
-        fetchWithTimeout(
-          `/api/dashboard/entradas?${new URLSearchParams({
-            period: "custom",
-            startDate: dateFilter.startDate,
-            endDate: dateFilter.endDate,
-          }).toString()}`
-        )
-          .then((res) => res.json())
-          .catch((err) => {
-            console.error("Erro ao buscar entradas:", err);
-            return { totals: { quantidade: 0, valor: 0 }, chart: [] };
-          }),
+        // Calcular valor médio por item (em centavos)
+        const valorMedio =
+          quantidadeTotal > 0
+            ? Math.round(valorTotalEstoque / quantidadeTotal)
+            : 0;
 
-        fetchWithTimeout(
-          `/api/pedidos-compra?${new URLSearchParams({
-            status: "confirmado",
-            startDate: dateFilter.startDate,
-            endDate: dateFilter.endDate,
-          }).toString()}`
-        )
-          .then((res) => res.json())
-          .catch((err) => {
-            console.error("Erro ao buscar pedidos:", err);
-            return [];
-          }),
+        setValorEstoqueData({
+          valorTotal: valorTotalEstoque,
+          quantidadeTotal,
+          valorMedio,
+        });
+        setValorEstoqueError(null);
+      } catch (error) {
+        console.error("Erro ao carregar valor de estoque:", error);
+        setValorEstoqueError("Não foi possível carregar os dados do estoque");
+      }
 
-        fetchWithTimeout(
-          `/api/saida?${new URLSearchParams({
-            startDate: dateFilter.startDate,
-            endDate: dateFilter.endDate,
-          }).toString()}`
-        )
-          .then((res) => res.json())
-          .catch((err) => {
-            console.error("Erro ao buscar saídas:", err);
-            return [];
-          }),
-      ];
+      // Buscar dados de estoque crítico centralizado
+      try {
+        const lowStockResponse = await fetch(
+          "/api/dashboard/estoque-seguranca",
+          {
+            credentials: "include",
+            cache: "no-store",
+          }
+        );
 
-      // Aguardar todas as requisições ou seus fallbacks
-      const [
-        stockValueData,
-        lowStockData,
-        entradasDataResponse,
-        pedidosData,
-        saidasData,
-      ] = await Promise.all([
-        stockValuePromise,
-        lowStockPromise,
-        entradasPromise,
-        pedidosPromise,
-        saidasPromise,
-      ]);
+        if (!lowStockResponse.ok) {
+          throw new Error(
+            `Falha ao obter dados de estoque crítico: ${lowStockResponse.status}`
+          );
+        }
 
-      console.log("Todas as requisições concluídas ou com timeout");
+        const lowStockData = await lowStockResponse.json();
+        console.log("Dados de estoque crítico recebidos:", lowStockData);
 
-      const valorTotalEstoque = stockValueData.valorTotal || 0;
+        setEstoqueCriticoData(lowStockData);
+        lowStockCount = lowStockData.length || 0;
+        setEstoqueCriticoError(null);
+      } catch (error) {
+        console.error("Erro ao carregar estoque crítico:", error);
+        setEstoqueCriticoError(
+          "Não foi possível carregar os dados de estoque crítico"
+        );
+      }
 
+      const params = new URLSearchParams();
+      params.append("period", "custom");
+      params.append("startDate", dateFilter.startDate);
+      params.append("endDate", dateFilter.endDate);
+
+      const entradasResponse = await fetch(
+        `/api/dashboard/entradas?${params.toString()}`
+      );
+
+      if (!entradasResponse.ok) {
+        throw new Error("Falha ao carregar dados de entradas");
+      }
+
+      const entradasDataResponse = await entradasResponse.json();
+      console.log("Dados de entradas carregados:", entradasDataResponse);
+
+      // Para o componente PedidosTable, buscar os pedidos concluídos
+      const pedidosParams = new URLSearchParams();
+      pedidosParams.append("status", "confirmado");
+      pedidosParams.append("startDate", dateFilter.startDate);
+      pedidosParams.append("endDate", dateFilter.endDate);
+
+      const pedidosResponse = await fetch(
+        `/api/pedidos-compra?${pedidosParams.toString()}`
+      );
+
+      if (!pedidosResponse.ok) {
+        throw new Error("Falha ao carregar pedidos concluídos");
+      }
+
+      const pedidosData = await pedidosResponse.json();
+      console.log("Pedidos carregados:", pedidosData.length);
       const startDate = new Date(dateFilter.startDate);
       const endDate = new Date(dateFilter.endDate);
 
-      // Processar dados de pedidos
-      const filteredPedidos = Array.isArray(pedidosData)
-        ? pedidosData.filter((pedido: PedidoAPI) => {
-            if (!pedido.dataConclusao) return false;
+      const filteredPedidos = pedidosData.filter((pedido: PedidoAPI) => {
+        if (!pedido.dataConclusao) return false;
 
-            const conclusionDate = new Date(pedido.dataConclusao);
-            const isInRange =
-              conclusionDate >= startDate && conclusionDate <= endDate;
+        const conclusionDate = new Date(pedido.dataConclusao);
+        const isInRange =
+          conclusionDate >= startDate && conclusionDate <= endDate;
 
-            const hasProducts =
-              pedido.produtos &&
-              Array.isArray(pedido.produtos) &&
-              pedido.produtos.length > 0;
+        const hasProducts =
+          pedido.produtos &&
+          Array.isArray(pedido.produtos) &&
+          pedido.produtos.length > 0;
 
-            return isInRange && hasProducts;
-          })
-        : [];
+        return isInRange && hasProducts;
+      });
 
       console.log("Pedidos filtrados para exibição:", filteredPedidos.length);
       setEntradasData(filteredPedidos);
+      const saidasParams = new URLSearchParams();
+      saidasParams.append("startDate", dateFilter.startDate);
+      saidasParams.append("endDate", dateFilter.endDate);
 
-      // Processar dados de saídas
-      const filteredSaidas = Array.isArray(saidasData)
-        ? saidasData.filter((saida: Saida) => {
-            if (!saida.data) return false;
+      const saidasResponse = await fetch(
+        `/api/saida?${saidasParams.toString()}`
+      );
+      const saidasData = await saidasResponse.json();
 
-            const dataSaida = new Date(saida.data);
-            return dataSaida >= startDate && dataSaida <= endDate;
-          })
-        : [];
+      const filteredSaidas = saidasData.filter((saida: Saida) => {
+        if (!saida.data) return false;
+
+        const dataSaida = new Date(saida.data);
+        return dataSaida >= startDate && dataSaida <= endDate;
+      });
 
       setSaidasData(filteredSaidas);
       console.log("Saídas filtradas:", filteredSaidas.length);
 
-      // Calcular entradas
       let entriesCount = 0;
       let entriesValue = 0;
 
@@ -383,7 +414,23 @@ const Dashboard = () => {
         );
       }
 
-      // Calcular saídas
+      console.log("Comparação de valores:", {
+        entradasAPI: {
+          quantidade: entradasDataResponse?.totals?.quantidade || 0,
+          valor: entradasDataResponse?.totals?.valor || 0,
+        },
+        pedidosCalculados: {
+          quantidade: entriesCount,
+          valor: entriesValue,
+        },
+        pedidosNaTabela: filteredPedidos.length,
+        saidasNaTabela: filteredSaidas.length,
+        filtroDatas: {
+          de: dateFilter.startDate,
+          ate: dateFilter.endDate,
+        },
+      });
+
       const outputsCount = filteredSaidas.reduce(
         (count: number, saida: Saida) => {
           if (!saida.detalhes || !Array.isArray(saida.detalhes)) return count;
@@ -400,23 +447,29 @@ const Dashboard = () => {
 
       setSummaryData({
         totalValue: valorTotalEstoque,
-        lowStockCount: Array.isArray(lowStockData) ? lowStockData.length : 0,
+        lowStockCount: lowStockCount,
         entriesCount: entriesCount || 0,
         entriesValue: entriesValue || 0,
         outputsCount: outputsCount || 0,
       });
 
-      console.log("Dashboard atualizado com sucesso");
+      console.log("Valor total do estoque:", {
+        valorEmCentavos: valorTotalEstoque,
+        valorFormatado: exibirValorEmReais(valorTotalEstoque),
+      });
 
       await carregarDadosVisualizacoes();
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
       toast.error("Erro ao carregar dados do dashboard");
 
-      setSummaryData((prev) => ({
-        ...prev,
-        // Manter valores anteriores se houver erro
-      }));
+      setSummaryData({
+        totalValue: 0,
+        lowStockCount: 0,
+        entriesCount: 0,
+        entriesValue: 0,
+        outputsCount: 0,
+      });
     } finally {
       setLoading(false);
       setLoadingEntradas(false);
@@ -429,6 +482,7 @@ const Dashboard = () => {
     carregarDadosVisualizacoes,
     periodoSelecionado,
     setSummaryData,
+    refreshTrigger,
   ]);
 
   // Função para atualizar os dados - simplificada
@@ -778,7 +832,12 @@ const Dashboard = () => {
                           </CardDescription>
                         </CardHeader>
                         <CardContent className="h-[400px] md:h-[500px] overflow-hidden">
-                          <CardValorEstoque />
+                          <CardValorEstoque
+                            data={valorEstoqueData}
+                            loading={loadingData}
+                            error={valorEstoqueError}
+                            onRetry={handleRefresh}
+                          />
                         </CardContent>
                       </Card>
                     </div>
@@ -958,7 +1017,12 @@ const Dashboard = () => {
                 </div>
               )}
               <div className="h-full overflow-auto">
-                <EstoqueSegurancaCard searchTerm={searchTerm} />
+                <EstoqueSegurancaCard
+                  data={estoqueCriticoData}
+                  loading={loadingData}
+                  searchTerm={searchTerm}
+                  onRetry={handleRefresh}
+                />
               </div>
             </CardContent>
           </Card>

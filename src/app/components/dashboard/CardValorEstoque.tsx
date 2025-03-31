@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Card,
   CardContent,
@@ -18,74 +18,24 @@ interface ValorEstoqueData {
   valorMedio?: number; // Valor em centavos
 }
 
-const CardValorEstoque = () => {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<ValorEstoqueData>({
-    valorTotal: 0,
-    quantidadeTotal: 0,
-    valorMedio: 0,
-  });
-  const [error, setError] = useState<string | null>(null);
-  const [requestAttempts, setRequestAttempts] = useState(0);
+interface CardValorEstoqueProps {
+  data?: ValorEstoqueData;
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+}
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      console.log("Iniciando requisição para valor-estoque");
-      try {
-        const response = await fetch("/api/dashboard/valor-estoque", {
-          credentials: "include", // Importante para incluir os cookies de autenticação
-          cache: "no-store", // Desabilita o cache para certificar requisições atualizadas
-        });
-
-        console.log("Resposta recebida, status:", response.status);
-
-        if (!response.ok) {
-          console.error(
-            "Resposta não OK:",
-            response.status,
-            response.statusText
-          );
-          throw new Error(
-            `Falha ao obter dados do estoque: ${response.status} ${response.statusText}`
-          );
-        }
-
-        const result = await response.json();
-        console.log("Dados recebidos:", result);
-
-        // Calcular valor médio por item (em centavos)
-        const valorMedio =
-          result.quantidadeTotal > 0
-            ? Math.round(result.valorTotal / result.quantidadeTotal)
-            : 0;
-
-        setData({
-          valorTotal: result.valorTotal,
-          quantidadeTotal: result.quantidadeTotal,
-          valorMedio,
-        });
-      } catch (err) {
-        console.error("Erro ao carregar valor de estoque:", err);
-        setError("Não foi possível carregar os dados do estoque");
-        // Tentar novamente após falha, até 3 tentativas
-        if (requestAttempts < 3) {
-          console.log(
-            `Tentativa ${
-              requestAttempts + 1
-            } falhou, tentando novamente em 2 segundos...`
-          );
-          setTimeout(() => {
-            setRequestAttempts((prev) => prev + 1);
-          }, 2000);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, [requestAttempts]);
+const CardValorEstoque = ({
+  data = { valorTotal: 0, quantidadeTotal: 0, valorMedio: 0 },
+  loading = false,
+  error = null,
+  onRetry,
+}: CardValorEstoqueProps) => {
+  // Calcular valor médio por item (em centavos)
+  const valorMedio =
+    data.quantidadeTotal > 0
+      ? Math.round(data.valorTotal / data.quantidadeTotal)
+      : 0;
 
   if (error) {
     return (
@@ -99,7 +49,7 @@ const CardValorEstoque = () => {
         <CardContent>
           <p className="text-sm text-orange-700">{error}</p>
           <button
-            onClick={() => setRequestAttempts((prev) => prev + 1)}
+            onClick={onRetry}
             className="mt-2 text-sm text-blue-600 hover:underline"
           >
             Tentar novamente
@@ -147,9 +97,7 @@ const CardValorEstoque = () => {
                 Valor Médio por Item
               </p>
               <h3 className="text-2xl font-bold mt-1">
-                {data.valorMedio
-                  ? exibirValorEmReais(data.valorMedio)
-                  : "R$ 0,00"}
+                {valorMedio ? exibirValorEmReais(valorMedio) : "R$ 0,00"}
               </h3>
               <p className="text-xs text-gray-500 mt-2">
                 Representa o custo médio por item no seu estoque

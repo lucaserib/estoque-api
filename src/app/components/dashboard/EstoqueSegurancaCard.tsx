@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import {
   Table,
   TableBody,
@@ -24,51 +24,31 @@ interface EstoqueCritico {
 }
 
 interface EstoqueSegurancaCardProps {
+  data: EstoqueCritico[];
+  loading: boolean;
   searchTerm?: string;
+  onRetry?: () => void;
 }
 
 const EstoqueSegurancaCard = ({
+  data = [],
+  loading = false,
   searchTerm = "",
+  onRetry,
 }: EstoqueSegurancaCardProps) => {
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<EstoqueCritico[]>([]);
-  const [filteredData, setFilteredData] = useState<EstoqueCritico[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch("/api/dashboard/estoque-seguranca");
-        if (!response.ok) {
-          throw new Error("Falha ao carregar dados de estoque crítico");
-        }
-        const result = await response.json();
-        setData(result);
-      } catch (error) {
-        console.error("Erro ao buscar estoque de segurança:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
   // Filtrar dados quando searchTerm mudar
-  useEffect(() => {
+  const filteredData = React.useMemo(() => {
     if (!searchTerm.trim()) {
-      setFilteredData(data);
-      return;
+      return data;
     }
 
     const term = searchTerm.toLowerCase();
-    const filtered = data.filter(
+    return data.filter(
       (item) =>
         item.nome.toLowerCase().includes(term) ||
         item.sku.toLowerCase().includes(term) ||
         item.armazem.toLowerCase().includes(term)
     );
-
-    setFilteredData(filtered);
   }, [searchTerm, data]);
 
   // Calcular o percentual de estoque em relação ao nível de segurança
