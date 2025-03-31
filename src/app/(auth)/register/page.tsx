@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import Image from "next/image";
+import Logo from "../../../../public/logo-bco.svg";
 import "../../../../styles/global.css";
 
 export default function Register() {
@@ -48,26 +48,15 @@ export default function Register() {
   return (
     <div className="w-full">
       {/* Logo */}
-      <div className="mb-12">
-        <div className="flex items-center space-x-3">
-          <Image
-            src="/vendexy-logo-white.svg"
-            alt="Vendexy Gestão"
-            width={50}
-            height={50}
-            className="w-10 h-10"
-          />
-          <h1 className="text-white text-2xl font-bold">vendexy gestão</h1>
+      <div className="mt-5">
+        <div className="flex flex-col space-x-3">
+          <Logo className="w-[250px] h-[250px]" />
         </div>
       </div>
 
-      {/* Títulos grandes */}
-      <div className="mb-12">
-        <h2 className="text-white text-5xl font-bold mb-2">Crie sua</h2>
-        <h2 className="text-white text-5xl font-bold mb-10">Conta</h2>
+      <div className="flex flex-col mx-5 space-x-3 mt-10 ">
+        <h2 className="text-white text-3xl font-bold mb-8">Crie sua conta</h2>
       </div>
-
-      {/* Botão Google */}
       <button
         onClick={handleGoogleSignIn}
         disabled={isLoading}
@@ -162,14 +151,16 @@ export default function Register() {
         </button>
       </form>
 
-      <div className="mt-6 text-center">
-        <span className="text-gray-400">Já tem uma conta? </span>
-        <Link
-          href="/login"
-          className="text-red-400 hover:text-red-300 font-medium"
-        >
-          Faça login
-        </Link>
+      <div className="mt-6 flex flex-col items-center justify-between">
+        <div className="text-sm">
+          <span className="text-gray-400">Já tem uma conta? </span>
+          <Link
+            href="/login"
+            className="text-blue-400 hover:text-blue-300 font-medium"
+          >
+            Faça login
+          </Link>
+        </div>
       </div>
     </div>
   );
