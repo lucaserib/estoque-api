@@ -1,14 +1,9 @@
 import { PrismaClient } from "@prisma/client";
 
-// Adicionar logs mais detalhados para debug no ambiente de produção
+// Adicionar logs para debug no ambiente de produção
 const prismaClientSingleton = () => {
   return new PrismaClient({
-    log: [
-      { level: "query", emit: "event" },
-      { level: "error", emit: "stdout" },
-      { level: "info", emit: "stdout" },
-      { level: "warn", emit: "stdout" },
-    ],
+    log: ["query", "error", "warn"],
   });
 };
 
@@ -23,15 +18,3 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
-
-// Adicionar listeners para os eventos de query para diagnóstico em produção
-if (process.env.NODE_ENV === "production") {
-  prisma.$on("query", (e) => {
-    console.log("Prisma Query:", {
-      query: e.query,
-      params: e.params,
-      duration: `${e.duration}ms`,
-      timestamp: new Date().toISOString(),
-    });
-  });
-}
