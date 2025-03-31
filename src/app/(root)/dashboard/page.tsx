@@ -196,10 +196,22 @@ const Dashboard = () => {
   }, []);
 
   const fetchSummaryData = useCallback(async () => {
+    // Adicionar timeout de segurança para evitar que isUpdating fique preso como true
+    const securityTimeout = setTimeout(() => {
+      if (isUpdating.current) {
+        console.log("Detectado bloqueio por isUpdating. Liberando flag.");
+        isUpdating.current = false;
+      }
+    }, 10000); // Timeout de 10 segundos como salvaguarda
+
     if (isUpdating.current) {
       console.log("Já existe uma atualização em andamento, ignorando");
+      clearTimeout(securityTimeout); // Limpar timeout se não prosseguirmos
       return;
     }
+
+    // Registrar timestamp de refresh
+    lastRefreshTimestamp.current = Date.now();
 
     // Validar se as datas são válidas antes de prosseguir
     if (!dateFilter.startDate || !dateFilter.endDate) {
@@ -209,6 +221,10 @@ const Dashboard = () => {
       const defaultEnd = new Date();
       const defaultStart = new Date();
       defaultStart.setDate(defaultStart.getDate() - 30);
+
+      // Garantir horas corretas
+      defaultStart.setHours(0, 0, 0, 0);
+      defaultEnd.setHours(23, 59, 59, 999);
 
       setDateFilter({
         startDate: defaultStart.toISOString(),
@@ -223,6 +239,11 @@ const Dashboard = () => {
     setLoadingEntradas(true);
     setLoadingSaidas(true);
     setLoadingData(true);
+
+    // Exibir feedback visual para o usuário
+    toast.info("Atualizando dados do dashboard...", {
+      duration: 2000,
+    });
 
     try {
       console.log("Buscando dados com filtros:", {
@@ -241,6 +262,11 @@ const Dashboard = () => {
         const stockValueResponse = await fetch("/api/dashboard/valor-estoque", {
           credentials: "include",
           cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
         });
 
         if (!stockValueResponse.ok) {
@@ -279,6 +305,11 @@ const Dashboard = () => {
           {
             credentials: "include",
             cache: "no-store",
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+              Expires: "0",
+            },
           }
         );
 
@@ -491,6 +522,9 @@ const Dashboard = () => {
         outputsCount: 0,
       });
     } finally {
+      // Limpar o timeout de segurança
+      clearTimeout(securityTimeout);
+
       setLoading(false);
       setLoadingEntradas(false);
       setLoadingSaidas(false);
@@ -505,123 +539,89 @@ const Dashboard = () => {
     refreshTrigger,
   ]);
 
-  // Função para atualizar os dados - simplificada
   const handleRefresh = useCallback(() => {
-    if (isUpdating.current) {
-      console.log("Já existe uma atualização em andamento, ignorando");
+    console.log("Disparando refresh manual");
+    // Evitar múltiplas atualizações num curto período
+    if (Date.now() - lastRefreshTimestamp.current < 500) {
+      console.log(
+        "Refresh ignorado - tempo mínimo entre atualizações não atingido"
+      );
       return;
     }
 
     lastRefreshTimestamp.current = Date.now();
 
-    setLoadingData(true);
-    setLoadingEntradas(true);
-    setLoadingSaidas(true);
-
-    setRefreshTrigger((prev) => prev + 1);
+    // Garantir que isUpdating está resetado para não bloquear a atualização
+    setTimeout(() => {
+      isUpdating.current = false;
+      setRefreshTrigger((prev) => prev + 1);
+    }, 0);
   }, []);
 
+  // Adicionar o efeito para inicialização do dashboard
   useEffect(() => {
-    if (refreshTrigger === 0) {
-      console.log("Dashboard montado - inicializando");
+    console.log("Dashboard montado - inicializando uma única vez");
 
-      if (!dateRange) {
-        setDateRange({
-          from: subDays(new Date(), 30),
-          to: new Date(),
-        });
-      } else if (dateRange.from && dateRange.to) {
-        // Se já temos um dateRange com valores definidos, definir o dateFilter
-        const startDate = new Date(dateRange.from);
-        startDate.setHours(0, 0, 0, 0);
+    // Definir as datas padrão (últimos 30 dias)
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 30);
 
-        const endDate = new Date(dateRange.to);
-        endDate.setHours(23, 59, 59, 999);
+    // Garantir horas corretas
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    today.setHours(23, 59, 59, 999);
 
-        setDateFilter({
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-        });
-      }
-
-      // Primeira carga de dados
-      handleRefresh();
-      return;
-    }
-
-    // Requisição de dados quando o refreshTrigger muda
-    if (dateFilter.startDate && dateFilter.endDate && refreshTrigger > 0) {
-      // Evitar atualizações duplicadas
-      const currentTime = Date.now();
-      const timeSinceLastRefresh = currentTime - lastRefreshTimestamp.current;
-
-      // Se faz menos de 100ms desde a última atualização ou já estamos atualizando, ignorar
-      if (timeSinceLastRefresh < 100 || isUpdating.current) {
-        console.log(
-          `Ignorando atualização duplicada (${timeSinceLastRefresh}ms desde a última)`
-        );
-        return;
-      }
-
-      console.log(`Atualizando dados (trigger: ${refreshTrigger})`);
-      fetchSummaryData();
-    }
-  }, [refreshTrigger, dateRange, dateFilter, handleRefresh, fetchSummaryData]);
-
-  // Modificar o useEffect que manipula as mudanças no dateRange
-  useEffect(() => {
-    // Ignorar a primeira renderização (quando refreshTrigger é 0) ou se não tiver datas
-    if (refreshTrigger === 0) return;
-    if (!dateRange || !dateRange.from || !dateRange.to) return;
-
-    // Agora sabemos que dateRange.from e dateRange.to são definidos
-    // Criar cópias das datas para não modificar o objeto original
-    const startDate = new Date(dateRange.from);
-    startDate.setHours(0, 0, 0, 0);
-
-    const endDate = new Date(dateRange.to);
-    endDate.setHours(23, 59, 59, 999);
-
-    // Converter para UTC para garantir consistência entre ambientes
-    const startDateISO = startDate.toISOString();
-    const endDateISO = endDate.toISOString();
-
-    console.log("Filtro de data atualizado:", {
-      de: startDateISO,
-      ate: endDateISO,
-      periodoSelecionado,
+    // Atualizar estados de forma síncrona para evitar múltiplas atualizações
+    setDateRange({
+      from: thirtyDaysAgo,
+      to: today,
     });
 
-    // Verificar se os filtros realmente mudaram para evitar atualizações desnecessárias
-    if (
-      dateFilter.startDate === startDateISO &&
-      dateFilter.endDate === endDateISO
-    ) {
-      console.log("Filtros de data não mudaram, ignorando atualização");
-      return;
-    }
+    setPeriodoSelecionado("30dias");
 
-    // Atualizar o filtro de data
+    // Definir filtros de data
     setDateFilter({
-      startDate: startDateISO,
-      endDate: endDateISO,
+      startDate: thirtyDaysAgo.toISOString(),
+      endDate: today.toISOString(),
     });
 
-    // Usar um timeout maior para evitar múltiplas atualizações em sequência
-    const timeoutId = setTimeout(() => {
-      // Verificar novamente se ainda não estamos atualizando antes de disparar o refresh
-      if (!isUpdating.current) {
-        console.log("Disparando atualização após mudança nos filtros de data");
-        handleRefresh();
-      } else {
-        console.log(
-          "Já existe uma atualização em andamento, ignorando refresh após filtro"
-        );
-      }
-    }, 200); // Aumentado para 200ms para dar mais tempo entre atualizações
+    // Garantir que não estamos em atualização
+    isUpdating.current = false;
 
-    return () => clearTimeout(timeoutId);
-  }, [dateRange, periodoSelecionado, handleRefresh, dateFilter]);
+    // Disparar atualização apenas uma vez na montagem
+    const timer = setTimeout(() => {
+      console.log("Primeira carga de dados");
+      setRefreshTrigger(1); // Definir como 1 diretamente, não incrementar
+    }, 500);
+
+    // Limpar o timer se o componente for desmontado
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Dependência vazia para executar apenas na montagem
+
+  // Efeito para atualização quando refreshTrigger muda
+  useEffect(() => {
+    // Ignorar a primeira renderização (quando refreshTrigger ainda é 0)
+    if (refreshTrigger === 0) return;
+
+    console.log(`Atualizando dados (trigger: ${refreshTrigger})`);
+
+    // Evitar atualizações duplicadas
+    const currentTime = Date.now();
+    const timeSinceLastRefresh = currentTime - lastRefreshTimestamp.current;
+
+    // Se faz menos de 300ms desde a última atualização ou já estamos atualizando, ignorar
+    if (timeSinceLastRefresh < 300 || isUpdating.current) {
+      console.log(
+        `Ignorando atualização duplicada (${timeSinceLastRefresh}ms desde a última)`
+      );
+      return;
+    }
+
+    // Fazer a requisição
+    fetchSummaryData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshTrigger]);
 
   // Função para aplicar período predefinido
   const aplicarPeriodoPredefinido = useCallback(
@@ -752,46 +752,47 @@ const Dashboard = () => {
     }, 0);
   };
 
-  // Função para limpar os filtros
+  // Atualizar handleClearFilters para usar o novo padrão
   const handleClearFilters = useCallback(() => {
-    // Mostrar feedback visual
-    toast.info("Filtros resetados", {
-      duration: 2000,
-    });
+    console.log("Limpando todos os filtros");
 
-    // Limpar filtro de busca
+    // Limpar o campo de busca
     setSearchTerm("");
 
-    // Voltar para o período padrão de 30 dias
+    // Configurar período padrão (30 dias)
     setPeriodoSelecionado("30dias");
 
-    // Criar datas novas para evitar problemas de referência
-    const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 29); // 30 dias (inclui hoje)
+    // Criar novas datas
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
 
-    // Garantir horas corretas
-    thirtyDaysAgo.setHours(0, 0, 0, 0);
-    today.setHours(23, 59, 59, 999);
+    // Garantir horas corretas para evitar problemas de comparação
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
-    // Atualizar ambos dateRange e dateFilter para garantir consistência
+    // Atualizar estados
     setDateRange({
-      from: thirtyDaysAgo,
-      to: today,
+      from: startDate,
+      to: endDate,
     });
 
+    // Definir filtros de data para API
     setDateFilter({
-      startDate: thirtyDaysAgo.toISOString(),
-      endDate: today.toISOString(),
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
     });
 
-    // Disparar atualização após um pequeno atraso para garantir que estados estão aplicados
-    setTimeout(() => {
-      if (!isUpdating.current) {
-        handleRefresh();
-      }
-    }, 200);
-  }, [handleRefresh]);
+    // Garantir que isUpdating está resetado
+    isUpdating.current = false;
+
+    // Disparar atualização com valor específico para evitar loops
+    setRefreshTrigger((prevTrigger) => {
+      const newTrigger = prevTrigger + 1;
+      console.log(`Definindo novo trigger: ${newTrigger}`);
+      return newTrigger;
+    });
+  }, []);
 
   return (
     <div className="container mx-auto px-4 py-6">
