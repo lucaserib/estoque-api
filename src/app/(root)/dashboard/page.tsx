@@ -201,14 +201,24 @@ const Dashboard = () => {
       return;
     }
 
-    isUpdating.current = true;
-
+    // Validar se as datas são válidas antes de prosseguir
     if (!dateFilter.startDate || !dateFilter.endDate) {
-      console.warn("Filtro de datas não definido");
-      isUpdating.current = false;
-      return;
+      console.warn("Filtro de datas não definido, utilizando período padrão");
+
+      // Em vez de retornar, definir um período padrão (últimos 30 dias)
+      const defaultEnd = new Date();
+      const defaultStart = new Date();
+      defaultStart.setDate(defaultStart.getDate() - 30);
+
+      setDateFilter({
+        startDate: defaultStart.toISOString(),
+        endDate: defaultEnd.toISOString(),
+      });
+
+      // Não definir isUpdating.current = false aqui, pois vamos continuar o carregamento
     }
 
+    isUpdating.current = true;
     setLoading(true);
     setLoadingEntradas(true);
     setLoadingSaidas(true);
@@ -291,10 +301,20 @@ const Dashboard = () => {
         );
       }
 
+      // Modificar como os parâmetros são enviados para a API, evitando problemas de formato
       const params = new URLSearchParams();
       params.append("period", "custom");
-      params.append("startDate", dateFilter.startDate);
-      params.append("endDate", dateFilter.endDate);
+
+      // Garantir que as datas estão em formato ISO
+      const apiStartDate = dateFilter.startDate
+        ? new Date(dateFilter.startDate).toISOString()
+        : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const apiEndDate = dateFilter.endDate
+        ? new Date(dateFilter.endDate).toISOString()
+        : new Date().toISOString();
+
+      params.append("startDate", apiStartDate);
+      params.append("endDate", apiEndDate);
 
       const entradasResponse = await fetch(
         `/api/dashboard/entradas?${params.toString()}`
@@ -310,8 +330,8 @@ const Dashboard = () => {
       // Para o componente PedidosTable, buscar os pedidos concluídos
       const pedidosParams = new URLSearchParams();
       pedidosParams.append("status", "confirmado");
-      pedidosParams.append("startDate", dateFilter.startDate);
-      pedidosParams.append("endDate", dateFilter.endDate);
+      pedidosParams.append("startDate", apiStartDate);
+      pedidosParams.append("endDate", apiEndDate);
 
       const pedidosResponse = await fetch(
         `/api/pedidos-compra?${pedidosParams.toString()}`
@@ -323,15 +343,15 @@ const Dashboard = () => {
 
       const pedidosData = await pedidosResponse.json();
       console.log("Pedidos carregados:", pedidosData.length);
-      const startDate = new Date(dateFilter.startDate);
-      const endDate = new Date(dateFilter.endDate);
+      const filterStartDate = new Date(apiStartDate);
+      const filterEndDate = new Date(apiEndDate);
 
       const filteredPedidos = pedidosData.filter((pedido: PedidoAPI) => {
         if (!pedido.dataConclusao) return false;
 
         const conclusionDate = new Date(pedido.dataConclusao);
         const isInRange =
-          conclusionDate >= startDate && conclusionDate <= endDate;
+          conclusionDate >= filterStartDate && conclusionDate <= filterEndDate;
 
         const hasProducts =
           pedido.produtos &&
@@ -344,8 +364,8 @@ const Dashboard = () => {
       console.log("Pedidos filtrados para exibição:", filteredPedidos.length);
       setEntradasData(filteredPedidos);
       const saidasParams = new URLSearchParams();
-      saidasParams.append("startDate", dateFilter.startDate);
-      saidasParams.append("endDate", dateFilter.endDate);
+      saidasParams.append("startDate", apiStartDate);
+      saidasParams.append("endDate", apiEndDate);
 
       const saidasResponse = await fetch(
         `/api/saida?${saidasParams.toString()}`
@@ -356,7 +376,7 @@ const Dashboard = () => {
         if (!saida.data) return false;
 
         const dataSaida = new Date(saida.data);
-        return dataSaida >= startDate && dataSaida <= endDate;
+        return dataSaida >= filterStartDate && dataSaida <= filterEndDate;
       });
 
       setSaidasData(filteredSaidas);
@@ -426,8 +446,8 @@ const Dashboard = () => {
         pedidosNaTabela: filteredPedidos.length,
         saidasNaTabela: filteredSaidas.length,
         filtroDatas: {
-          de: dateFilter.startDate,
-          ate: dateFilter.endDate,
+          de: apiStartDate,
+          ate: apiEndDate,
         },
       });
 
@@ -548,7 +568,7 @@ const Dashboard = () => {
     }
   }, [refreshTrigger, dateRange, dateFilter, handleRefresh, fetchSummaryData]);
 
-  // *** Manipulação de changes no dateRange ***
+  // Modificar o useEffect que manipula as mudanças no dateRange
   useEffect(() => {
     // Ignorar a primeira renderização (quando refreshTrigger é 0) ou se não tiver datas
     if (refreshTrigger === 0) return;
@@ -562,25 +582,46 @@ const Dashboard = () => {
     const endDate = new Date(dateRange.to);
     endDate.setHours(23, 59, 59, 999);
 
+    // Converter para UTC para garantir consistência entre ambientes
+    const startDateISO = startDate.toISOString();
+    const endDateISO = endDate.toISOString();
+
     console.log("Filtro de data atualizado:", {
-      de: startDate.toISOString(),
-      ate: endDate.toISOString(),
+      de: startDateISO,
+      ate: endDateISO,
       periodoSelecionado,
     });
 
-    // Atualizar o filtro de data sem disparar o refreshTrigger imediatamente
+    // Verificar se os filtros realmente mudaram para evitar atualizações desnecessárias
+    if (
+      dateFilter.startDate === startDateISO &&
+      dateFilter.endDate === endDateISO
+    ) {
+      console.log("Filtros de data não mudaram, ignorando atualização");
+      return;
+    }
+
+    // Atualizar o filtro de data
     setDateFilter({
-      startDate: startDate.toISOString(),
-      endDate: endDate.toISOString(),
+      startDate: startDateISO,
+      endDate: endDateISO,
     });
 
-    // Aguardar um pequeno delay antes de disparar o refresh para evitar loops
+    // Usar um timeout maior para evitar múltiplas atualizações em sequência
     const timeoutId = setTimeout(() => {
-      handleRefresh();
-    }, 50);
+      // Verificar novamente se ainda não estamos atualizando antes de disparar o refresh
+      if (!isUpdating.current) {
+        console.log("Disparando atualização após mudança nos filtros de data");
+        handleRefresh();
+      } else {
+        console.log(
+          "Já existe uma atualização em andamento, ignorando refresh após filtro"
+        );
+      }
+    }, 200); // Aumentado para 200ms para dar mais tempo entre atualizações
 
     return () => clearTimeout(timeoutId);
-  }, [dateRange, periodoSelecionado, handleRefresh]);
+  }, [dateRange, periodoSelecionado, handleRefresh, dateFilter]);
 
   // Função para aplicar período predefinido
   const aplicarPeriodoPredefinido = useCallback(
@@ -591,72 +632,102 @@ const Dashboard = () => {
         return;
       }
 
+      // Primeiro, atualizar o estado do período
       setPeriodoSelecionado(periodo as PeriodoKey);
 
-      const today = new Date();
+      // Criar datas usando UTC para garantir consistência
+      const now = new Date();
+      const today = new Date(now);
       today.setHours(23, 59, 59, 999);
 
-      let startDate = new Date();
+      let startDate = new Date(now);
       let endDate = new Date(today);
 
-      switch (periodo) {
-        case "hoje":
-          startDate = new Date();
-          startDate.setHours(0, 0, 0, 0);
-          endDate = new Date(today);
-          break;
-        case "ontem":
-          startDate = new Date();
-          startDate.setDate(today.getDate() - 1);
-          startDate.setHours(0, 0, 0, 0);
-          endDate = new Date();
-          endDate.setDate(today.getDate() - 1);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        case "7dias":
-          startDate = new Date();
-          startDate.setDate(today.getDate() - 6); // 7 dias inclui hoje
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case "15dias":
-          startDate = new Date();
-          startDate.setDate(today.getDate() - 14); // 15 dias inclui hoje
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case "30dias":
-          startDate = new Date();
-          startDate.setDate(today.getDate() - 29); // 30 dias inclui hoje
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case "90dias":
-          startDate = new Date();
-          startDate.setDate(today.getDate() - 89); // 90 dias inclui hoje
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case "esteMes":
-          startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case "mesPassado":
-          startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-          startDate.setHours(0, 0, 0, 0);
-          endDate = new Date(today.getFullYear(), today.getMonth(), 0);
-          endDate.setHours(23, 59, 59, 999);
-          break;
-        default:
-          startDate.setDate(today.getDate() - 29); // Padrão: últimos 30 dias
-          startDate.setHours(0, 0, 0, 0);
+      try {
+        switch (periodo) {
+          case "hoje":
+            startDate = new Date(now);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date(today);
+            break;
+          case "ontem":
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - 1);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date(now);
+            endDate.setDate(now.getDate() - 1);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          case "7dias":
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - 6); // 7 dias inclui hoje
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case "15dias":
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - 14); // 15 dias inclui hoje
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case "30dias":
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - 29); // 30 dias inclui hoje
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case "90dias":
+            startDate = new Date(now);
+            startDate.setDate(now.getDate() - 89); // 90 dias inclui hoje
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case "esteMes":
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            startDate.setHours(0, 0, 0, 0);
+            break;
+          case "mesPassado":
+            startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date(now.getFullYear(), now.getMonth(), 0);
+            endDate.setHours(23, 59, 59, 999);
+            break;
+          default:
+            startDate.setDate(now.getDate() - 29); // Padrão: últimos 30 dias
+            startDate.setHours(0, 0, 0, 0);
+        }
+
+        console.log(`Período aplicado: ${periodo}`, {
+          de: startDate.toISOString(),
+          ate: endDate.toISOString(),
+        });
+
+        // Atualizar o dateRange sem provocar loop
+        setDateRange({ from: startDate, to: endDate });
+
+        // Atualizar diretamente o dateFilter para evitar esperar o efeito
+        const startDateISO = startDate.toISOString();
+        const endDateISO = endDate.toISOString();
+
+        // Verificar se os filtros realmente mudaram
+        if (
+          dateFilter.startDate !== startDateISO ||
+          dateFilter.endDate !== endDateISO
+        ) {
+          setDateFilter({
+            startDate: startDateISO,
+            endDate: endDateISO,
+          });
+
+          // Aguardar antes de disparar o refresh
+          setTimeout(() => {
+            if (!isUpdating.current) {
+              handleRefresh();
+            }
+          }, 200);
+        }
+      } catch (error) {
+        console.error("Erro ao aplicar período:", error);
+        toast.error("Erro ao aplicar filtro de período");
       }
-
-      console.log(`Período aplicado: ${periodo}`, {
-        de: startDate.toISOString(),
-        ate: endDate.toISOString(),
-      });
-
-      // Atualizar o dateRange sem provocar loop
-      setDateRange({ from: startDate, to: endDate });
     },
-    [periodoSelecionado]
+    [periodoSelecionado, dateFilter, handleRefresh]
   );
 
   const calcularValorEntradas = (pedidos: PedidoAPI[]) => {
@@ -681,6 +752,47 @@ const Dashboard = () => {
     }, 0);
   };
 
+  // Função para limpar os filtros
+  const handleClearFilters = useCallback(() => {
+    // Mostrar feedback visual
+    toast.info("Filtros resetados", {
+      duration: 2000,
+    });
+
+    // Limpar filtro de busca
+    setSearchTerm("");
+
+    // Voltar para o período padrão de 30 dias
+    setPeriodoSelecionado("30dias");
+
+    // Criar datas novas para evitar problemas de referência
+    const today = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(today.getDate() - 29); // 30 dias (inclui hoje)
+
+    // Garantir horas corretas
+    thirtyDaysAgo.setHours(0, 0, 0, 0);
+    today.setHours(23, 59, 59, 999);
+
+    // Atualizar ambos dateRange e dateFilter para garantir consistência
+    setDateRange({
+      from: thirtyDaysAgo,
+      to: today,
+    });
+
+    setDateFilter({
+      startDate: thirtyDaysAgo.toISOString(),
+      endDate: today.toISOString(),
+    });
+
+    // Disparar atualização após um pequeno atraso para garantir que estados estão aplicados
+    setTimeout(() => {
+      if (!isUpdating.current) {
+        handleRefresh();
+      }
+    }, 200);
+  }, [handleRefresh]);
+
   return (
     <div className="container mx-auto px-4 py-6">
       {/* Header do dashboard */}
@@ -693,7 +805,20 @@ const Dashboard = () => {
         </div>
 
         {/* Botão de atualização dos dados */}
-        <div className="mt-4 sm:mt-0">
+        <div className="mt-4 sm:mt-0 flex space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleClearFilters}
+            className="gap-1.5"
+            disabled={
+              loading || loadingData || loadingEntradas || loadingSaidas
+            }
+          >
+            <XCircle className="h-4 w-4" />
+            <span>Limpar filtros</span>
+          </Button>
+
           <Button
             variant="outline"
             size="sm"
@@ -726,6 +851,7 @@ const Dashboard = () => {
         setPeriodoSelecionado={setPeriodoSelecionado}
         aplicarPeriodoPredefinido={aplicarPeriodoPredefinido}
         isLoading={loading || loadingData || loadingEntradas || loadingSaidas}
+        onClearFilters={handleClearFilters}
       />
 
       {/* Cards resumo com o componente */}

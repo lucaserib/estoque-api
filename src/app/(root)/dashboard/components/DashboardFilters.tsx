@@ -117,6 +117,7 @@ interface DashboardFiltersProps {
   setPeriodoSelecionado: (periodo: PeriodoKey) => void;
   aplicarPeriodoPredefinido: (periodo: string) => void;
   isLoading: boolean;
+  onClearFilters?: () => void;
 }
 
 export const DashboardFilters = ({
@@ -128,6 +129,7 @@ export const DashboardFilters = ({
   setPeriodoSelecionado,
   aplicarPeriodoPredefinido,
   isLoading,
+  onClearFilters,
 }: DashboardFiltersProps) => {
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [showMobileFilters, setShowMobileFilters] = useState(false);
@@ -150,6 +152,26 @@ export const DashboardFilters = ({
     return "Selecione um período";
   };
 
+  // Função para limpar os filtros com tratamento de erros
+  const handleClearFilters = () => {
+    try {
+      // Limpar o campo de pesquisa
+      setSearchTerm("");
+
+      // Verificar se temos o callback de limpar filtros
+      if (onClearFilters) {
+        onClearFilters();
+      } else {
+        // Caso não tenha o callback, fazer a limpeza padrão
+        // Voltar para 30 dias como padrão
+        setPeriodoSelecionado("30dias");
+        aplicarPeriodoPredefinido("30dias");
+      }
+    } catch (error) {
+      console.error("Erro ao limpar filtros:", error);
+    }
+  };
+
   return (
     <div className="mt-6 bg-white rounded-lg p-4 border shadow-sm">
       {/* Cabeçalho do filtro com toggle para mobile */}
@@ -159,17 +181,31 @@ export const DashboardFilters = ({
           <h3 className="text-sm font-medium">Filtros do Dashboard</h3>
         </div>
 
-        {!isDesktop && (
+        <div className="flex gap-2">
+          {/* Botão para limpar filtros */}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowMobileFilters(!showMobileFilters)}
+            onClick={handleClearFilters}
             className="flex items-center gap-1"
+            disabled={isLoading}
           >
-            <ArrowDownUp className="h-3 w-3" />
-            {showMobileFilters ? "Ocultar filtros" : "Mostrar filtros"}
+            <XCircle className="h-3 w-3" />
+            Limpar filtros
           </Button>
-        )}
+
+          {!isDesktop && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowMobileFilters(!showMobileFilters)}
+              className="flex items-center gap-1"
+            >
+              <ArrowDownUp className="h-3 w-3" />
+              {showMobileFilters ? "Ocultar filtros" : "Mostrar filtros"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Conteúdo principal dos filtros */}
