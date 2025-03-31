@@ -164,11 +164,7 @@ const FornecedoresPage = () => {
   };
 
   return (
-    <div
-      className={`flex-1 transition-all duration-300 ${
-        isSidebarCollapsed ? "md:ml-16" : "md:ml-64"
-      }`}
-    >
+    <div className={`flex-1 transition-all duration-300`}>
       <main className="max-w-6xl mx-auto p-6 ">
         <Header name="Gestão de Fornecedores" />
 
