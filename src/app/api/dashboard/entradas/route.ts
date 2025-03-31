@@ -133,10 +133,12 @@ export async function GET(request: NextRequest) {
         compra.quantidade * compra.custo * multiplicador;
     });
 
+    // Converter todos os dados para o formato esperado
+    // Os valores já estão em centavos, não precisamos multiplicar por 100
     const chartData = Object.keys(groupedData).map((key) => ({
       periodo: key,
       quantidade: groupedData[key].totalQuantidade,
-      valor: groupedData[key].totalCusto,
+      valor: Math.round(groupedData[key].totalCusto), // Valores já estão em centavos
     }));
 
     return NextResponse.json(
@@ -144,7 +146,7 @@ export async function GET(request: NextRequest) {
         chart: chartData,
         totals: {
           quantidade: totalQuantidade,
-          valor: totalCusto,
+          valor: Math.round(totalCusto), // Valores já estão em centavos
         },
         period: period,
         startDate: startDate.toISOString(),

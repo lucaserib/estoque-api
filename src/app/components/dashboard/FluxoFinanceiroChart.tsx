@@ -16,19 +16,21 @@ import {
 } from "recharts";
 import { Button } from "../ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { centsToBRL, formatBRL } from "@/utils/currency";
 
 interface FluxoFinanceiro {
-  entradas: number;
-  saidas: number;
-  custoSaidas: number;
-  variacaoSaidas: string;
+  entradas: number; // Valor monetário em centavos
+  saidas: number; // Quantidade
+  custoSaidas: number; // Valor monetário em centavos
+  variacaoSaidas: string; // Percentual
 }
 
 interface ChartDataItem {
   date: string;
-  entradas: number;
-  saidas: number;
-  custoSaidas: string;
+  entradasQuantidade: number; // Quantidade para gráfico de quantidade
+  valorEntradas: number; // Valor monetário em centavos para gráfico financeiro
+  saidasQuantidade: number; // Quantidade para gráfico de quantidade
+  custoSaidas: number; // Valor monetário em centavos para gráfico financeiro
 }
 
 const FluxoFinanceiroChart = () => {
@@ -57,7 +59,18 @@ const FluxoFinanceiroChart = () => {
         const response = await fetch(`/api/dashboard/fluxo-financeiro${query}`);
         const result = await response.json();
 
-        setData(result);
+        // Converte custoSaidas para number se vier como string
+        setData({
+          ...result,
+          custoSaidas:
+            typeof result.custoSaidas === "string"
+              ? parseFloat(result.custoSaidas)
+              : result.custoSaidas,
+          entradas:
+            typeof result.entradas === "string"
+              ? parseFloat(result.entradas)
+              : result.entradas,
+        });
 
         // Data for the trend chart - mock data for demonstration
         // In a real app, you would fetch this historical data from the API
@@ -65,14 +78,45 @@ const FluxoFinanceiroChart = () => {
         const daysInPeriod =
           period === "semanal" ? 7 : period === "mensal" ? 30 : 12;
 
+        // Estimar quantidades aproximadas com base no valor total
+        // Os valores financeiros são em centavos
+        const precoMedioPorItemCentavos =
+          result.entradas / result.saidas || 10000; // Valor padrão se não houver saídas
+        const entradasQuantidadeTotal = Math.round(
+          result.entradas / precoMedioPorItemCentavos
+        );
+
         // Generate dates for the period
         for (let i = 0; i < daysInPeriod; i++) {
           const date = new Date(startDate);
-          date.setDate(startDate.getDate() + i);
+          if (period === "anual") {
+            // Avança meses para período anual
+            date.setMonth(startDate.getMonth() + i);
+          } else {
+            // Avança dias para períodos semanais e mensais
+            date.setDate(startDate.getDate() + i);
+          }
 
-          // Generate realistic mock data with some randomness but following a trend
-          const baseEntradas = result.entradas / daysInPeriod;
-          const baseSaidas = result.saidas / daysInPeriod;
+          // Fator de distribuição para este dia (variação realista)
+          const fatorDistribuicao = 0.7 + Math.random() * 0.6;
+
+          // Calcular quantidades diárias
+          const saidasQuantidadeDiaria = Math.round(
+            (result.saidas / daysInPeriod) * fatorDistribuicao
+          );
+          const entradasQuantidadeDiaria = Math.round(
+            (entradasQuantidadeTotal / daysInPeriod) * fatorDistribuicao
+          );
+
+          // Calcular valores diários em centavos
+          const custoDiarioCentavos =
+            typeof result.custoSaidas === "string"
+              ? (parseFloat(result.custoSaidas) / daysInPeriod) *
+                fatorDistribuicao
+              : (result.custoSaidas / daysInPeriod) * fatorDistribuicao;
+
+          const valorEntradasDiarioCentavos =
+            (result.entradas / daysInPeriod) * fatorDistribuicao;
 
           mockHistoricalData.push({
             date:
@@ -82,13 +126,10 @@ const FluxoFinanceiroChart = () => {
                     day: "2-digit",
                     month: "2-digit",
                   }),
-            entradas: Math.round(baseEntradas * (0.7 + Math.random() * 0.6)),
-            saidas: Math.round(baseSaidas * (0.7 + Math.random() * 0.6)),
-            custoSaidas: (
-              baseSaidas *
-              (0.7 + Math.random() * 0.6) *
-              (result.custoSaidas / result.saidas)
-            ).toFixed(2),
+            entradasQuantidade: entradasQuantidadeDiaria,
+            valorEntradas: valorEntradasDiarioCentavos,
+            saidasQuantidade: saidasQuantidadeDiaria,
+            custoSaidas: custoDiarioCentavos,
           });
         }
 
@@ -109,29 +150,32 @@ const FluxoFinanceiroChart = () => {
     ? parseFloat(data.variacaoSaidas) >= 0
     : false;
 
-  // Formatter para o tooltip - corrigindo o erro de tipo
-  const formatTooltipValue = (
+  // Formatador para o tooltip de quantidade
+  const formatTooltipQuantidade = (
     value: number | string | (number | string)[] | undefined
   ) => {
     if (typeof value === "number") {
       return value.toLocaleString("pt-BR") + " itens";
     }
     if (Array.isArray(value)) {
-      return value.map((v) => v.toLocaleString("pt-BR")).join(", ") + " itens";
+      return (
+        value
+          .map((v) => parseFloat(String(v)).toLocaleString("pt-BR"))
+          .join(", ") + " itens"
+      );
     }
     return value;
   };
 
+  // Formatador para o tooltip de valores monetários (valores são em centavos)
   const formatTooltipCurrency = (
     value: number | string | (number | string)[] | undefined
   ) => {
     if (Array.isArray(value)) {
-      return value
-        .map((v) => "R$ " + parseFloat(String(v)).toLocaleString("pt-BR"))
-        .join(", ");
+      return value.map((v) => centsToBRL(parseFloat(String(v)))).join(", ");
     }
-    if (value) {
-      return "R$ " + parseFloat(String(value)).toLocaleString("pt-BR");
+    if (value !== undefined && value !== null) {
+      return centsToBRL(parseFloat(String(value)));
     }
     return value;
   };
@@ -187,10 +231,7 @@ const FluxoFinanceiroChart = () => {
                     Custo das Saídas
                   </p>
                   <p className="text-lg font-bold">
-                    R${" "}
-                    {parseFloat(data.custoSaidas.toString()).toLocaleString(
-                      "pt-BR"
-                    )}
+                    {centsToBRL(data.custoSaidas)}
                   </p>
                 </div>
               </div>
@@ -301,13 +342,13 @@ const FluxoFinanceiroChart = () => {
                     <XAxis dataKey="date" tick={{ fontSize: 12 }} />
                     <YAxis tick={{ fontSize: 12 }} />
                     <Tooltip
-                      formatter={formatTooltipValue}
+                      formatter={formatTooltipQuantidade}
                       labelFormatter={(label) => `Data: ${label}`}
                     />
                     <Legend />
                     <Area
                       type="monotone"
-                      dataKey="entradas"
+                      dataKey="entradasQuantidade"
                       name="Entradas"
                       stroke="#3b82f6"
                       fillOpacity={1}
@@ -315,7 +356,7 @@ const FluxoFinanceiroChart = () => {
                     />
                     <Area
                       type="monotone"
-                      dataKey="saidas"
+                      dataKey="saidasQuantidade"
                       name="Saídas"
                       stroke="#f97316"
                       fillOpacity={1}
@@ -336,6 +377,24 @@ const FluxoFinanceiroChart = () => {
                     margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                   >
                     <defs>
+                      <linearGradient
+                        id="colorEntradas"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="5%"
+                          stopColor="#3b82f6"
+                          stopOpacity={0.8}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor="#3b82f6"
+                          stopOpacity={0.2}
+                        />
+                      </linearGradient>
                       <linearGradient
                         id="colorCusto"
                         x1="0"
@@ -363,6 +422,14 @@ const FluxoFinanceiroChart = () => {
                       labelFormatter={(label) => `Data: ${label}`}
                     />
                     <Legend />
+                    <Area
+                      type="monotone"
+                      dataKey="valorEntradas"
+                      name="Valor das Entradas"
+                      stroke="#3b82f6"
+                      fillOpacity={1}
+                      fill="url(#colorEntradas)"
+                    />
                     <Area
                       type="monotone"
                       dataKey="custoSaidas"

@@ -22,11 +22,18 @@ import {
   TrendingDown,
   TrendingUp,
 } from "lucide-react";
+import { formatBRL, exibirValorEmReais } from "@/utils/currency";
 
 interface EntradaData {
   periodo: string;
   quantidade: number;
+  valor: number; // Valor em centavos
+}
+
+interface BarDetailProps {
+  periodo: string;
   valor: number;
+  quantidade: number;
 }
 
 const EntradasChart = () => {
@@ -34,6 +41,7 @@ const EntradasChart = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<EntradaData[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [selectedBar, setSelectedBar] = useState<BarDetailProps | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,7 +57,9 @@ const EntradasChart = () => {
 
         const result = await response.json();
         if (result && result.chart) {
+          // A API retorna valores em centavos
           setData(result.chart);
+          setSelectedBar(null); // Reset seleção quando mudar o período
         } else {
           setData([]);
         }
@@ -98,6 +108,15 @@ const EntradasChart = () => {
           data[0]
         )
       : null;
+
+  // Handler para clique na barra
+  const handleBarClick = (item: EntradaData) => {
+    setSelectedBar({
+      periodo: item.periodo,
+      valor: item.valor,
+      quantidade: item.quantidade,
+    });
+  };
 
   if (error) {
     return (
@@ -162,13 +181,28 @@ const EntradasChart = () => {
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm font-medium text-blue-600">Valor Total</p>
                 <h3 className="text-2xl font-bold mt-1">
-                  R${" "}
-                  {totalValor.toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                  })}
+                  {exibirValorEmReais(totalValor)}
                 </h3>
               </div>
             </div>
+
+            {selectedBar && (
+              <div className="bg-yellow-50 p-3 rounded-lg mb-4 border border-yellow-200">
+                <p className="text-sm font-semibold text-yellow-800">
+                  {selectedBar.periodo}
+                </p>
+                <div className="flex justify-between mt-1">
+                  <p className="text-sm text-yellow-700">
+                    <span className="font-medium">Quantidade:</span>{" "}
+                    {selectedBar.quantidade.toLocaleString("pt-BR")} itens
+                  </p>
+                  <p className="text-sm text-yellow-700">
+                    <span className="font-medium">Valor:</span>{" "}
+                    {exibirValorEmReais(selectedBar.valor)}
+                  </p>
+                </div>
+              </div>
+            )}
 
             <div className="h-52 flex items-center justify-center overflow-hidden">
               {data.length === 0 ? (
@@ -185,7 +219,11 @@ const EntradasChart = () => {
                         style={{ width: `${100 / data.length}%` }}
                       >
                         <div
-                          className="bg-green-500 hover:bg-green-600 transition-colors w-4/5 rounded-t-md"
+                          className={`${
+                            selectedBar?.periodo === item.periodo
+                              ? "bg-green-600"
+                              : "bg-green-500 hover:bg-green-600"
+                          } transition-colors w-4/5 rounded-t-md cursor-pointer`}
                           style={{
                             height: `${Math.max(
                               (item.valor /
@@ -194,12 +232,15 @@ const EntradasChart = () => {
                               5
                             )}%`,
                           }}
-                          title={`R$ ${item.valor.toLocaleString("pt-BR", {
-                            minimumFractionDigits: 2,
-                          })}`}
+                          title={exibirValorEmReais(item.valor)}
+                          onClick={() => handleBarClick(item)}
                         ></div>
                         <p
-                          className="text-xs mt-1 truncate w-full text-center"
+                          className={`text-xs mt-1 truncate w-full text-center ${
+                            selectedBar?.periodo === item.periodo
+                              ? "font-bold text-green-700"
+                              : ""
+                          }`}
                           title={item.periodo}
                         >
                           {item.periodo}
@@ -235,10 +276,7 @@ const EntradasChart = () => {
                   </span>{" "}
                   com{" "}
                   <span className="font-medium">
-                    R${" "}
-                    {periodoMaisEntrada.valor.toLocaleString("pt-BR", {
-                      minimumFractionDigits: 2,
-                    })}
+                    {exibirValorEmReais(periodoMaisEntrada.valor)}
                   </span>
                 </p>
               )}

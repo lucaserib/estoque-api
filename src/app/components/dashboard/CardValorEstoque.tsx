@@ -10,19 +10,20 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, TrendingUp, AlertCircle } from "lucide-react";
+import { exibirValorEmReais } from "@/utils/currency";
 
 interface ValorEstoqueData {
-  valorTotal: string;
+  valorTotal: number; // Valor em centavos
   quantidadeTotal: number;
-  valorMedio?: string;
+  valorMedio?: number; // Valor em centavos
 }
 
 const CardValorEstoque = () => {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ValorEstoqueData>({
-    valorTotal: "0.00",
+    valorTotal: 0,
     quantidadeTotal: 0,
-    valorMedio: "0.00",
+    valorMedio: 0,
   });
   const [error, setError] = useState<string | null>(null);
 
@@ -38,16 +39,15 @@ const CardValorEstoque = () => {
 
         const result = await response.json();
 
-        // Calcular valor médio por item
+        // Calcular valor médio por item (em centavos)
         const valorMedio =
           result.quantidadeTotal > 0
-            ? (parseFloat(result.valorTotal) / result.quantidadeTotal).toFixed(
-                2
-              )
-            : "0.00";
+            ? Math.round(result.valorTotal / result.quantidadeTotal)
+            : 0;
 
         setData({
-          ...result,
+          valorTotal: result.valorTotal,
+          quantidadeTotal: result.quantidadeTotal,
           valorMedio,
         });
       } catch (err) {
@@ -99,10 +99,7 @@ const CardValorEstoque = () => {
               <div className="bg-blue-50 p-4 rounded-lg">
                 <p className="text-sm font-medium text-blue-600">Valor Total</p>
                 <h3 className="text-2xl font-bold mt-1">
-                  R${" "}
-                  {parseFloat(data.valorTotal).toLocaleString("pt-BR", {
-                    minimumFractionDigits: 2,
-                  })}
+                  {exibirValorEmReais(data.valorTotal)}
                 </h3>
               </div>
               <div className="bg-green-50 p-4 rounded-lg">
@@ -118,10 +115,9 @@ const CardValorEstoque = () => {
                 Valor Médio por Item
               </p>
               <h3 className="text-2xl font-bold mt-1">
-                R${" "}
-                {parseFloat(data.valorMedio || "0").toLocaleString("pt-BR", {
-                  minimumFractionDigits: 2,
-                })}
+                {data.valorMedio
+                  ? exibirValorEmReais(data.valorMedio)
+                  : "R$ 0,00"}
               </h3>
               <p className="text-xs text-gray-500 mt-2">
                 Representa o custo médio por item no seu estoque
