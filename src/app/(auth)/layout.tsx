@@ -7,7 +7,7 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     // Aplicar dark mode na tela de autenticação
-    setTheme("dark");
+    setTheme("light");
 
     // Limpar o tema ao desmontar o componente (quando navegar para fora)
     return () => {
@@ -30,16 +30,13 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
       />
 
       {/* Container principal */}
-      <div className="flex w-full h-full relative z-10">
+      <div className="flex w-full h-full relative z-10 ml-20">
         {/* Painel de autenticação à esquerda */}
-        <div className="w-full md:w-[500px] lg:w-[550px] flex flex-col justify-center px-10 py-10">
-          <div className="w-full max-w-[400px]">{children}</div>
+        <div className="w-full md:w-[500px] lg:w-[550px] flex flex-col justify-start px-10 py-5">
+          <div className="w-full max-w-[350px]">{children}</div>
         </div>
 
-        {/* Área à direita (apenas para design) */}
-        <div className="hidden md:block flex-1">
-          {/* Deliberadamente vazio */}
-        </div>
+        <div className="hidden md:block flex-1"></div>
       </div>
     </div>
   );

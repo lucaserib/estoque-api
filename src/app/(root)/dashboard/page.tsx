@@ -152,23 +152,18 @@ const Dashboard = () => {
   const [loadingEntradas, setLoadingEntradas] = useState(false);
   const [loadingSaidas, setLoadingSaidas] = useState(false);
 
-  // Referência para controlar atualizações
   const lastRefreshTimestamp = useRef(0);
   const isUpdating = useRef(false);
 
-  // Mover esta função para antes de fetchSummaryData que a utiliza
   const carregarDadosVisualizacoes = useCallback(async () => {
     try {
-      // Remoção da busca por categorias
       console.log("Dados das visualizações atualizados");
     } catch (error) {
       console.error("Erro ao carregar dados das visualizações:", error);
     }
   }, []);
 
-  // Função para buscar dados do resumo
   const fetchSummaryData = useCallback(async () => {
-    // Evitar atualizações simultâneas
     if (isUpdating.current) {
       console.log("Já existe uma atualização em andamento, ignorando");
       return;
@@ -182,14 +177,12 @@ const Dashboard = () => {
       return;
     }
 
-    // Resetar estados de loading
     setLoading(true);
     setLoadingEntradas(true);
     setLoadingSaidas(true);
     setLoadingData(true);
 
     try {
-      // Debug log para verificar os filtros sendo aplicados
       console.log("Buscando dados com filtros:", {
         startDate: dateFilter.startDate,
         endDate: dateFilter.endDate,
@@ -197,24 +190,19 @@ const Dashboard = () => {
         refreshTrigger,
       });
 
-      // Buscar valor do estoque
       const stockValueResponse = await fetch("/api/dashboard/valor-estoque");
       const stockValueData = await stockValueResponse.json();
 
-      // A API retorna valorTotal já em centavos
       const valorTotalEstoque = stockValueData.valorTotal || 0;
 
-      // Buscar estoque crítico
       const lowStockResponse = await fetch("/api/dashboard/estoque-seguranca");
       const lowStockData = await lowStockResponse.json();
 
-      // Construir parâmetros para as APIs com filtros de data
       const params = new URLSearchParams();
       params.append("period", "custom");
       params.append("startDate", dateFilter.startDate);
       params.append("endDate", dateFilter.endDate);
 
-      // Usar a API específica de entradas para o dashboard com os filtros de data
       const entradasResponse = await fetch(
         `/api/dashboard/entradas?${params.toString()}`
       );
@@ -242,22 +230,16 @@ const Dashboard = () => {
 
       const pedidosData = await pedidosResponse.json();
       console.log("Pedidos carregados:", pedidosData.length);
-
-      // Filtrar apenas os pedidos dentro do intervalo de datas
       const startDate = new Date(dateFilter.startDate);
       const endDate = new Date(dateFilter.endDate);
 
-      // Filtrar pedidos para garantir que estejam dentro do intervalo de datas
       const filteredPedidos = pedidosData.filter((pedido: PedidoAPI) => {
-        // Verificar se o pedido tem data de conclusão
         if (!pedido.dataConclusao) return false;
 
-        // Verificar se a data está no intervalo
         const conclusionDate = new Date(pedido.dataConclusao);
         const isInRange =
           conclusionDate >= startDate && conclusionDate <= endDate;
 
-        // Verificar se tem produtos
         const hasProducts =
           pedido.produtos &&
           Array.isArray(pedido.produtos) &&
@@ -268,8 +250,6 @@ const Dashboard = () => {
 
       console.log("Pedidos filtrados para exibição:", filteredPedidos.length);
       setEntradasData(filteredPedidos);
-
-      // Buscar saídas com filtro de data
       const saidasParams = new URLSearchParams();
       saidasParams.append("startDate", dateFilter.startDate);
       saidasParams.append("endDate", dateFilter.endDate);
@@ -279,7 +259,6 @@ const Dashboard = () => {
       );
       const saidasData = await saidasResponse.json();
 
-      // Verificar se ainda precisamos de filtragem manual de datas
       const filteredSaidas = saidasData.filter((saida: Saida) => {
         if (!saida.data) return false;
 
@@ -290,19 +269,16 @@ const Dashboard = () => {
       setSaidasData(filteredSaidas);
       console.log("Saídas filtradas:", filteredSaidas.length);
 
-      // Calcular contagens e valores das entradas usando os dados da API especializada
       let entriesCount = 0;
       let entriesValue = 0;
 
       if (entradasDataResponse && entradasDataResponse.totals) {
-        // Usar os totais fornecidos pela API de entradas
         entriesCount = entradasDataResponse.totals.quantidade || 0;
         entriesValue = entradasDataResponse.totals.valor || 0;
         console.log(
           `Usando dados da API: ${entriesCount} itens, valor ${entriesValue}`
         );
       } else {
-        // Caso contrário, calcular dos pedidos filtrados (fallback)
         entriesCount = filteredPedidos.reduce(
           (count: number, pedido: PedidoAPI) => {
             if (!pedido.produtos || !Array.isArray(pedido.produtos))
@@ -345,7 +321,6 @@ const Dashboard = () => {
         );
       }
 
-      // Log detalhado para depuração
       console.log("Comparação de valores:", {
         entradasAPI: {
           quantidade: entradasDataResponse?.totals?.quantidade || 0,
@@ -363,7 +338,6 @@ const Dashboard = () => {
         },
       });
 
-      // Calcular quantidade total de itens de saída
       const outputsCount = filteredSaidas.reduce(
         (count: number, saida: Saida) => {
           if (!saida.detalhes || !Array.isArray(saida.detalhes)) return count;
@@ -378,7 +352,6 @@ const Dashboard = () => {
         0
       );
 
-      // Atualizar dados de resumo
       setSummaryData({
         totalValue: valorTotalEstoque,
         lowStockCount: lowStockData.length || 0,
@@ -387,19 +360,16 @@ const Dashboard = () => {
         outputsCount: outputsCount || 0,
       });
 
-      // Log para debug
       console.log("Valor total do estoque:", {
         valorEmCentavos: valorTotalEstoque,
         valorFormatado: exibirValorEmReais(valorTotalEstoque),
       });
 
-      // Buscar dados para os gráficos e visualizações adicionais
       await carregarDadosVisualizacoes();
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
       toast.error("Erro ao carregar dados do dashboard");
 
-      // Definir valores seguros em caso de erro
       setSummaryData({
         totalValue: 0,
         lowStockCount: 0,
@@ -428,25 +398,19 @@ const Dashboard = () => {
       return;
     }
 
-    // Armazenar timestamp da atualização
     lastRefreshTimestamp.current = Date.now();
 
-    // Resetar estados de loading
     setLoadingData(true);
     setLoadingEntradas(true);
     setLoadingSaidas(true);
 
-    // Incrementar o trigger
     setRefreshTrigger((prev) => prev + 1);
   }, []);
 
-  // *** ÚNICO useEffect para gerenciar inicialização e atualizações ***
   useEffect(() => {
-    // Inicialização - executada apenas uma vez
     if (refreshTrigger === 0) {
       console.log("Dashboard montado - inicializando");
 
-      // Configurar período padrão se necessário
       if (!dateRange) {
         setDateRange({
           from: subDays(new Date(), 30),

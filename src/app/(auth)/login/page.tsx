@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import Image from "next/image";
+import Logo from "../../../../public/logo-bco.svg";
 import "../../../../styles/global.css";
 
 const LoginPage = () => {
@@ -49,26 +49,13 @@ const LoginPage = () => {
   return (
     <div className="w-full">
       {/* Logo */}
-      <div className="mb-12">
-        <div className="flex items-center space-x-3">
-          <Image
-            src="/vendexy-logo-white.svg"
-            alt="Vendexy Gestão"
-            width={50}
-            height={50}
-            className="w-10 h-10"
-          />
-          <h1 className="text-white text-2xl font-bold">vendexy gestão</h1>
+
+      <div className="mt-5">
+        <div className="flex flex-col space-x-3">
+          <Logo className="w-[250px] h-[250px]" />
         </div>
       </div>
 
-      {/* Títulos grandes */}
-      <div className="mb-12">
-        <h2 className="text-white text-5xl font-bold mb-2">Olá, seja</h2>
-        <h2 className="text-white text-5xl font-bold mb-10">Bem-vindo</h2>
-      </div>
-
-      {/* Botão Google */}
       <button
         onClick={handleGoogleSignIn}
         disabled={isLoading}
@@ -142,7 +129,7 @@ const LoginPage = () => {
         </button>
       </form>
 
-      <div className="mt-6 flex items-center justify-between">
+      <div className="mt-6 flex flex-col items-center justify-between">
         <div className="text-sm">
           <span className="text-gray-400">Não tem uma conta? </span>
           <Link
@@ -159,6 +146,10 @@ const LoginPage = () => {
           >
             Esqueceu a senha?
           </Link>
+        </div>
+        <div className="flex flex-col space-x-3 mt-10 justify-end">
+          <h2 className="text-white text-6xl font-bold mb-2 ">Olá, seja</h2>
+          <h2 className="text-white text-6xl font-bold mb-10">Bem vindo!</h2>
         </div>
       </div>
     </div>
