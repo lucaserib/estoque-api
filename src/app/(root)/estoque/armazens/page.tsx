@@ -32,11 +32,13 @@ import {
   Warehouse,
   Trash2,
   LucideLoaderCircle,
+  CalculatorIcon,
+  ClockIcon,
+  PencilIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import Header from "@/app/components/Header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import LoadingSpinner from "@/app/components/LoadingSpinner";
 import { EstoqueDeleteDialog } from "@/components/EstoqueDeleteDialog";
 import { toast } from "sonner";
 
@@ -83,6 +85,15 @@ const EstoquePage = () => {
     produtoNome: string;
     armazemNome: string;
   } | null>(null);
+  const [estoqueSegurancaMode, setEstoqueSegurancaMode] = useState<
+    "manual" | "auto"
+  >("manual");
+  const [tempoReposicao, setTempoReposicao] = useState<number>(7); // Padrão: 7 dias
+  const [calculandoEstoqueSeguranca, setCalculandoEstoqueSeguranca] =
+    useState(false);
+  const [mediaConsumoDiario, setMediaConsumoDiario] = useState<number | null>(
+    null
+  );
 
   const fetchArmazens = useCallback(async () => {
     setIsLoading(true);
@@ -118,6 +129,33 @@ const EstoquePage = () => {
   useEffect(() => {
     if (activeWarehouse) fetchEstoque(activeWarehouse);
   }, [activeWarehouse, refreshTrigger]);
+
+  const calcularEstoqueSeguranca = async (produtoId: string) => {
+    setCalculandoEstoqueSeguranca(true);
+    try {
+      const response = await fetch(
+        `/api/produtos/consumo-diario?produtoId=${produtoId}&armazemId=${activeWarehouse}`
+      );
+
+      if (!response.ok) {
+        throw new Error("Erro ao calcular consumo diário");
+      }
+
+      const data = await response.json();
+      const mediaDiaria = data.mediaDiaria || 0;
+
+      setMediaConsumoDiario(mediaDiaria);
+
+      const estoqueSegurancaCalculado = Math.ceil(mediaDiaria * tempoReposicao);
+
+      setEstoqueSeguranca(estoqueSegurancaCalculado);
+    } catch (error) {
+      console.error("Erro ao calcular estoque de segurança:", error);
+      toast.error("Não foi possível calcular o estoque de segurança");
+    } finally {
+      setCalculandoEstoqueSeguranca(false);
+    }
+  };
 
   const fetchEstoque = async (armazemId: string) => {
     setIsLoading(true);
@@ -622,7 +660,6 @@ const EstoquePage = () => {
         </>
       )}
 
-      {/* Modal for editing product stock */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
@@ -664,18 +701,116 @@ const EstoquePage = () => {
                 >
                   Estoque de Segurança
                 </label>
-                <Input
-                  id="estoqueSeguranca"
-                  type="number"
-                  value={estoqueSeguranca ?? ""}
-                  onChange={(e) =>
-                    setEstoqueSeguranca(parseInt(e.target.value) || 0)
-                  }
-                  min={0}
-                />
-                <p className="text-xs text-gray-500">
-                  Nível mínimo recomendado antes de reposição
-                </p>
+
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <Tabs
+                      value={estoqueSegurancaMode}
+                      onValueChange={(v) =>
+                        setEstoqueSegurancaMode(v as "manual" | "auto")
+                      }
+                    >
+                      <TabsList>
+                        <TabsTrigger
+                          value="manual"
+                          className="flex items-center gap-1"
+                        >
+                          <PencilIcon className="h-3.5 w-3.5" />
+                          Manual
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="auto"
+                          className="flex items-center gap-1"
+                        >
+                          <CalculatorIcon className="h-3.5 w-3.5" />
+                          Automático
+                        </TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="manual">
+                        <Input
+                          id="estoqueSeguranca"
+                          type="number"
+                          value={estoqueSeguranca ?? ""}
+                          onChange={(e) =>
+                            setEstoqueSeguranca(parseInt(e.target.value) || 0)
+                          }
+                          min={0}
+                          className="w-full"
+                        />
+                      </TabsContent>
+                      <TabsContent value="auto">
+                        <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                          <div className="space-y-2">
+                            <label
+                              htmlFor="tempoReposicao"
+                              className="text-sm font-medium flex items-center gap-1"
+                            >
+                              <ClockIcon className="h-3.5 w-3.5 text-blue-600" />
+                              Tempo médio de reposição (dias)
+                            </label>
+                            <Input
+                              id="tempoReposicao"
+                              type="number"
+                              value={tempoReposicao}
+                              onChange={(e) =>
+                                setTempoReposicao(parseInt(e.target.value) || 7)
+                              }
+                              min={1}
+                              className="w-full"
+                            />
+                          </div>
+
+                          <Button
+                            onClick={() =>
+                              calcularEstoqueSeguranca(
+                                produtoEmEdicao.produto.id
+                              )
+                            }
+                            disabled={calculandoEstoqueSeguranca}
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                          >
+                            {calculandoEstoqueSeguranca ? (
+                              <>
+                                <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
+                                Calculando...
+                              </>
+                            ) : (
+                              <>
+                                <CalculatorIcon className="h-3.5 w-3.5 mr-2" />
+                                Calcular Estoque de Segurança
+                              </>
+                            )}
+                          </Button>
+
+                          {mediaConsumoDiario !== null && (
+                            <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                              <p className="font-medium">Dados para cálculo:</p>
+                              <ul className="list-disc pl-4 mt-1 space-y-1">
+                                <li>
+                                  Consumo médio diário:{" "}
+                                  {mediaConsumoDiario.toFixed(2)} unidades/dia
+                                </li>
+                                <li>
+                                  Tempo de reposição: {tempoReposicao} dias
+                                </li>
+                                <li>
+                                  Estoque de segurança calculado:{" "}
+                                  {estoqueSeguranca} unidades
+                                </li>
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </div>
+
+                  <p className="text-xs text-gray-500">
+                    Nível mínimo recomendado antes de reposição
+                  </p>
+                </div>
               </div>
             </div>
           )}
@@ -703,7 +838,6 @@ const EstoquePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Modal for creating new warehouse */}
       <Dialog open={isNewWarehouseOpen} onOpenChange={setIsNewWarehouseOpen}>
         <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
