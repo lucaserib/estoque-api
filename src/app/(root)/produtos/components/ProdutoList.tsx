@@ -21,6 +21,7 @@ import { ProdutoPagination } from "./ProdutoPagination";
 import { ProdutoDetalhesDialog } from "./dialogs/ProdutoDetalhesDialog";
 import { ProdutoEditarDialog } from "./dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "./dialogs/ProdutoFornecedorDialog";
+import EANDisplay from "@/components/EANDisplay";
 
 interface ProdutoListProps {
   produtos: Produto[];
@@ -211,8 +212,8 @@ const ProdutoList = ({
                       <TableCell className="text-gray-600 dark:text-gray-300">
                         {produto.sku}
                       </TableCell>
-                      <TableCell className="text-gray-600 dark:text-gray-300">
-                        {produto.codigoEAN || "N/A"}
+                      <TableCell>
+                        <EANDisplay produto={produto} />
                       </TableCell>
                       <TableCell className="text-gray-600 dark:text-gray-300">
                         {produto.custoMedio

@@ -1,7 +1,9 @@
 // src/app/api/kits/route.ts
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { serializeWithEAN } from "@/utils/api";
+import { prepareBigIntEAN } from "@/utils/api";
 
 const prisma = new PrismaClient();
 
@@ -66,7 +68,7 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      return new Response(JSON.stringify(serializeBigInt(kit)), {
+      return new Response(JSON.stringify(serializeWithEAN(kit)), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -122,7 +124,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return new Response(JSON.stringify(serializeBigInt(produtos)), {
+    return new Response(JSON.stringify(serializeWithEAN(produtos)), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -255,7 +257,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return new Response(JSON.stringify(serializeBigInt(novoKit)), {
+    return new Response(JSON.stringify(serializeWithEAN(novoKit)), {
       status: 201,
       headers: { "Content-Type": "application/json" },
     });

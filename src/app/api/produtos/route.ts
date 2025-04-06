@@ -2,6 +2,8 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { serializeWithEAN } from "@/utils/api";
+import { prepareBigIntEAN } from "@/utils/api";
 
 const prisma = new PrismaClient();
 
@@ -65,7 +67,7 @@ export async function GET(req: NextRequest) {
         },
       });
 
-      return new Response(JSON.stringify(serializeBigInt(produto)), {
+      return new Response(JSON.stringify(serializeWithEAN(produto)), {
         status: 200,
         headers: { "Content-Type": "application/json" },
       });
@@ -143,7 +145,7 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    return new Response(JSON.stringify(serializeBigInt(produtos)), {
+    return new Response(JSON.stringify(serializeWithEAN(produtos)), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
@@ -189,7 +191,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           nome,
           sku,
-          ean: safeEANConversion(ean),
+          ean: prepareBigIntEAN(ean),
           isKit: true,
           componentes: {
             create: componentes.map(
@@ -221,7 +223,7 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      return new Response(JSON.stringify(serializeBigInt(novoKit)), {
+      return new Response(JSON.stringify(serializeWithEAN(novoKit)), {
         status: 201,
         headers: { "Content-Type": "application/json" },
       });
@@ -236,7 +238,7 @@ export async function POST(req: NextRequest) {
           isKit: false,
         },
       });
-      return new Response(JSON.stringify(serializeBigInt(novoProduto)), {
+      return new Response(JSON.stringify(serializeWithEAN(novoProduto)), {
         status: 201,
         headers: { "Content-Type": "application/json" },
       });
@@ -273,7 +275,7 @@ export async function PUT(req: NextRequest) {
         ean: safeEANConversion(ean),
       },
     });
-    return new Response(JSON.stringify(serializeBigInt(produtoAtualizado)), {
+    return new Response(JSON.stringify(serializeWithEAN(produtoAtualizado)), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

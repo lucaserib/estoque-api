@@ -2,17 +2,9 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient, Produto } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { serializeWithEAN } from "@/utils/api";
 
 const prisma = new PrismaClient();
-
-// Função para serializar BigInt como string
-const serializeBigInt = (obj: unknown): unknown => {
-  return JSON.parse(
-    JSON.stringify(obj, (key, value) =>
-      typeof value === "bigint" ? value.toString() : value
-    )
-  );
-};
 
 interface SaidaProduto {
   produtoId: string;
@@ -221,7 +213,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Retornar o resultado completo
-    return NextResponse.json(serializeBigInt(result), { status: 201 });
+    return NextResponse.json(serializeWithEAN(result), { status: 201 });
   } catch (error) {
     console.error("Erro ao registrar saída:", error);
 
@@ -255,7 +247,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(serializeBigInt(saidas), { status: 200 });
+    return NextResponse.json(serializeWithEAN(saidas), { status: 200 });
   } catch (error) {
     console.error("Erro ao buscar saídas:", error);
     return NextResponse.json(

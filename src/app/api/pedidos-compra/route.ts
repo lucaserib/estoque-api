@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "../../../../lib/prisma";
 import { Prisma, PedidoCompra } from "@prisma/client";
+import { serializeWithEAN } from "@/utils/api";
 
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
@@ -146,7 +147,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(serializeBigInt(pedido), { status: 201 });
+    return NextResponse.json(serializeWithEAN(pedido), { status: 201 });
   } catch (error) {
     console.error("Erro ao criar pedido de compra:", error);
     return NextResponse.json(
@@ -284,7 +285,7 @@ export async function GET(request: NextRequest) {
       return pedidoWithProdutos;
     });
 
-    return NextResponse.json(serializeBigInt(pedidosWithProducts));
+    return NextResponse.json(serializeWithEAN(pedidosWithProducts));
   } catch (error) {
     console.error("Erro ao buscar pedidos:", error);
     return NextResponse.json(
@@ -465,7 +466,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       message: "Pedido confirmado e estoque atualizado com sucesso",
-      pedido: serializeBigInt(pedidoAtualizado),
+      pedido: serializeWithEAN(pedidoAtualizado),
       novoPedidoId,
     });
   } catch (error) {

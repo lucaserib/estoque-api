@@ -17,6 +17,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { KitDetalhesDialog } from "./dialogs/KitDetalhesDialog";
 import { ProdutoPagination } from "./ProdutoPagination";
+import EANDisplay from "@/components/EANDisplay";
 
 interface KitListProps {
   kits: Produto[];
@@ -158,8 +159,8 @@ export const KitList = ({
                       <TableCell className="text-gray-600 dark:text-gray-300">
                         {kit.sku}
                       </TableCell>
-                      <TableCell className="text-gray-600 dark:text-gray-300">
-                        {kit.codigoEAN || "N/A"}
+                      <TableCell>
+                        <EANDisplay produto={kit} />
                       </TableCell>
                       <TableCell>
                         {kit.componentes ? (

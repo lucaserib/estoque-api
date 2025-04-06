@@ -51,13 +51,11 @@ const EstoqueSegurancaCard = ({
     );
   }, [searchTerm, data]);
 
-  // Calcular o percentual de estoque em relação ao nível de segurança
   const calcularPercentual = (atual: number, seguranca: number) => {
     if (seguranca === 0) return 0;
     return Math.min((atual / seguranca) * 100, 100);
   };
 
-  // Determinar a classe CSS baseada no percentual
   const getStatusClass = (percentual: number) => {
     if (percentual <= 30) return "bg-red-500";
     if (percentual <= 60) return "bg-orange-500";
@@ -130,18 +128,6 @@ const EstoqueSegurancaCard = ({
                         ></div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <Link href={`/estoque/produtos/${item.id}/comprar`}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex items-center"
-                        >
-                          <ShoppingCart className="h-4 w-4 mr-1" />
-                          Comprar
-                        </Button>
-                      </Link>
-                    </TableCell>
                   </TableRow>
                 );
               })}
@@ -159,7 +145,7 @@ const EstoqueSegurancaCard = ({
               <span> para a pesquisa &quot;{searchTerm}&quot;</span>
             )}
           </div>
-          <Link href="/estoque/produtos/comprar">
+          <Link href="/gestao-pedidos">
             <Button variant="default" className="flex items-center text-sm">
               <ShoppingCart className="h-4 w-4 mr-2" />
               Fazer Pedido de Compra

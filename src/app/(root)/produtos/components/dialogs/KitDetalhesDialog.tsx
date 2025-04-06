@@ -21,6 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import EANDisplay from "@/components/EANDisplay";
 
 interface KitDetalhesDialogProps {
   isOpen: boolean;
@@ -102,13 +103,11 @@ export function KitDetalhesDialog({
                   </div>
                 </div>
 
-                <div className="flex flex-col mt-3">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    EAN:
-                  </span>
-                  <span className="text-base font-medium text-gray-900 dark:text-gray-100">
-                    {kit.codigoEAN || "Não informado"}
-                  </span>
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <p className="text-sm font-medium">Código EAN</p>
+                    <EANDisplay produto={kit} className="mt-1" />
+                  </div>
                 </div>
               </div>
             </div>

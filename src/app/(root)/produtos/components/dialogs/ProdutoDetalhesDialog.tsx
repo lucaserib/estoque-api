@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { Barcode, PackageCheck, Info, Tag, DollarSign, X } from "lucide-react";
+import EANDisplay from "@/components/EANDisplay";
 
 interface ProdutoDetalhesDialogProps {
   isOpen: boolean;
@@ -82,26 +83,23 @@ export function ProdutoDetalhesDialog({
                   </span>
                 </div>
 
-                <div className="flex justify-between items-start">
-                  <div className="flex flex-col">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      SKU:
-                    </span>
-                    <div className="flex items-center">
-                      <Barcode className="h-4 w-4 text-gray-400 mr-1" />
-                      <span className="text-base font-medium text-gray-900 dark:text-gray-100">
-                        {produto.sku}
-                      </span>
-                    </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm font-medium">Código EAN</p>
+                    <EANDisplay produto={produto} className="mt-1" />
                   </div>
-
-                  <div className="flex flex-col items-end">
-                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                      EAN:
-                    </span>
-                    <span className="text-base font-medium text-gray-900 dark:text-gray-100">
-                      {produto.codigoEAN || "Não informado"}
-                    </span>
+                  <div className="flex justify-between items-start">
+                    <div className="flex flex-col">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        SKU:
+                      </span>
+                      <div className="flex items-center">
+                        <Barcode className="h-4 w-4 text-gray-400 mr-1" />
+                        <span className="text-base font-medium text-gray-900 dark:text-gray-100">
+                          {produto.sku}
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
