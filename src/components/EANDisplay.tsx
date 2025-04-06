@@ -7,9 +7,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Produto } from "@/app/(root)/produtos/types";
 
 interface ProdutoComEAN {
   id?: string;
+  nome?: string;
+  sku?: string;
   codigoEAN?: string;
   ean?: string | number | bigint;
   codigosDeBarras?: Array<{ tipo: string; codigo: string }>;
@@ -17,14 +20,10 @@ interface ProdutoComEAN {
 }
 
 interface EANDisplayProps {
-  produto: ProdutoComEAN;
-
+  produto: ProdutoComEAN | Produto;
   emptyMessage?: string;
-
   showIcon?: boolean;
-
   size?: "sm" | "md" | "lg";
-
   className?: string;
 }
 
@@ -35,7 +34,8 @@ const EANDisplay: React.FC<EANDisplayProps> = ({
   size = "md",
   className = "",
 }) => {
-  const ean = getEANFromProduct(produto);
+  // Tratar o produto como ProdutoComEAN para a função getEANFromProduct
+  const ean = getEANFromProduct(produto as ProdutoComEAN);
 
   if (!ean) {
     return (
