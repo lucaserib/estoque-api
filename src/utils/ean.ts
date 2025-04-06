@@ -21,7 +21,16 @@ export const bigIntToStringEAN = (ean: bigint | null | undefined): string => {
   return ean.toString();
 };
 
-export const getEANFromProduct = (produto: any): string | undefined => {
+interface ProdutoComEAN {
+  codigoEAN?: string;
+  ean?: string | number | bigint;
+  codigosDeBarras?: Array<{ tipo: string; codigo: string }>;
+  [key: string]: unknown;
+}
+
+export const getEANFromProduct = (
+  produto: ProdutoComEAN
+): string | undefined => {
   if (produto?.codigoEAN) {
     return produto.codigoEAN;
   }
@@ -32,7 +41,7 @@ export const getEANFromProduct = (produto: any): string | undefined => {
 
   if (produto?.codigosDeBarras && Array.isArray(produto.codigosDeBarras)) {
     const codigoEAN = produto.codigosDeBarras.find(
-      (codigo: any) => codigo.tipo === "EAN" || codigo.tipo === "GTIN"
+      (codigo) => codigo.tipo === "EAN" || codigo.tipo === "GTIN"
     );
     if (codigoEAN?.codigo) return codigoEAN.codigo;
   }
@@ -41,7 +50,7 @@ export const getEANFromProduct = (produto: any): string | undefined => {
 };
 
 export const normalizeProductEAN = <
-  T extends { ean?: any; codigoEAN?: string }
+  T extends { ean?: string | number | bigint; codigoEAN?: string }
 >(
   produto: T
 ): T => {
@@ -57,7 +66,7 @@ export const normalizeProductEAN = <
 };
 
 export const normalizeProductsEAN = <
-  T extends { ean?: any; codigoEAN?: string }
+  T extends { ean?: string | number | bigint; codigoEAN?: string }
 >(
   produtos: T[]
 ): T[] => {

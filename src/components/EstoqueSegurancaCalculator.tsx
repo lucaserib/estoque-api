@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -73,7 +73,7 @@ export function EstoqueSegurancaCalculator({
   }, [isAutoCalculated]);
 
   // Calcular o estoque de segurança automaticamente
-  const calcularEstoqueSeguranca = async () => {
+  const calcularEstoqueSeguranca = useCallback(async () => {
     if (!produtoId || !armazemId) {
       setError("Informações do produto ou armazém ausentes");
       return;
@@ -119,7 +119,7 @@ export function EstoqueSegurancaCalculator({
     } finally {
       setIsCalculating(false);
     }
-  };
+  }, [produtoId, armazemId, leadTime]);
 
   // Efeito para calcular automaticamente quando o modo auto é selecionado
   useEffect(() => {

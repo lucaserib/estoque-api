@@ -8,21 +8,31 @@ export const serializeWithEAN = (data: unknown): unknown => {
     })
   );
 
-  const addEANField = (obj: any): any => {
+  // Definir um tipo mais específico para os objetos
+  type SerializedObject = {
+    ean?: string | number | bigint;
+    codigoEAN?: string;
+    [key: string]: unknown;
+  };
+
+  const addEANField = (obj: unknown): unknown => {
     if (!obj || typeof obj !== "object") return obj;
 
     if (Array.isArray(obj)) {
       return obj.map((item) => addEANField(item));
     }
 
-    if (obj.ean !== undefined && obj.codigoEAN === undefined) {
+    // Tratar como objeto serializado
+    const typedObj = obj as SerializedObject;
+
+    if (typedObj.ean !== undefined && typedObj.codigoEAN === undefined) {
       return {
-        ...obj,
-        codigoEAN: obj.ean ? obj.ean.toString() : null,
+        ...typedObj,
+        codigoEAN: typedObj.ean ? typedObj.ean.toString() : null,
       };
     }
 
-    const result = { ...obj };
+    const result = { ...typedObj };
     for (const key in result) {
       if (Object.prototype.hasOwnProperty.call(result, key)) {
         result[key] = addEANField(result[key]);

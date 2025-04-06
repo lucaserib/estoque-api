@@ -1,4 +1,3 @@
-// src/components/EANDisplay.tsx
 import React from "react";
 import { Barcode } from "lucide-react";
 import { getEANFromProduct } from "@/utils/ean";
@@ -9,8 +8,16 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
+interface ProdutoComEAN {
+  id?: string;
+  codigoEAN?: string;
+  ean?: string | number | bigint;
+  codigosDeBarras?: Array<{ tipo: string; codigo: string }>;
+  [key: string]: unknown;
+}
+
 interface EANDisplayProps {
-  produto: any;
+  produto: ProdutoComEAN;
 
   emptyMessage?: string;
 
