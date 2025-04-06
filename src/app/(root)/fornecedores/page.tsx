@@ -11,6 +11,7 @@ import {
   CreditCard,
   Pencil,
   LucideLoader2,
+  Package,
 } from "lucide-react";
 import { useLayout } from "@/app/context/LayoutContext";
 import { useFetch } from "@/app/hooks/useFetch";
@@ -18,6 +19,7 @@ import { Fornecedor } from "./types";
 import Header from "@/app/components/Header";
 import { toast } from "sonner";
 import { FornecedorEditDialog } from "@/components/FornecedorEditDialog";
+import { FornecedorProdutoDialog } from "@/app/components/FornecedorProdutoDialog";
 
 const FornecedoresPage = () => {
   const { isSidebarCollapsed } = useLayout();
@@ -45,6 +47,8 @@ const FornecedoresPage = () => {
   const [formMessageType, setFormMessageType] = useState<
     "success" | "error" | ""
   >("");
+  const [fornecedorParaProdutos, setFornecedorParaProdutos] =
+    useState<Fornecedor | null>(null);
 
   const [fornecedorToEdit, setFornecedorToEdit] = useState<Fornecedor | null>(
     null
@@ -81,14 +85,12 @@ const FornecedoresPage = () => {
         setFormMessage("Fornecedor cadastrado com sucesso!");
         setFormMessageType("success");
 
-        // Reset form
         setNome("");
         setInscricaoEstadual("");
         setCnpj("");
         setContato("");
         setEndereco("");
 
-        // Close modal after success
         setTimeout(() => {
           setIsModalOpen(false);
           setFormMessage("");
@@ -274,6 +276,13 @@ const FornecedoresPage = () => {
                         <span>Editar</span>
                       </button>
                       <button
+                        onClick={() => setFornecedorParaProdutos(fornecedor)}
+                        className="flex items-center gap-1 text-purple-600 hover:text-purple-800 dark:text-purple-500 dark:hover:text-purple-400 transition-colors"
+                      >
+                        <Package className="h-4 w-4" />
+                        <span>Produtos</span>
+                      </button>
+                      <button
                         onClick={() =>
                           handleDeleteFornecedor(fornecedor.id.toString())
                         }
@@ -291,17 +300,14 @@ const FornecedoresPage = () => {
         )}
       </main>
 
-      {/* Modal for adding new supplier */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Background overlay */}
             <div
               className="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75 backdrop-blur-sm transition-opacity"
               onClick={() => setIsModalOpen(false)}
             ></div>
 
-            {/* Modal content */}
             <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <div className="absolute top-0 right-0 pt-4 pr-4">
                 <button
@@ -408,8 +414,14 @@ const FornecedoresPage = () => {
           </div>
         </div>
       )}
+      {fornecedorParaProdutos && (
+        <FornecedorProdutoDialog
+          isOpen={!!fornecedorParaProdutos}
+          onClose={() => setFornecedorParaProdutos(null)}
+          fornecedor={fornecedorParaProdutos}
+        />
+      )}
 
-      {/* Edit Dialog */}
       {fornecedorToEdit && (
         <FornecedorEditDialog
           isOpen={!!fornecedorToEdit}

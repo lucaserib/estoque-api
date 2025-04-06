@@ -124,7 +124,6 @@ interface DashboardSummaryData {
   lowStockCount: number;
 }
 
-// Adicionar interfaces para os dados dos cards individuais
 interface ValorEstoqueData {
   valorTotal: number;
   quantidadeTotal: number;
@@ -171,7 +170,6 @@ const Dashboard = () => {
   const lastRefreshTimestamp = useRef(0);
   const isUpdating = useRef(false);
 
-  // Adicionar estados para os dados específicos dos cards
   const [valorEstoqueData, setValorEstoqueData] = useState<ValorEstoqueData>({
     valorTotal: 0,
     quantidadeTotal: 0,
@@ -196,33 +194,28 @@ const Dashboard = () => {
   }, []);
 
   const fetchSummaryData = useCallback(async () => {
-    // Adicionar timeout de segurança para evitar que isUpdating fique preso como true
     const securityTimeout = setTimeout(() => {
       if (isUpdating.current) {
         console.log("Detectado bloqueio por isUpdating. Liberando flag.");
         isUpdating.current = false;
       }
-    }, 10000); // Timeout de 10 segundos como salvaguarda
+    }, 10000);
 
     if (isUpdating.current) {
       console.log("Já existe uma atualização em andamento, ignorando");
-      clearTimeout(securityTimeout); // Limpar timeout se não prosseguirmos
+      clearTimeout(securityTimeout);
       return;
     }
 
-    // Registrar timestamp de refresh
     lastRefreshTimestamp.current = Date.now();
 
-    // Validar se as datas são válidas antes de prosseguir
     if (!dateFilter.startDate || !dateFilter.endDate) {
       console.warn("Filtro de datas não definido, utilizando período padrão");
 
-      // Em vez de retornar, definir um período padrão (últimos 30 dias)
       const defaultEnd = new Date();
       const defaultStart = new Date();
       defaultStart.setDate(defaultStart.getDate() - 30);
 
-      // Garantir horas corretas
       defaultStart.setHours(0, 0, 0, 0);
       defaultEnd.setHours(23, 59, 59, 999);
 
@@ -230,8 +223,6 @@ const Dashboard = () => {
         startDate: defaultStart.toISOString(),
         endDate: defaultEnd.toISOString(),
       });
-
-      // Não definir isUpdating.current = false aqui, pois vamos continuar o carregamento
     }
 
     isUpdating.current = true;
@@ -240,7 +231,6 @@ const Dashboard = () => {
     setLoadingSaidas(true);
     setLoadingData(true);
 
-    // Exibir feedback visual para o usuário
     toast.info("Atualizando dados do dashboard...", {
       duration: 2000,
     });
@@ -253,11 +243,9 @@ const Dashboard = () => {
         refreshTrigger,
       });
 
-      // Variáveis para armazenar os dados que serão usados no setSummaryData
       let valorTotalEstoque = 0;
       let lowStockCount = 0;
 
-      // Buscar dados de valor de estoque centralizado
       try {
         const stockValueResponse = await fetch("/api/dashboard/valor-estoque", {
           credentials: "include",
@@ -281,7 +269,6 @@ const Dashboard = () => {
         valorTotalEstoque = stockValueData.valorTotal || 0;
         const quantidadeTotal = stockValueData.quantidadeTotal || 0;
 
-        // Calcular valor médio por item (em centavos)
         const valorMedio =
           quantidadeTotal > 0
             ? Math.round(valorTotalEstoque / quantidadeTotal)
@@ -298,7 +285,6 @@ const Dashboard = () => {
         setValorEstoqueError("Não foi possível carregar os dados do estoque");
       }
 
-      // Buscar dados de estoque crítico centralizado
       try {
         const lowStockResponse = await fetch(
           "/api/dashboard/estoque-seguranca",
@@ -332,11 +318,9 @@ const Dashboard = () => {
         );
       }
 
-      // Modificar como os parâmetros são enviados para a API, evitando problemas de formato
       const params = new URLSearchParams();
       params.append("period", "custom");
 
-      // Garantir que as datas estão em formato ISO
       const apiStartDate = dateFilter.startDate
         ? new Date(dateFilter.startDate).toISOString()
         : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -358,7 +342,6 @@ const Dashboard = () => {
       const entradasDataResponse = await entradasResponse.json();
       console.log("Dados de entradas carregados:", entradasDataResponse);
 
-      // Para o componente PedidosTable, buscar os pedidos concluídos
       const pedidosParams = new URLSearchParams();
       pedidosParams.append("status", "confirmado");
       pedidosParams.append("startDate", apiStartDate);
@@ -522,7 +505,6 @@ const Dashboard = () => {
         outputsCount: 0,
       });
     } finally {
-      // Limpar o timeout de segurança
       clearTimeout(securityTimeout);
 
       setLoading(false);
@@ -541,7 +523,6 @@ const Dashboard = () => {
 
   const handleRefresh = useCallback(() => {
     console.log("Disparando refresh manual");
-    // Evitar múltiplas atualizações num curto período
     if (Date.now() - lastRefreshTimestamp.current < 500) {
       console.log(
         "Refresh ignorado - tempo mínimo entre atualizações não atingido"
@@ -551,27 +532,22 @@ const Dashboard = () => {
 
     lastRefreshTimestamp.current = Date.now();
 
-    // Garantir que isUpdating está resetado para não bloquear a atualização
     setTimeout(() => {
       isUpdating.current = false;
       setRefreshTrigger((prev) => prev + 1);
     }, 0);
   }, []);
 
-  // Adicionar o efeito para inicialização do dashboard
   useEffect(() => {
     console.log("Dashboard montado - inicializando uma única vez");
 
-    // Definir as datas padrão (últimos 30 dias)
     const today = new Date();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(today.getDate() - 30);
 
-    // Garantir horas corretas
     thirtyDaysAgo.setHours(0, 0, 0, 0);
     today.setHours(23, 59, 59, 999);
 
-    // Atualizar estados de forma síncrona para evitar múltiplas atualizações
     setDateRange({
       from: thirtyDaysAgo,
       to: today,
@@ -579,38 +555,30 @@ const Dashboard = () => {
 
     setPeriodoSelecionado("30dias");
 
-    // Definir filtros de data
     setDateFilter({
       startDate: thirtyDaysAgo.toISOString(),
       endDate: today.toISOString(),
     });
 
-    // Garantir que não estamos em atualização
     isUpdating.current = false;
 
-    // Disparar atualização apenas uma vez na montagem
     const timer = setTimeout(() => {
       console.log("Primeira carga de dados");
-      setRefreshTrigger(1); // Definir como 1 diretamente, não incrementar
+      setRefreshTrigger(1);
     }, 500);
 
-    // Limpar o timer se o componente for desmontado
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Dependência vazia para executar apenas na montagem
+  }, []);
 
-  // Efeito para atualização quando refreshTrigger muda
   useEffect(() => {
-    // Ignorar a primeira renderização (quando refreshTrigger ainda é 0)
     if (refreshTrigger === 0) return;
 
     console.log(`Atualizando dados (trigger: ${refreshTrigger})`);
 
-    // Evitar atualizações duplicadas
     const currentTime = Date.now();
     const timeSinceLastRefresh = currentTime - lastRefreshTimestamp.current;
 
-    // Se faz menos de 300ms desde a última atualização ou já estamos atualizando, ignorar
     if (timeSinceLastRefresh < 300 || isUpdating.current) {
       console.log(
         `Ignorando atualização duplicada (${timeSinceLastRefresh}ms desde a última)`
@@ -618,24 +586,19 @@ const Dashboard = () => {
       return;
     }
 
-    // Fazer a requisição
     fetchSummaryData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshTrigger]);
 
-  // Função para aplicar período predefinido
   const aplicarPeriodoPredefinido = useCallback(
     (periodo: string) => {
-      // Evitar redefinir o mesmo período
       if (periodoSelecionado === periodo) {
         console.log(`Período ${periodo} já está selecionado, ignorando`);
         return;
       }
 
-      // Primeiro, atualizar o estado do período
       setPeriodoSelecionado(periodo as PeriodoKey);
 
-      // Criar datas usando UTC para garantir consistência
       const now = new Date();
       const today = new Date(now);
       today.setHours(23, 59, 59, 999);
@@ -689,7 +652,7 @@ const Dashboard = () => {
             endDate.setHours(23, 59, 59, 999);
             break;
           default:
-            startDate.setDate(now.getDate() - 29); // Padrão: últimos 30 dias
+            startDate.setDate(now.getDate() - 29);
             startDate.setHours(0, 0, 0, 0);
         }
 
@@ -698,14 +661,11 @@ const Dashboard = () => {
           ate: endDate.toISOString(),
         });
 
-        // Atualizar o dateRange sem provocar loop
         setDateRange({ from: startDate, to: endDate });
 
-        // Atualizar diretamente o dateFilter para evitar esperar o efeito
         const startDateISO = startDate.toISOString();
         const endDateISO = endDate.toISOString();
 
-        // Verificar se os filtros realmente mudaram
         if (
           dateFilter.startDate !== startDateISO ||
           dateFilter.endDate !== endDateISO
@@ -715,7 +675,6 @@ const Dashboard = () => {
             endDate: endDateISO,
           });
 
-          // Aguardar antes de disparar o refresh
           setTimeout(() => {
             if (!isUpdating.current) {
               handleRefresh();
@@ -752,41 +711,32 @@ const Dashboard = () => {
     }, 0);
   };
 
-  // Atualizar handleClearFilters para usar o novo padrão
   const handleClearFilters = useCallback(() => {
     console.log("Limpando todos os filtros");
 
-    // Limpar o campo de busca
     setSearchTerm("");
 
-    // Configurar período padrão (30 dias)
     setPeriodoSelecionado("30dias");
 
-    // Criar novas datas
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
 
-    // Garantir horas corretas para evitar problemas de comparação
     startDate.setHours(0, 0, 0, 0);
     endDate.setHours(23, 59, 59, 999);
 
-    // Atualizar estados
     setDateRange({
       from: startDate,
       to: endDate,
     });
 
-    // Definir filtros de data para API
     setDateFilter({
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
     });
 
-    // Garantir que isUpdating está resetado
     isUpdating.current = false;
 
-    // Disparar atualização com valor específico para evitar loops
     setRefreshTrigger((prevTrigger) => {
       const newTrigger = prevTrigger + 1;
       console.log(`Definindo novo trigger: ${newTrigger}`);
@@ -796,7 +746,6 @@ const Dashboard = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      {/* Header do dashboard */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
         <div>
           <Header name="Dashboard" />
@@ -805,7 +754,6 @@ const Dashboard = () => {
           </p>
         </div>
 
-        {/* Botão de atualização dos dados */}
         <div className="mt-4 sm:mt-0 flex space-x-2">
           <Button
             variant="outline"
@@ -842,7 +790,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Filtros unificados usando o componente modular */}
       <DashboardFilters
         dateRange={dateRange}
         setDateRange={setDateRange}
@@ -855,7 +802,6 @@ const Dashboard = () => {
         onClearFilters={handleClearFilters}
       />
 
-      {/* Cards resumo com o componente */}
       <SummaryCards
         summaryData={summaryData}
         activeView={activeView}
@@ -865,9 +811,7 @@ const Dashboard = () => {
         loadingSaidas={loadingSaidas}
       />
 
-      {/* Container principal do dashboard com altura fixa otimizada */}
       <div className="min-h-[650px] md:min-h-[700px] h-[calc(100vh-350px)] relative bg-white rounded-lg shadow-sm overflow-hidden">
-        {/* Visualização do Overview */}
         <div
           className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "overview"
@@ -975,7 +919,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Visualização de Entradas */}
         <div
           className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "entradas"
@@ -1050,7 +993,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Visualização de Saídas */}
         <div
           className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "saidas"
@@ -1102,7 +1044,6 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Visualização de Estoque Crítico */}
         <div
           className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "estoqueCritico"

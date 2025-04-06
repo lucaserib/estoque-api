@@ -180,6 +180,8 @@ const EstoquePage = () => {
     try {
       setIsSaving(true);
 
+      // Comentado temporariamente: Atualização direta de quantidade no estoque
+      /* 
       if (quantidadeProduto !== null) {
         console.log(
           "Enviando atualização com armazemId:",
@@ -203,6 +205,7 @@ const EstoquePage = () => {
           throw new Error(errorData.message || "Erro ao atualizar quantidade");
         }
       }
+      */
 
       if (estoqueSeguranca !== null) {
         const estoqueSegurancaNumber = Number(estoqueSeguranca);
@@ -238,7 +241,8 @@ const EstoquePage = () => {
           item.produto.id === produtoId
             ? {
                 ...item,
-                quantidade: quantidadeProduto ?? item.quantidade,
+                // Mantém a quantidade atual em vez de usar o valor editado
+                quantidade: item.quantidade,
                 estoqueSeguranca: estoqueSeguranca ?? item.estoqueSeguranca,
               }
             : item
@@ -249,7 +253,7 @@ const EstoquePage = () => {
       setQuantidadeProduto(null);
       setEstoqueSeguranca(null);
       setIsModalOpen(false);
-      setSuccessMessage("Estoque atualizado com sucesso!");
+      setSuccessMessage("Estoque de segurança atualizado com sucesso!");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (error) {
       console.error("Erro ao atualizar estoque:", error);
@@ -415,7 +419,6 @@ const EstoquePage = () => {
         </Card>
       ) : (
         <>
-          {/* Warehouse tabs */}
           <Card>
             <CardHeader className="pb-0">
               <CardTitle>Armazéns</CardTitle>
@@ -623,7 +626,7 @@ const EstoquePage = () => {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
           <DialogHeader>
-            <DialogTitle>Atualizar Estoque</DialogTitle>
+            <DialogTitle>Atualizar Estoque de Segurança</DialogTitle>
           </DialogHeader>
           {produtoEmEdicao && (
             <div className="space-y-4 py-2">
@@ -646,7 +649,12 @@ const EstoquePage = () => {
                     setQuantidadeProduto(parseInt(e.target.value) || 0)
                   }
                   min={0}
+                  disabled={true}
                 />
+                <p className="text-xs text-gray-500 text-amber-600">
+                  A edição direta de quantidade no estoque está temporariamente
+                  desabilitada.
+                </p>
               </div>
 
               <div className="space-y-2">
