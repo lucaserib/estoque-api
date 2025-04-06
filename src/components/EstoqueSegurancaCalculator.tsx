@@ -126,7 +126,12 @@ export function EstoqueSegurancaCalculator({
     if (isAutoCalculated && !estoqueSegurancaSugerido && !isCalculating) {
       calcularEstoqueSeguranca();
     }
-  }, [isAutoCalculated]);
+  }, [
+    isAutoCalculated,
+    calcularEstoqueSeguranca,
+    estoqueSegurancaSugerido,
+    isCalculating,
+  ]);
 
   // Efeito para recalcular quando o lead time é alterado
   useEffect(() => {
@@ -322,8 +327,8 @@ export function EstoqueSegurancaCalculator({
                   <Alert variant="warning">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      Clique em "Recalcular" para obter a sugestão de estoque de
-                      segurança.
+                      Clique em &quot;Recalcular&quot; para obter a sugestão de
+                      estoque de segurança.
                     </AlertDescription>
                   </Alert>
                 )}

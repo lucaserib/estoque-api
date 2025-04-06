@@ -78,7 +78,6 @@ import DashboardFilters, {
 } from "./components/DashboardFilters";
 import SummaryCards from "./components/SummaryCards";
 
-// Definir tipos para objetos vindos da API
 interface ProdutoPedido {
   id: string;
   quantidade: number;

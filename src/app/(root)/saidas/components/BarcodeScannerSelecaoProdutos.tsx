@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import BarcodeReader from "@/components/BarCodeReader";
 import { Produto, SaidaProduto } from "../types";
 
@@ -391,7 +391,7 @@ export default function BarcodeScannerSelecaoProdutos({
   };
 
   // Função auxiliar para verificar os dados recebidos em tempo real
-  const verificarEstruturaDados = () => {
+  const verificarEstruturaDados = useCallback(() => {
     // Verificar quantidade de produtos
     console.log(`\n--- Verificação de Dados em Tempo Real ---`);
     console.log(`Produtos carregados: ${produtos.length}`);
@@ -440,7 +440,7 @@ export default function BarcodeScannerSelecaoProdutos({
     }
 
     console.log(`----------------------------------------\n`);
-  };
+  }, [produtos, eanParaProdutoId]);
 
   // Executar verificação quando os códigos forem mapeados
   useEffect(() => {
@@ -521,7 +521,7 @@ export default function BarcodeScannerSelecaoProdutos({
   );
 
   // Função para inspecionar melhor a estrutura dos produtos
-  const analisarEstruturaProdutos = () => {
+  const analisarEstruturaProdutos = useCallback(() => {
     if (produtos.length === 0) {
       console.log("Não há produtos para analisar");
       return;
@@ -621,7 +621,7 @@ export default function BarcodeScannerSelecaoProdutos({
     }
 
     console.log("==============================================\n");
-  };
+  }, [produtos]);
 
   // Executar análise quando os produtos forem carregados
   useEffect(() => {
@@ -716,7 +716,7 @@ export default function BarcodeScannerSelecaoProdutos({
                   setSearchTerm("");
                   setQuantidade(1);
                 } else {
-                  setErro(`Produto "${searchTerm}" não encontrado`);
+                  setErro(`Produto &quot;${searchTerm}&quot; não encontrado`);
                 }
               }}
               disabled={!searchTerm}
