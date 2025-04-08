@@ -144,7 +144,11 @@ export function SaidaList({ saidas }: SaidaListProps) {
       // Nome do arquivo que inclui a quantidade de saídas
       const fileName = `saidas_detalhes_completos_${saidas.length}`;
 
-      exportToExcel(allDetails, fileName, sheetName);
+      exportToExcel(
+        allDetails as unknown as Record<string, unknown>[],
+        fileName,
+        sheetName
+      );
       toast.success("Exportação concluída com sucesso");
     } catch (error) {
       toast.error("Erro ao exportar dados");
@@ -255,7 +259,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
       const sheetName = `Detalhes Saídas Selecionadas`;
 
       exportToExcel(
-        allDetails,
+        allDetails as unknown as Record<string, unknown>[],
         `saidas_selecionadas_${selectedIds.length}`,
         sheetName
       );
@@ -333,7 +337,11 @@ export function SaidaList({ saidas }: SaidaListProps) {
       const fileDate = format(new Date(saida.data), "dd-MM-yyyy");
       const fileName = `saida_detalhes_${fileDate}`;
 
-      exportToExcel(detalhes, fileName, sheetName);
+      exportToExcel(
+        detalhes as unknown as Record<string, unknown>[],
+        fileName,
+        sheetName
+      );
 
       toast.success("Exportação concluída com sucesso");
     } catch (error) {

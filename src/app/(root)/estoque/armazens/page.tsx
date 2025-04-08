@@ -168,7 +168,7 @@ const EstoquePage = () => {
     try {
       const formattedData = formatEstoqueForExport(estoque);
       exportToExcel(
-        formattedData,
+        formattedData as unknown as Record<string, unknown>[],
         `estoque_${armazemNome.replace(/\s+/g, "_")}`,
         armazemNome
       );

@@ -129,7 +129,11 @@ const FornecedoresPage = () => {
 
     try {
       const formattedData = formatFornecedoresForExport(fornecedores);
-      exportToExcel(formattedData, "fornecedores_export", "Fornecedores");
+      exportToExcel(
+        formattedData as unknown as Record<string, unknown>[],
+        "fornecedores_export",
+        "Fornecedores"
+      );
       toast.success("Exportação concluída com sucesso");
     } catch (error) {
       toast.error("Erro ao exportar dados");
@@ -152,7 +156,7 @@ const FornecedoresPage = () => {
         fornecedoresParaExportar
       );
       exportToExcel(
-        formattedData,
+        formattedData as unknown as Record<string, unknown>[],
         "fornecedores_selecionados_export",
         "Fornecedores Selecionados"
       );
