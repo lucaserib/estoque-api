@@ -2,7 +2,13 @@ import { Pedido } from "@/app/(root)/gestao-pedidos/types";
 import { formatBRL } from "./currency";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { loadPDF, addTableToPDF, TableOptions, canUsePDF } from "./pdfHelper";
+import {
+  loadPDF,
+  addTableToPDF,
+  TableOptions,
+  canUsePDF,
+  JsPDFWithAutoTable,
+} from "./pdfHelper";
 
 // Função para gerar PDF para um único pedido
 export const generatePedidoPDF = async (pedido: Pedido): Promise<void> => {

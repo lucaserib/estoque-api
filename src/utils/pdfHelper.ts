@@ -4,8 +4,8 @@
  * que eles estejam disponíveis para uso.
  */
 
-// Variável para rastrear se o autoTable já foi aplicado
-let autoTableApplied = false;
+// Importação para tipagem
+import { jsPDF } from "jspdf";
 
 /**
  * Verifica se estamos em um ambiente onde o jsPDF pode ser carregado
@@ -29,17 +29,13 @@ export const loadPDF = async () => {
     const jsPDF = jsPDFModule.default;
 
     // Importa o plugin autoTable
-    const autoTableModule = await import("jspdf-autotable");
-
-    // Garante que o plugin seja registrado apenas uma vez
-    // O plugin jspdf-autotable se auto-registra quando importado
-    // Não precisamos chamar autoTableModule.default explicitamente
+    await import("jspdf-autotable");
 
     // Cria uma nova instância
     const doc = new jsPDF();
 
     // Verifica se autoTable está disponível
-    // @ts-ignore
+    // @ts-expect-error - O método autoTable é adicionado pelo plugin em tempo de execução
     if (typeof doc.autoTable !== "function") {
       console.warn(
         "Aviso: autoTable não foi carregado corretamente. Usando fallback."
@@ -54,10 +50,21 @@ export const loadPDF = async () => {
 };
 
 /**
+ * Tipo para a instância do jsPDF com o método autoTable
+ */
+export interface JsPDFWithAutoTable extends jsPDF {
+  autoTable: (options: TableOptions) => JsPDFWithAutoTable;
+  lastAutoTable: {
+    finalY: number;
+  };
+}
+
+/**
  * Verifica se o método autoTable está disponível
  * @param doc Instância do jsPDF
  */
-export const hasAutoTable = (doc: any): boolean => {
+export const hasAutoTable = (doc: jsPDF): boolean => {
+  // @ts-expect-error - Verificamos se autoTable existe, mesmo que o TypeScript não saiba
   return typeof doc.autoTable === "function";
 };
 
@@ -70,10 +77,10 @@ export interface TableOptions {
   foot?: string[][];
   startY: number;
   theme?: string;
-  headStyles?: Record<string, any>;
-  footStyles?: Record<string, any>;
-  styles?: Record<string, any>;
-  columnStyles?: Record<string, Record<string, any>>;
+  headStyles?: Record<string, unknown>;
+  footStyles?: Record<string, unknown>;
+  styles?: Record<string, unknown>;
+  columnStyles?: Record<string, Record<string, unknown>>;
 }
 
 /**
@@ -82,14 +89,16 @@ export interface TableOptions {
  * @param options Opções da tabela
  * @returns Posição Y final da tabela
  */
-export const addTableToPDF = (doc: any, options: TableOptions): number => {
+export const addTableToPDF = (doc: jsPDF, options: TableOptions): number => {
   if (hasAutoTable(doc)) {
     try {
       // Usa o plugin autoTable
+      // @ts-expect-error - autoTable é adicionado em runtime
       doc.autoTable(options);
 
       // Retorna a posição Y final
-      return doc.lastAutoTable.finalY;
+      // @ts-expect-error - lastAutoTable é adicionado em runtime
+      return doc.lastAutoTable?.finalY || options.startY + 50;
     } catch (error) {
       console.error("Erro ao usar autoTable:", error);
       // Continua para o fallback
@@ -134,7 +143,7 @@ export const addTableToPDF = (doc: any, options: TableOptions): number => {
 
       const cellWidth = (pageWidth - 20) / row.length;
       row.forEach((cell, cellIndex) => {
-        let align = "left";
+        let align: "left" | "center" | "right" | "justify" | undefined = "left";
         // Se for um valor numérico ou monetário, alinha à direita
         if (cell.startsWith("R$") || !isNaN(Number(cell))) {
           align = "right";
@@ -160,7 +169,8 @@ export const addTableToPDF = (doc: any, options: TableOptions): number => {
 
     const footerWidth = (pageWidth - 20) / footer.length;
     footer.forEach((cell, index) => {
-      const align = index === footer.length - 1 ? "right" : "left";
+      const align: "left" | "center" | "right" | "justify" | undefined =
+        index === footer.length - 1 ? "right" : "left";
       const xPos =
         10 + footerWidth * index + (align === "right" ? footerWidth - 2 : 2);
       doc.text(cell, xPos, y, { align });
