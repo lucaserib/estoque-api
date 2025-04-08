@@ -11,15 +11,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { AlertCircle, RefreshCw, PlusCircle } from "lucide-react";
+  AlertCircle,
+  RefreshCw,
+  PlusCircle,
+  FileDown,
+  Loader2,
+} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Armazem, Pedido } from "@/app/(root)/gestao-pedidos/types";
 import { PedidoLoadingSkeleton } from "./PedidoLoadingSkeleton";
@@ -28,6 +27,7 @@ import { PedidoPagination } from "./PedidoPagination";
 import { PedidoDetalhesDialog } from "./PedidoDetalhesDialog";
 import { PedidoConfirmDialog } from "./PedidoConfirmDialog";
 import Link from "next/link";
+import { generateMultiplePedidosPDF } from "@/utils/pdf";
 
 interface PedidosTableProps {
   status: string;
@@ -51,7 +51,13 @@ const PedidosTable = ({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [loadingAction, setLoadingAction] = useState<number | null>(null);
   const [armazens, setArmazens] = useState<Armazem[]>([]);
+  const [selectedPedidos, setSelectedPedidos] = useState<Set<number>>(
+    new Set()
+  );
+  const [isDownloadingMultiple, setIsDownloadingMultiple] = useState(false);
+
   const itemsPerPage = 10;
+
   useEffect(() => {
     const fetchArmazens = async () => {
       try {
@@ -72,27 +78,22 @@ const PedidosTable = ({
     setError(null);
 
     try {
-      // Construir a URL com os parâmetros de consulta
       const params = new URLSearchParams();
 
-      // Adicionar status como parâmetro
       if (status) {
         params.append("status", status);
       }
 
-      // Adicionar parâmetros de data se existirem
       if (dateRange?.from) {
         params.append("startDate", dateRange.from.toISOString());
       }
 
       if (dateRange?.to) {
-        // Ajustar para fim do dia
         const endDate = new Date(dateRange.to);
         endDate.setHours(23, 59, 59, 999);
         params.append("endDate", endDate.toISOString());
       }
 
-      // Construir a URL final
       const url = `/api/pedidos-compra?${params.toString()}`;
 
       const response = await fetch(url);
@@ -103,12 +104,10 @@ const PedidosTable = ({
 
       let pedidos = await response.json();
 
-      // Verificar se os pedidos têm produtos e logar problemas
       pedidos.forEach((pedido: Pedido) => {
         if (!pedido.produtos || pedido.produtos.length === 0) {
           console.warn(`Pedido #${pedido.id} não tem produtos associados`);
         } else {
-          // Verificar se cada produto tem quantidade
           pedido.produtos.forEach((produto, index) => {
             if (
               produto.quantidade === undefined ||
@@ -122,7 +121,6 @@ const PedidosTable = ({
         }
       });
 
-      // Filtrar pelo termo de pesquisa se existir
       if (searchTerm) {
         const term = searchTerm.toLowerCase();
         pedidos = pedidos.filter(
@@ -141,6 +139,7 @@ const PedidosTable = ({
 
       setData(pedidos);
       setCurrentPage(1);
+      setSelectedPedidos(new Set());
     } catch (error) {
       console.error("Erro ao buscar pedidos:", error);
       setError("Não foi possível carregar os pedidos. Tente novamente.");
@@ -157,7 +156,6 @@ const PedidosTable = ({
     if (!produtos || !Array.isArray(produtos)) return 0;
 
     return produtos.reduce((total, produto) => {
-      // Verificar se produto e quantidade existem
       if (!produto) return total;
 
       const quantidade = produto.quantidade || 0;
@@ -191,6 +189,10 @@ const PedidosTable = ({
       }
 
       setData(data.filter((pedido) => pedido.id !== id));
+      const updatedSelection = new Set(selectedPedidos);
+      updatedSelection.delete(id);
+      setSelectedPedidos(updatedSelection);
+
       toast.success(`Pedido #${id} excluído com sucesso`);
     } catch (error) {
       console.error("Erro ao excluir pedido:", error);
@@ -227,6 +229,53 @@ const PedidosTable = ({
   const handleConfirmPedido = (pedido: Pedido) => {
     setSelectedPedido(pedido);
     setIsConfirmOpen(true);
+  };
+
+  const toggleSelectPedido = (pedidoId: number) => {
+    const updatedSelection = new Set(selectedPedidos);
+    if (updatedSelection.has(pedidoId)) {
+      updatedSelection.delete(pedidoId);
+    } else {
+      updatedSelection.add(pedidoId);
+    }
+    setSelectedPedidos(updatedSelection);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedPedidos.size === currentItems.length) {
+      setSelectedPedidos(new Set());
+    } else {
+      const newSelection = new Set<number>();
+      currentItems.forEach((pedido) => newSelection.add(pedido.id));
+      setSelectedPedidos(newSelection);
+    }
+  };
+
+  const handleDownloadSelected = async () => {
+    if (selectedPedidos.size === 0) {
+      toast.warning("Selecione pelo menos um pedido para baixar");
+      return;
+    }
+
+    setIsDownloadingMultiple(true);
+
+    const pedidosSelecionados = data.filter((pedido) =>
+      selectedPedidos.has(pedido.id)
+    );
+
+    try {
+      await generateMultiplePedidosPDF(pedidosSelecionados);
+      toast.success(
+        `Relatório com ${pedidosSelecionados.length} pedido(s) gerado com sucesso!`
+      );
+    } catch (error) {
+      console.error("Erro ao gerar PDF dos pedidos selecionados:", error);
+      toast.error(
+        "Ocorreu um erro ao gerar o PDF. Por favor, tente novamente."
+      );
+    } finally {
+      setIsDownloadingMultiple(false);
+    }
   };
 
   if (loading) {
@@ -278,11 +327,56 @@ const PedidosTable = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {/* Barra de ações para pedidos selecionados */}
+      {status === "confirmado" && (
+        <div className="flex justify-between items-center mb-4">
+          <div className="flex items-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {selectedPedidos.size} pedido(s) selecionado(s)
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadSelected}
+            disabled={selectedPedidos.size === 0 || isDownloadingMultiple}
+            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800"
+          >
+            {isDownloadingMultiple ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Exportando...
+              </>
+            ) : (
+              <>
+                <FileDown className="mr-2 h-4 w-4" />
+                Baixar Selecionados
+              </>
+            )}
+          </Button>
+        </div>
+      )}
+
       <Card className="w-full border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
               <TableRow>
+                {status === "confirmado" && (
+                  <TableHead className="w-10">
+                    <div className="flex items-center justify-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          selectedPedidos.size === currentItems.length &&
+                          currentItems.length > 0
+                        }
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
+                      />
+                    </div>
+                  </TableHead>
+                )}
                 <TableHead className="font-medium">Pedido #</TableHead>
                 <TableHead className="font-medium">Fornecedor</TableHead>
                 <TableHead className="font-medium text-center">
@@ -306,6 +400,16 @@ const PedidosTable = ({
                   onConfirm={() => handleConfirmPedido(pedido)}
                   onDelete={() => handleDeletePedido(pedido.id)}
                   calcularValorPedido={calcularValorPedido}
+                  isSelected={
+                    status === "confirmado"
+                      ? selectedPedidos.has(pedido.id)
+                      : false
+                  }
+                  onToggleSelect={
+                    status === "confirmado"
+                      ? () => toggleSelectPedido(pedido.id)
+                      : () => {}
+                  }
                 />
               ))}
             </TableBody>

@@ -1,7 +1,9 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBRL } from "@/utils/currency";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { generatePedidoPDF } from "@/utils/pdf";
+import { toast } from "@/components/ui/sonner";
 
 // UI Components
 import {
@@ -31,6 +33,8 @@ import {
   CheckCircle2,
   CreditCard,
   X,
+  FileDown,
+  Loader2,
 } from "lucide-react";
 import { Pedido } from "@/app/(root)/gestao-pedidos/types";
 
@@ -47,18 +51,25 @@ export function PedidoDetalhesDialog({
   pedido,
   calcularValorPedido,
 }: PedidoDetalhesDialogProps) {
-  // Valor total do pedido
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const valorTotal = calcularValorPedido(pedido.produtos);
 
-  // Função auxiliar para exibir valores em reais (dividindo por 100)
-  const exibirEmReais = (valorCentavos: number) => {
-    return formatBRL(valorCentavos / 100);
-  };
+  const handleDownloadPDF = async () => {
+    setIsDownloading(true);
 
-  // Important fix: Cleanup for focus management to prevent infinite recursion
+    try {
+      await generatePedidoPDF(pedido);
+      toast.success(`PDF do Pedido #${pedido.id} gerado com sucesso!`);
+    } catch (error) {
+      console.error("Erro ao gerar PDF:", error);
+      toast.error("Erro ao gerar PDF. Por favor, tente novamente.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
   useEffect(() => {
     return () => {
-      // Force focus back to the document when component unmounts
       if (!isOpen) {
         setTimeout(() => {
           document.body.focus();
@@ -72,7 +83,6 @@ export function PedidoDetalhesDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Important fix: Ensure we focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();
@@ -98,14 +108,38 @@ export function PedidoDetalhesDialog({
                 </span>
                 Pedido #{pedido.id}
               </DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {/* Botão para exportar PDF */}
+                {pedido.status === "confirmado" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadPDF}
+                    disabled={isDownloading}
+                    className="h-8 gap-1 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
+                  >
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <span>Exportando...</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="h-4 w-4" />
+                        <span>Baixar PDF</span>
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </DialogHeader>
         </div>
