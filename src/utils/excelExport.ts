@@ -2,7 +2,7 @@
 import * as XLSX from "xlsx";
 
 // Função genérica para exportar dados para Excel
-export const exportToExcel = <T extends Record<string, any>>(
+export const exportToExcel = <T extends Record<string, unknown>>(
   data: T[],
   fileName: string,
   sheetName: string = "Sheet1"
@@ -55,23 +55,75 @@ export interface FornecedorExportData {
   Endereço: string;
 }
 
+// Interfaces para os tipos de dados utilizados
+// Usando as mesmas interfaces que existem no projeto
+interface Produto {
+  id: string;
+  nome: string;
+  sku: string;
+  isKit?: boolean;
+  custoMedio?: number;
+}
+
+interface SaidaDetalhe {
+  id: number | string;
+  produto: Produto;
+  quantidade: number;
+  isKit: boolean;
+}
+
+interface Armazem {
+  id: string;
+  nome: string;
+}
+
+interface Saida {
+  id: string;
+  data: string | Date;
+  armazem: Armazem;
+  detalhes: SaidaDetalhe[];
+}
+
+// Interface para item de estoque compatível com a aplicação
+interface ItemEstoque {
+  id?: string;
+  produtoId?: string;
+  produto: Produto;
+  quantidade: number;
+  estoqueSeguranca?: number;
+}
+
+// Interface para fornecedor compatível com a aplicação
+interface Fornecedor {
+  id: string | number;
+  nome: string;
+  cnpj?: string;
+  inscricaoEstadual?: string;
+  contato?: string;
+  endereco?: string;
+}
+
 // Função para formatar os dados de saída para exportação
-export const formatSaidasForExport = (saidas: any[]): SaidaExportData[] => {
+export const formatSaidasForExport = (saidas: Saida[]): SaidaExportData[] => {
   return saidas.map((saida) => ({
     ID: saida.id,
     Data: new Date(saida.data).toLocaleDateString(),
     Armazém: saida.armazem.nome,
     "Quantidade de Itens": saida.detalhes.reduce(
-      (acc: number, detalhe: any) => acc + detalhe.quantidade,
+      (acc: number, detalhe: SaidaDetalhe) => acc + detalhe.quantidade,
       0
     ),
     "Itens Diferentes": saida.detalhes.length,
-    "Possui Kits": saida.detalhes.some((d: any) => d.isKit) ? "Sim" : "Não",
+    "Possui Kits": saida.detalhes.some((d: SaidaDetalhe) => d.isKit)
+      ? "Sim"
+      : "Não",
   }));
 };
 
 // Função para formatar os dados de estoque para exportação
-export const formatEstoqueForExport = (estoque: any[]): EstoqueExportData[] => {
+export const formatEstoqueForExport = (
+  estoque: ItemEstoque[]
+): EstoqueExportData[] => {
   let valorTotalEstoque = 0;
 
   const formattedData = estoque.map((item) => {
@@ -127,7 +179,7 @@ export const formatEstoqueForExport = (estoque: any[]): EstoqueExportData[] => {
 
 // Função para formatar os dados de fornecedores para exportação
 export const formatFornecedoresForExport = (
-  fornecedores: any[]
+  fornecedores: Fornecedor[]
 ): FornecedorExportData[] => {
   return fornecedores.map((fornecedor) => ({
     ID: fornecedor.id,
@@ -139,9 +191,19 @@ export const formatFornecedoresForExport = (
   }));
 };
 
+// Interface para o retorno da exportação dos detalhes
+interface SaidaDetalheExport {
+  Produto: string;
+  SKU: string;
+  Quantidade: number;
+  Tipo: string;
+}
+
 // Função para formatar os detalhes de uma saída específica
-export const formatSaidaDetalhesForExport = (saida: any): any[] => {
-  return saida.detalhes.map((detalhe: any) => ({
+export const formatSaidaDetalhesForExport = (
+  saida: Saida
+): SaidaDetalheExport[] => {
+  return saida.detalhes.map((detalhe: SaidaDetalhe) => ({
     Produto: detalhe.produto.nome,
     SKU: detalhe.produto.sku,
     Quantidade: detalhe.quantidade,
