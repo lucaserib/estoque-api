@@ -34,6 +34,9 @@ export async function GET(req: Request) {
         nome: item.produto.nome,
         sku: item.produto.sku,
         isKit: item.produto.isKit,
+        custoMedio: item.produto.custoMedio
+          ? Number(item.produto.custoMedio)
+          : null,
         ean: item.produto.ean ? item.produto.ean.toString() : null,
         userId: item.produto.userId,
       },

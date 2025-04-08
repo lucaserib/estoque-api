@@ -29,20 +29,22 @@ import {
   ShoppingBag,
   X,
   Box,
+  FileDown,
 } from "lucide-react";
 
 interface SaidaDetalhesDialogProps {
   isOpen: boolean;
   onClose: () => void;
   saida: Saida;
+  onExport?: () => void; // Nova propriedade para exportação
 }
 
 export function SaidaDetalhesDialog({
   isOpen,
   onClose,
   saida,
+  onExport,
 }: SaidaDetalhesDialogProps) {
-  // Effect for cleanup on unmounting to prevent focus issues
   useEffect(() => {
     return () => {
       if (!isOpen) {
@@ -58,7 +60,6 @@ export function SaidaDetalhesDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Ensure focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();
@@ -74,21 +75,33 @@ export function SaidaDetalhesDialog({
                 <ShoppingBag className="h-5 w-5 text-indigo-500" />
                 Detalhes da Saída
               </DialogTitle>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onClose}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                {onExport && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onExport}
+                    className="h-8 flex items-center gap-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                  >
+                    <FileDown className="h-4 w-4" />
+                    Exportar Excel
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onClose}
+                  className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
           </DialogHeader>
         </div>
 
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2 space-y-6">
-            {/* Informações gerais */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -141,7 +154,6 @@ export function SaidaDetalhesDialog({
               </div>
             </div>
 
-            {/* Tabela de produtos */}
             <div className="mb-4">
               <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4 text-indigo-500" />

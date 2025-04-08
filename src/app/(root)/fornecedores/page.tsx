@@ -20,6 +20,12 @@ import Header from "@/app/components/Header";
 import { toast } from "sonner";
 import { FornecedorEditDialog } from "@/components/FornecedorEditDialog";
 import { FornecedorProdutoDialog } from "@/app/components/FornecedorProdutoDialog";
+import {
+  exportToExcel,
+  formatFornecedoresForExport,
+} from "@/utils/excelExport";
+import { ExportButton } from "@/components/ExportButton";
+import { Button } from "@/components/ui/button";
 
 const FornecedoresPage = () => {
   const { isSidebarCollapsed } = useLayout();
@@ -54,11 +60,21 @@ const FornecedoresPage = () => {
     null
   );
 
+  // Estado para controlar os fornecedores selecionados
+  const [selectedFornecedores, setSelectedFornecedores] = useState<string[]>(
+    []
+  );
+
   useEffect(() => {
     if (initialFornecedores) {
       setFornecedores(initialFornecedores);
     }
   }, [initialFornecedores]);
+
+  // Limpar seleções quando o termo de busca muda
+  useEffect(() => {
+    setSelectedFornecedores([]);
+  }, [searchTerm]);
 
   const filteredFornecedores = fornecedores?.filter(
     (fornecedor) =>
@@ -103,6 +119,69 @@ const FornecedoresPage = () => {
       console.error("Erro ao cadastrar fornecedor:", error);
       setFormMessage("Erro ao cadastrar fornecedor.");
       setFormMessageType("error");
+    }
+  };
+  const handleExportFornecedores = () => {
+    if (!fornecedores || fornecedores.length === 0) {
+      toast.error("Não há fornecedores para exportar");
+      return;
+    }
+
+    try {
+      const formattedData = formatFornecedoresForExport(fornecedores);
+      exportToExcel(formattedData, "fornecedores_export", "Fornecedores");
+      toast.success("Exportação concluída com sucesso");
+    } catch (error) {
+      toast.error("Erro ao exportar dados");
+      console.error(error);
+    }
+  };
+
+  // Função para exportar apenas os fornecedores selecionados
+  const handleExportSelectedFornecedores = () => {
+    if (selectedFornecedores.length === 0) {
+      toast.warning("Selecione pelo menos um fornecedor para exportar");
+      return;
+    }
+
+    try {
+      const fornecedoresParaExportar = fornecedores.filter((fornecedor) =>
+        selectedFornecedores.includes(String(fornecedor.id))
+      );
+      const formattedData = formatFornecedoresForExport(
+        fornecedoresParaExportar
+      );
+      exportToExcel(
+        formattedData,
+        "fornecedores_selecionados_export",
+        "Fornecedores Selecionados"
+      );
+      toast.success(
+        `${selectedFornecedores.length} fornecedores exportados com sucesso`
+      );
+    } catch (error) {
+      toast.error("Erro ao exportar dados");
+      console.error(error);
+    }
+  };
+
+  // Função para selecionar/deselecionar um fornecedor
+  const toggleFornecedorSelection = (id: string) => {
+    setSelectedFornecedores((prev) =>
+      prev.includes(id)
+        ? prev.filter((fornecedorId) => fornecedorId !== id)
+        : [...prev, id]
+    );
+  };
+
+  // Função para selecionar/deselecionar todos os fornecedores
+  const toggleSelectAllFornecedores = () => {
+    if (selectedFornecedores.length === filteredFornecedores.length) {
+      setSelectedFornecedores([]);
+    } else {
+      setSelectedFornecedores(
+        filteredFornecedores.map((fornecedor) => String(fornecedor.id))
+      );
     }
   };
 
@@ -182,13 +261,30 @@ const FornecedoresPage = () => {
             <Search className="absolute left-3 top-2.5 text-gray-400 h-5 w-5" />
           </div>
 
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            <PlusCircle size={20} />
-            <span>Novo Fornecedor</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <ExportButton
+              onClick={handleExportFornecedores}
+              label="Exportar Todos"
+            />
+
+            {selectedFornecedores.length > 0 && (
+              <ExportButton
+                onClick={handleExportSelectedFornecedores}
+                label={`Exportar ${selectedFornecedores.length} Selecionados`}
+                className="bg-indigo-600 text-white hover:bg-indigo-700"
+              />
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              >
+                <PlusCircle size={20} />
+                <span>Novo Fornecedor</span>
+              </Button>
+            </div>
+          </div>
         </div>
 
         {loading ? (
@@ -222,48 +318,97 @@ const FornecedoresPage = () => {
             </button>
           </div>
         ) : (
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
-            <div className="grid grid-cols-1 divide-y divide-gray-200 dark:divide-gray-700">
-              {filteredFornecedores?.map((fornecedor) => (
+          <div className="space-y-4">
+            {/* Cabeçalho com checkbox "Selecionar todos" */}
+            <div className="flex items-center gap-3 mb-2 px-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={
+                    selectedFornecedores.length ===
+                      filteredFornecedores.length &&
+                    filteredFornecedores.length > 0
+                  }
+                  onChange={toggleSelectAllFornecedores}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span>Selecionar todos</span>
+              </div>
+
+              <div className="flex-1 text-right text-sm text-gray-500">
+                {filteredFornecedores.length} fornecedor
+                {filteredFornecedores.length !== 1 ? "es" : ""} encontrado
+                {filteredFornecedores.length !== 1 ? "s" : ""}
+              </div>
+            </div>
+
+            {/* Contador de selecionados */}
+            {selectedFornecedores.length > 0 && (
+              <div className="flex justify-between items-center py-2 px-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-md text-indigo-700 dark:text-indigo-300">
+                <span>
+                  {selectedFornecedores.length} fornecedor
+                  {selectedFornecedores.length !== 1 ? "es" : ""} selecionado
+                  {selectedFornecedores.length !== 1 ? "s" : ""}
+                </span>
+                <Button
+                  variant="ghost"
+                  onClick={() => setSelectedFornecedores([])}
+                  className="h-8 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Limpar seleção
+                </Button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-4">
+              {filteredFornecedores.map((fornecedor) => (
                 <div
                   key={fornecedor.id}
-                  className="p-5 hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors"
+                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow group"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center justify-between">
+                  <div className="flex items-start p-4 relative">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1">
-                        {fornecedor.nome}
-                      </h3>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 mt-3">
-                        <div className="flex items-center text-gray-600 dark:text-gray-300">
-                          <CreditCard className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span className="text-sm">
-                            CNPJ: {fornecedor.cnpj || "Não informado"}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center text-gray-600 dark:text-gray-300">
-                          <Building className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span className="text-sm">
-                            Inscrição Estadual:{" "}
-                            {fornecedor.inscricaoEstadual || "Não informado"}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center text-gray-600 dark:text-gray-300">
-                          <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span className="text-sm">
-                            Contato: {fornecedor.contato || "Não informado"}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center text-gray-600 dark:text-gray-300">
-                          <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span className="text-sm">
-                            Endereço: {fornecedor.endereco || "Não informado"}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedFornecedores.includes(
+                            String(fornecedor.id)
+                          )}
+                          onChange={() =>
+                            toggleFornecedorSelection(String(fornecedor.id))
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                        />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          {fornecedor.nome}
+                        </h3>
+                      </div>
+                      <div className="mt-2 space-y-1.5 pl-6">
+                        {fornecedor.cnpj && (
+                          <p className="text-sm flex items-center text-gray-600 dark:text-gray-300">
+                            <CreditCard className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                            CNPJ: {fornecedor.cnpj}
+                          </p>
+                        )}
+                        {fornecedor.inscricaoEstadual && (
+                          <p className="text-sm flex items-center text-gray-600 dark:text-gray-300">
+                            <Building className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                            Inscrição Estadual: {fornecedor.inscricaoEstadual}
+                          </p>
+                        )}
+                        {fornecedor.contato && (
+                          <p className="text-sm flex items-center text-gray-600 dark:text-gray-300">
+                            <Phone className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                            Contato: {fornecedor.contato}
+                          </p>
+                        )}
+                        {fornecedor.endereco && (
+                          <p className="text-sm flex items-center text-gray-600 dark:text-gray-300">
+                            <MapPin className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                            Endereço: {fornecedor.endereco}
+                          </p>
+                        )}
                       </div>
                     </div>
 

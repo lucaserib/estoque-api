@@ -41,6 +41,8 @@ import Header from "@/app/components/Header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EstoqueDeleteDialog } from "@/components/EstoqueDeleteDialog";
 import { toast } from "sonner";
+import { exportToExcel, formatEstoqueForExport } from "@/utils/excelExport";
+import { ExportButton } from "@/components/ExportButton";
 
 interface Produto {
   id: string;
@@ -154,6 +156,26 @@ const EstoquePage = () => {
       toast.error("Não foi possível calcular o estoque de segurança");
     } finally {
       setCalculandoEstoqueSeguranca(false);
+    }
+  };
+
+  const handleExportEstoque = (armazemId: string, armazemNome: string) => {
+    if (!estoque || estoque.length === 0) {
+      toast.error("Não há dados de estoque para exportar");
+      return;
+    }
+
+    try {
+      const formattedData = formatEstoqueForExport(estoque);
+      exportToExcel(
+        formattedData,
+        `estoque_${armazemNome.replace(/\s+/g, "_")}`,
+        armazemNome
+      );
+      toast.success("Exportação concluída com sucesso");
+    } catch (error) {
+      toast.error("Erro ao exportar dados");
+      console.error(error);
     }
   };
 
@@ -511,15 +533,25 @@ const EstoquePage = () => {
                           <Warehouse className="h-5 w-5 text-indigo-500" />
                           Estoque: {armazem.nome}
                         </CardTitle>
-                        <Button
-                          onClick={() => setRefreshTrigger((prev) => prev + 1)}
-                          variant="outline"
-                          size="sm"
-                          className="h-8"
-                        >
-                          <RefreshCw className="h-3.5 w-3.5 mr-1" />
-                          Atualizar
-                        </Button>
+                        <div className="flex items-center gap-2">
+                          <ExportButton
+                            onClick={() =>
+                              handleExportEstoque(armazem.id, armazem.nome)
+                            }
+                            label="Exportar Excel"
+                          />
+                          <Button
+                            onClick={() =>
+                              setRefreshTrigger((prev) => prev + 1)
+                            }
+                            variant="outline"
+                            size="sm"
+                            className="h-8"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                            Atualizar
+                          </Button>
+                        </div>
                       </CardHeader>
                       <CardContent className="p-0">
                         {isLoading && activeWarehouse === armazem.id ? (
