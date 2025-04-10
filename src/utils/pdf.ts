@@ -2,27 +2,17 @@ import { Pedido } from "@/app/(root)/gestao-pedidos/types";
 import { formatBRL } from "./currency";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import {
-  loadPDF,
-  addTableToPDF,
-  TableOptions,
-  canUsePDF,
-  JsPDFWithAutoTable,
-} from "./pdfHelper";
+import { loadPDF, addTableToPDF, TableOptions, canUsePDF } from "./pdfHelper";
 
-// Função para gerar PDF para um único pedido
 export const generatePedidoPDF = async (pedido: Pedido): Promise<void> => {
   try {
-    // Verifica se estamos no browser
     if (!canUsePDF()) {
       console.error("Esta função só pode ser executada no browser");
       return;
     }
 
-    // Carrega o jsPDF com o plugin
     const doc = await loadPDF();
 
-    // Adiciona o cabeçalho
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(20);
     doc.setTextColor(52, 52, 52);
@@ -63,7 +53,6 @@ export const generatePedidoPDF = async (pedido: Pedido): Promise<void> => {
       doc.text(comentariosWrapped, 14, 63);
     }
 
-    // Prepara os dados da tabela
     const tableHeaders = [
       ["SKU", "Produto", "Qtd", "Preço Unit.", "Mult.", "Subtotal"],
     ];
@@ -89,10 +78,8 @@ export const generatePedidoPDF = async (pedido: Pedido): Promise<void> => {
       return total + produto.quantidade * produto.custo * multiplicador;
     }, 0);
 
-    // Posição inicial da tabela
     const startY = pedido.comentarios ? 75 : 60;
 
-    // Configurar opções da tabela
     const tableOptions: TableOptions = {
       head: tableHeaders,
       body: tableData,
@@ -113,12 +100,12 @@ export const generatePedidoPDF = async (pedido: Pedido): Promise<void> => {
         fontSize: 10,
       },
       columnStyles: {
-        0: { cellWidth: 30 }, // SKU
-        1: { cellWidth: "auto" }, // Nome do produto
-        2: { cellWidth: 20, halign: "center" }, // Quantidade
-        3: { cellWidth: 30, halign: "right" }, // Preço unitário
-        4: { cellWidth: 20, halign: "center" }, // Multiplicador
-        5: { cellWidth: 30, halign: "right" }, // Subtotal
+        0: { cellWidth: 30 },
+        1: { cellWidth: "auto" },
+        2: { cellWidth: 20, halign: "center" },
+        3: { cellWidth: 30, halign: "right" },
+        4: { cellWidth: 20, halign: "center" },
+        5: { cellWidth: 30, halign: "right" },
       },
     };
 
@@ -137,7 +124,6 @@ export const generatePedidoPDF = async (pedido: Pedido): Promise<void> => {
       { align: "center" }
     );
 
-    // Salva o PDF
     doc.save(`pedido-${pedido.id}.pdf`);
   } catch (error) {
     console.error("Erro ao gerar PDF:", error);
@@ -145,30 +131,25 @@ export const generatePedidoPDF = async (pedido: Pedido): Promise<void> => {
   }
 };
 
-// Função para gerar PDF para múltiplos pedidos
 export const generateMultiplePedidosPDF = async (
   pedidos: Pedido[]
 ): Promise<void> => {
   if (pedidos.length === 0) return;
 
   try {
-    // Se houver apenas um pedido, usar o método de pedido único
     if (pedidos.length === 1) {
       await generatePedidoPDF(pedidos[0]);
       return;
     }
 
-    // Verifica se estamos no browser
     if (!canUsePDF()) {
       console.error("Esta função só pode ser executada no browser");
       return;
     }
 
-    // Carrega o jsPDF com o plugin
     const doc = await loadPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Adiciona o cabeçalho
     doc.setFontSize(20);
     doc.setTextColor(52, 52, 52);
     doc.text(`Relatório de Pedidos (${pedidos.length})`, pageWidth / 2, 20, {
@@ -242,7 +223,6 @@ export const generateMultiplePedidosPDF = async (
         return total + produto.quantidade * produto.custo * multiplicador;
       }, 0);
 
-      // Configurar opções da tabela
       const tableOptions: TableOptions = {
         head: tableHeaders,
         body: tableData,
@@ -264,16 +244,15 @@ export const generateMultiplePedidosPDF = async (
           cellPadding: 2,
         },
         columnStyles: {
-          0: { cellWidth: 25 }, // SKU
-          1: { cellWidth: "auto" }, // Nome do produto
-          2: { cellWidth: 15, halign: "center" }, // Quantidade
-          3: { cellWidth: 25, halign: "right" }, // Preço unitário
-          4: { cellWidth: 15, halign: "center" }, // Multiplicador
-          5: { cellWidth: 25, halign: "right" }, // Subtotal
+          0: { cellWidth: 25 },
+          1: { cellWidth: "auto" },
+          2: { cellWidth: 15, halign: "center" },
+          3: { cellWidth: 25, halign: "right" },
+          4: { cellWidth: 15, halign: "center" },
+          5: { cellWidth: 25, halign: "right" },
         },
       };
 
-      // Adiciona a tabela usando nossa função auxiliar
       const finalY = addTableToPDF(doc, tableOptions);
       startY = finalY + 20;
 
@@ -283,7 +262,6 @@ export const generateMultiplePedidosPDF = async (
       }
     }
 
-    // Adiciona rodapé
     const pageHeight = doc.internal.pageSize.getHeight();
     doc.setFontSize(10);
     doc.setTextColor(120, 120, 120);
@@ -294,7 +272,6 @@ export const generateMultiplePedidosPDF = async (
       { align: "center" }
     );
 
-    // Salva o PDF
     doc.save(
       `pedidos-relatorio-${format(new Date(), "yyyy-MM-dd", {
         locale: ptBR,
