@@ -17,7 +17,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       position="top-right"
       expand={false}
       richColors
-      closeButton
+      closeButton={false}
       duration={TOAST_DURATION}
       visibleToasts={5}
       className="toaster group"

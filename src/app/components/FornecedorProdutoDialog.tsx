@@ -40,7 +40,7 @@ import {
 interface ProdutoFornecedor {
   id: string;
   produtoId: string;
-  preco: number;
+  preco: number | string | bigint;
   multiplicador: number;
   codigoNF: string;
   produto?: {
@@ -90,11 +90,13 @@ export function FornecedorProdutoDialog({
       if (!response.ok) throw new Error("Erro ao buscar produtos vinculados");
 
       const data = await response.json();
-      if (Array.isArray(data)) {
-        setProdutosVinculados(data);
-      }
+      console.log("Produtos vinculados recebidos:", data);
+
+      // Garantir que data seja sempre tratado como um array
+      setProdutosVinculados(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Erro ao buscar produtos vinculados", error);
+      setProdutosVinculados([]); // Garantir que sempre tenhamos um array vazio em caso de erro
     } finally {
       setIsLoading(false);
     }
@@ -231,7 +233,13 @@ export function FornecedorProdutoDialog({
 
   const handleEdit = (vinculo: ProdutoFornecedor) => {
     setEditingId(vinculo.id);
-    setPreco((vinculo.preco / 100).toString()); // Convert from cents
+    // Converter o preço de centavos para reais, garantindo que seja um número
+    const precoEmReais =
+      typeof vinculo.preco === "number"
+        ? (vinculo.preco / 100).toFixed(2)
+        : (Number(vinculo.preco) / 100).toFixed(2);
+
+    setPreco(precoEmReais);
     setMultiplicador(vinculo.multiplicador.toString());
     setCodigoNF(vinculo.codigoNF);
   };
@@ -387,7 +395,10 @@ export function FornecedorProdutoDialog({
                                 className="w-24"
                               />
                             ) : (
-                              `R$ ${(vinculo.preco / 100).toFixed(2)}`
+                              `R$ ${(typeof vinculo.preco === "number"
+                                ? vinculo.preco / 100
+                                : Number(vinculo.preco) / 100
+                              ).toFixed(2)}`
                             )}
                           </TableCell>
                           <TableCell>

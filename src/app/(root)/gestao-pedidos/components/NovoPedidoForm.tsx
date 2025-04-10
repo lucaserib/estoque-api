@@ -66,7 +66,7 @@ interface Produto {
 interface ProdutoFornecedor {
   produtoId: string;
   fornecedorId: string;
-  preco: number;
+  preco: number | string | bigint;
   multiplicador: number;
   codigoNF: string;
   produto: Produto;
@@ -162,17 +162,71 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     setProdutosFornecedor([]);
 
     try {
+      console.log("Buscando produtos para fornecedor:", fornecedorId);
       const response = await fetch(
         `/api/produto-fornecedor?fornecedorId=${fornecedorId}`
       );
-      if (!response.ok)
-        throw new Error("Falha ao carregar produtos do fornecedor");
 
-      const data = await response.json();
-      setProdutosFornecedor(data);
+      if (!response.ok) {
+        throw new Error(
+          `Falha ao carregar produtos do fornecedor: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const responseText = await response.text();
+      console.log("Resposta bruta da API:", responseText);
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (e) {
+        console.error("Erro ao parsear resposta JSON:", e);
+        throw new Error("Resposta da API não é um JSON válido");
+      }
+
+      console.log("Produtos do fornecedor recebidos:", data);
+
+      // Verificar se data tem a estrutura esperada
+      if (!data) {
+        console.warn("API retornou dados vazios");
+        setProdutosFornecedor([]);
+        return;
+      }
+
+      // Verificar se o valor retornado é realmente um array
+      if (!Array.isArray(data)) {
+        console.error("API retornou um valor que não é um array:", data);
+        setProdutosFornecedor([]);
+        return;
+      }
+
+      // Verificar se cada item do array tem a estrutura esperada
+      const produtosValidos = data.filter((item) => {
+        if (!item.produto || !item.produtoId) {
+          console.warn("Item inválido encontrado:", item);
+          return false;
+        }
+        return true;
+      });
+
+      if (produtosValidos.length !== data.length) {
+        console.warn(
+          `${
+            data.length - produtosValidos.length
+          } itens inválidos foram filtrados`
+        );
+      }
+
+      console.log("Produtos válidos:", produtosValidos);
+      setProdutosFornecedor(produtosValidos);
     } catch (error) {
       console.error("Erro ao buscar produtos do fornecedor:", error);
-      setError("Não foi possível carregar os produtos do fornecedor.");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível carregar os produtos do fornecedor."
+      );
+      setProdutosFornecedor([]);
     } finally {
       setIsLoadingProdutos(false);
     }
@@ -213,13 +267,19 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
       (p) => p.produtoId === produtoFornecedor.produtoId
     );
 
+    // Converter o preço para número antes de usar
+    const precoNumerico =
+      typeof produtoFornecedor.preco === "number"
+        ? produtoFornecedor.preco
+        : Number(produtoFornecedor.preco);
+
     if (existingIndex >= 0) {
       produtos[existingIndex].quantidade += quantidade;
     } else {
       produtos.push({
         produtoId: produtoFornecedor.produtoId,
         quantidade: quantidade,
-        custo: produtoFornecedor.preco,
+        custo: precoNumerico,
         multiplicador: produtoFornecedor.multiplicador,
         sku: produtoFornecedor.produto.sku,
         nome: produtoFornecedor.produto.nome,
@@ -460,7 +520,11 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                             </div>
                           </TableCell>
                           <TableCell className="text-right">
-                            {formatBRL(pf.preco)}
+                            {formatBRL(
+                              typeof pf.preco === "number"
+                                ? pf.preco
+                                : parseInt(pf.preco.toString())
+                            )}
                             {pf.multiplicador > 1 && (
                               <span className="text-xs text-muted-foreground block">
                                 Mult: {pf.multiplicador}x
@@ -483,7 +547,10 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                                   sku: pf.produto.sku,
                                   nome: pf.produto.nome,
                                   quantidade: Number(e.target.value),
-                                  custo: pf.preco,
+                                  custo:
+                                    typeof pf.preco === "number"
+                                      ? pf.preco
+                                      : parseInt(pf.preco.toString()),
                                   multiplicador: pf.multiplicador,
                                 })
                               }
