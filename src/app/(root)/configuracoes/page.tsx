@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -53,6 +53,7 @@ import {
   MercadoLivreSyncHistory,
 } from "@/types/mercadolivre";
 import { exibirValorEmReais } from "@/utils/currency";
+import Image from "next/image";
 
 export default function MercadoLivreConfigPage() {
   const [accounts, setAccounts] = useState<MercadoLivreAccount[]>([]);
@@ -69,25 +70,59 @@ export default function MercadoLivreConfigPage() {
   const [syncResult, setSyncResult] = useState<MLSyncResult | null>(null);
   const [showSyncDialog, setShowSyncDialog] = useState(false);
 
+  // Estado de debug
+  const [showDebugInfo, setShowDebugInfo] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<{
+    redirectUri?: string;
+    authUrl?: string;
+    hasCredentials?: boolean;
+    error?: string;
+  }>({});
+
+  // Novos estados para analytics
+  const [analyticsData, setAnalyticsData] = useState<{
+    sales: {
+      totalSales: number;
+      totalRevenue: number;
+      averageTicket: number;
+      period: string;
+    } | null;
+    fees: {
+      listingFee: number;
+      saleFee: number;
+      paymentFee: number;
+      shippingFee: number;
+      category: string;
+    } | null;
+    financial: {
+      accountBalance: number;
+      pendingBalance: number;
+      availableBalance: number;
+      currency: string;
+    } | null;
+  } | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [skuSyncResult, setSkuSyncResult] = useState<{
+    matched: number;
+    unmatched: number;
+    total: number;
+    results: Array<{
+      mlItemId: string;
+      localProductId?: string;
+      sku: string;
+      title: string;
+      status: "matched" | "unmatched";
+    }>;
+  } | null>(null);
+  const [loadingSkuSync, setLoadingSkuSync] = useState(false);
+
   // Filtros e paginação
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  useEffect(() => {
-    loadAccounts();
-    checkAuthCallback();
-  }, []);
-
-  useEffect(() => {
-    if (selectedAccount) {
-      loadProducts(selectedAccount);
-      loadSyncHistory(selectedAccount);
-    }
-  }, [selectedAccount]);
-
-  const checkAuthCallback = async () => {
+  const checkAuthCallback = useCallback(async () => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
     const state = urlParams.get("state");
@@ -127,9 +162,9 @@ export default function MercadoLivreConfigPage() {
         window.history.replaceState({}, "", window.location.pathname);
       }
     }
-  };
+  }, []);
 
-  const loadAccounts = async () => {
+  const loadAccounts = useCallback(async () => {
     try {
       const response = await fetch("/api/mercadolivre/auth?action=accounts");
       const data = await response.json();
@@ -148,7 +183,20 @@ export default function MercadoLivreConfigPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadAccounts();
+    checkAuthCallback();
+  }, [loadAccounts, checkAuthCallback]);
+
+  useEffect(() => {
+    if (selectedAccount) {
+      loadProducts(selectedAccount);
+      loadSyncHistory(selectedAccount);
+      loadAnalytics(selectedAccount);
+    }
+  }, [selectedAccount]);
 
   const loadProducts = async (accountId: string) => {
     try {
@@ -185,6 +233,26 @@ export default function MercadoLivreConfigPage() {
     }
   };
 
+  const loadAnalytics = async (accountId: string) => {
+    try {
+      setLoadingAnalytics(true);
+      const response = await fetch(
+        `/api/mercadolivre/analytics?accountId=${accountId}&action=dashboard`
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        setAnalyticsData(data);
+      } else {
+        console.error("Erro ao carregar analytics:", data.error);
+      }
+    } catch (error) {
+      console.error("Erro ao carregar analytics:", error);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
   const connectAccount = async () => {
     try {
       setConnecting(true);
@@ -193,12 +261,28 @@ export default function MercadoLivreConfigPage() {
       const data = await response.json();
 
       if (data.authUrl) {
+        // Salvar informações de debug
+        setDebugInfo({
+          authUrl: data.authUrl,
+          redirectUri: data.redirectUri,
+          hasCredentials: true,
+        });
+
+        console.log("URL de autorização gerada:", data.authUrl);
         window.location.href = data.authUrl;
       } else {
+        setDebugInfo({
+          error: data.error || "Erro ao gerar URL de autorização",
+          hasCredentials: false,
+        });
         toast.error("Erro ao gerar URL de autorização");
       }
     } catch (error) {
       console.error("Erro ao conectar conta:", error);
+      setDebugInfo({
+        error: error instanceof Error ? error.message : "Erro desconhecido",
+        hasCredentials: false,
+      });
       toast.error("Erro ao conectar conta");
     } finally {
       setConnecting(false);
@@ -266,6 +350,30 @@ export default function MercadoLivreConfigPage() {
       toast.error("Erro durante a sincronização");
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const syncProductsBySKU = async (accountId: string) => {
+    try {
+      setLoadingSkuSync(true);
+      const response = await fetch(
+        `/api/mercadolivre/analytics?accountId=${accountId}&action=sync-sku`
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        setSkuSyncResult(data);
+        toast.success(
+          `Sincronização concluída: ${data.matched} produtos encontrados`
+        );
+      } else {
+        toast.error(data.error || "Erro ao sincronizar produtos");
+      }
+    } catch (error) {
+      console.error("Erro ao sincronizar produtos:", error);
+      toast.error("Erro ao sincronizar produtos");
+    } finally {
+      setLoadingSkuSync(false);
     }
   };
 
@@ -419,6 +527,77 @@ export default function MercadoLivreConfigPage() {
 
       {/* Componente de Ajuda */}
       <MercadoLivreConfigHelp />
+
+      {/* Debug Panel */}
+      <Card className="border-yellow-200 bg-yellow-50">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-yellow-600" />
+              <span className="text-yellow-800">Informações de Debug</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowDebugInfo(!showDebugInfo)}
+            >
+              {showDebugInfo ? "Ocultar" : "Mostrar"}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        {showDebugInfo && (
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-medium text-sm mb-2">Status da Conexão</h4>
+                <div className="text-sm space-y-1">
+                  <p>
+                    <strong>Contas ativas:</strong> {accounts.length}
+                  </p>
+                  <p>
+                    <strong>Endpoint de auth:</strong> auth.mercadolivre.com.br
+                  </p>
+                  {debugInfo.hasCredentials !== undefined && (
+                    <p>
+                      <strong>Credenciais configuradas:</strong>{" "}
+                      {debugInfo.hasCredentials ? "✅ Sim" : "❌ Não"}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h4 className="font-medium text-sm mb-2">URLs de Debug</h4>
+                <div className="text-xs space-y-1">
+                  {debugInfo.authUrl && (
+                    <div>
+                      <strong>URL de autorização:</strong>
+                      <div className="bg-gray-100 p-2 rounded mt-1 break-all">
+                        {debugInfo.authUrl}
+                      </div>
+                    </div>
+                  )}
+                  {debugInfo.redirectUri && (
+                    <div>
+                      <strong>Redirect URI:</strong>
+                      <div className="bg-gray-100 p-2 rounded mt-1 break-all">
+                        {debugInfo.redirectUri}
+                      </div>
+                    </div>
+                  )}
+                  {debugInfo.error && (
+                    <div>
+                      <strong>Último erro:</strong>
+                      <div className="bg-red-100 p-2 rounded mt-1 text-red-700">
+                        {debugInfo.error}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
 
       {/* Contas Conectadas */}
       <Card>
@@ -586,10 +765,14 @@ export default function MercadoLivreConfigPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="produtos">
                   <Package className="h-4 w-4 mr-2" />
                   Produtos ({products.length})
+                </TabsTrigger>
+                <TabsTrigger value="analytics">
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  Analytics
                 </TabsTrigger>
                 <TabsTrigger value="historico">
                   <History className="h-4 w-4 mr-2" />
@@ -665,10 +848,12 @@ export default function MercadoLivreConfigPage() {
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   {product.mlThumbnail && (
-                                    <img
+                                    <Image
                                       src={product.mlThumbnail}
                                       alt={product.mlTitle}
-                                      className="w-10 h-10 object-cover rounded"
+                                      width={40}
+                                      height={40}
+                                      className="rounded"
                                     />
                                   )}
                                   <div>
@@ -747,6 +932,242 @@ export default function MercadoLivreConfigPage() {
                     )}
                   </>
                 )}
+              </TabsContent>
+
+              <TabsContent value="analytics" className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Analytics Cards */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-green-500" />
+                        Estatísticas de Vendas
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingAnalytics ? (
+                        <div className="flex items-center justify-center p-6">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : analyticsData?.sales ? (
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Total de Vendas:
+                            </span>
+                            <span className="font-semibold">
+                              {analyticsData.sales.totalSales}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Receita Total:
+                            </span>
+                            <span className="font-semibold">
+                              {exibirValorEmReais(
+                                analyticsData.sales.totalRevenue * 100
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Ticket Médio:
+                            </span>
+                            <span className="font-semibold">
+                              {exibirValorEmReais(
+                                analyticsData.sales.averageTicket * 100
+                              )}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-2">
+                            Período: {analyticsData.sales.period}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 p-6">
+                          Dados não disponíveis
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings className="h-5 w-5 text-blue-500" />
+                        Taxas do Marketplace
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingAnalytics ? (
+                        <div className="flex items-center justify-center p-6">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : analyticsData?.fees ? (
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Taxa de Venda:
+                            </span>
+                            <span className="font-semibold">
+                              {(analyticsData.fees.saleFee * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Taxa de Pagamento:
+                            </span>
+                            <span className="font-semibold">
+                              {(analyticsData.fees.paymentFee * 100).toFixed(1)}
+                              %
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Taxa de Anúncio:
+                            </span>
+                            <span className="font-semibold">
+                              {exibirValorEmReais(
+                                analyticsData.fees.listingFee * 100
+                              )}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-2">
+                            Categoria: {analyticsData.fees.category}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 p-6">
+                          Dados não disponíveis
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* SKU Sync Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Link className="h-5 w-5 text-purple-500" />
+                      Sincronização por SKU
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium">
+                            Conectar produtos por SKU
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            Sincronize seus produtos do ML com os produtos
+                            locais usando o SKU
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => syncProductsBySKU(selectedAccount)}
+                          disabled={loadingSkuSync}
+                          className="gap-2"
+                        >
+                          {loadingSkuSync ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RotateCcw className="h-4 w-4" />
+                          )}
+                          Sincronizar SKU
+                        </Button>
+                      </div>
+
+                      {skuSyncResult && (
+                        <div className="border border-gray-200 rounded-lg p-4">
+                          <div className="grid grid-cols-3 gap-4 mb-4">
+                            <div className="text-center">
+                              <div className="text-2xl font-bold text-green-600">
+                                {skuSyncResult.matched}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Encontrados
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-bold text-yellow-600">
+                                {skuSyncResult.unmatched}
+                              </div>
+                              <div className="text-sm text-gray-600">
+                                Não encontrados
+                              </div>
+                            </div>
+                            <div className="text-center">
+                              <div className="text-2xl font-bold text-blue-600">
+                                {skuSyncResult.total}
+                              </div>
+                              <div className="text-sm text-gray-600">Total</div>
+                            </div>
+                          </div>
+
+                          {skuSyncResult.results.length > 0 && (
+                            <div className="max-h-60 overflow-y-auto">
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>Item ML</TableHead>
+                                    <TableHead>SKU</TableHead>
+                                    <TableHead>Status</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {skuSyncResult.results
+                                    .slice(0, 10)
+                                    .map(
+                                      (result: {
+                                        mlItemId: string;
+                                        localProductId?: string;
+                                        sku: string;
+                                        title: string;
+                                        status: "matched" | "unmatched";
+                                      }) => (
+                                        <TableRow key={result.mlItemId}>
+                                          <TableCell className="max-w-xs truncate">
+                                            {result.title}
+                                          </TableCell>
+                                          <TableCell>{result.sku}</TableCell>
+                                          <TableCell>
+                                            <Badge
+                                              variant={
+                                                result.status === "matched"
+                                                  ? "default"
+                                                  : "secondary"
+                                              }
+                                              className={
+                                                result.status === "matched"
+                                                  ? "bg-green-100 text-green-800"
+                                                  : ""
+                                              }
+                                            >
+                                              {result.status === "matched"
+                                                ? "Encontrado"
+                                                : "Não encontrado"}
+                                            </Badge>
+                                          </TableCell>
+                                        </TableRow>
+                                      )
+                                    )}
+                                </TableBody>
+                              </Table>
+                              {skuSyncResult.results.length > 10 && (
+                                <div className="text-center text-sm text-gray-500 mt-2">
+                                  ... e mais {skuSyncResult.results.length - 10}{" "}
+                                  resultados
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="historico" className="space-y-4">

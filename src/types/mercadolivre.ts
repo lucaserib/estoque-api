@@ -404,170 +404,52 @@ export interface MLItemUpdate {
 }
 
 export interface MLOrder {
-  id: number;
+  id: string;
+  status: string;
+  status_detail?: string;
   date_created: string;
   date_closed?: string;
-  last_updated: string;
-  manufacturing_ending_date?: string;
-  comment?: string;
-  pack_id?: string;
-  pickup_id?: string;
-  order_request: {
-    return?: any;
-    change?: any;
-  };
-  fulfilled?: boolean;
-  mediations?: any[];
-  total_amount: number;
-  paid_amount: number;
-  coupon: {
-    id?: string;
-    amount: number;
-  };
   order_items: Array<{
     item: {
       id: string;
       title: string;
-      category_id: string;
-      variation_id?: string;
+      category_id?: string;
       seller_custom_field?: string;
-      variation_attributes?: any[];
-      warranty?: string;
-      condition: string;
-      seller_sku?: string;
-      global_price?: number;
-      net_weight?: number;
     };
     quantity: number;
-    requested_quantity: {
-      value: number;
-      measure: string;
-    };
-    picked_quantity?: number;
     unit_price: number;
-    full_unit_price: number;
-    currency_id: string;
-    manufacturing_days?: number;
-    sale_fee: number;
-    listing_type_id: string;
+    full_unit_price?: number;
   }>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  buyer: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  seller: any;
   currency_id: string;
-  buyer: {
-    id: number;
-    nickname: string;
-    email: string;
-    phone: {
-      area_code: string;
-      number: string;
-      extension: string;
-      verified: boolean;
+  order_request?: {
+    return?: string;
+    change?: number;
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  shipping: any;
+  total_amount: number;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  payments?: any;
+  feedback?: {
+    purchase?: {
+      id: string;
+      rating: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      message: any;
     };
-    alternative_phone: {
-      area_code: string;
-      number: string;
-      extension: string;
-    };
-    first_name: string;
-    last_name: string;
-    billing_info: {
-      doc_type: string;
-      doc_number: string;
+    sale?: {
+      id: string;
+      rating: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      message: any;
     };
   };
-  seller: {
-    id: number;
-    nickname: string;
-    email: string;
-    phone: {
-      area_code: string;
-      number: string;
-      extension: string;
-      verified: boolean;
-    };
-    alternative_phone: {
-      area_code: string;
-      number: string;
-      extension: string;
-    };
-    first_name: string;
-    last_name: string;
-  };
-  payments: Array<{
-    id: number;
-    payer: {
-      id: number;
-      email: string;
-      nickname: string;
-    };
-    collector: {
-      id: number;
-    };
-    reason: string;
-    payment_method_id: string;
-    currency_id: string;
-    installments: number;
-    issuer_id?: string;
-    atm_transfer_reference: {
-      company_id?: string;
-      transaction_id?: string;
-    };
-    coupon_id?: string;
-    activation_uri?: string;
-    operation_type: string;
-    payment_type: string;
-    available_actions: string[];
-    status: string;
-    status_code?: string;
-    status_detail: string;
-    transaction_amount: number;
-    transaction_amount_refunded: number;
-    taxes_amount: number;
-    shipping_cost: number;
-    coupon_amount: number;
-    overpaid_amount: number;
-    total_paid_amount: number;
-    installment_amount?: number;
-    deferred_period?: string;
-    date_approved?: string;
-    authorization_code?: string;
-    transaction_order_id?: string;
-    date_created: string;
-    date_last_modified: string;
-  }>;
-  shipping: {
-    id: number;
-    shipment_type: string;
-    mode: string;
-    picking_type: string;
-    status: string;
-    substatus?: string;
-    items?: any[];
-    date_created: string;
-    last_modified: string;
-    tracking_number?: string;
-    tracking_method?: string;
-    service_id?: number;
-    carrier_info?: any;
-    sender_address?: any;
-    receiver_address?: any;
-    application_id?: string;
-    cost: number;
-    created_by: string;
-    market_place: string;
-    return_details?: any;
-    tags?: string[];
-  };
-  status: string;
-  status_detail?: any;
-  tags: string[];
-  feedback: {
-    buyer?: any;
-    seller?: any;
-  };
-  context: {
+  context?: {
     channel: string;
-    site: string;
-    flows?: any[];
-    application?: any;
+    site_name: string;
   };
 }

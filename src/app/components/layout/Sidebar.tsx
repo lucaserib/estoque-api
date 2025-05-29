@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronUp,
   ClipboardPaste,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -176,6 +177,13 @@ const Sidebar = () => {
           label="Saídas"
           isCollapsed={isSidebarCollapsed}
           href="/saidas"
+        />
+
+        <SidebarLink
+          icon={Settings}
+          label="Configurações"
+          isCollapsed={isSidebarCollapsed}
+          href="/configuracoes"
         />
       </div>
 

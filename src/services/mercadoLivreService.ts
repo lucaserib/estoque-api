@@ -20,8 +20,8 @@ export class MercadoLivreService {
 
   // Domínios possíveis de autorização baseados na documentação oficial
   private static readonly AUTH_DOMAINS = [
-    "https://auth.mercadolibre.com.ar", // Padrão da documentação
-    "https://auth.mercadolibre.com.br", // Específico do Brasil
+    "https://auth.mercadolivre.com.br", // Brasil - endpoint correto conforme documentação oficial
+    "https://auth.mercadolibre.com.ar", // Argentina
     "https://global-selling.mercadolibre.com", // Para Global Selling
   ];
 
@@ -52,15 +52,15 @@ export class MercadoLivreService {
    * Detecta o domínio de autorização correto baseado na configuração
    */
   private static getAuthDomain(): string {
-    // Baseado na documentação oficial, usar o domínio padrão Argentina para todos os países
-    return this.AUTH_DOMAINS[0]; // auth.mercadolibre.com.ar
+    // Usar o domínio específico do Brasil para evitar redirecionamento para site em espanhol
+    return this.AUTH_DOMAINS[0]; // auth.mercadolivre.com.br
   }
 
   /**
    * Gera URL de autorização para conectar conta do ML
    * Seguindo a documentação oficial: https://developers.mercadolivre.com.br/pt_br/autenticacao-e-autorizacao
    *
-   * IMPORTANTE: Usando domínio padrão (.com.ar) mas especificando site_id=MLB para Brasil
+   * IMPORTANTE: Usando domínio brasileiro (.com.br) para evitar redirecionamento para espanhol
    */
   static getAuthURL(state?: string): string {
     this.validateConfig();
@@ -69,7 +69,6 @@ export class MercadoLivreService {
       response_type: "code",
       client_id: this.CLIENT_ID,
       redirect_uri: this.REDIRECT_URI,
-      site_id: "MLB", // Especifica Brasil (MercadoLibre Brasil)
       ...(state && { state }), // Adiciona state apenas se fornecido
     });
 
@@ -82,7 +81,6 @@ export class MercadoLivreService {
       response_type: "code",
       client_id: this.CLIENT_ID.substring(0, 8) + "...",
       redirect_uri: this.REDIRECT_URI,
-      site_id: "MLB",
       state: state ? "presente" : "ausente",
     });
 
@@ -308,7 +306,7 @@ export class MercadoLivreService {
     }
 
     const data = await response.json();
-    return data.map((item: any) => item.body);
+    return data.map((item: { body: MLItem }) => item.body);
   }
 
   /**
@@ -395,7 +393,10 @@ export class MercadoLivreService {
       limit?: number;
       sort?: string;
     } = {}
-  ): Promise<{ results: MLOrder[]; paging: any }> {
+  ): Promise<{
+    results: MLOrder[];
+    paging: { total: number; offset: number; limit: number };
+  }> {
     const params = new URLSearchParams({
       offset: (filters.offset || 0).toString(),
       limit: (filters.limit || 50).toString(),
@@ -753,6 +754,274 @@ export class MercadoLivreService {
     } catch (error) {
       console.error(`Erro ao processar webhook do pedido ${orderId}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Obtém estatísticas de vendas do usuário
+   */
+  static async getSalesStats(
+    accessToken: string,
+    filters: {
+      dateFrom?: string;
+      dateTo?: string;
+    } = {}
+  ): Promise<{
+    totalSales: number;
+    totalRevenue: number;
+    averageTicket: number;
+    period: string;
+  }> {
+    const params = new URLSearchParams();
+    if (filters.dateFrom) params.append("date_from", filters.dateFrom);
+    if (filters.dateTo) params.append("date_to", filters.dateTo);
+
+    const response = await fetch(
+      `${
+        this.BASE_URL
+      }/orders/search?seller=me&order.status=paid&${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        `Erro ao buscar estatísticas de vendas: ${response.statusText}`
+      );
+    }
+
+    const data = await response.json();
+    const orders: Array<{ total_amount?: number }> = data.results || [];
+
+    const totalSales = orders.length;
+    const totalRevenue = orders.reduce((sum: number, order) => {
+      return sum + (order.total_amount || 0);
+    }, 0);
+    const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+
+    return {
+      totalSales,
+      totalRevenue,
+      averageTicket,
+      period: `${filters.dateFrom || "início"} a ${filters.dateTo || "hoje"}`,
+    };
+  }
+
+  /**
+   * Obtém taxa de marketplace e comissões
+   */
+  static async getMarketplaceFees(
+    accessToken: string,
+    categoryId?: string
+  ): Promise<{
+    listingFee: number;
+    saleFee: number;
+    paymentFee: number;
+    shippingFee: number;
+    category: string;
+  }> {
+    try {
+      // Buscar informações de tarifas por categoria
+      const feesUrl = categoryId
+        ? `${this.BASE_URL}/categories/${categoryId}/listing_fees`
+        : `${this.BASE_URL}/sites/MLB/listing_fees`;
+
+      const response = await fetch(feesUrl, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        // Se não conseguir buscar taxas específicas, retornar taxas padrão
+        return {
+          listingFee: 0,
+          saleFee: 0.12, // Taxa padrão de 12% para produtos gerais
+          paymentFee: 0.049, // Taxa de pagamento padrão
+          shippingFee: 0,
+          category: categoryId || "Geral",
+        };
+      }
+
+      const data = await response.json();
+
+      return {
+        listingFee: data.listing_fee || 0,
+        saleFee: data.sale_fee || 0.12,
+        paymentFee: data.payment_fee || 0.049,
+        shippingFee: data.shipping_fee || 0,
+        category: categoryId || "Geral",
+      };
+    } catch (error) {
+      console.warn(
+        "Erro ao buscar taxas do marketplace, usando valores padrão:",
+        error
+      );
+      // Retornar taxas padrão em caso de erro
+      return {
+        listingFee: 0,
+        saleFee: 0.12,
+        paymentFee: 0.049,
+        shippingFee: 0,
+        category: categoryId || "Geral",
+      };
+    }
+  }
+
+  /**
+   * Obtém informações financeiras do vendedor
+   */
+  static async getSellerFinancialInfo(accessToken: string): Promise<{
+    accountBalance: number;
+    pendingBalance: number;
+    availableBalance: number;
+    currency: string;
+  }> {
+    try {
+      const response = await fetch(
+        `${this.BASE_URL}/users/me/payment_methods`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Erro ao buscar informações financeiras: ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      // Valores padrão se não houver dados específicos
+      return {
+        accountBalance: 0,
+        pendingBalance: 0,
+        availableBalance: 0,
+        currency: "BRL",
+      };
+    } catch (error) {
+      console.warn("Erro ao buscar informações financeiras:", error);
+      return {
+        accountBalance: 0,
+        pendingBalance: 0,
+        availableBalance: 0,
+        currency: "BRL",
+      };
+    }
+  }
+
+  /**
+   * Sincroniza produtos do ML com produtos locais por SKU
+   */
+  static async syncProductsBySKU(
+    accessToken: string,
+    accountId: string
+  ): Promise<{
+    matched: number;
+    unmatched: number;
+    total: number;
+    results: Array<{
+      mlItemId: string;
+      localProductId?: string;
+      sku: string;
+      title: string;
+      status: "matched" | "unmatched";
+    }>;
+  }> {
+    const itemsResponse = await this.getUserItems(accessToken, { limit: 20 });
+    const results: Array<{
+      mlItemId: string;
+      localProductId?: string;
+      sku: string;
+      title: string;
+      status: "matched" | "unmatched";
+    }> = [];
+    let matched = 0;
+    let unmatched = 0;
+
+    // Buscar detalhes de cada item
+    for (const itemId of itemsResponse.results) {
+      try {
+        const item = await this.getItem(itemId, accessToken);
+
+        // Buscar SKU nas variações ou usar o ID do item
+        let sku = itemId; // Usar ID como fallback
+
+        // Verificar se há um campo customizado de SKU
+        const customField = item.attributes?.find(
+          (attr) =>
+            attr.id === "SELLER_SKU" || attr.name?.toLowerCase().includes("sku")
+        );
+
+        if (customField && customField.value_name) {
+          sku = customField.value_name;
+        }
+
+        // Buscar produto local pelo SKU
+        const localProduct = await this.findLocalProductBySKU(sku);
+
+        if (localProduct) {
+          matched++;
+          results.push({
+            mlItemId: item.id,
+            localProductId: localProduct.id,
+            sku,
+            title: item.title,
+            status: "matched",
+          });
+        } else {
+          unmatched++;
+          results.push({
+            mlItemId: item.id,
+            sku,
+            title: item.title,
+            status: "unmatched",
+          });
+        }
+      } catch (error) {
+        console.error(`Erro ao processar item ${itemId}:`, error);
+        unmatched++;
+        results.push({
+          mlItemId: itemId,
+          sku: itemId,
+          title: "Erro ao carregar título",
+          status: "unmatched",
+        });
+      }
+    }
+
+    return {
+      matched,
+      unmatched,
+      total: itemsResponse.results.length,
+      results,
+    };
+  }
+
+  /**
+   * Busca produto local por SKU (simulado por enquanto)
+   */
+  private static async findLocalProductBySKU(
+    sku: string
+  ): Promise<{ id: string } | null> {
+    try {
+      // Esta função deveria buscar no banco de dados local
+      // Por enquanto, vamos simular retornando null
+      // Em uma implementação real, você faria algo como:
+      // return await prisma.produto.findFirst({ where: { sku } });
+      return null;
+    } catch (error) {
+      console.error("Erro ao buscar produto local por SKU:", error);
+      return null;
     }
   }
 }

@@ -10,62 +10,25 @@ export async function GET(request: NextRequest) {
 
     if (action === "connect") {
       try {
-        // Gerar URL de autorização
-        const state = user.id; // Usar ID do usuário como state para verificação
+        console.log(
+          `[ML_AUTH] Gerando URL de autorização para usuário ${user.id}`
+        );
+
+        const state = user.id; // Usar ID do usuário como state
         const authUrl = MercadoLivreService.getAuthURL(state);
 
-        console.log(
-          `[ML_AUTH] URL de autorização gerada para usuário ${user.id}`
-        );
-        return NextResponse.json({ authUrl });
-      } catch (configError) {
-        console.error("[ML_AUTH] Erro de configuração:", configError);
-
-        // Verificar se é um erro de configuração específico
-        if (configError instanceof Error) {
-          if (configError.message.includes("ML_CLIENT_ID")) {
-            return NextResponse.json(
-              {
-                error: "ML_CLIENT_ID não configurado",
-                details:
-                  "Configure a variável de ambiente ML_CLIENT_ID com o APP ID da sua aplicação no Mercado Livre.",
-                configError: true,
-              },
-              { status: 500 }
-            );
-          }
-
-          if (configError.message.includes("ML_CLIENT_SECRET")) {
-            return NextResponse.json(
-              {
-                error: "ML_CLIENT_SECRET não configurado",
-                details:
-                  "Configure a variável de ambiente ML_CLIENT_SECRET com a Secret Key da sua aplicação no Mercado Livre.",
-                configError: true,
-              },
-              { status: 500 }
-            );
-          }
-
-          if (configError.message.includes("ML_REDIRECT_URI")) {
-            return NextResponse.json(
-              {
-                error: "ML_REDIRECT_URI não configurado",
-                details:
-                  "Configure a variável de ambiente ML_REDIRECT_URI com a URL de callback da sua aplicação.",
-                configError: true,
-              },
-              { status: 500 }
-            );
-          }
-        }
-
+        return NextResponse.json({
+          authUrl,
+          redirectUri: process.env.ML_REDIRECT_URI,
+          state,
+          success: true,
+        });
+      } catch (error) {
+        console.error("[ML_AUTH] Erro ao gerar URL:", error);
         return NextResponse.json(
           {
-            error: "Configuração do Mercado Livre incompleta",
-            details:
-              "Verifique se todas as variáveis de ambiente estão configuradas: ML_CLIENT_ID, ML_CLIENT_SECRET e ML_REDIRECT_URI.",
-            configError: true,
+            error: error instanceof Error ? error.message : "Erro interno",
+            success: false,
           },
           { status: 500 }
         );
