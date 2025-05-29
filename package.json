@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "seed": "ts-node prisma/seed.ts"
+    "seed": "ts-node prisma/seed.ts",
+    "test:ml": "node scripts/test-ml-config.js",
+    "setup:https": "node scripts/setup-https.js",
+    "sync:ngrok": "node scripts/sync-ngrok.js",
+    "test:auth": "node scripts/test-auth-domain.js"
   },
   "prisma": {
     "seed": "ts-node --compiler-options {\"module\":\"CommonJS\"} prisma/seed.ts"

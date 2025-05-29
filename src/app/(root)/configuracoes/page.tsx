@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/app/components/Header";
+import MercadoLivreConfigHelp from "@/app/components/MercadoLivreConfigHelp";
 import {
   MercadoLivreAccount,
   ProdutoMercadoLivre,
@@ -415,6 +416,9 @@ export default function MercadoLivreConfigPage() {
           Conectar Conta
         </Button>
       </div>
+
+      {/* Componente de Ajuda */}
+      <MercadoLivreConfigHelp />
 
       {/* Contas Conectadas */}
       <Card>

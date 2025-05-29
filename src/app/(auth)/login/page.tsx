@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import Logo from "../../../../public/logo-bco.svg";
+import Image from "next/image";
 import "../../../../styles/global.css";
 
 const LoginPage = () => {
@@ -49,10 +49,15 @@ const LoginPage = () => {
   return (
     <div className="w-full">
       {/* Logo */}
-
       <div className="mt-5">
         <div className="flex flex-col space-x-3">
-          <Logo className="w-[250px] h-[250px]" />
+          <Image
+            src="/logo-bco.svg"
+            alt="Logo"
+            width={250}
+            height={250}
+            className="w-[250px] h-[250px]"
+          />
         </div>
       </div>
 

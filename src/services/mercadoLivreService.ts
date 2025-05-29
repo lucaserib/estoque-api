@@ -17,54 +17,148 @@ import {
 
 export class MercadoLivreService {
   private static readonly BASE_URL = "https://api.mercadolibre.com";
-  private static readonly AUTH_URL = "https://auth.mercadolibre.com.br";
+
+  // Domínios possíveis de autorização baseados na documentação oficial
+  private static readonly AUTH_DOMAINS = [
+    "https://auth.mercadolibre.com.ar", // Padrão da documentação
+    "https://auth.mercadolibre.com.br", // Específico do Brasil
+    "https://global-selling.mercadolibre.com", // Para Global Selling
+  ];
 
   // URLs de configuração - você deve configurar isso no .env
   private static readonly CLIENT_ID = process.env.ML_CLIENT_ID!;
   private static readonly CLIENT_SECRET = process.env.ML_CLIENT_SECRET!;
   private static readonly REDIRECT_URI = process.env.ML_REDIRECT_URI!;
 
+  // Validar configurações
+  static validateConfig(): void {
+    if (!this.CLIENT_ID) {
+      throw new Error("ML_CLIENT_ID não configurado no arquivo .env");
+    }
+    if (!this.CLIENT_SECRET) {
+      throw new Error("ML_CLIENT_SECRET não configurado no arquivo .env");
+    }
+    if (!this.REDIRECT_URI) {
+      throw new Error("ML_REDIRECT_URI não configurado no arquivo .env");
+    }
+
+    console.log("Configurações do ML validadas:", {
+      clientId: this.CLIENT_ID.substring(0, 8) + "...",
+      redirectUri: this.REDIRECT_URI,
+    });
+  }
+
+  /**
+   * Detecta o domínio de autorização correto baseado na configuração
+   */
+  private static getAuthDomain(): string {
+    // Baseado na documentação oficial, usar o domínio padrão Argentina para todos os países
+    return this.AUTH_DOMAINS[0]; // auth.mercadolibre.com.ar
+  }
+
   /**
    * Gera URL de autorização para conectar conta do ML
+   * Seguindo a documentação oficial: https://developers.mercadolivre.com.br/pt_br/autenticacao-e-autorizacao
+   *
+   * IMPORTANTE: Usando domínio padrão (.com.ar) mas especificando site_id=MLB para Brasil
    */
   static getAuthURL(state?: string): string {
+    this.validateConfig();
+
     const params = new URLSearchParams({
       response_type: "code",
       client_id: this.CLIENT_ID,
       redirect_uri: this.REDIRECT_URI,
-      state: state || "",
+      site_id: "MLB", // Especifica Brasil (MercadoLibre Brasil)
+      ...(state && { state }), // Adiciona state apenas se fornecido
     });
 
-    return `${this.AUTH_URL}/authorization?${params.toString()}`;
+    const authDomain = this.getAuthDomain();
+    const authUrl = `${authDomain}/authorization?${params.toString()}`;
+
+    console.log("URL de autorização gerada:", authUrl);
+    console.log("Domínio de auth usado:", authDomain);
+    console.log("Parâmetros:", {
+      response_type: "code",
+      client_id: this.CLIENT_ID.substring(0, 8) + "...",
+      redirect_uri: this.REDIRECT_URI,
+      site_id: "MLB",
+      state: state ? "presente" : "ausente",
+    });
+
+    return authUrl;
   }
 
   /**
    * Troca código de autorização por tokens de acesso
    */
   static async exchangeCodeForToken(code: string): Promise<MLAuthResponse> {
+    console.log("Trocando código por token...");
+
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      client_id: this.CLIENT_ID,
+      client_secret: this.CLIENT_SECRET,
+      code,
+      redirect_uri: this.REDIRECT_URI,
+    });
+
+    console.log("Parâmetros da requisição:", {
+      grant_type: "authorization_code",
+      client_id: this.CLIENT_ID.substring(0, 8) + "...",
+      redirect_uri: this.REDIRECT_URI,
+      code: code.substring(0, 8) + "...",
+    });
+
     const response = await fetch(`${this.BASE_URL}/oauth/token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
       },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        client_id: this.CLIENT_ID,
-        client_secret: this.CLIENT_SECRET,
-        code,
-        redirect_uri: this.REDIRECT_URI,
-      }),
+      body: body.toString(),
+    });
+
+    const responseData = await response.json();
+    console.log("Resposta da troca de token:", {
+      status: response.status,
+      ok: response.ok,
+      hasAccessToken: !!responseData.access_token,
+      error: responseData.error,
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      console.error("Erro na autenticação ML:", responseData);
+
+      // Tratamento específico de erros conforme documentação
+      if (responseData.error === "invalid_grant") {
+        throw new Error(
+          "Código de autorização inválido ou expirado. O código pode ter sido usado anteriormente ou expirou."
+        );
+      }
+
+      if (responseData.error === "invalid_client") {
+        throw new Error(
+          "Credenciais da aplicação inválidas. Verifique ML_CLIENT_ID e ML_CLIENT_SECRET."
+        );
+      }
+
+      if (responseData.error === "invalid_request") {
+        throw new Error(
+          "Requisição mal formada. Verifique os parâmetros enviados."
+        );
+      }
+
       throw new Error(
-        `Erro na autenticação ML: ${error.message || response.statusText}`
+        `Erro na autenticação ML: ${
+          responseData.error_description ||
+          responseData.message ||
+          response.statusText
+        }`
       );
     }
 
-    return response.json();
+    return responseData;
   }
 
   /**
@@ -409,9 +503,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Salva ou atualiza conta do ML no banco
-   */
   static async saveAccount(
     userId: string,
     authResponse: MLAuthResponse,
