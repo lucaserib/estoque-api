@@ -24,6 +24,104 @@ model User {
   pedidos    PedidoCompra[]
   saidas     Saida[]
   Fornecedor Fornecedor[]
+
+  MercadoLivreAccount MercadoLivreAccount[]
+}
+
+model MercadoLivreAccount {
+  id           String   @id @default(uuid())
+  userId       String
+  mlUserId     String   @unique
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  expiresAt    DateTime
+  nickname     String
+  siteId       String
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  produtos      ProdutoMercadoLivre[]
+  syncHistories MercadoLivreSyncHistory[]
+  webhooks      MercadoLivreWebhook[]
+
+  @@unique([userId, mlUserId])
+  @@map("mercado_livre_accounts")
+}
+
+model ProdutoMercadoLivre {
+  id                    String    @id @default(uuid())
+  produtoId             String
+  mercadoLivreAccountId String
+  mlItemId              String
+  mlTitle               String
+  mlPrice               Int
+  mlAvailableQuantity   Int
+  mlSoldQuantity        Int       @default(0)
+  mlStatus              String
+  mlCondition           String    @default("new")
+  mlListingType         String    @default("gold_special")
+  mlPermalink           String?
+  mlThumbnail           String?
+  mlCategoryId          String?
+  mlCategoryName        String?
+  mlShippingMode        String?
+  mlAcceptsMercadoPago  Boolean   @default(true)
+  mlFreeShipping        Boolean   @default(false)
+  mlLastUpdated         DateTime?
+  lastSyncAt            DateTime  @default(now())
+  syncStatus            String    @default("synced")
+  syncError             String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  produto             Produto             @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  mercadoLivreAccount MercadoLivreAccount @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([produtoId, mercadoLivreAccountId])
+  @@unique([mlItemId, mercadoLivreAccountId])
+  @@map("produtos_mercado_livre")
+}
+
+model MercadoLivreSyncHistory {
+  id                    String    @id @default(uuid())
+  mercadoLivreAccountId String
+  syncType              String // full, partial, single_product
+  status                String // success, error, partial
+  totalItems            Int       @default(0)
+  syncedItems           Int       @default(0)
+  newItems              Int       @default(0)
+  updatedItems          Int       @default(0)
+  errorItems            Int       @default(0)
+  errors                Json? // Array de erros
+  startedAt             DateTime  @default(now())
+  completedAt           DateTime?
+  duration              Int? // Duração em segundos
+
+  mercadoLivreAccount MercadoLivreAccount @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)
+
+  @@map("mercado_livre_sync_history")
+}
+
+model MercadoLivreWebhook {
+  id                    String    @id @default(uuid())
+  mercadoLivreAccountId String
+  mlNotificationId      String    @unique // ID da notificação do ML
+  resource              String // /items/MLxxxx, /orders/xxxxx
+  userId                String // User ID do ML
+  topic                 String // items, orders, payments
+  applicationId         String // ID da aplicação
+  attempts              Int       @default(0)
+  processed             Boolean   @default(false)
+  processedAt           DateTime?
+  error                 String?
+  receivedAt            DateTime  @default(now())
+
+  mercadoLivreAccount MercadoLivreAccount @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)
+
+  @@map("mercado_livre_webhooks")
 }
 
 model Account {
@@ -70,6 +168,8 @@ model Produto {
   pedidos         PedidoProduto[]
   fornecedores    ProdutoFornecedor[]
   saidas          Saida[]
+
+  ProdutoMercadoLivre ProdutoMercadoLivre[]
 
   @@unique([sku, userId])
 }

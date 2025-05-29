@@ -216,7 +216,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(serializeBigInt(fornecedores), { status: 200 });
     }
 
-    // Garantir que sempre retorne uma resposta
     console.log("API /produto-fornecedor - Retornando array vazio");
     return NextResponse.json([], { status: 200 });
   } catch (error) {
