@@ -173,11 +173,11 @@ export interface MLItem {
   seller_contact: any;
   location: any;
   coverage_areas: any[];
-  attributes: Array<{
+  attributes?: Array<{
     id: string;
     name: string;
-    value_id: string;
-    value_name: string;
+    value_id: string | null;
+    value_name: string | null;
     value_struct: any;
     values: Array<{
       id: string;
@@ -189,13 +189,36 @@ export interface MLItem {
   }>;
   warnings: any[];
   listing_source: string;
-  variations: any[];
+  variations?: Array<{
+    id: number;
+    attribute_combinations: Array<{
+      id: string;
+      name: string;
+      value_id: string | null;
+      value_name: string | null;
+      value_struct: any;
+    }>;
+    price: number;
+    available_quantity: number;
+    sold_quantity: number;
+    picture_ids: string[];
+    seller_custom_field: string | null;
+    catalog_product_id: string | null;
+    attributes?: Array<{
+      id: string;
+      name: string;
+      value_id: string | null;
+      value_name: string | null;
+      value_struct: any;
+    }>;
+  }>;
   status: "active" | "paused" | "closed" | "under_review" | "inactive";
   sub_status: any[];
   tags: string[];
   warranty: string;
   catalog_product_id: string | null;
   domain_id: string;
+  seller_custom_field?: string | null;
   parent_item_id: string | null;
   differential_pricing: any;
   deal_ids: any[];
@@ -244,6 +267,39 @@ export interface MercadoLivreAccount {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface MercadoLivreAccountWithDetails extends MercadoLivreAccount {
+  userInfo?: {
+    id: number;
+    nickname: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    countryId: string;
+    siteId: string;
+    userType: string;
+    points: number;
+    permalink: string;
+    logo: string | null;
+    registrationDate: string;
+    sellerReputation?: {
+      levelId?: string;
+      powerSellerStatus?: string;
+      transactions?: {
+        period: string;
+        total: number;
+        completed: number;
+        canceled: number;
+        ratings: {
+          positive: number;
+          negative: number;
+          neutral: number;
+        };
+      };
+    };
+    status?: any;
+  };
 }
 
 export interface ProdutoMercadoLivre {

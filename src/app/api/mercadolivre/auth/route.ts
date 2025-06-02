@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest) {
         );
 
         const state = user.id; // Usar ID do usuário como state
-        const authUrl = MercadoLivreService.getAuthURL(state);
+        const authUrl = await MercadoLivreService.getAuthURL(state);
 
         return NextResponse.json({
           authUrl,
@@ -36,12 +37,57 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "accounts") {
-      // Listar contas conectadas
+      // Listar contas conectadas com informações detalhadas
       const accounts = await MercadoLivreService.getUserAccounts(user.id);
       console.log(
         `[ML_AUTH] ${accounts.length} contas encontradas para usuário ${user.id}`
       );
-      return NextResponse.json(accounts);
+
+      // Para cada conta, buscar informações atualizadas do usuário
+      const accountsWithDetails = await Promise.all(
+        accounts.map(async (account) => {
+          try {
+            // Buscar informações atualizadas do usuário ML
+            const userInfo = await MercadoLivreService.getUserInfo(
+              account.accessToken
+            );
+
+            return {
+              ...account,
+              userInfo: {
+                id: userInfo.id,
+                nickname: userInfo.nickname,
+                firstName: userInfo.first_name,
+                lastName: userInfo.last_name,
+                email: userInfo.email,
+                countryId: userInfo.country_id,
+                siteId: userInfo.site_id,
+                userType: userInfo.user_type,
+                points: userInfo.points,
+                permalink: userInfo.permalink,
+                logo: userInfo.logo,
+                registrationDate: userInfo.registration_date,
+                sellerReputation: {
+                  levelId: userInfo.seller_reputation?.level_id,
+                  powerSellerStatus:
+                    userInfo.seller_reputation?.power_seller_status,
+                  transactions: userInfo.seller_reputation?.transactions,
+                },
+                status: userInfo.status,
+              },
+            };
+          } catch (error) {
+            console.error(
+              `[ML_AUTH] Erro ao buscar detalhes da conta ${account.id}:`,
+              error
+            );
+            // Retornar conta sem detalhes em caso de erro
+            return account;
+          }
+        })
+      );
+
+      return NextResponse.json(accountsWithDetails);
     }
 
     return NextResponse.json(
@@ -59,12 +105,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
     const body = await request.json();
     const { code, state } = body;
 
     console.log(
-      `[ML_AUTH] Processando callback para usuário ${user.id}, code: ${
+      `[ML_AUTH] Processando callback, code: ${
         code ? "presente" : "ausente"
       }, state: ${state}`
     );
@@ -77,18 +122,56 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se o state corresponde ao usuário atual
-    if (state !== user.id) {
-      console.error(
-        `[ML_AUTH] State inválido. Esperado: ${user.id}, Recebido: ${state}`
+    // Verificar se é um callback do ngrok (sem sessão) ou do localhost (com sessão)
+    const host = request.headers.get("host") || "";
+    const isFromNgrok = host.includes(".ngrok") || host.includes("ngrok");
+
+    console.log(`[ML_AUTH] Host: ${host}, isFromNgrok: ${isFromNgrok}`);
+
+    let userId: string;
+
+    if (isFromNgrok) {
+      // Para callbacks do ngrok, usar o state como userId diretamente
+      userId = state;
+      console.log(
+        `[ML_AUTH] Callback do ngrok, usando state como userId: ${userId}`
       );
-      return NextResponse.json({ error: "State inválido" }, { status: 400 });
+
+      // Verificar se o usuário existe no banco
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        console.error(`[ML_AUTH] Usuário não encontrado: ${userId}`);
+        return NextResponse.json(
+          { error: "Usuário não encontrado" },
+          { status: 400 }
+        );
+      }
+    } else {
+      // Para callbacks do localhost, usar verificação normal
+      const user = await verifyUser(request);
+      userId = user.id;
+
+      // Verificar se o state corresponde ao usuário atual
+      if (state !== userId) {
+        console.error(
+          `[ML_AUTH] State inválido. Esperado: ${userId}, Recebido: ${state}`
+        );
+        return NextResponse.json({ error: "State inválido" }, { status: 400 });
+      }
     }
+
+    console.log(`[ML_AUTH] Processando callback para usuário ${userId}`);
 
     try {
       // Trocar código por tokens
       console.log("[ML_AUTH] Trocando código por tokens...");
-      const authResponse = await MercadoLivreService.exchangeCodeForToken(code);
+      const authResponse = await MercadoLivreService.exchangeCodeForToken(
+        code,
+        state
+      );
 
       // Obter informações do usuário ML
       console.log("[ML_AUTH] Obtendo informações do usuário ML...");
@@ -101,7 +184,7 @@ export async function POST(request: NextRequest) {
         `[ML_AUTH] Salvando conta ML no banco. Nickname: ${userInfo.nickname}, Site: ${userInfo.site_id}`
       );
       const account = await MercadoLivreService.saveAccount(
-        user.id,
+        userId,
         authResponse,
         userInfo
       );

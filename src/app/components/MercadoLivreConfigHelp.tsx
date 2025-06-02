@@ -92,7 +92,7 @@ const MercadoLivreConfigHelp = () => {
                 </div>
                 <div className="text-xs text-gray-600 space-y-1">
                   <p>
-                    <strong>Importante:</strong>
+                    <strong>Importante-</strong>
                   </p>
                   <p>• Use HTTPS (obrigatório para produção)</p>
                   <p>

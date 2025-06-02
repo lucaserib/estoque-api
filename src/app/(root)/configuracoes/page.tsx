@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,21 +43,29 @@ import {
   TrendingUp,
   Calendar,
   Clock,
+  Info,
+  BarChart,
+  Truck,
 } from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/app/components/Header";
 import MercadoLivreConfigHelp from "@/app/components/MercadoLivreConfigHelp";
 import {
   MercadoLivreAccount,
+  MercadoLivreAccountWithDetails,
   ProdutoMercadoLivre,
   MLSyncResult,
   MercadoLivreSyncHistory,
 } from "@/types/mercadolivre";
 import { exibirValorEmReais } from "@/utils/currency";
-import Image from "next/image";
+import MLImage from "@/app/components/shared/MLImage";
 
 export default function MercadoLivreConfigPage() {
-  const [accounts, setAccounts] = useState<MercadoLivreAccount[]>([]);
+  const { data: session, status } = useSession();
+
+  const [accounts, setAccounts] = useState<MercadoLivreAccountWithDetails[]>(
+    []
+  );
   const [products, setProducts] = useState<ProdutoMercadoLivre[]>([]);
   const [syncHistory, setSyncHistory] = useState<MercadoLivreSyncHistory[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
@@ -77,29 +86,71 @@ export default function MercadoLivreConfigPage() {
     authUrl?: string;
     hasCredentials?: boolean;
     error?: string;
+    isNgrok?: boolean;
+    currentUrl?: string;
   }>({});
 
-  // Novos estados para analytics
+  // Novos estados para analytics melhorados
   const [analyticsData, setAnalyticsData] = useState<{
-    sales: {
+    userInfo?: {
+      id: number;
+      nickname: string;
+      country_id: string;
+      site_id: string;
+      reputation?: any;
+    };
+    metrics?: {
+      totalListings: number;
+      activeListings: number;
+      pausedListings: number;
+      totalViews: number;
+      totalQuestions: number;
+      reputationLevel: string;
+    };
+    stock?: {
+      totalProducts: number;
+      lowStockProducts: Array<{
+        id: string;
+        title: string;
+        availableQuantity: number;
+        price: number;
+        status: string;
+      }>;
+      outOfStockProducts: Array<{
+        id: string;
+        title: string;
+        price: number;
+        status: string;
+      }>;
+    };
+    shipping?: {
+      mercadoEnviosEnabled: boolean;
+      freeShippingEnabled: boolean;
+      shippingMethods: Array<{
+        id: string;
+        name: string;
+        enabled: boolean;
+      }>;
+    };
+    financial?: {
+      accountBalance: number;
+      pendingBalance: number;
+      availableBalance: number;
+      currency: string;
+    };
+    sales?: {
       totalSales: number;
       totalRevenue: number;
       averageTicket: number;
       period: string;
-    } | null;
-    fees: {
+    };
+    fees?: {
       listingFee: number;
       saleFee: number;
       paymentFee: number;
       shippingFee: number;
       category: string;
-    } | null;
-    financial: {
-      accountBalance: number;
-      pendingBalance: number;
-      availableBalance: number;
-      currency: string;
-    } | null;
+    };
   } | null>(null);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [skuSyncResult, setSkuSyncResult] = useState<{
@@ -122,73 +173,354 @@ export default function MercadoLivreConfigPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const checkAuthCallback = useCallback(async () => {
+  // Estados para controle de ngrok e callback
+  const [isNgrokMode, setIsNgrokMode] = useState(false);
+  const [callbackProcessed, setCallbackProcessed] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Executar apenas no client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Funções auxiliares para formatação segura
+  const formatDateSafe = (date: string | Date) => {
+    if (!isClient) return "Carregando...";
+    try {
+      return new Date(date).toLocaleString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+      });
+    } catch {
+      return "Data inválida";
+    }
+  };
+
+  const formatDateShort = (date: string | Date) => {
+    if (!isClient) return "Carregando...";
+    try {
+      return new Date(date).toLocaleDateString("pt-BR", {
+        timeZone: "America/Sao_Paulo",
+      });
+    } catch {
+      return "Data inválida";
+    }
+  };
+
+  // Função para detectar se está no ngrok
+  const isNgrokUrl = useCallback((url: string = window.location.hostname) => {
+    return (
+      url.includes(".ngrok") ||
+      url.includes(".ngrok.io") ||
+      url.includes(".ngrok-free.app")
+    );
+  }, []);
+
+  // Função para obter URL base do localhost
+  const getLocalhostUrl = useCallback((path: string = "/configuracoes") => {
+    if (typeof window === "undefined") return "http://localhost:3000";
+
+    // Detectar a porta atual ou usar 3000 como fallback
+    const currentPort = window.location.port || "3000";
+    return `http://localhost:${currentPort}${path}`;
+  }, []);
+
+  // Função para corrigir URLs de imagem com protocolo duplicado
+  const fixImageUrl = (url: string): string => {
+    if (!url) return "";
+
+    let fixedUrl = url.trim();
+
+    // Remover http:// duplicado
+    if (fixedUrl.startsWith("http://http")) {
+      fixedUrl = fixedUrl.replace("http://http", "http");
+    }
+
+    // Remover https:// duplicado
+    if (fixedUrl.startsWith("https://https")) {
+      fixedUrl = fixedUrl.replace("https://https", "https");
+    }
+
+    // Se a URL ainda não tem protocolo mas tem um domínio válido, adicionar https://
+    if (!fixedUrl.startsWith("http://") && !fixedUrl.startsWith("https://")) {
+      // Verificar se é um domínio válido (contém ponto e não tem //)
+      if (fixedUrl.includes(".") && !fixedUrl.startsWith("//")) {
+        fixedUrl = `https://${fixedUrl}`;
+      }
+    }
+
+    // Garantir que URLs do Mercado Livre usem HTTPS
+    if (fixedUrl.includes("mlstatic.com") && fixedUrl.startsWith("http://")) {
+      fixedUrl = fixedUrl.replace("http://", "https://");
+    }
+
+    return fixedUrl;
+  };
+
+  // Função para verificar e processar callback do Mercado Livre
+  const processMLCallback = useCallback(async () => {
+    if (callbackProcessed) return;
+
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get("code");
     const state = urlParams.get("state");
     const error = urlParams.get("error");
 
+    const isCallback = code || error;
+    const isFromNgrok = isNgrokUrl();
+
+    console.log("🔍 Processando callback ML:", {
+      isCallback,
+      isFromNgrok,
+      hasCode: !!code,
+      hasError: !!error,
+      currentUrl: window.location.href,
+    });
+
+    // Atualizar debug info
+    setDebugInfo((prev) => ({
+      ...prev,
+      isNgrok: isFromNgrok,
+      currentUrl: window.location.href,
+    }));
+
+    if (!isCallback) return;
+
+    setCallbackProcessed(true);
+
+    // Se há erro na autorização
     if (error) {
+      console.error("❌ Erro na autorização ML:", error);
+
+      if (isFromNgrok) {
+        // Salvar erro e redirecionar para localhost
+        localStorage.setItem(
+          "mlAuthError",
+          JSON.stringify({
+            error: error,
+            timestamp: Date.now(),
+          })
+        );
+        console.log("🔄 Redirecionando para localhost devido ao erro...");
+        window.location.href = getLocalhostUrl("/configuracoes?ml_error=true");
+        return;
+      }
+
       toast.error(`Erro na autorização: ${error}`);
       window.history.replaceState({}, "", window.location.pathname);
       return;
     }
 
+    // Se há código de autorização
     if (code && state) {
+      console.log("✅ Código de autorização recebido, processando...");
+      console.log("🔍 Detalhes do callback:", {
+        code: code.substring(0, 20) + "...",
+        state,
+        isFromNgrok,
+        currentHost: window.location.hostname,
+        timestamp: new Date().toISOString(),
+      });
+
       try {
         setConnecting(true);
 
+        console.log("📡 Enviando POST para /api/mercadolivre/auth...");
         const response = await fetch("/api/mercadolivre/auth", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code, state }),
         });
 
+        console.log("📥 Status da resposta:", response.status);
         const data = await response.json();
+        console.log("📡 Resposta da API:", {
+          success: data.success,
+          hasAccount: !!data.account,
+          error: data.error,
+          status: response.status,
+        });
 
         if (data.success) {
+          console.log("🎉 Conta conectada com sucesso:", data.account.nickname);
+
+          if (isFromNgrok) {
+            // Salvar sucesso e redirecionar para localhost
+            console.log("💾 Salvando resultado no localStorage...");
+            localStorage.setItem(
+              "mlAuthSuccess",
+              JSON.stringify({
+                success: true,
+                account: data.account,
+                timestamp: Date.now(),
+              })
+            );
+            console.log("🔄 Redirecionando para localhost com sucesso...");
+            window.location.href = getLocalhostUrl(
+              "/configuracoes?ml_connected=true"
+            );
+            return;
+          }
+
+          // Se já estamos no localhost, processar diretamente
           toast.success(
             `Conta ${data.account.nickname} conectada com sucesso!`
           );
           await loadAccounts();
         } else {
+          console.error("❌ Erro ao conectar conta:", data.error);
+
+          if (isFromNgrok) {
+            console.log("💾 Salvando erro no localStorage...");
+            localStorage.setItem(
+              "mlAuthError",
+              JSON.stringify({
+                error: data.error || "Erro ao conectar conta",
+                timestamp: Date.now(),
+              })
+            );
+            window.location.href = getLocalhostUrl(
+              "/configuracoes?ml_error=true"
+            );
+            return;
+          }
+
           toast.error(data.error || "Erro ao conectar conta");
         }
       } catch (error) {
-        console.error("Erro ao processar callback:", error);
+        console.error("💥 Erro ao processar callback:", error);
+
+        if (isFromNgrok) {
+          localStorage.setItem(
+            "mlAuthError",
+            JSON.stringify({
+              error: "Erro ao processar callback",
+              timestamp: Date.now(),
+            })
+          );
+          window.location.href = getLocalhostUrl(
+            "/configuracoes?ml_error=true"
+          );
+          return;
+        }
+
         toast.error("Erro ao conectar conta");
       } finally {
         setConnecting(false);
-        window.history.replaceState({}, "", window.location.pathname);
+
+        // Limpar URL apenas se não for ngrok
+        if (!isFromNgrok) {
+          window.history.replaceState({}, "", window.location.pathname);
+        }
       }
+    }
+  }, [callbackProcessed, isNgrokUrl, getLocalhostUrl]);
+
+  // Processar resultados salvos no localStorage (vindos do ngrok)
+  const processStoredResults = useCallback(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const mlConnected = urlParams.get("ml_connected");
+    const mlError = urlParams.get("ml_error");
+
+    if (mlConnected) {
+      const authSuccess = localStorage.getItem("mlAuthSuccess");
+      if (authSuccess) {
+        try {
+          const data = JSON.parse(authSuccess);
+          // Verificar se não é muito antigo (max 2 minutos)
+          if (Date.now() - data.timestamp < 120000) {
+            console.log("✅ Processando sucesso salvo:", data.account.nickname);
+
+            // Notificação mais destacada
+            toast.success(
+              `🎉 Conta do Mercado Livre conectada com sucesso!\n✅ Usuário: ${data.account.nickname}\n📊 Agora você pode gerenciar seus produtos e ver estatísticas!`,
+              { duration: 6000 }
+            );
+
+            localStorage.removeItem("mlAuthSuccess");
+            // Recarregar contas após sucesso
+            setTimeout(() => loadAccounts(), 1000);
+          }
+        } catch (e) {
+          console.error("Erro ao processar authSuccess:", e);
+        }
+      }
+      // Limpar URL
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
+    if (mlError) {
+      const authError = localStorage.getItem("mlAuthError");
+      if (authError) {
+        try {
+          const data = JSON.parse(authError);
+          // Verificar se não é muito antigo (max 2 minutos)
+          if (Date.now() - data.timestamp < 120000) {
+            console.log("❌ Processando erro salvo:", data.error);
+            toast.error(`❌ Erro ao conectar conta: ${data.error}`);
+            localStorage.removeItem("mlAuthError");
+          }
+        } catch (e) {
+          console.error("Erro ao processar authError:", e);
+        }
+      }
+      // Limpar URL
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, []);
 
   const loadAccounts = useCallback(async () => {
     try {
+      console.log("📋 Carregando contas ML...");
       const response = await fetch("/api/mercadolivre/auth?action=accounts");
       const data = await response.json();
 
       if (response.ok) {
+        console.log(`📊 ${data.length} contas encontradas`);
         setAccounts(data);
         if (data.length > 0 && !selectedAccount) {
           setSelectedAccount(data[0].id);
+          console.log("🎯 Conta selecionada:", data[0].nickname);
         }
       } else {
+        console.error("❌ Erro ao carregar contas:", data.error);
         toast.error(data.error || "Erro ao carregar contas");
       }
     } catch (error) {
-      console.error("Erro ao carregar contas:", error);
+      console.error("💥 Erro ao carregar contas:", error);
       toast.error("Erro ao carregar contas");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedAccount]);
 
+  // Efeito principal de inicialização
   useEffect(() => {
+    if (status !== "authenticated") return;
+
+    console.log("🚀 Inicializando página ML Config...");
+
+    // Detectar se está no ngrok
+    const isNgrok = isNgrokUrl();
+    setIsNgrokMode(isNgrok);
+
+    console.log("🌐 Modo ngrok:", isNgrok);
+    console.log("📍 URL atual:", window.location.href);
+
+    // Processar resultados salvos primeiro
+    processStoredResults();
+
+    // Depois processar callback se necessário
+    processMLCallback();
+
+    // Carregar contas
     loadAccounts();
-    checkAuthCallback();
-  }, [loadAccounts, checkAuthCallback]);
+  }, [
+    status,
+    processStoredResults,
+    processMLCallback,
+    loadAccounts,
+    isNgrokUrl,
+  ]);
 
   useEffect(() => {
     if (selectedAccount) {
@@ -237,7 +569,7 @@ export default function MercadoLivreConfigPage() {
     try {
       setLoadingAnalytics(true);
       const response = await fetch(
-        `/api/mercadolivre/analytics?accountId=${accountId}&action=dashboard`
+        `/api/mercadolivre/analytics?accountId=${accountId}&type=dashboard`
       );
       const data = await response.json();
 
@@ -254,35 +586,58 @@ export default function MercadoLivreConfigPage() {
   };
 
   const connectAccount = async () => {
+    // Verificar se já existe uma conta conectada
+    if (accounts.length > 0) {
+      toast.info(
+        "Você já possui uma conta conectada. Desconecte a atual para conectar uma nova."
+      );
+      return;
+    }
+
     try {
       setConnecting(true);
+      console.log("🔗 Iniciando conexão com Mercado Livre...");
 
       const response = await fetch("/api/mercadolivre/auth?action=connect");
       const data = await response.json();
 
+      console.log("📡 Resposta da API de conexão:", {
+        success: data.success,
+        hasAuthUrl: !!data.authUrl,
+        hasError: !!data.error,
+      });
+
       if (data.authUrl) {
         // Salvar informações de debug
-        setDebugInfo({
+        setDebugInfo((prev) => ({
+          ...prev,
           authUrl: data.authUrl,
           redirectUri: data.redirectUri,
           hasCredentials: true,
-        });
+          error: undefined,
+        }));
 
-        console.log("URL de autorização gerada:", data.authUrl);
+        console.log("✅ URL de autorização gerada com sucesso");
+        console.log("🔄 Redirecionando para autorização ML...");
+
+        // Redirecionar para ML
         window.location.href = data.authUrl;
       } else {
-        setDebugInfo({
+        console.error("❌ Erro ao gerar URL de autorização:", data.error);
+        setDebugInfo((prev) => ({
+          ...prev,
           error: data.error || "Erro ao gerar URL de autorização",
           hasCredentials: false,
-        });
-        toast.error("Erro ao gerar URL de autorização");
+        }));
+        toast.error(data.error || "Erro ao gerar URL de autorização");
       }
     } catch (error) {
-      console.error("Erro ao conectar conta:", error);
-      setDebugInfo({
+      console.error("💥 Erro ao conectar conta:", error);
+      setDebugInfo((prev) => ({
+        ...prev,
         error: error instanceof Error ? error.message : "Erro desconhecido",
         hasCredentials: false,
-      });
+      }));
       toast.error("Erro ao conectar conta");
     } finally {
       setConnecting(false);
@@ -357,14 +712,14 @@ export default function MercadoLivreConfigPage() {
     try {
       setLoadingSkuSync(true);
       const response = await fetch(
-        `/api/mercadolivre/analytics?accountId=${accountId}&action=sync-sku`
+        `/api/mercadolivre/analytics?accountId=${accountId}&type=sync`
       );
       const data = await response.json();
 
       if (response.ok) {
-        setSkuSyncResult(data);
+        setSkuSyncResult(data.syncResults);
         toast.success(
-          `Sincronização concluída: ${data.matched} produtos encontrados`
+          `Sincronização concluída: ${data.syncResults.matched} produtos encontrados`
         );
       } else {
         toast.error(data.error || "Erro ao sincronizar produtos");
@@ -459,10 +814,6 @@ export default function MercadoLivreConfigPage() {
     );
   };
 
-  const formatDate = (date: string | Date) => {
-    return new Date(date).toLocaleString("pt-BR");
-  };
-
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
     const remainingSeconds = seconds % 60;
@@ -496,6 +847,19 @@ export default function MercadoLivreConfigPage() {
     totalQuantity: products.reduce((sum, p) => sum + p.mlAvailableQuantity, 0),
   };
 
+  // Verificar sessão
+  if (status === "loading") {
+    return (
+      <div className="container mx-auto p-6 max-w-6xl">
+        <Header name="Mercado Livre" />
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Verificando autenticação...</span>
+        </div>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto p-6 max-w-6xl">
@@ -525,8 +889,63 @@ export default function MercadoLivreConfigPage() {
         </Button>
       </div>
 
+      {/* Aviso quando estiver no ngrok */}
+      {isNgrokMode && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="animate-spin">
+                <Loader2 className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="font-medium text-blue-800">
+                  Processando autorização do Mercado Livre
+                </h3>
+                <p className="text-sm text-blue-600">
+                  Você será redirecionado automaticamente para o localhost em
+                  alguns segundos...
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Componente de Ajuda */}
       <MercadoLivreConfigHelp />
+
+      {/* Banner de boas-vindas quando há conta conectada */}
+      {accounts.length > 0 && (
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-green-800">
+                  🎉 Mercado Livre conectado com sucesso!
+                </h3>
+                <p className="text-sm text-green-700">
+                  Você possui {accounts.length} conta
+                  {accounts.length > 1 ? "s" : ""} conectada
+                  {accounts.length > 1 ? "s" : ""}. Agora você pode gerenciar
+                  produtos, ver estatísticas de vendas e sincronizar seu
+                  estoque.
+                </p>
+              </div>
+              <div className="text-right">
+                <Badge
+                  variant="outline"
+                  className="text-green-600 border-green-600"
+                >
+                  ✅ Ativo
+                </Badge>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Debug Panel */}
       <Card className="border-yellow-200 bg-yellow-50">
@@ -557,6 +976,17 @@ export default function MercadoLivreConfigPage() {
                   <p>
                     <strong>Endpoint de auth:</strong> auth.mercadolivre.com.br
                   </p>
+                  <p>
+                    <strong>Modo ngrok:</strong>{" "}
+                    {isNgrokMode ? "✅ Sim" : "❌ Não"}
+                  </p>
+                  <p>
+                    <strong>Callback processado:</strong>{" "}
+                    {callbackProcessed ? "✅ Sim" : "❌ Não"}
+                  </p>
+                  <p>
+                    <strong>Status sessão:</strong> {status}
+                  </p>
                   {debugInfo.hasCredentials !== undefined && (
                     <p>
                       <strong>Credenciais configuradas:</strong>{" "}
@@ -566,13 +996,21 @@ export default function MercadoLivreConfigPage() {
                 </div>
               </div>
               <div>
-                <h4 className="font-medium text-sm mb-2">URLs de Debug</h4>
+                <h4 className="font-medium text-sm mb-2">URLs e Logs</h4>
                 <div className="text-xs space-y-1">
+                  {debugInfo.currentUrl && (
+                    <div>
+                      <strong>URL atual:</strong>
+                      <div className="bg-gray-100 p-2 rounded mt-1 break-all">
+                        {debugInfo.currentUrl}
+                      </div>
+                    </div>
+                  )}
                   {debugInfo.authUrl && (
                     <div>
                       <strong>URL de autorização:</strong>
                       <div className="bg-gray-100 p-2 rounded mt-1 break-all">
-                        {debugInfo.authUrl}
+                        {debugInfo.authUrl.substring(0, 100)}...
                       </div>
                     </div>
                   )}
@@ -595,6 +1033,51 @@ export default function MercadoLivreConfigPage() {
                 </div>
               </div>
             </div>
+
+            {/* Actions do Debug */}
+            <div className="border-t pt-4">
+              <h4 className="font-medium text-sm mb-2">Ações de Debug</h4>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    console.log("🔄 Recarregando contas...");
+                    loadAccounts();
+                  }}
+                >
+                  <RefreshCw className="h-4 w-4 mr-1" />
+                  Recarregar Contas
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    localStorage.clear();
+                    toast.info("Cache do localStorage limpo");
+                  }}
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Limpar Cache
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    console.log("🔍 Estado atual:", {
+                      accounts,
+                      selectedAccount,
+                      isNgrokMode,
+                      callbackProcessed,
+                      debugInfo,
+                    });
+                  }}
+                >
+                  <Info className="h-4 w-4 mr-1" />
+                  Log Estado
+                </Button>
+              </div>
+            </div>
           </CardContent>
         )}
       </Card>
@@ -608,80 +1091,188 @@ export default function MercadoLivreConfigPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {accounts.length === 0 ? (
-            <div className="text-center py-8">
-              <Store className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-700 mb-2">
-                Nenhuma conta conectada
-              </h3>
-              <p className="text-gray-500 mb-4">
-                Conecte sua conta do Mercado Livre para sincronizar produtos
-              </p>
-              <Button onClick={connectAccount} disabled={connecting}>
-                <Plus className="h-4 w-4 mr-2" />
-                Conectar Primeira Conta
+          <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium">Contas Mercado Livre</h3>
+              <Button
+                onClick={connectAccount}
+                disabled={connecting}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {connecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Conectando...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Conectar Conta
+                  </>
+                )}
               </Button>
             </div>
-          ) : (
-            <div className="grid gap-4">
-              {accounts.map((account) => (
-                <div
-                  key={account.id}
-                  className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                    selectedAccount === account.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                  onClick={() => setSelectedAccount(account.id)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center">
-                        <Store className="h-5 w-5 text-white" />
+
+            {accounts.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                Nenhuma conta do Mercado Livre conectada.
+                <br />
+                Clique em "Conectar Conta" para adicionar uma conta.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {accounts.map((account) => (
+                  <Card key={account.id} className="p-4">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{account.nickname}</h4>
+                          <Badge variant="secondary">{account.siteId}</Badge>
+                          {account.userInfo?.sellerReputation
+                            ?.powerSellerStatus === "platinum" && (
+                            <Badge
+                              variant="outline"
+                              className="text-purple-600 border-purple-600"
+                            >
+                              ⭐ Power Seller
+                            </Badge>
+                          )}
+                        </div>
+
+                        {account.userInfo && (
+                          <div className="text-sm text-gray-600 space-y-1">
+                            <p>
+                              Nome: {account.userInfo.firstName}{" "}
+                              {account.userInfo.lastName}
+                            </p>
+                            <p>Email: {account.userInfo.email}</p>
+                            <p>Tipo: {account.userInfo.userType}</p>
+                            <p>Pontos: {account.userInfo.points}</p>
+                            {account.userInfo.sellerReputation?.levelId && (
+                              <p>
+                                Reputação:{" "}
+                                {account.userInfo.sellerReputation.levelId}
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <h3 className="font-medium">{account.nickname}</h3>
-                        <p className="text-sm text-gray-500">
-                          ID: {account.mlUserId} • Site: {account.siteId}
-                        </p>
+
+                      <div className="flex gap-2 flex-wrap">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAccount(account.id);
+                            loadAnalytics(account.id);
+                          }}
+                        >
+                          <BarChart className="mr-1 h-4 w-4" />
+                          Analytics
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedAccount(account.id);
+                            loadSyncHistory(account.id);
+                          }}
+                        >
+                          <RefreshCw className="mr-1 h-4 w-4" />
+                          Sync Produtos
+                        </Button>
+
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => disconnectAccount(account.id)}
+                        >
+                          <Trash2 className="mr-1 h-4 w-4" />
+                          Desconectar
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-green-600">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Conectado
-                      </Badge>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          syncProducts(account.id);
-                        }}
-                        disabled={syncing}
-                      >
-                        <RotateCcw className="h-4 w-4 mr-1" />
-                        Sincronizar
-                      </Button>
-
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          disconnectAccount(account.id);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+                    {/* Dados de Analytics */}
+                    {analyticsData && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                        <h5 className="font-medium mb-2">Dashboard ML</h5>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                          {analyticsData.metrics && (
+                            <>
+                              <div>
+                                <p className="text-gray-600">Anúncios Ativos</p>
+                                <p className="font-medium">
+                                  {analyticsData.metrics.activeListings}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Total Anúncios</p>
+                                <p className="font-medium">
+                                  {analyticsData.metrics.totalListings}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Pausados</p>
+                                <p className="font-medium">
+                                  {analyticsData.metrics.pausedListings}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Reputação</p>
+                                <p className="font-medium">
+                                  {analyticsData.metrics.reputationLevel}
+                                </p>
+                              </div>
+                            </>
+                          )}
+                          {analyticsData.financial && (
+                            <>
+                              <div>
+                                <p className="text-gray-600">
+                                  Saldo Disponível
+                                </p>
+                                <p className="font-medium">
+                                  {exibirValorEmReais(
+                                    analyticsData.financial.availableBalance
+                                  )}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Saldo Pendente</p>
+                                <p className="font-medium">
+                                  {exibirValorEmReais(
+                                    analyticsData.financial.pendingBalance
+                                  )}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-gray-600">Saldo Total</p>
+                                <p className="font-medium">
+                                  {exibirValorEmReais(
+                                    analyticsData.financial.accountBalance
+                                  )}
+                                </p>
+                              </div>
+                            </>
+                          )}
+                          {analyticsData.stock && (
+                            <div>
+                              <p className="text-gray-600">Estoque Baixo</p>
+                              <p className="font-medium text-yellow-600">
+                                {analyticsData.stock.lowStockProducts.length}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -847,14 +1438,17 @@ export default function MercadoLivreConfigPage() {
                             <TableRow key={product.id}>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  {product.mlThumbnail && (
-                                    <Image
+                                  {product.mlThumbnail ? (
+                                    <MLImage
                                       src={product.mlThumbnail}
-                                      alt={product.mlTitle}
+                                      alt={product.mlTitle || "Produto ML"}
                                       width={40}
                                       height={40}
-                                      className="rounded"
                                     />
+                                  ) : (
+                                    <div className="w-10 h-10 bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500">
+                                      ML
+                                    </div>
                                   )}
                                   <div>
                                     <p className="font-medium line-clamp-1">
@@ -881,9 +1475,7 @@ export default function MercadoLivreConfigPage() {
                                 {getStatusBadge(product.mlStatus)}
                               </TableCell>
                               <TableCell>
-                                {new Date(
-                                  product.lastSyncAt
-                                ).toLocaleDateString("pt-BR")}
+                                {formatDateShort(product.lastSyncAt)}
                               </TableCell>
                               <TableCell>
                                 <div className="flex gap-1">
@@ -936,12 +1528,12 @@ export default function MercadoLivreConfigPage() {
 
               <TabsContent value="analytics" className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Analytics Cards */}
+                  {/* Métricas do Vendedor */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-green-500" />
-                        Estatísticas de Vendas
+                        <BarChart className="h-5 w-5 text-blue-500" />
+                        Métricas do Vendedor
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -949,38 +1541,39 @@ export default function MercadoLivreConfigPage() {
                         <div className="flex items-center justify-center p-6">
                           <Loader2 className="h-6 w-6 animate-spin" />
                         </div>
-                      ) : analyticsData?.sales ? (
+                      ) : analyticsData?.metrics ? (
                         <div className="space-y-3">
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
-                              Total de Vendas:
+                              Total de Anúncios:
                             </span>
                             <span className="font-semibold">
-                              {analyticsData.sales.totalSales}
+                              {analyticsData.metrics.totalListings}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
-                              Receita Total:
+                              Anúncios Ativos:
                             </span>
-                            <span className="font-semibold">
-                              {exibirValorEmReais(
-                                analyticsData.sales.totalRevenue * 100
-                              )}
+                            <span className="font-semibold text-green-600">
+                              {analyticsData.metrics.activeListings}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
-                              Ticket Médio:
+                              Anúncios Pausados:
                             </span>
-                            <span className="font-semibold">
-                              {exibirValorEmReais(
-                                analyticsData.sales.averageTicket * 100
-                              )}
+                            <span className="font-semibold text-yellow-600">
+                              {analyticsData.metrics.pausedListings}
                             </span>
                           </div>
-                          <div className="text-xs text-gray-500 mt-2">
-                            Período: {analyticsData.sales.period}
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Nível de Reputação:
+                            </span>
+                            <span className="font-semibold">
+                              {analyticsData.metrics.reputationLevel}
+                            </span>
                           </div>
                         </div>
                       ) : (
@@ -991,11 +1584,12 @@ export default function MercadoLivreConfigPage() {
                     </CardContent>
                   </Card>
 
+                  {/* Estoque */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Settings className="h-5 w-5 text-blue-500" />
-                        Taxas do Marketplace
+                        <Package className="h-5 w-5 text-orange-500" />
+                        Controle de Estoque
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -1003,42 +1597,157 @@ export default function MercadoLivreConfigPage() {
                         <div className="flex items-center justify-center p-6">
                           <Loader2 className="h-6 w-6 animate-spin" />
                         </div>
-                      ) : analyticsData?.fees ? (
+                      ) : analyticsData?.stock ? (
                         <div className="space-y-3">
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
-                              Taxa de Venda:
+                              Total de Produtos:
                             </span>
                             <span className="font-semibold">
-                              {(analyticsData.fees.saleFee * 100).toFixed(1)}%
+                              {analyticsData.stock.totalProducts}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
-                              Taxa de Pagamento:
+                              Estoque Baixo:
                             </span>
-                            <span className="font-semibold">
-                              {(analyticsData.fees.paymentFee * 100).toFixed(1)}
-                              %
+                            <span className="font-semibold text-yellow-600">
+                              {analyticsData.stock.lowStockProducts.length}
                             </span>
                           </div>
                           <div className="flex justify-between">
                             <span className="text-sm text-gray-600">
-                              Taxa de Anúncio:
+                              Sem Estoque:
                             </span>
-                            <span className="font-semibold">
-                              {exibirValorEmReais(
-                                analyticsData.fees.listingFee * 100
-                              )}
+                            <span className="font-semibold text-red-600">
+                              {analyticsData.stock.outOfStockProducts.length}
                             </span>
-                          </div>
-                          <div className="text-xs text-gray-500 mt-2">
-                            Categoria: {analyticsData.fees.category}
                           </div>
                         </div>
                       ) : (
                         <div className="text-center text-gray-500 p-6">
                           Dados não disponíveis
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Informações de Envio */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Truck className="h-5 w-5 text-purple-500" />
+                        Configurações de Envio
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingAnalytics ? (
+                        <div className="flex items-center justify-center p-6">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : analyticsData?.shipping ? (
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Mercado Envios:
+                            </span>
+                            <span
+                              className={`font-semibold ${
+                                analyticsData.shipping.mercadoEnviosEnabled
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {analyticsData.shipping.mercadoEnviosEnabled
+                                ? "Ativo"
+                                : "Inativo"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Frete Grátis:
+                            </span>
+                            <span
+                              className={`font-semibold ${
+                                analyticsData.shipping.freeShippingEnabled
+                                  ? "text-green-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {analyticsData.shipping.freeShippingEnabled
+                                ? "Ativo"
+                                : "Inativo"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Métodos de Envio:
+                            </span>
+                            <span className="font-semibold">
+                              {analyticsData.shipping.shippingMethods.length}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 p-6">
+                          Dados não disponíveis
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Informações Financeiras */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-green-500" />
+                        Informações Financeiras
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {loadingAnalytics ? (
+                        <div className="flex items-center justify-center p-6">
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        </div>
+                      ) : analyticsData?.financial ? (
+                        <div className="space-y-3">
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Saldo Disponível:
+                            </span>
+                            <span className="font-semibold text-green-600">
+                              {exibirValorEmReais(
+                                analyticsData.financial.availableBalance
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Saldo Pendente:
+                            </span>
+                            <span className="font-semibold text-yellow-600">
+                              {exibirValorEmReais(
+                                analyticsData.financial.pendingBalance
+                              )}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-sm text-gray-600">
+                              Saldo Total:
+                            </span>
+                            <span className="font-semibold">
+                              {exibirValorEmReais(
+                                analyticsData.financial.accountBalance
+                              )}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-2">
+                            Moeda: {analyticsData.financial.currency}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center text-gray-500 p-6">
+                          Dados não disponíveis (requer permissões especiais)
                         </div>
                       )}
                     </CardContent>
@@ -1168,6 +1877,128 @@ export default function MercadoLivreConfigPage() {
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Alertas de Estoque */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <AlertCircle className="h-5 w-5 text-yellow-500" />
+                      Alertas de Estoque
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {loadingAnalytics ? (
+                      <div className="flex items-center justify-center p-6">
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      </div>
+                    ) : analyticsData?.stock ? (
+                      <div className="space-y-4">
+                        {/* Produtos com estoque baixo */}
+                        {analyticsData.stock.lowStockProducts.length > 0 && (
+                          <div>
+                            <h4 className="font-medium text-sm mb-2 text-yellow-600">
+                              Produtos com Estoque Baixo (≤ 5 unidades)
+                            </h4>
+                            <div className="max-h-40 overflow-y-auto">
+                              <div className="space-y-2">
+                                {analyticsData.stock.lowStockProducts
+                                  .slice(0, 10)
+                                  .map((product) => (
+                                    <div
+                                      key={product.id}
+                                      className="flex justify-between items-center p-2 bg-yellow-50 rounded"
+                                    >
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium truncate">
+                                          {product.title}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          {exibirValorEmReais(product.price)}
+                                        </p>
+                                      </div>
+                                      <Badge
+                                        variant="outline"
+                                        className="text-yellow-600 border-yellow-600"
+                                      >
+                                        {product.availableQuantity} un.
+                                      </Badge>
+                                    </div>
+                                  ))}
+                                {analyticsData.stock.lowStockProducts.length >
+                                  10 && (
+                                  <p className="text-xs text-gray-500 text-center">
+                                    ... e mais{" "}
+                                    {analyticsData.stock.lowStockProducts
+                                      .length - 10}{" "}
+                                    produtos
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Produtos sem estoque */}
+                        {analyticsData.stock.outOfStockProducts.length > 0 && (
+                          <div>
+                            <h4 className="font-medium text-sm mb-2 text-red-600">
+                              Produtos Sem Estoque
+                            </h4>
+                            <div className="max-h-40 overflow-y-auto">
+                              <div className="space-y-2">
+                                {analyticsData.stock.outOfStockProducts
+                                  .slice(0, 10)
+                                  .map((product) => (
+                                    <div
+                                      key={product.id}
+                                      className="flex justify-between items-center p-2 bg-red-50 rounded"
+                                    >
+                                      <div className="flex-1">
+                                        <p className="text-sm font-medium truncate">
+                                          {product.title}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          {exibirValorEmReais(product.price)}
+                                        </p>
+                                      </div>
+                                      <Badge variant="destructive">
+                                        Sem estoque
+                                      </Badge>
+                                    </div>
+                                  ))}
+                                {analyticsData.stock.outOfStockProducts.length >
+                                  10 && (
+                                  <p className="text-xs text-gray-500 text-center">
+                                    ... e mais{" "}
+                                    {analyticsData.stock.outOfStockProducts
+                                      .length - 10}{" "}
+                                    produtos
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {analyticsData.stock.lowStockProducts.length === 0 &&
+                          analyticsData.stock.outOfStockProducts.length ===
+                            0 && (
+                            <div className="text-center text-green-600 p-6">
+                              <CheckCircle className="h-8 w-8 mx-auto mb-2" />
+                              <p className="font-medium">Estoque em dia!</p>
+                              <p className="text-sm">
+                                Todos os produtos têm estoque adequado
+                              </p>
+                            </div>
+                          )}
+                      </div>
+                    ) : (
+                      <div className="text-center text-gray-500 p-6">
+                        Dados de estoque não disponíveis
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </TabsContent>
 
               <TabsContent value="historico" className="space-y-4">
@@ -1200,11 +2031,12 @@ export default function MercadoLivreConfigPage() {
                             <TableCell>
                               <div className="flex flex-col">
                                 <span className="font-medium">
-                                  {formatDate(history.startedAt)}
+                                  {formatDateSafe(history.startedAt)}
                                 </span>
                                 {history.completedAt && (
                                   <span className="text-sm text-gray-500">
-                                    Concluído: {formatDate(history.completedAt)}
+                                    Concluído:{" "}
+                                    {formatDateSafe(history.completedAt)}
                                   </span>
                                 )}
                               </div>

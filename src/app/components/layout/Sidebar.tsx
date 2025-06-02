@@ -128,6 +128,13 @@ const Sidebar = () => {
             width={120}
             height={120}
             className="rounded-full"
+            priority
+            style={{
+              width: "auto",
+              height: "auto",
+              maxWidth: "120px",
+              maxHeight: "120px",
+            }}
           />
         </div>
         <button
