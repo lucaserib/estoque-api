@@ -681,6 +681,11 @@ export default function MercadoLivreConfigPage() {
       setSyncing(true);
       setSyncProgress(0);
       setShowSyncDialog(true);
+      
+      // Toast inicial
+      toast.info("🔄 Iniciando sincronização com Mercado Livre...", {
+        duration: 2000
+      });
 
       const response = await fetch("/api/mercadolivre/sync", {
         method: "POST",
@@ -692,17 +697,30 @@ export default function MercadoLivreConfigPage() {
       setSyncResult(result);
 
       if (result.success) {
-        toast.success(
-          `Sincronização concluída! ${result.syncedItems} produtos sincronizados.`
-        );
-        await loadProducts(accountId);
-        await loadSyncHistory(accountId);
+        const successMessage = [
+          `✅ Sincronização concluída!`,
+          `📦 ${result.totalItems} produtos encontrados`,
+          `🔄 ${result.syncedItems} produtos sincronizados`,
+          result.newItems > 0 ? `🆕 ${result.newItems} produtos novos` : '',
+          result.updatedItems > 0 ? `📝 ${result.updatedItems} produtos atualizados` : '',
+        ].filter(Boolean).join('\n');
+
+        toast.success(successMessage, { 
+          duration: 6000 
+        });
+        
+        // Recarregar dados
+        await Promise.all([
+          loadProducts(accountId),
+          loadSyncHistory(accountId),
+          loadAnalytics(accountId)
+        ]);
       } else {
-        toast.error("Sincronização finalizada com erros");
+        toast.error(`❌ Sincronização com erros: ${result.errors.join(', ')}`);
       }
     } catch (error) {
       console.error("Erro na sincronização:", error);
-      toast.error("Erro durante a sincronização");
+      toast.error("💥 Erro durante a sincronização: " + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setSyncing(false);
     }
@@ -1176,11 +1194,19 @@ export default function MercadoLivreConfigPage() {
                           size="sm"
                           onClick={() => {
                             setSelectedAccount(account.id);
-                            loadSyncHistory(account.id);
+                            syncProducts(account.id, "full");
                           }}
+                          disabled={syncing}
+                          className="gap-2"
                         >
-                          <RefreshCw className="mr-1 h-4 w-4" />
-                          Sync Produtos
+                          {syncing && selectedAccount === account.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <RefreshCw className="h-4 w-4" />
+                          )}
+                          {syncing && selectedAccount === account.id
+                            ? "Sincronizando..."
+                            : "Atualizar Produtos"}
                         </Button>
 
                         <Button
@@ -1278,7 +1304,43 @@ export default function MercadoLivreConfigPage() {
 
       {/* Estatísticas */}
       {selectedAccount && products.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="space-y-4">
+          {/* Última Sincronização */}
+          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                    <Clock className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-blue-800">Última Sincronização</h3>
+                    <p className="text-sm text-blue-600">
+                      {products.length > 0 && isClient
+                        ? `${formatDateSafe(products[0]?.lastSyncAt)} - ${products.length} produtos sincronizados`
+                        : "Aguardando primeira sincronização..."
+                      }
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => syncProducts(selectedAccount, "full")}
+                  disabled={syncing}
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {syncing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cards de Estatísticas */}
+          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
@@ -1342,6 +1404,7 @@ export default function MercadoLivreConfigPage() {
               </div>
             </CardContent>
           </Card>
+          </div>
         </div>
       )}
 
@@ -1376,8 +1439,8 @@ export default function MercadoLivreConfigPage() {
               </TabsList>
 
               <TabsContent value="produtos" className="space-y-4">
-                {/* Filtros */}
-                <div className="flex flex-col md:flex-row gap-4">
+                {/* Filtros e Ações */}
+                <div className="flex flex-col md:flex-row gap-4 items-end">
                   <div className="flex-1">
                     <input
                       type="text"
@@ -1397,6 +1460,20 @@ export default function MercadoLivreConfigPage() {
                     <option value="paused">Pausados</option>
                     <option value="closed">Finalizados</option>
                   </select>
+                  
+                  <Button
+                    onClick={() => syncProducts(selectedAccount!, "full")}
+                    disabled={syncing}
+                    variant="outline"
+                    className="gap-2"
+                  >
+                    {syncing ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    {syncing ? "Sincronizando..." : "Buscar Novos"}
+                  </Button>
                 </div>
 
                 {/* Lista de Produtos */}
