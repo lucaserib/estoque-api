@@ -178,6 +178,72 @@ export default function MercadoLivreConfigPage() {
   const [callbackProcessed, setCallbackProcessed] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
+  // Estados para importação ML
+  const [importData, setImportData] = useState<{
+    newProducts: Array<{
+      mlItemId: string;
+      title: string;
+      price: number;
+      thumbnail: string;
+      status: string;
+      isFull: boolean;
+      condition: string;
+      availableQuantity: number;
+    }>;
+    existingProducts: Array<any>;
+    summary: {
+      total: number;
+      new: number;
+      existing: number;
+      fullProducts: number;
+      flexProducts: number;
+    };
+  } | null>(null);
+  const [loadingImportData, setLoadingImportData] = useState(false);
+  const [selectedForImport, setSelectedForImport] = useState<Set<string>>(new Set());
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{
+    success: boolean;
+    imported: number;
+    errors: number;
+    products: Array<any>;
+  } | null>(null);
+
+  // Estados para gestão de produtos importados
+  const [importedProducts, setImportedProducts] = useState<Array<{
+    id: string;
+    nome: string;
+    sku: string;
+    custoMedio: number | null;
+    configurationStatus: string;
+    hasCost: boolean;
+    hasSupplier: boolean;
+    needsConfiguration: boolean;
+    mlData: any;
+  }>>([]);
+  const [loadingImportedProducts, setLoadingImportedProducts] = useState(false);
+  const [managementFilter, setManagementFilter] = useState("all");
+  const [editingProduct, setEditingProduct] = useState<{
+    id: string;
+    nome: string;
+    sku: string;
+    custoMedio: number;
+  } | null>(null);
+  const [updatingProduct, setUpdatingProduct] = useState(false);
+  const [importedProductsStats, setImportedProductsStats] = useState<{
+    total: number;
+    pending: number;
+    configured: number;
+    fullProducts: number;
+    flexProducts: number;
+  }>({
+    total: 0,
+    pending: 0,
+    configured: 0,
+    fullProducts: 0,
+    flexProducts: 0,
+  });
+
   // Executar apenas no client
   useEffect(() => {
     setIsClient(true);
@@ -747,6 +813,159 @@ export default function MercadoLivreConfigPage() {
       toast.error("Erro ao sincronizar produtos");
     } finally {
       setLoadingSkuSync(false);
+    }
+  };
+
+  const loadImportableProducts = async (accountId: string) => {
+    try {
+      setLoadingImportData(true);
+      const response = await fetch(
+        `/api/produtos/importar-ml?accountId=${accountId}`
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        setImportData(data);
+        setSelectedForImport(new Set()); // Reset selection
+        toast.success(
+          `${data.summary.new} produtos encontrados para importação`
+        );
+      } else {
+        toast.error(data.error || "Erro ao carregar produtos");
+      }
+    } catch (error) {
+      console.error("Erro ao carregar produtos para importação:", error);
+      toast.error("Erro ao carregar produtos");
+    } finally {
+      setLoadingImportData(false);
+    }
+  };
+
+  const importSelectedProducts = async (accountId: string) => {
+    if (selectedForImport.size === 0) {
+      toast.error("Selecione pelo menos um produto para importar");
+      return;
+    }
+
+    try {
+      setImporting(true);
+      toast.info(`Importando ${selectedForImport.size} produtos...`);
+
+      const response = await fetch("/api/produtos/importar-ml", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          accountId,
+          selectedItems: Array.from(selectedForImport),
+          defaultValues: {
+            custoMedio: 0,
+          },
+        }),
+      });
+
+      const result = await response.json();
+      setImportResult(result);
+
+      if (result.success) {
+        toast.success(
+          `✅ ${result.imported} produtos importados com sucesso!`
+        );
+        
+        // Recarregar dados
+        await Promise.all([
+          loadProducts(accountId),
+          loadImportableProducts(accountId), // Atualizar lista de importação
+        ]);
+        
+        // Limpar seleção
+        setSelectedForImport(new Set());
+      } else {
+        toast.error(`Importação com erros: ${result.errors} falhas`);
+      }
+    } catch (error) {
+      console.error("Erro ao importar produtos:", error);
+      toast.error("Erro durante a importação");
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const toggleProductSelection = (mlItemId: string) => {
+    const newSelection = new Set(selectedForImport);
+    if (newSelection.has(mlItemId)) {
+      newSelection.delete(mlItemId);
+    } else {
+      newSelection.add(mlItemId);
+    }
+    setSelectedForImport(newSelection);
+  };
+
+  const selectAllProducts = () => {
+    if (!importData?.newProducts) return;
+    
+    if (selectedForImport.size === importData.newProducts.length) {
+      // Desselecionar todos
+      setSelectedForImport(new Set());
+    } else {
+      // Selecionar todos
+      setSelectedForImport(new Set(importData.newProducts.map(p => p.mlItemId)));
+    }
+  };
+
+  const loadImportedProducts = async (statusFilter: string = "all") => {
+    try {
+      setLoadingImportedProducts(true);
+      const response = await fetch(
+        `/api/produtos/ml-importados?status=${statusFilter}`
+      );
+      const data = await response.json();
+
+      if (response.ok) {
+        setImportedProducts(data.products);
+        setImportedProductsStats(data.stats);
+      } else {
+        toast.error(data.error || "Erro ao carregar produtos importados");
+      }
+    } catch (error) {
+      console.error("Erro ao carregar produtos importados:", error);
+      toast.error("Erro ao carregar produtos importados");
+    } finally {
+      setLoadingImportedProducts(false);
+    }
+  };
+
+  const updateProduct = async (updates: {
+    nome?: string;
+    sku?: string;
+    custoMedio?: number;
+  }) => {
+    if (!editingProduct) return;
+
+    try {
+      setUpdatingProduct(true);
+      const response = await fetch("/api/produtos/ml-importados", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          productId: editingProduct.id,
+          updates,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success("Produto atualizado com sucesso!");
+        setEditingProduct(null);
+        await loadImportedProducts(managementFilter);
+      } else {
+        toast.error("Erro ao atualizar produto");
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar produto:", error);
+      toast.error("Erro ao atualizar produto");
+    } finally {
+      setUpdatingProduct(false);
     }
   };
 
@@ -1419,10 +1638,18 @@ export default function MercadoLivreConfigPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="grid w-full grid-cols-4">
+              <TabsList className="grid w-full grid-cols-6">
                 <TabsTrigger value="produtos">
                   <Package className="h-4 w-4 mr-2" />
                   Produtos ({products.length})
+                </TabsTrigger>
+                <TabsTrigger value="importar">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Importar ML
+                </TabsTrigger>
+                <TabsTrigger value="gerenciar">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Gerenciar
                 </TabsTrigger>
                 <TabsTrigger value="analytics">
                   <TrendingUp className="h-4 w-4 mr-2" />
@@ -1600,6 +1827,515 @@ export default function MercadoLivreConfigPage() {
                       </div>
                     )}
                   </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="importar" className="space-y-4">
+                {/* Header da Importação */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium">Importar Produtos do Mercado Livre</h3>
+                    <p className="text-sm text-gray-600">
+                      Importe seus produtos do ML para o sistema local e configure custos manualmente
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => selectedAccount && loadImportableProducts(selectedAccount)}
+                    disabled={loadingImportData}
+                    className="gap-2"
+                  >
+                    {loadingImportData ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    {loadingImportData ? "Carregando..." : "Buscar Produtos ML"}
+                  </Button>
+                </div>
+
+                {/* Resumo da Importação */}
+                {importData && (
+                  <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+                    <CardContent className="p-4">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-blue-600">
+                            {importData.summary.total}
+                          </div>
+                          <div className="text-sm text-gray-600">Total ML</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {importData.summary.new}
+                          </div>
+                          <div className="text-sm text-gray-600">Novos</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-gray-600">
+                            {importData.summary.existing}
+                          </div>
+                          <div className="text-sm text-gray-600">Já Importados</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-purple-600">
+                            {importData.summary.fullProducts}
+                          </div>
+                          <div className="text-sm text-gray-600">Full</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-orange-600">
+                            {importData.summary.flexProducts}
+                          </div>
+                          <div className="text-sm text-gray-600">Flex</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Lista de Produtos para Importar */}
+                {importData?.newProducts && importData.newProducts.length > 0 ? (
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="flex items-center gap-2">
+                          <Package className="h-5 w-5" />
+                          Produtos Disponíveis para Importação ({importData.newProducts.length})
+                        </CardTitle>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={selectAllProducts}
+                          >
+                            {selectedForImport.size === importData.newProducts.length
+                              ? "Desselecionar Todos"
+                              : "Selecionar Todos"}
+                          </Button>
+                          <Button
+                            onClick={() => selectedAccount && importSelectedProducts(selectedAccount)}
+                            disabled={importing || selectedForImport.size === 0}
+                            className="gap-2"
+                          >
+                            {importing ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Plus className="h-4 w-4" />
+                            )}
+                            {importing
+                              ? "Importando..."
+                              : `Importar Selecionados (${selectedForImport.size})`}
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {importData.newProducts.map((product) => (
+                          <div
+                            key={product.mlItemId}
+                            className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                              selectedForImport.has(product.mlItemId)
+                                ? "border-blue-500 bg-blue-50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                            onClick={() => toggleProductSelection(product.mlItemId)}
+                          >
+                            <div className="flex items-center gap-4">
+                              <input
+                                type="checkbox"
+                                checked={selectedForImport.has(product.mlItemId)}
+                                onChange={() => toggleProductSelection(product.mlItemId)}
+                                className="w-4 h-4"
+                              />
+                              
+                              {product.thumbnail && (
+                                <img
+                                  src={product.thumbnail}
+                                  alt={product.title}
+                                  className="w-12 h-12 object-cover rounded border"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              
+                              <div className="flex-1">
+                                <h4 className="font-medium line-clamp-1">
+                                  {product.title}
+                                </h4>
+                                <div className="flex items-center gap-4 text-sm text-gray-600">
+                                  <span>R$ {product.price.toFixed(2)}</span>
+                                  <span>Estoque: {product.availableQuantity}</span>
+                                  <Badge
+                                    variant={product.isFull ? "default" : "secondary"}
+                                    className={
+                                      product.isFull
+                                        ? "bg-purple-100 text-purple-800"
+                                        : "bg-orange-100 text-orange-800"
+                                    }
+                                  >
+                                    {product.isFull ? "🚚 Full" : "📦 Flex"}
+                                  </Badge>
+                                  {getStatusBadge(product.status)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : importData?.newProducts && importData.newProducts.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">
+                        Todos os produtos já foram importados!
+                      </h3>
+                      <p className="text-gray-500">
+                        Todos os seus produtos do Mercado Livre já estão no sistema local.
+                      </p>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">
+                        Clique em "Buscar Produtos ML" para começar
+                      </h3>
+                      <p className="text-gray-500">
+                        Carregaremos todos os seus produtos do Mercado Livre para você escolher quais importar.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Resultado da Importação */}
+                {importResult && (
+                  <Card className="border-green-200 bg-green-50">
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                        <div>
+                          <h4 className="font-medium text-green-800">
+                            Importação Concluída!
+                          </h4>
+                          <p className="text-sm text-green-700">
+                            {importResult.imported} produtos importados com sucesso
+                            {importResult.errors > 0 && ` (${importResult.errors} erros)`}
+                          </p>
+                          <p className="text-xs text-green-600 mt-1">
+                            Agora você pode configurar custos e impostos na aba "Produtos" ou na página de produtos.
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              <TabsContent value="gerenciar" className="space-y-4">
+                {/* Header da Gestão */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-medium">Gerenciar Produtos Importados</h3>
+                    <p className="text-sm text-gray-600">
+                      Configure custos, impostos e SKUs dos produtos importados do ML
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => loadImportedProducts(managementFilter)}
+                    disabled={loadingImportedProducts}
+                    className="gap-2"
+                  >
+                    {loadingImportedProducts ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
+                    Atualizar
+                  </Button>
+                </div>
+
+                {/* Estatísticas */}
+                {importedProductsStats.total > 0 && (
+                  <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+                    <CardContent className="p-4">
+                      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+                        <div>
+                          <div className="text-2xl font-bold text-purple-600">
+                            {importedProductsStats.total}
+                          </div>
+                          <div className="text-sm text-gray-600">Total</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-red-600">
+                            {importedProductsStats.pending}
+                          </div>
+                          <div className="text-sm text-gray-600">Pendentes</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-green-600">
+                            {importedProductsStats.configured}
+                          </div>
+                          <div className="text-sm text-gray-600">Configurados</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-purple-600">
+                            {importedProductsStats.fullProducts}
+                          </div>
+                          <div className="text-sm text-gray-600">Full</div>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-bold text-orange-600">
+                            {importedProductsStats.flexProducts}
+                          </div>
+                          <div className="text-sm text-gray-600">Flex</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Filtros */}
+                <div className="flex gap-4 items-center">
+                  <label className="text-sm font-medium">Filtrar por:</label>
+                  <select
+                    value={managementFilter}
+                    onChange={(e) => {
+                      setManagementFilter(e.target.value);
+                      loadImportedProducts(e.target.value);
+                    }}
+                    className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="all">Todos os produtos</option>
+                    <option value="pending">Pendentes de configuração</option>
+                    <option value="configured">Já configurados</option>
+                  </select>
+                </div>
+
+                {/* Lista de Produtos */}
+                {loadingImportedProducts ? (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-gray-400" />
+                      <p className="text-gray-500">Carregando produtos...</p>
+                    </CardContent>
+                  </Card>
+                ) : importedProducts.length > 0 ? (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Settings className="h-5 w-5" />
+                        Produtos Importados ({importedProducts.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3">
+                        {importedProducts.map((product) => (
+                          <div
+                            key={product.id}
+                            className="border rounded-lg p-4 hover:bg-gray-50"
+                          >
+                            <div className="flex items-center gap-4">
+                              {product.mlData?.mlThumbnail && (
+                                <img
+                                  src={product.mlData.mlThumbnail}
+                                  alt={product.nome}
+                                  className="w-16 h-16 object-cover rounded border"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              
+                              <div className="flex-1">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <h4 className="font-medium">{product.nome}</h4>
+                                    <div className="flex items-center gap-4 text-sm text-gray-600 mt-1">
+                                      <span>SKU: {product.sku}</span>
+                                      {product.mlData && (
+                                        <>
+                                          <span>ML: R$ {product.mlData.mlPrice.toFixed(2)}</span>
+                                          <Badge
+                                            variant={product.mlData.isFull ? "default" : "secondary"}
+                                            className={
+                                              product.mlData.isFull
+                                                ? "bg-purple-100 text-purple-800"
+                                                : "bg-orange-100 text-orange-800"
+                                            }
+                                          >
+                                            {product.mlData.isFull ? "🚚 Full" : "📦 Flex"}
+                                          </Badge>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2">
+                                    {product.needsConfiguration ? (
+                                      <Badge variant="destructive">
+                                        ⚠️ Pendente
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="default" className="bg-green-100 text-green-800">
+                                        ✅ Configurado
+                                      </Badge>
+                                    )}
+                                    
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => setEditingProduct({
+                                        id: product.id,
+                                        nome: product.nome,
+                                        sku: product.sku,
+                                        custoMedio: product.custoMedio ? product.custoMedio / 100 : 0,
+                                      })}
+                                    >
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 text-sm">
+                                  <div>
+                                    <span className="text-gray-500">Custo:</span>
+                                    <span className="ml-1 font-medium">
+                                      {product.custoMedio 
+                                        ? `R$ ${(product.custoMedio / 100).toFixed(2)}`
+                                        : "Não definido"
+                                      }
+                                    </span>
+                                  </div>
+                                  {product.custoMedio && product.mlData && (
+                                    <div>
+                                      <span className="text-gray-500">Margem:</span>
+                                      <span className="ml-1 font-medium">
+                                        {(((product.mlData.mlPrice - (product.custoMedio / 100)) / product.mlData.mlPrice) * 100).toFixed(1)}%
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div>
+                                    <span className="text-gray-500">Status ML:</span>
+                                    <span className="ml-1">
+                                      {getStatusBadge(product.mlData?.mlStatus || "unknown")}
+                                    </span>
+                                  </div>
+                                  <div>
+                                    <span className="text-gray-500">Importado:</span>
+                                    <span className="ml-1">
+                                      {isClient && product.mlData?.lastSyncAt 
+                                        ? formatDateSafe(product.mlData.lastSyncAt)
+                                        : "--"
+                                      }
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="p-8 text-center">
+                      <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-700 mb-2">
+                        Nenhum produto importado encontrado
+                      </h3>
+                      <p className="text-gray-500">
+                        {managementFilter === "pending" 
+                          ? "Todos os produtos já foram configurados!"
+                          : "Importe produtos do ML primeiro na aba 'Importar ML'."
+                        }
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Dialog de Edição */}
+                {editingProduct && (
+                  <Dialog open={!!editingProduct} onOpenChange={() => setEditingProduct(null)}>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Editar Produto</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Nome</label>
+                          <input
+                            type="text"
+                            value={editingProduct.nome}
+                            onChange={(e) => setEditingProduct({
+                              ...editingProduct,
+                              nome: e.target.value
+                            })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-1">SKU</label>
+                          <input
+                            type="text"
+                            value={editingProduct.sku}
+                            onChange={(e) => setEditingProduct({
+                              ...editingProduct,
+                              sku: e.target.value
+                            })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium mb-1">Custo Médio (R$)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editingProduct.custoMedio}
+                            onChange={(e) => setEditingProduct({
+                              ...editingProduct,
+                              custoMedio: parseFloat(e.target.value) || 0
+                            })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        
+                        <div className="flex gap-2 pt-4">
+                          <Button
+                            variant="outline"
+                            onClick={() => setEditingProduct(null)}
+                            className="flex-1"
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            onClick={() => updateProduct({
+                              nome: editingProduct.nome,
+                              sku: editingProduct.sku,
+                              custoMedio: editingProduct.custoMedio,
+                            })}
+                            disabled={updatingProduct}
+                            className="flex-1"
+                          >
+                            {updatingProduct ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Salvar"
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 )}
               </TabsContent>
 

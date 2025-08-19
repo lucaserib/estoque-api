@@ -68,31 +68,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se o produto e o fornecedor existem
-    const produto = await prisma.produto.findUnique({
-      where: { id: produtoId },
+    // Verificar se o produto e o fornecedor existem e pertencem ao usuário
+    const produto = await prisma.produto.findFirst({
+      where: { 
+        id: produtoId,
+        userId: user.id 
+      },
     });
 
     if (!produto) {
       console.error(
-        `API POST /produto-fornecedor - Produto não encontrado: ${produtoId}`
+        `API POST /produto-fornecedor - Produto não encontrado ou não pertence ao usuário: ${produtoId}`
       );
       return NextResponse.json(
-        { error: "Produto não encontrado" },
+        { error: "Produto não encontrado ou não autorizado" },
         { status: 404 }
       );
     }
 
-    const fornecedor = await prisma.fornecedor.findUnique({
-      where: { id: fornecedorId },
+    const fornecedor = await prisma.fornecedor.findFirst({
+      where: { 
+        id: fornecedorId,
+        userId: user.id 
+      },
     });
 
     if (!fornecedor) {
       console.error(
-        `API POST /produto-fornecedor - Fornecedor não encontrado: ${fornecedorId}`
+        `API POST /produto-fornecedor - Fornecedor não encontrado ou não pertence ao usuário: ${fornecedorId}`
       );
       return NextResponse.json(
-        { error: "Fornecedor não encontrado" },
+        { error: "Fornecedor não encontrado ou não autorizado" },
         { status: 404 }
       );
     }
@@ -177,9 +183,31 @@ export async function GET(request: NextRequest) {
         "API /produto-fornecedor - Buscando produtos para fornecedor:",
         fornecedorId
       );
+      
+      // Verificar se o fornecedor pertence ao usuário
+      const fornecedor = await prisma.fornecedor.findFirst({
+        where: {
+          id: fornecedorId,
+          userId: user.id,
+        },
+      });
+
+      if (!fornecedor) {
+        console.error(
+          `API /produto-fornecedor - Fornecedor não encontrado ou não autorizado: ${fornecedorId}`
+        );
+        return NextResponse.json(
+          { error: "Fornecedor não encontrado ou não autorizado" },
+          { status: 404 }
+        );
+      }
+
       const produtos = await prisma.produtoFornecedor.findMany({
         where: {
           fornecedorId: fornecedorId,
+          produto: {
+            userId: user.id, // Garantir que o produto pertence ao usuário
+          },
         },
         include: {
           produto: true,
@@ -201,9 +229,31 @@ export async function GET(request: NextRequest) {
         "API /produto-fornecedor - Buscando fornecedores para produto:",
         produtoId
       );
+      
+      // Verificar se o produto pertence ao usuário
+      const produto = await prisma.produto.findFirst({
+        where: {
+          id: produtoId,
+          userId: user.id,
+        },
+      });
+
+      if (!produto) {
+        console.error(
+          `API /produto-fornecedor - Produto não encontrado ou não autorizado: ${produtoId}`
+        );
+        return NextResponse.json(
+          { error: "Produto não encontrado ou não autorizado" },
+          { status: 404 }
+        );
+      }
+
       const fornecedores = await prisma.produtoFornecedor.findMany({
         where: {
           produtoId: produtoId,
+          fornecedor: {
+            userId: user.id, // Garantir que o fornecedor pertence ao usuário
+          },
         },
         include: {
           fornecedor: true,
@@ -237,6 +287,30 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
+    // Verificar se o vínculo existe e se o usuário tem permissão
+    const vinculoExistente = await prisma.produtoFornecedor.findUnique({
+      where: { id: Number(id) },
+      include: {
+        produto: true,
+        fornecedor: true,
+      },
+    });
+
+    if (!vinculoExistente) {
+      return NextResponse.json(
+        { error: "Vínculo não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    // Verificar se o produto e fornecedor pertencem ao usuário
+    if (vinculoExistente.produto.userId !== user.id || vinculoExistente.fornecedor.userId !== user.id) {
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 403 }
+      );
+    }
+
     await prisma.produtoFornecedor.delete({
       where: { id: Number(id) },
     });
@@ -275,9 +349,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verificar se o vínculo existe
+    // Verificar se o vínculo existe e se o usuário tem permissão
     const vinculoExistente = await prisma.produtoFornecedor.findUnique({
       where: { id: Number(id) },
+      include: {
+        produto: true,
+        fornecedor: true,
+      },
     });
 
     if (!vinculoExistente) {
@@ -287,6 +365,17 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json(
         { error: "Vínculo não encontrado" },
         { status: 404 }
+      );
+    }
+
+    // Verificar se o produto e fornecedor pertencem ao usuário
+    if (vinculoExistente.produto.userId !== user.id || vinculoExistente.fornecedor.userId !== user.id) {
+      console.error(
+        `API PUT /produto-fornecedor - Vínculo não autorizado para usuário: ${user.id}`
+      );
+      return NextResponse.json(
+        { error: "Não autorizado" },
+        { status: 403 }
       );
     }
 

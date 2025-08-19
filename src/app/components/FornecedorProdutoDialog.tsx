@@ -80,6 +80,7 @@ export function FornecedorProdutoDialog({
   const [selectedProdutoId, setSelectedProdutoId] = useState<string | null>(
     null
   );
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const fetchProdutosVinculados = useCallback(async () => {
     setIsLoading(true);
@@ -120,23 +121,63 @@ export function FornecedorProdutoDialog({
     };
   }, [isOpen]);
 
+  // Effect for automatic search when typing
+  useEffect(() => {
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    if (produtoSearch.trim()) {
+      const timeout = setTimeout(() => {
+        handleProdutoSearch();
+      }, 500); // Buscar após 500ms de inatividade
+      setSearchTimeout(timeout);
+    } else {
+      setSearchResults([]);
+      setSelectedProdutoId(null);
+    }
+
+    return () => {
+      if (searchTimeout) {
+        clearTimeout(searchTimeout);
+      }
+    };
+  }, [produtoSearch, produtosVinculados]); // Adicionado produtosVinculados como dependência
+
   const handleProdutoSearch = async () => {
-    if (!produtoSearch.trim()) return;
+    if (!produtoSearch.trim()) {
+      setSearchResults([]);
+      return;
+    }
 
     setIsSearching(true);
+    setMessage("");
     try {
       // Busca produtos pelo nome ou SKU
       const response = await fetch(
-        `/api/produtos?search=${encodeURIComponent(produtoSearch)}`
+        `/api/produtos?search=${encodeURIComponent(produtoSearch.trim())}`
       );
       if (!response.ok) throw new Error("Erro ao buscar produtos");
 
       const data = await response.json();
-      setSearchResults(data);
+      
+      // Filtrar produtos que já estão vinculados
+      const produtosNaoVinculados = data.filter(
+        (produto: Produto) => 
+          !produtosVinculados.some(vinculo => vinculo.produtoId === produto.id)
+      );
+      
+      setSearchResults(produtosNaoVinculados);
+      
+      if (produtosNaoVinculados.length === 0 && data.length > 0) {
+        setMessage("Todos os produtos encontrados já estão vinculados a este fornecedor");
+        setMessageType("error");
+      }
     } catch (error) {
       console.error("Erro ao buscar produtos", error);
       setMessage("Erro ao buscar produtos");
       setMessageType("error");
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -186,12 +227,21 @@ export function FornecedorProdutoDialog({
         }
         setMessage("Produto vinculado com sucesso");
         setMessageType("success");
+        
+        // Limpar mensagem de sucesso após 3 segundos
+        setTimeout(() => {
+          setMessage("");
+          setMessageType("");
+        }, 3000);
         setSelectedProdutoId(null);
         setProdutoSearch("");
         setPreco("");
         setMultiplicador("1");
         setCodigoNF("");
         setSearchResults([]);
+        
+        // Recarregar produtos vinculados para atualizar a lista
+        await fetchProdutosVinculados();
       } else {
         const errorData = await response.json();
         setMessage(errorData.error || "Erro ao vincular produto");
@@ -220,6 +270,12 @@ export function FornecedorProdutoDialog({
         );
         setMessage("Vínculo removido com sucesso");
         setMessageType("success");
+        
+        // Limpar mensagem de sucesso após 3 segundos
+        setTimeout(() => {
+          setMessage("");
+          setMessageType("");
+        }, 3000);
       } else {
         setMessage("Erro ao remover vínculo");
         setMessageType("error");
@@ -285,6 +341,13 @@ export function FornecedorProdutoDialog({
         setEditingId(null); // Exit edit mode
         setMessage("Vínculo atualizado com sucesso");
         setMessageType("success");
+        
+        // Limpar mensagem de sucesso após 3 segundos
+        setTimeout(() => {
+          setMessage("");
+          setMessageType("");
+        }, 3000);
+        
         setPreco("");
         setMultiplicador("1");
         setCodigoNF("");
@@ -509,20 +572,18 @@ export function FornecedorProdutoDialog({
                   <div className="relative">
                     <Input
                       id="produtoSearch"
-                      placeholder="Digite SKU ou nome do produto"
+                      placeholder="Digite SKU ou nome do produto (busca automática)"
                       value={produtoSearch}
                       onChange={(e) => setProdutoSearch(e.target.value)}
                       className="pr-10"
                     />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={handleProdutoSearch}
-                      className="absolute right-0 top-0 h-full"
-                    >
-                      <Search className="h-4 w-4" />
-                    </Button>
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      {isSearching ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                      ) : (
+                        <Search className="h-4 w-4 text-gray-400" />
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -576,8 +637,10 @@ export function FornecedorProdutoDialog({
                 ) : (
                   produtoSearch &&
                   !isSearching && (
-                    <div className="text-center py-2 text-gray-500 dark:text-gray-400 text-sm">
-                      Nenhum produto encontrado. Tente outro termo.
+                    <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700">
+                      <Package className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                      <p>Nenhum produto encontrado para &quot;{produtoSearch}&quot;</p>
+                      <p className="text-xs mt-1">Verifique se o produto existe ou ajuste o termo de busca</p>
                     </div>
                   )
                 )}

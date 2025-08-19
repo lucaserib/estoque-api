@@ -240,6 +240,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     const carregarProdutos = () => {
       if (fornecedorId) {
         loadProdutosFornecedor(fornecedorId);
+        setSearchTerm(""); // Limpar busca quando trocar fornecedor
       }
     };
 
@@ -312,11 +313,14 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     }, 0);
   };
 
-  const filteredProducts = produtosFornecedor.filter(
-    (pf) =>
-      pf.produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      pf.produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = produtosFornecedor.filter((pf) => {
+    if (!searchTerm.trim()) return true;
+    const searchLower = searchTerm.toLowerCase().trim();
+    return (
+      pf.produto.nome.toLowerCase().includes(searchLower) ||
+      pf.produto.sku.toLowerCase().includes(searchLower)
+    );
+  });
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);
@@ -500,209 +504,223 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                   </span>
                 </div>
               ) : filteredProducts.length > 0 ? (
-                <div className="border rounded-md overflow-hidden mb-4">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Produto</TableHead>
-                        <TableHead className="w-24 text-right">Preço</TableHead>
-                        <TableHead className="w-32">Quantidade</TableHead>
-                        <TableHead className="w-16"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredProducts.slice(0, 5).map((pf) => (
-                        <TableRow key={pf.produtoId}>
-                          <TableCell>
-                            <div className="font-medium">{pf.produto.nome}</div>
-                            <div className="text-xs text-muted-foreground">
-                              SKU: {pf.produto.sku}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {formatBRL(
-                              typeof pf.preco === "number"
-                                ? pf.preco
-                                : parseInt(pf.preco.toString())
-                            )}
-                            {pf.multiplicador > 1 && (
-                              <span className="text-xs text-muted-foreground block">
-                                Mult: {pf.multiplicador}x
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Input
-                              type="number"
-                              min="1"
-                              placeholder="Qtd"
-                              value={
-                                newProduct?.produtoId === pf.produtoId
-                                  ? newProduct.quantidade
-                                  : ""
-                              }
-                              onChange={(e) =>
-                                setNewProduct({
-                                  produtoId: pf.produtoId,
-                                  sku: pf.produto.sku,
-                                  nome: pf.produto.nome,
-                                  quantidade: Number(e.target.value),
-                                  custo:
-                                    typeof pf.preco === "number"
-                                      ? pf.preco
-                                      : parseInt(pf.preco.toString()),
-                                  multiplicador: pf.multiplicador,
-                                })
-                              }
-                              className="w-20"
-                              disabled={isSubmitting}
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                if (
-                                  newProduct?.produtoId === pf.produtoId &&
-                                  newProduct.quantidade > 0
-                                ) {
-                                  addProduct(pf, newProduct.quantidade);
-                                } else {
-                                  addProduct(pf, 1);
-                                }
-                              }}
-                              disabled={isSubmitting}
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                <>
+                  {searchTerm && (
+                    <div className="text-sm text-muted-foreground mb-2">
+                      {filteredProducts.length} produto
+                      {filteredProducts.length !== 1 ? "s" : ""} encontrado
+                      {filteredProducts.length !== 1 ? "s" : ""} para "
+                      {searchTerm}"
+                    </div>
+                  )}
+                  <div className="border rounded-md overflow-hidden mb-4">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="w-24 text-right">
+                            Preço
+                          </TableHead>
+                          <TableHead className="w-32">Quantidade</TableHead>
+                          <TableHead className="w-16"></TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredProducts.slice(0, 10).map((pf) => (
+                          <TableRow key={pf.produtoId}>
+                            <TableCell>
+                              <div className="font-medium">
+                                {pf.produto.nome}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                SKU: {pf.produto.sku}
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatBRL(
+                                typeof pf.preco === "number"
+                                  ? pf.preco
+                                  : parseInt(pf.preco.toString())
+                              )}
+                              {pf.multiplicador > 1 && (
+                                <span className="text-xs text-muted-foreground block">
+                                  Mult: {pf.multiplicador}x
+                                </span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="Qtd"
+                                value={
+                                  newProduct?.produtoId === pf.produtoId
+                                    ? newProduct.quantidade
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setNewProduct({
+                                    produtoId: pf.produtoId,
+                                    sku: pf.produto.sku,
+                                    nome: pf.produto.nome,
+                                    quantidade: Number(e.target.value),
+                                    custo:
+                                      typeof pf.preco === "number"
+                                        ? pf.preco
+                                        : parseInt(pf.preco.toString()),
+                                    multiplicador: pf.multiplicador,
+                                  })
+                                }
+                                className="w-20"
+                                disabled={isSubmitting}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => {
+                                  if (
+                                    newProduct?.produtoId === pf.produtoId &&
+                                    newProduct.quantidade > 0
+                                  ) {
+                                    addProduct(pf, newProduct.quantidade);
+                                  } else {
+                                    addProduct(pf, 1);
+                                  }
+                                }}
+                                disabled={isSubmitting}
+                              >
+                                <Plus className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </>
               ) : (
-                <div className="text-center p-4 text-muted-foreground border rounded-md">
+                <div className="text-center p-6 text-muted-foreground border rounded-md bg-muted/30">
                   {searchTerm
-                    ? "Nenhum produto encontrado para este termo de busca"
-                    : "Nenhum produto disponível para este fornecedor"}
+                    ? `Nenhum produto encontrado para "${searchTerm}". Verifique se há produtos vinculados a este fornecedor ou ajuste o termo de busca.`
+                    : "Este fornecedor não possui produtos vinculados. Vá até a tela de fornecedores e vincule alguns produtos primeiro."}
                 </div>
               )}
             </>
           )}
-
-          <FormField
-            control={form.control}
-            name="produtos"
-            render={() => (
-              <FormItem>
-                <FormLabel className="text-base">Produtos no Pedido</FormLabel>
-                <div className="mt-2">
-                  {form.getValues("produtos")?.length > 0 ? (
-                    <div className="border rounded-md overflow-hidden">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Produto</TableHead>
-                            <TableHead className="w-24 text-right">
-                              Quantidade
-                            </TableHead>
-                            <TableHead className="w-28 text-right">
-                              Preço Unit.
-                            </TableHead>
-                            <TableHead className="w-28 text-right">
-                              Subtotal
-                            </TableHead>
-                            <TableHead className="w-10"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {form.getValues("produtos").map((produto, index) => {
-                            const subtotal =
-                              produto.quantidade *
-                              produto.custo *
-                              (produto.multiplicador || 1);
-
-                            return (
-                              <TableRow key={index}>
-                                <TableCell>
-                                  <div className="font-medium">
-                                    {produto.nome}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    SKU: {produto.sku}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    value={produto.quantidade}
-                                    onChange={(e) =>
-                                      updateQuantity(
-                                        index,
-                                        Number(e.target.value)
-                                      )
-                                    }
-                                    className="w-16 text-right ml-auto"
-                                    disabled={isSubmitting}
-                                  />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {centsToBRL(produto.custo)}
-                                  {produto.multiplicador &&
-                                    produto.multiplicador > 1 && (
-                                      <span className="text-xs text-muted-foreground block">
-                                        Mult: {produto.multiplicador}x
-                                      </span>
-                                    )}
-                                </TableCell>
-                                <TableCell className="text-right font-medium">
-                                  {formatBRL(subtotal)}
-                                </TableCell>
-                                <TableCell>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => removeProduct(index)}
-                                    disabled={isSubmitting}
-                                  >
-                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-
-                          <TableRow className="border-t-2">
-                            <TableCell
-                              colSpan={3}
-                              className="text-right font-semibold"
-                            >
-                              Valor Total:
-                            </TableCell>
-                            <TableCell className="text-right font-bold">
-                              {formatBRL(calculateTotal())}
-                            </TableCell>
-                            <TableCell></TableCell>
-                          </TableRow>
-                        </TableBody>
-                      </Table>
-                    </div>
-                  ) : (
-                    <div className="text-center p-6 border rounded-md text-muted-foreground bg-muted">
-                      Nenhum produto adicionado ao pedido
-                    </div>
-                  )}
-                  <FormMessage />
-                </div>
-              </FormItem>
-            )}
-          />
         </div>
+
+        <FormField
+          control={form.control}
+          name="produtos"
+          render={() => (
+            <FormItem>
+              <FormLabel className="text-base">Produtos no Pedido</FormLabel>
+              <div className="mt-2">
+                {form.getValues("produtos")?.length > 0 ? (
+                  <div className="border rounded-md overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Produto</TableHead>
+                          <TableHead className="w-24 text-right">
+                            Quantidade
+                          </TableHead>
+                          <TableHead className="w-28 text-right">
+                            Preço Unit.
+                          </TableHead>
+                          <TableHead className="w-28 text-right">
+                            Subtotal
+                          </TableHead>
+                          <TableHead className="w-10"></TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {form.getValues("produtos").map((produto, index) => {
+                          const subtotal =
+                            produto.quantidade *
+                            produto.custo *
+                            (produto.multiplicador || 1);
+
+                          return (
+                            <TableRow key={index}>
+                              <TableCell>
+                                <div className="font-medium">
+                                  {produto.nome}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  SKU: {produto.sku}
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={produto.quantidade}
+                                  onChange={(e) =>
+                                    updateQuantity(
+                                      index,
+                                      Number(e.target.value)
+                                    )
+                                  }
+                                  className="w-16 text-right ml-auto"
+                                  disabled={isSubmitting}
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {centsToBRL(produto.custo)}
+                                {produto.multiplicador &&
+                                  produto.multiplicador > 1 && (
+                                    <span className="text-xs text-muted-foreground block">
+                                      Mult: {produto.multiplicador}x
+                                    </span>
+                                  )}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatBRL(subtotal)}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => removeProduct(index)}
+                                  disabled={isSubmitting}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+
+                        <TableRow className="border-t-2">
+                          <TableCell
+                            colSpan={3}
+                            className="text-right font-semibold"
+                          >
+                            Valor Total:
+                          </TableCell>
+                          <TableCell className="text-right font-bold">
+                            {formatBRL(calculateTotal())}
+                          </TableCell>
+                          <TableCell></TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </div>
+                ) : (
+                  <div className="text-center p-6 border rounded-md text-muted-foreground bg-muted">
+                    Nenhum produto adicionado ao pedido
+                  </div>
+                )}
+                <FormMessage />
+              </div>
+            </FormItem>
+          )}
+        />
 
         <div className="flex justify-end space-x-2 pt-4">
           <Button type="submit" className="gap-2" disabled={isSubmitting}>
