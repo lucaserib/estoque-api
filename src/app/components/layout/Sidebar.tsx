@@ -13,6 +13,8 @@ import {
   ChevronUp,
   ClipboardPaste,
   Settings,
+  ArrowLeftRight,
+  ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -102,8 +104,34 @@ const SidebarDropdown = ({
           </>
         )}
       </div>
-      {isOpen && <div className="mt-2 space-y-2">{children}</div>}
+      {isOpen && !isCollapsed && <div className="space-y-1">{children}</div>}
     </div>
+  );
+};
+
+const SidebarSubLink = ({
+  href,
+  icon: Icon,
+  label,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+}) => {
+  const pathname = usePathname();
+  const isActive = pathname === href;
+
+  return (
+    <Link href={href}>
+      <div
+        className={`cursor-pointer flex items-center pl-12 pr-8 py-3 hover:text-blue-500 hover:bg-blue-50 gap-3 transition-colors ${
+          isActive ? "bg-blue-100 text-blue-600 border-r-2 border-blue-500" : ""
+        }`}
+      >
+        <Icon className="w-4 h-4 text-gray-600" />
+        <span className="text-sm font-medium text-gray-600">{label}</span>
+      </div>
+    </Link>
   );
 };
 
@@ -172,12 +200,23 @@ const Sidebar = () => {
           isCollapsed={isSidebarCollapsed}
           href="/produtos"
         />
-        <SidebarLink
-          href="/estoque/armazens"
+
+        <SidebarDropdown
           icon={Warehouse}
           label="Estoque"
           isCollapsed={isSidebarCollapsed}
-        />
+        >
+          <SidebarSubLink
+            href="/estoque/armazens"
+            icon={Warehouse}
+            label="Gestão de Armazéns"
+          />
+          <SidebarSubLink
+            href="/estoque/transferencias"
+            icon={ArrowLeftRight}
+            label="Transferências"
+          />
+        </SidebarDropdown>
 
         <SidebarLink
           icon={ClipboardPaste}
@@ -187,8 +226,8 @@ const Sidebar = () => {
         />
 
         <SidebarLink
-          icon={Settings}
-          label="Configurações"
+          icon={ShoppingCart}
+          label="Mercado Livre"
           isCollapsed={isSidebarCollapsed}
           href="/configuracoes"
         />

@@ -19,11 +19,12 @@ model User {
   accounts Account[]
   sessions Session[]
 
-  produtos   Produto[]
-  armazens   Armazem[]
-  pedidos    PedidoCompra[]
-  saidas     Saida[]
-  Fornecedor Fornecedor[]
+  produtos       Produto[]
+  armazens       Armazem[]
+  pedidos        PedidoCompra[]
+  saidas         Saida[]
+  Fornecedor     Fornecedor[]
+  transferencias TransferenciaEstoque[]
 
   MercadoLivreAccount MercadoLivreAccount[]
 }
@@ -163,11 +164,12 @@ model Produto {
   componentes     Componente[]        @relation("KitToComponente")
   kitsComponentes Componente[]        @relation("ProdutoToComponente")
   custoMedio      Int?                @default(0)
-  detalhesSaida   DetalhesSaida[]
-  estoques        Estoque[]
-  pedidos         PedidoProduto[]
-  fornecedores    ProdutoFornecedor[]
-  saidas          Saida[]
+  detalhesSaida      DetalhesSaida[]
+  estoques           Estoque[]
+  pedidos            PedidoProduto[]
+  fornecedores       ProdutoFornecedor[]
+  saidas             Saida[]
+  transferenciaItens TransferenciaItem[]
 
   ProdutoMercadoLivre ProdutoMercadoLivre[]
 
@@ -217,12 +219,14 @@ model DetalhesSaida {
 }
 
 model Armazem {
-  id       String    @id @default(uuid())
-  nome     String
-  userId   String
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  estoques Estoque[]
-  saidas   Saida[]
+  id                     String                 @id @default(uuid())
+  nome                   String
+  userId                 String
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  estoques               Estoque[]
+  saidas                 Saida[]
+  transferenciasOrigem   TransferenciaEstoque[] @relation("TransferenciaOrigem")
+  transferenciasDestino  TransferenciaEstoque[] @relation("TransferenciaDestino")
 }
 
 model Fornecedor {
@@ -274,4 +278,34 @@ model ProdutoFornecedor {
   produto       Produto    @relation(fields: [produtoId], references: [id])
 
   @@unique([produtoId, fornecedorId])
+}
+
+model TransferenciaEstoque {
+  id                String   @id @default(uuid())
+  userId            String
+  armazemOrigemId   String
+  armazemDestinoId  String
+  data              DateTime @default(now())
+  observacoes       String?
+  status            String   @default("concluida")
+
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  armazemOrigem     Armazem  @relation("TransferenciaOrigem", fields: [armazemOrigemId], references: [id])
+  armazemDestino    Armazem  @relation("TransferenciaDestino", fields: [armazemDestinoId], references: [id])
+
+  itens             TransferenciaItem[]
+
+  @@map("transferencias_estoque")
+}
+
+model TransferenciaItem {
+  id               Int                  @id @default(autoincrement())
+  transferenciaId  String
+  produtoId        String
+  quantidade       Int
+
+  transferencia    TransferenciaEstoque @relation(fields: [transferenciaId], references: [id], onDelete: Cascade)
+  produto          Produto              @relation(fields: [produtoId], references: [id])
+
+  @@map("transferencia_itens")
 }
