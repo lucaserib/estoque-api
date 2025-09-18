@@ -185,6 +185,9 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
       }
 
       console.log("Produtos do fornecedor recebidos:", data);
+      console.log("Tipo de data:", typeof data);
+      console.log("É array?", Array.isArray(data));
+      console.log("Comprimento:", data?.length);
 
       // Verificar se data tem a estrutura esperada
       if (!data) {
@@ -200,25 +203,35 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
         return;
       }
 
+      console.log(`FRONTEND: Processando ${data.length} produtos recebidos da API`);
+
       // Verificar se cada item do array tem a estrutura esperada
-      const produtosValidos = data.filter((item) => {
+      const produtosValidos = data.filter((item, index) => {
+        console.log(`FRONTEND: Verificando item ${index}:`, item);
         if (!item.produto || !item.produtoId) {
-          console.warn("Item inválido encontrado:", item);
+          console.warn("FRONTEND: Item inválido encontrado:", item);
           return false;
         }
+        console.log(`FRONTEND: Item ${index} é válido - Produto: ${item.produto.nome}`);
         return true;
       });
 
       if (produtosValidos.length !== data.length) {
         console.warn(
-          `${
+          `FRONTEND: ${
             data.length - produtosValidos.length
           } itens inválidos foram filtrados`
         );
       }
 
-      console.log("Produtos válidos:", produtosValidos);
+      console.log("FRONTEND: Produtos válidos finais:", produtosValidos);
+      console.log(`FRONTEND: Definindo ${produtosValidos.length} produtos no estado`);
       setProdutosFornecedor(produtosValidos);
+
+      // Log adicional após definir o estado
+      setTimeout(() => {
+        console.log("FRONTEND: Estado atual de produtosFornecedor:", produtosFornecedor.length);
+      }, 100);
     } catch (error) {
       console.error("Erro ao buscar produtos do fornecedor:", error);
       setError(
@@ -234,27 +247,32 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
 
   // Quando o fornecedor muda, carregar seus produtos
   useEffect(() => {
-    const fornecedorId = form.watch("fornecedorId");
-
-    // Função para carregar os produtos quando o fornecedor muda
-    const carregarProdutos = () => {
-      if (fornecedorId) {
-        loadProdutosFornecedor(fornecedorId);
-        setSearchTerm(""); // Limpar busca quando trocar fornecedor
-      }
-    };
-
-    carregarProdutos();
+    console.log("USEEFFECT: Iniciando setup do watcher para fornecedor");
 
     // Registrar o watcher para monitorar mudanças no fornecedorId
     const subscription = form.watch((value, { name }) => {
-      if (name === "fornecedorId") {
-        carregarProdutos();
+      console.log("WATCHER: Campo alterado:", name, "Valor:", value);
+      if (name === "fornecedorId" && value.fornecedorId) {
+        console.log("WATCHER: Fornecedor selecionado:", value.fornecedorId);
+        loadProdutosFornecedor(value.fornecedorId);
+        setSearchTerm(""); // Limpar busca quando trocar fornecedor
       }
     });
 
+    // Também carregar produtos se já há um fornecedor selecionado no mount
+    const currentFornecedorId = form.getValues("fornecedorId");
+    if (currentFornecedorId) {
+      console.log("USEEFFECT: Fornecedor já selecionado no mount:", currentFornecedorId);
+      loadProdutosFornecedor(currentFornecedorId);
+    }
+
+    console.log("USEEFFECT: Watcher configurado");
+
     // Cleanup: cancelar a subscrição ao desmontar o componente
-    return () => subscription.unsubscribe();
+    return () => {
+      console.log("USEEFFECT: Cleanup - removendo watcher");
+      subscription.unsubscribe();
+    };
   }, [form, loadProdutosFornecedor]);
 
   // Adicionar produto ao pedido
@@ -321,6 +339,12 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
       pf.produto.sku.toLowerCase().includes(searchLower)
     );
   });
+
+  // Log para debug da renderização
+  console.log("RENDER: produtosFornecedor.length:", produtosFornecedor.length);
+  console.log("RENDER: filteredProducts.length:", filteredProducts.length);
+  console.log("RENDER: isLoadingProdutos:", isLoadingProdutos);
+  console.log("RENDER: fornecedorId:", form.getValues("fornecedorId"));
 
   const onSubmit = async (data: FormValues) => {
     setIsSubmitting(true);

@@ -181,9 +181,11 @@ export async function GET(request: NextRequest) {
     if (fornecedorId) {
       console.log(
         "API /produto-fornecedor - Buscando produtos para fornecedor:",
-        fornecedorId
+        fornecedorId,
+        "| User ID:",
+        user.id
       );
-      
+
       // Verificar se o fornecedor pertence ao usuário
       const fornecedor = await prisma.fornecedor.findFirst({
         where: {
@@ -192,15 +194,19 @@ export async function GET(request: NextRequest) {
         },
       });
 
+      console.log("API /produto-fornecedor - Fornecedor encontrado:", fornecedor);
+
       if (!fornecedor) {
         console.error(
-          `API /produto-fornecedor - Fornecedor não encontrado ou não autorizado: ${fornecedorId}`
+          `API /produto-fornecedor - Fornecedor não encontrado ou não autorizado: ${fornecedorId} para usuário ${user.id}`
         );
         return NextResponse.json(
           { error: "Fornecedor não encontrado ou não autorizado" },
           { status: 404 }
         );
       }
+
+      console.log("API /produto-fornecedor - Executando query de produtos...");
 
       const produtos = await prisma.produtoFornecedor.findMany({
         where: {
@@ -215,12 +221,31 @@ export async function GET(request: NextRequest) {
       });
 
       console.log(
-        `API /produto-fornecedor - Encontrados ${produtos.length} produtos para o fornecedor`
+        `API /produto-fornecedor - Query executada. Encontrados ${produtos.length} produtos para o fornecedor ${fornecedorId}`
       );
+
+      if (produtos.length === 0) {
+        console.log("API /produto-fornecedor - Nenhum produto encontrado. Verificando se há produtos vinculados sem filtro de usuário...");
+
+        const produtosSemFiltro = await prisma.produtoFornecedor.findMany({
+          where: {
+            fornecedorId: fornecedorId,
+          },
+          include: {
+            produto: true,
+          },
+        });
+
+        console.log(`API /produto-fornecedor - Produtos sem filtro de usuário: ${produtosSemFiltro.length}`);
+        produtosSemFiltro.forEach(p => {
+          console.log(`  - Produto ${p.produto.nome} (userId: ${p.produto.userId}) vs user atual: ${user.id}`);
+        });
+      }
+
       const serializedProdutos = serializeBigInt(produtos);
       console.log(
         "API /produto-fornecedor - Produtos serializados:",
-        serializedProdutos
+        JSON.stringify(serializedProdutos, null, 2)
       );
 
       return NextResponse.json(serializedProdutos, { status: 200 });
