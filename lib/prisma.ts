@@ -3,7 +3,7 @@ import { PrismaClient } from "@prisma/client";
 // Adicionar logs para debug no ambiente de produção
 const prismaClientSingleton = () => {
   return new PrismaClient({
-    log: ["query", "error", "warn"],
+    log: ["error", "warn"], // ✅ CORREÇÃO: Removido "query" para limpar logs
   });
 };
 

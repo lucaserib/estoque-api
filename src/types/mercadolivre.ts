@@ -218,7 +218,6 @@ export interface MLItem {
   warranty: string;
   catalog_product_id: string | null;
   domain_id: string;
-  seller_custom_field?: string | null;
   parent_item_id: string | null;
   differential_pricing: any;
   deal_ids: any[];
@@ -309,6 +308,10 @@ export interface ProdutoMercadoLivre {
   mlItemId: string;
   mlTitle: string;
   mlPrice: number;
+  mlOriginalPrice?: number | null; // ✅ NOVO: Preço original antes da promoção
+  mlBasePrice?: number | null; // ✅ NOVO: Preço base do produto
+  mlHasPromotion?: boolean; // ✅ NOVO: Se tem promoção ativa
+  mlPromotionDiscount?: number | null; // ✅ NOVO: Percentual de desconto
   mlAvailableQuantity: number;
   mlStatus: string;
   mlPermalink?: string;

@@ -5,7 +5,34 @@ import { NextRequest } from "next/server";
 export async function verifyUser(req: NextRequest) {
   try {
     console.log("Iniciando verificação de usuário");
-    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+
+    // ✅ MELHORIA: Usar mesma lógica do middleware para detecção de token
+    const isSecure = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
+    const isFromNgrok =
+      req.headers.get("host")?.includes(".ngrok") ||
+      req.headers.get("host")?.includes(".ngrok.io") ||
+      req.headers.get("host")?.includes(".ngrok-free.app");
+
+    let token = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+      secureCookie: isSecure,
+      cookieName: isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token"
+    });
+
+    // ✅ FALLBACK: Para ngrok, tentar também com cookie padrão se não encontrou o seguro
+    if (!token && isFromNgrok) {
+      token = await getToken({
+        req,
+        secret: process.env.NEXTAUTH_SECRET,
+        secureCookie: false,
+        cookieName: "next-auth.session-token"
+      });
+
+      if (token) {
+        console.log("✅ Token encontrado via fallback para ngrok");
+      }
+    }
 
     if (!token) {
       console.error("Token não encontrado");

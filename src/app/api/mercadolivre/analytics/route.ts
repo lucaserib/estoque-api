@@ -62,9 +62,14 @@ export async function GET(request: NextRequest) {
     console.log("[API] Fetching comprehensive analytics data");
 
     try {
+      // ✅ CORREÇÃO: Primeiro obter userInfo para ter o seller ID
+      const userInfo = await MercadoLivreService.getUserInfo(accessToken);
+      const sellerId = userInfo.id.toString();
+
+      console.log(`[API] Using seller ID: ${sellerId} for analytics`);
+
       // Buscar todas as informações em paralelo para melhor performance
       const [
-        userInfo,
         sellerMetrics,
         stockInfo,
         shippingInfo,
@@ -72,12 +77,11 @@ export async function GET(request: NextRequest) {
         salesPerformance,
         marketplaceFees,
       ] = await Promise.allSettled([
-        MercadoLivreService.getUserInfo(accessToken),
         MercadoLivreService.getSellerMetrics(accessToken),
         MercadoLivreService.getStockInfo(accessToken),
         MercadoLivreService.getShippingInfo(accessToken),
-        MercadoLivreService.getSellerFinancialInfo(accessToken),
-        MercadoLivreService.getSalesPerformance(accessToken),
+        MercadoLivreService.getSellerFinancialInfo(accessToken, sellerId),
+        MercadoLivreService.getSalesPerformance(accessToken, sellerId),
         MercadoLivreService.getMarketplaceFees(accessToken),
       ]);
 
@@ -89,7 +93,7 @@ export async function GET(request: NextRequest) {
         return result.status === "fulfilled" ? result.value : fallback;
       };
 
-      const userData = resolveResult(userInfo, {
+      const userData = {
         id: 0,
         nickname: "Usuário",
         registration_date: new Date().toISOString(),
@@ -129,7 +133,7 @@ export async function GET(request: NextRequest) {
           mercadoenvios: "not_accepted",
           immediate_payment: false,
         },
-      });
+      };
 
       const metricsData = resolveResult(sellerMetrics, {
         totalListings: 0,

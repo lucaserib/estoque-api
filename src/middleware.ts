@@ -3,7 +3,15 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  // ✅ CORREÇÃO: Configurar token com secureCookie baseado no protocolo
+  const isSecure = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
+
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+    secureCookie: isSecure,
+    cookieName: isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token"
+  });
 
   const { pathname } = req.nextUrl;
 
@@ -35,6 +43,32 @@ export async function middleware(req: NextRequest) {
   if (isMLCallback && isFromNgrok && pathname === "/configuracoes") {
     console.log("✅ Permitindo callback ML do ngrok");
     return NextResponse.next();
+  }
+
+  // ✅ CORREÇÃO: Para ngrok, tentar também com cookie padrão se não encontrou o seguro
+  if (!token && isFromNgrok) {
+    const fallbackToken = await getToken({
+      req,
+      secret: process.env.NEXTAUTH_SECRET,
+      secureCookie: false,
+      cookieName: "next-auth.session-token"
+    });
+
+    if (fallbackToken) {
+      // Token encontrado no cookie não-seguro, permitir acesso
+      console.log("✅ Token encontrado via fallback para ngrok");
+
+      const requestHeaders = new Headers(req.headers);
+      if (fallbackToken?.id) {
+        requestHeaders.set("x-user-id", fallbackToken.id as string);
+      }
+
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    }
   }
 
   // Redirecionar se o usuário não estiver autenticado

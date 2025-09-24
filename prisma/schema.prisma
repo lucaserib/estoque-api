@@ -59,6 +59,10 @@ model ProdutoMercadoLivre {
   mlItemId              String
   mlTitle               String
   mlPrice               Int
+  mlOriginalPrice       Int?
+  mlBasePrice           Int?
+  mlHasPromotion        Boolean   @default(false)
+  mlPromotionDiscount   Int?
   mlAvailableQuantity   Int
   mlSoldQuantity        Int       @default(0)
   mlStatus              String
@@ -154,16 +158,16 @@ model Session {
 }
 
 model Produto {
-  id              String              @id @default(uuid())
-  nome            String
-  sku             String
-  isKit           Boolean             @default(false)
-  ean             BigInt?
-  userId          String
-  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  componentes     Componente[]        @relation("KitToComponente")
-  kitsComponentes Componente[]        @relation("ProdutoToComponente")
-  custoMedio      Int?                @default(0)
+  id                 String              @id @default(uuid())
+  nome               String
+  sku                String
+  isKit              Boolean             @default(false)
+  ean                BigInt?
+  userId             String
+  user               User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  componentes        Componente[]        @relation("KitToComponente")
+  kitsComponentes    Componente[]        @relation("ProdutoToComponente")
+  custoMedio         Int?                @default(0)
   detalhesSaida      DetalhesSaida[]
   estoques           Estoque[]
   pedidos            PedidoProduto[]
@@ -219,14 +223,14 @@ model DetalhesSaida {
 }
 
 model Armazem {
-  id                     String                 @id @default(uuid())
-  nome                   String
-  userId                 String
-  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  estoques               Estoque[]
-  saidas                 Saida[]
-  transferenciasOrigem   TransferenciaEstoque[] @relation("TransferenciaOrigem")
-  transferenciasDestino  TransferenciaEstoque[] @relation("TransferenciaDestino")
+  id                    String                 @id @default(uuid())
+  nome                  String
+  userId                String
+  user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  estoques              Estoque[]
+  saidas                Saida[]
+  transferenciasOrigem  TransferenciaEstoque[] @relation("TransferenciaOrigem")
+  transferenciasDestino TransferenciaEstoque[] @relation("TransferenciaDestino")
 }
 
 model Fornecedor {
@@ -281,31 +285,31 @@ model ProdutoFornecedor {
 }
 
 model TransferenciaEstoque {
-  id                String   @id @default(uuid())
-  userId            String
-  armazemOrigemId   String
-  armazemDestinoId  String
-  data              DateTime @default(now())
-  observacoes       String?
-  status            String   @default("concluida")
+  id               String   @id @default(uuid())
+  userId           String
+  armazemOrigemId  String
+  armazemDestinoId String
+  data             DateTime @default(now())
+  observacoes      String?
+  status           String   @default("concluida")
 
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  armazemOrigem     Armazem  @relation("TransferenciaOrigem", fields: [armazemOrigemId], references: [id])
-  armazemDestino    Armazem  @relation("TransferenciaDestino", fields: [armazemDestinoId], references: [id])
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  armazemOrigem  Armazem @relation("TransferenciaOrigem", fields: [armazemOrigemId], references: [id])
+  armazemDestino Armazem @relation("TransferenciaDestino", fields: [armazemDestinoId], references: [id])
 
-  itens             TransferenciaItem[]
+  itens TransferenciaItem[]
 
   @@map("transferencias_estoque")
 }
 
 model TransferenciaItem {
-  id               Int                  @id @default(autoincrement())
-  transferenciaId  String
-  produtoId        String
-  quantidade       Int
+  id              Int    @id @default(autoincrement())
+  transferenciaId String
+  produtoId       String
+  quantidade      Int
 
-  transferencia    TransferenciaEstoque @relation(fields: [transferenciaId], references: [id], onDelete: Cascade)
-  produto          Produto              @relation(fields: [produtoId], references: [id])
+  transferencia TransferenciaEstoque @relation(fields: [transferenciaId], references: [id], onDelete: Cascade)
+  produto       Produto              @relation(fields: [produtoId], references: [id])
 
   @@map("transferencia_itens")
 }

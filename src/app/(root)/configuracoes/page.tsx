@@ -59,6 +59,8 @@ import {
 } from "@/types/mercadolivre";
 import { exibirValorEmReais } from "@/utils/currency";
 import MLImage from "@/app/components/shared/MLImage";
+import MercadoLivreSmartSync from "@/app/components/MercadoLivreSmartSync";
+import MercadoLivreAutoSync from "@/app/components/MercadoLivreAutoSync";
 
 export default function MercadoLivreConfigPage() {
   const { data: session, status } = useSession();
@@ -69,7 +71,7 @@ export default function MercadoLivreConfigPage() {
   const [products, setProducts] = useState<ProdutoMercadoLivre[]>([]);
   const [syncHistory, setSyncHistory] = useState<MercadoLivreSyncHistory[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("produtos");
+  const [activeTab, setActiveTab] = useState("sync-inteligente");
 
   // Estados de loading
   const [loading, setLoading] = useState(true);
@@ -1639,13 +1641,17 @@ export default function MercadoLivreConfigPage() {
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-6">
+                <TabsTrigger value="sync-inteligente">
+                  <Package className="h-4 w-4 mr-2" />
+                  Sincronização Inteligente
+                </TabsTrigger>
+                <TabsTrigger value="auto-sync">
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Sincronização Automática
+                </TabsTrigger>
                 <TabsTrigger value="produtos">
                   <Package className="h-4 w-4 mr-2" />
                   Produtos ({products.length})
-                </TabsTrigger>
-                <TabsTrigger value="importar">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Importar ML
                 </TabsTrigger>
                 <TabsTrigger value="gerenciar">
                   <Settings className="h-4 w-4 mr-2" />
@@ -1664,6 +1670,18 @@ export default function MercadoLivreConfigPage() {
                   Pedidos
                 </TabsTrigger>
               </TabsList>
+
+              <TabsContent value="sync-inteligente" className="space-y-4">
+                {selectedAccount && (
+                  <MercadoLivreSmartSync accountId={selectedAccount} />
+                )}
+              </TabsContent>
+
+              <TabsContent value="auto-sync" className="space-y-4">
+                {selectedAccount && (
+                  <MercadoLivreAutoSync accountId={selectedAccount} />
+                )}
+              </TabsContent>
 
               <TabsContent value="produtos" className="space-y-4">
                 {/* Filtros e Ações */}

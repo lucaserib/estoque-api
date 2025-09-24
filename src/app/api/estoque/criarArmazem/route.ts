@@ -34,7 +34,8 @@ export async function GET(req: NextRequest) {
       where: { userId: user.id },
     });
     return NextResponse.json(armazens, { status: 200 });
-  } catch {
-    NextResponse.json({ error: "Erro ao buscar Armazém" }, { status: 500 });
+  } catch (error) {
+    console.error("Erro ao buscar armazéns:", error);
+    return NextResponse.json({ error: "Erro ao buscar Armazém" }, { status: 500 });
   }
 }

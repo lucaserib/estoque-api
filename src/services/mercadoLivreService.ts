@@ -104,7 +104,7 @@ export class MercadoLivreService {
     this.validateConfig();
 
     // Gerar code_verifier e code_challenge para PKCE
-    const codeVerifier = this.generateCodeVerifier();
+    const codeVerifier = await this.generateCodeVerifier();
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
     // Salvar code_verifier associado ao state (userId)
@@ -135,7 +135,7 @@ export class MercadoLivreService {
       redirectUri: this.REDIRECT_URI,
     });
 
-    const authUrl = `${authDomain}/authorization?${params.toString()}`;
+    const authUrl = `https://${authDomain}/authorization?${params.toString()}`;
 
     console.log("URL de autorização gerada:", authUrl);
     console.log("Domínio de auth usado:", authDomain);
@@ -154,14 +154,14 @@ export class MercadoLivreService {
   /**
    * Gera code_verifier para PKCE
    */
-  private static generateCodeVerifier(): string {
+  private static async generateCodeVerifier(): Promise<string> {
     const array = new Uint8Array(32);
     if (typeof crypto !== "undefined" && crypto.getRandomValues) {
       crypto.getRandomValues(array);
     } else {
       // Fallback para Node.js
-      const nodeCrypto = require("crypto");
-      const buffer = nodeCrypto.randomBytes(32);
+      const { randomBytes } = await import("crypto");
+      const buffer = randomBytes(32);
       for (let i = 0; i < 32; i++) {
         array[i] = buffer[i];
       }
@@ -184,8 +184,8 @@ export class MercadoLivreService {
       return this.base64UrlEncode(new Uint8Array(hash));
     } else {
       // Node.js
-      const nodeCrypto = require("crypto");
-      const hash = nodeCrypto.createHash("sha256").update(verifier).digest();
+      const { createHash } = await import("crypto");
+      const hash = createHash("sha256").update(verifier).digest();
       return this.base64UrlEncode(hash);
     }
   }
@@ -451,6 +451,442 @@ export class MercadoLivreService {
   }
 
   /**
+   * Extrai o SKU real do produto ML (seller_sku ou seller_custom_field)
+   * Prioridade: 1) SELLER_SKU de variações, 2) seller_custom_field de variações,
+   * 3) SELLER_SKU do item, 4) seller_custom_field do item
+   */
+  static extractRealSku(item: MLItem): string | null {
+    try {
+      // 1. Verificar SELLER_SKU nas variações primeiro
+      if (item.variations && item.variations.length > 0) {
+        for (const variation of item.variations) {
+          if (variation.attributes) {
+            const sellerSkuAttr = variation.attributes.find(
+              (attr) => attr.id === "SELLER_SKU"
+            );
+            if (sellerSkuAttr && sellerSkuAttr.value_name) {
+              return sellerSkuAttr.value_name;
+            }
+          }
+
+          // 2. seller_custom_field nas variações
+          if (variation.seller_custom_field) {
+            return variation.seller_custom_field;
+          }
+        }
+      }
+
+      // 3. SELLER_SKU nos atributos do item principal
+      if (item.attributes) {
+        const sellerSkuAttr = item.attributes.find(
+          (attr) => attr.id === "SELLER_SKU"
+        );
+        if (sellerSkuAttr && sellerSkuAttr.value_name) {
+          return sellerSkuAttr.value_name;
+        }
+      }
+
+      // 4. seller_custom_field do item principal
+      if (item.seller_custom_field) {
+        return item.seller_custom_field;
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`Erro ao extrair SKU do item ${item.id}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Atualiza a quantidade em estoque de um produto no Mercado Livre
+   */
+  static async updateItemStock(
+    itemId: string,
+    quantity: number,
+    accessToken: string
+  ): Promise<boolean> {
+    try {
+      console.log(
+        `[ML] Atualizando estoque do item ${itemId} para ${quantity}`
+      );
+
+      const url = `${this.BASE_URL}/items/${itemId}`;
+      const response = await fetch(url, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          available_quantity: quantity,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error(`Erro ao atualizar estoque do item ${itemId}:`, error);
+        return false;
+      }
+
+      const updatedItem = await response.json();
+      console.log(
+        `[ML] Estoque atualizado com sucesso: ${itemId} -> ${updatedItem.available_quantity}`
+      );
+      return true;
+    } catch (error) {
+      console.error(`Erro ao atualizar estoque do item ${itemId}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Busca produtos do usuário por SKU usando seller_sku
+   */
+  static async searchItemsBySku(
+    userId: string,
+    sku: string,
+    accessToken: string
+  ): Promise<string[]> {
+    try {
+      const response = await fetch(
+        `${
+          this.BASE_URL
+        }/users/${userId}/items/search?seller_sku=${encodeURIComponent(sku)}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      return data.results || [];
+    } catch (error) {
+      console.warn(`Erro ao buscar por SKU ${sku}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Busca produtos do usuário por seller_custom_field
+   */
+  static async searchItemsByCustomField(
+    userId: string,
+    sku: string,
+    accessToken: string
+  ): Promise<string[]> {
+    try {
+      const response = await fetch(
+        `${this.BASE_URL}/users/${userId}/items/search?sku=${encodeURIComponent(
+          sku
+        )}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      return data.results || [];
+    } catch (error) {
+      console.warn(`Erro ao buscar por custom field ${sku}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Processa notificações de webhook do ML automaticamente
+   */
+  static async processWebhook(
+    accountId: string,
+    webhookData: {
+      resource: string;
+      user_id: string;
+      topic: string;
+      application_id: string;
+    }
+  ): Promise<void> {
+    try {
+      const { resource, topic } = webhookData;
+
+      // Log do evento recebido
+      console.log(`[WEBHOOK] Processando: ${topic} - ${resource}`);
+
+      // Salvar evento no histórico
+      await this.saveWebhookEvent(accountId, webhookData);
+
+      // Processar baseado no tópico
+      switch (topic) {
+        case "items":
+        case "items_prices":
+        case "stock-locations":
+          await this.processItemWebhook(accountId, resource);
+          break;
+
+        // ✅ NOVO: Processar webhooks de pedidos para vendas em tempo real
+        case "orders":
+          await this.processOrderWebhook(accountId, resource);
+          break;
+
+        case "payments":
+          // Processar notificações de pagamento
+          await this.processPaymentWebhook(accountId, resource);
+          break;
+
+        default:
+          console.log(
+            `[WEBHOOK] Tópico ${topic} não processado automaticamente`
+          );
+      }
+    } catch (error) {
+      console.error(`[WEBHOOK] Erro ao processar webhook:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Processa webhooks de itens (produtos)
+   */
+  static async processItemWebhook(
+    accountId: string,
+    resource: string
+  ): Promise<void> {
+    try {
+      // Extrair item ID do resource (ex: /items/MLB123456789)
+      const itemId = resource.split("/").pop();
+      if (!itemId) {
+        throw new Error("Item ID não encontrado no resource");
+      }
+
+      console.log(`[WEBHOOK] Sincronizando item ${itemId}...`);
+
+      const accessToken = await this.getValidToken(accountId);
+      const item = await this.getItem(itemId, accessToken);
+
+      // Verificar se o produto já existe
+      const existingProduct = await prisma.produtoMercadoLivre.findFirst({
+        where: {
+          mlItemId: itemId,
+          mercadoLivreAccountId: accountId,
+        },
+      });
+
+      // ✅ IMPLEMENTAÇÃO: Buscar preços promocionais usando API oficial
+      let currentPrice = Math.round(item.price * 100);
+      let originalPrice: number | null = null;
+      let basePrice: number | null = null;
+      let hasPromotion = false;
+      let promotionDiscount = 0;
+
+      try {
+        // Buscar preços detalhados usando API oficial /prices
+        const pricesResponse = await fetch(
+          `https://api.mercadolibre.com/items/${item.id}/prices`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (pricesResponse.ok) {
+          const pricesData = await pricesResponse.json();
+
+          const standardPrice = pricesData.prices?.find(
+            (p: {
+              type: string;
+              amount: number;
+              conditions?: { context_restrictions?: string[] };
+            }) =>
+              p.type === "standard" &&
+              p.conditions?.context_restrictions?.includes(
+                "channel_marketplace"
+              )
+          );
+
+          const promotionPrice = pricesData.prices?.find(
+            (p: {
+              type: string;
+              amount: number;
+              regular_amount: number;
+              conditions?: { context_restrictions?: string[] };
+            }) =>
+              p.type === "promotion" &&
+              p.conditions?.context_restrictions?.includes(
+                "channel_marketplace"
+              )
+          );
+
+          if (promotionPrice) {
+            currentPrice = Math.round(promotionPrice.amount * 100);
+            originalPrice = Math.round(promotionPrice.regular_amount * 100);
+            hasPromotion = true;
+            promotionDiscount = Math.round(
+              ((promotionPrice.regular_amount - promotionPrice.amount) /
+                promotionPrice.regular_amount) *
+                100
+            );
+          } else if (standardPrice) {
+            currentPrice = Math.round(standardPrice.amount * 100);
+          }
+
+          if (standardPrice && item.base_price) {
+            basePrice = Math.round(item.base_price * 100);
+          }
+        }
+      } catch (priceError) {
+        console.error(
+          `[SYNC] Erro ao buscar preços de ${item.id}:`,
+          priceError
+        );
+        // ✅ MELHORADO: Fallback para preços básicos do item com retry
+        currentPrice = Math.round(item.price * 100);
+        originalPrice = item.original_price
+          ? Math.round(item.original_price * 100)
+          : null;
+        basePrice = item.base_price ? Math.round(item.base_price * 100) : null;
+        hasPromotion = originalPrice && originalPrice > currentPrice;
+        if (hasPromotion && originalPrice) {
+          promotionDiscount = Math.round(
+            ((originalPrice - currentPrice) / originalPrice) * 100
+          );
+        }
+
+        // ✅ NOVO: Programar retry para buscar preços posteriormente
+        setTimeout(async () => {
+          try {
+            console.log(`[SYNC_RETRY] Tentando novamente buscar preços para ${item.id}`);
+            await this.retryPriceSync(item.id, accessToken, accountId);
+          } catch (retryError) {
+            console.warn(`[SYNC_RETRY] Falha no retry de preços para ${item.id}:`, retryError);
+          }
+        }, 30000); // Retry após 30 segundos
+      }
+
+      console.log(
+        `[PRODUTO_ML] ${item.title} - Preço: R$ ${(currentPrice / 100).toFixed(
+          2
+        )}${
+          hasPromotion
+            ? ` (Original: R$ ${(originalPrice! / 100).toFixed(
+                2
+              )}, Desconto: ${promotionDiscount}%)`
+            : ""
+        }`
+      );
+
+      const productData = {
+        mlTitle: item.title,
+        mlPrice: currentPrice,
+        mlOriginalPrice: originalPrice, // ✅ NOVO: Preço original
+        mlBasePrice: basePrice, // ✅ NOVO: Preço base
+        mlHasPromotion: Boolean(hasPromotion), // ✅ CORREÇÃO: Garantir tipo boolean
+        mlPromotionDiscount: hasPromotion ? promotionDiscount : null, // ✅ NOVO: % desconto
+        mlAvailableQuantity: item.available_quantity,
+        mlSoldQuantity: item.sold_quantity || 0,
+        mlStatus: item.status,
+        mlCondition: item.condition,
+        mlListingType: item.listing_type_id || "gold_special",
+        mlPermalink: item.permalink,
+        mlThumbnail: item.thumbnail,
+        mlCategoryId: item.category_id,
+        mlLastUpdated: new Date(item.last_updated || new Date()),
+        lastSyncAt: new Date(),
+        syncStatus: "synced",
+        syncError: null,
+      };
+
+      if (existingProduct) {
+        // Atualizar produto existente
+        await prisma.produtoMercadoLivre.update({
+          where: { id: existingProduct.id },
+          data: productData,
+        });
+        console.log(`[WEBHOOK] Produto ${itemId} atualizado via webhook`);
+      } else {
+        // Verificar se podemos vincular automaticamente
+        const realSku = this.extractRealSku(item);
+        if (realSku) {
+          const account = await prisma.mercadoLivreAccount.findUnique({
+            where: { id: accountId },
+          });
+
+          if (account) {
+            const localProduct = await prisma.produto.findFirst({
+              where: {
+                sku: realSku,
+                userId: account.userId,
+              },
+            });
+
+            if (localProduct) {
+              // Criar vinculação automática
+              await prisma.produtoMercadoLivre.create({
+                data: {
+                  ...productData,
+                  produtoId: localProduct.id,
+                  mercadoLivreAccountId: accountId,
+                  mlItemId: itemId,
+                },
+              });
+              console.log(
+                `[WEBHOOK] Produto ${itemId} vinculado automaticamente via SKU ${realSku}`
+              );
+            } else {
+              console.log(
+                `[WEBHOOK] Produto ${itemId} com SKU ${realSku} não encontrado localmente`
+              );
+            }
+          }
+        } else {
+          console.log(
+            `[WEBHOOK] Produto ${itemId} sem SKU real - aguardando vinculação manual`
+          );
+        }
+      }
+    } catch (error) {
+      console.error(`[WEBHOOK] Erro ao processar item webhook:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Salva evento de webhook para auditoria
+   */
+  static async saveWebhookEvent(
+    accountId: string,
+    webhookData: any
+  ): Promise<void> {
+    try {
+      await prisma.mercadoLivreWebhook.create({
+        data: {
+          mercadoLivreAccountId: accountId,
+          topic: webhookData.topic,
+          resource: webhookData.resource,
+          userId: webhookData.user_id,
+          applicationId: webhookData.application_id,
+          processedAt: new Date(),
+          status: "processed",
+        },
+      });
+    } catch (error) {
+      console.error("Erro ao salvar evento de webhook:", error);
+    }
+  }
+
+  /**
    * Obtém detalhes de múltiplos produtos usando multiget
    */
   static async getMultipleItems(
@@ -701,34 +1137,89 @@ export class MercadoLivreService {
     results: MLOrder[];
     paging: { total: number; offset: number; limit: number };
   }> {
-    const params = new URLSearchParams({
-      offset: (filters.offset || 0).toString(),
-      limit: (filters.limit || 50).toString(),
+    // ✅ CORREÇÃO CRÍTICA: Usar endpoint correto da API ML
+    console.log(`[ML_API] getUserOrders called with filters:`, {
+      offset: filters.offset || 0,
+      limit: filters.limit || 50,
+      status: filters.status || "all",
+      sort: filters.sort || "none",
+      hasSeller: !!filters.seller,
+      hasBuyer: !!filters.buyer,
     });
 
-    if (filters.seller) params.append("seller", filters.seller);
-    if (filters.buyer) params.append("buyer", filters.buyer);
-    if (filters.status) params.append("order.status", filters.status);
-    if (filters.sort) params.append("sort", filters.sort);
-
-    const response = await fetch(
-      `${this.BASE_URL}/orders/search?${params.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      }
-    );
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(
-        `Erro ao obter pedidos ML: ${error.message || response.statusText}`
-      );
+    // ✅ ENDPOINT CORRETO: Usar /orders/search COM seller obrigatório
+    if (!filters.seller) {
+      throw new Error("Seller ID é obrigatório para buscar pedidos");
     }
 
-    return response.json();
+    const params = new URLSearchParams({
+      offset: (filters.offset || 0).toString(),
+      limit: Math.min(filters.limit || 50, 50).toString(), // ML limita a 50
+      seller: filters.seller, // ✅ OBRIGATÓRIO: seller sempre presente
+    });
+
+    // ✅ STATUS CORRETO: order.status para filtrar status
+    if (filters.status && filters.status !== "all") {
+      params.append("order.status", filters.status);
+    }
+
+    // ✅ SORT CORRETO: date_desc para mais recentes primeiro
+    if (filters.sort && filters.sort !== "none") {
+      params.append("sort", filters.sort);
+    }
+
+    const url = `${this.BASE_URL}/orders/search?${params.toString()}`;
+    console.log(`[ML_API] Requesting: ${url}`);
+
+    const startTime = Date.now();
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`, // Token completo para a requisição
+          Accept: "application/json",
+        },
+      });
+
+      const responseTime = Date.now() - startTime;
+      console.log(
+        `[ML_API] Response received in ${responseTime}ms, status: ${response.status}`
+      );
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error(`[ML_API] Error response:`, error);
+        throw new Error(
+          `Erro ao obter pedidos ML: ${error.message || response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+
+      // ✅ LOGGING: Estatísticas da resposta
+      console.log(
+        `[ML_API] Success - Found ${data.results?.length || 0} orders, total: ${
+          data.paging?.total || 0
+        }`
+      );
+
+      if (data.results && data.results.length > 0) {
+        const statusBreakdown = data.results.reduce(
+          (acc: Record<string, number>, order: any) => {
+            acc[order.status] = (acc[order.status] || 0) + 1;
+            return acc;
+          },
+          {}
+        );
+        console.log(`[ML_API] Status breakdown:`, statusBreakdown);
+      }
+
+      return data;
+    } catch (error) {
+      const responseTime = Date.now() - startTime;
+      console.error(`[ML_API] Request failed after ${responseTime}ms:`, error);
+      throw error;
+    }
   }
 
   /**
@@ -1082,8 +1573,25 @@ export class MercadoLivreService {
           mercadoLivreAccountId: accountId,
         },
         data: {
+          // ✅ IMPLEMENTAÇÃO: Detectar e capturar preços promocionais na atualização
           mlTitle: item.title,
           mlPrice: Math.round(item.price * 100),
+          mlOriginalPrice: item.original_price
+            ? Math.round(item.original_price * 100)
+            : null,
+          mlBasePrice: item.base_price
+            ? Math.round(item.base_price * 100)
+            : null,
+          mlHasPromotion: Boolean(
+            item.original_price && item.original_price > item.price
+          ),
+          mlPromotionDiscount:
+            item.original_price && item.original_price > item.price
+              ? Math.round(
+                  ((item.original_price - item.price) / item.original_price) *
+                    100
+                )
+              : null,
           mlAvailableQuantity: item.available_quantity,
           mlSoldQuantity: item.sold_quantity,
           mlStatus: item.status,
@@ -1100,7 +1608,7 @@ export class MercadoLivreService {
   }
 
   /**
-   * Processa webhook de pedido
+   * Processa webhook de pedido - ✅ MELHORADO para vendas em tempo real
    */
   private static async processOrderWebhook(
     accountId: string,
@@ -1113,11 +1621,223 @@ export class MercadoLivreService {
       const accessToken = await this.getValidToken(accountId);
       const order = await this.getOrder(orderId, accessToken);
 
-      // Aqui você pode processar o pedido conforme necessário
-      // Por exemplo, criar registros de venda, atualizar estoque, etc.
-      console.log(`Pedido processado: ${orderId}`, order.status);
+      console.log(
+        `[WEBHOOK_ORDER] Processando pedido: ${orderId} - Status: ${order.status}`
+      );
+
+      // ✅ NOVO: Invalidar cache de vendas quando houver novos pedidos
+      if (
+        ["paid", "delivered", "ready_to_ship", "shipped"].includes(order.status)
+      ) {
+        console.log(
+          `[WEBHOOK_ORDER] Pedido confirmado - invalidando cache de vendas`
+        );
+
+        // ✅ MELHORADO: Usar sistema de cache inteligente
+        const { mlCache } = await import("@/lib/cache");
+        mlCache.invalidateSales(accountId);
+
+        // ✅ NOVO: Atualizar quantidade vendida e disparar notificações
+        for (const item of order.order_items) {
+          try {
+            // Atualizar produto ML
+            const updated = await prisma.produtoMercadoLivre.updateMany({
+              where: {
+                mlItemId: item.item.id,
+                mercadoLivreAccountId: accountId,
+              },
+              data: {
+                mlSoldQuantity: {
+                  increment: item.quantity,
+                },
+                lastSyncAt: new Date(),
+              },
+            });
+
+            // ✅ NOVO: Verificar se produto precisa de restock
+            if (updated.count > 0) {
+              await this.checkAndNotifyLowStock(accountId, item.item.id, item.quantity);
+            }
+
+            console.log(
+              `[WEBHOOK_ORDER] Atualizada quantidade vendida: ${item.item.id} +${item.quantity}`
+            );
+          } catch (updateError) {
+            console.warn(
+              `[WEBHOOK_ORDER] Erro ao atualizar produto ${item.item.id}:`,
+              updateError
+            );
+          }
+        }
+
+        // ✅ NOVO: Disparar evento de nova venda
+        await this.triggerSaleEvent(accountId, order);
+      }
+
+      console.log(`[WEBHOOK_ORDER] Pedido ${orderId} processado com sucesso`);
     } catch (error) {
-      console.error(`Erro ao processar webhook do pedido ${orderId}:`, error);
+      console.error(
+        `[WEBHOOK_ORDER] Erro ao processar webhook do pedido ${orderId}:`,
+        error
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * ✅ NOVO: Verifica estoque baixo e dispara notificações
+   */
+  private static async checkAndNotifyLowStock(
+    accountId: string,
+    mlItemId: string,
+    quantitySold: number
+  ): Promise<void> {
+    try {
+      // Buscar produto com estoque atual
+      const produto = await prisma.produtoMercadoLivre.findFirst({
+        where: {
+          mlItemId,
+          mercadoLivreAccountId: accountId,
+        },
+        include: {
+          produto: {
+            include: {
+              estoques: {
+                include: {
+                  armazem: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!produto || !produto.produto) return;
+
+      // Calcular estoque total local
+      const estoqueTotal = produto.produto.estoques.reduce(
+        (total, estoque) => total + estoque.quantidade,
+        0
+      );
+
+      // Verificar se estoque está baixo (menos de 5 unidades ou 20% do estoque de segurança)
+      const estoqueSeguranca = produto.produto.estoqueSeguranca || 10;
+      const limiteAlerta = Math.max(5, Math.round(estoqueSeguranca * 0.2));
+
+      if (estoqueTotal <= limiteAlerta) {
+        console.log(
+          `[STOCK_ALERT] Estoque baixo detectado: ${produto.mlTitle} - ${estoqueTotal} unidades`
+        );
+
+        // ✅ NOVO: Criar alerta de estoque baixo
+        await this.createStockAlert(accountId, produto, estoqueTotal, quantitySold);
+      }
+
+      // ✅ NOVO: Se estoque ML for maior que local, sincronizar
+      if (produto.mlAvailableQuantity > estoqueTotal + 2) {
+        console.log(
+          `[STOCK_SYNC] Sincronizando estoque: ML=${produto.mlAvailableQuantity} > Local=${estoqueTotal}`
+        );
+
+        const accessToken = await this.getValidToken(accountId);
+        await this.updateItemStock(mlItemId, estoqueTotal, accessToken);
+      }
+    } catch (error) {
+      console.error(`[STOCK_CHECK] Erro ao verificar estoque baixo:`, error);
+    }
+  }
+
+  /**
+   * ✅ NOVO: Cria alerta de estoque baixo
+   */
+  private static async createStockAlert(
+    accountId: string,
+    produto: any,
+    estoqueAtual: number,
+    quantidadeVendida: number
+  ): Promise<void> {
+    try {
+      // Por enquanto, apenas log. Pode ser expandido para notificações por email/SMS
+      const alert = {
+        accountId,
+        mlItemId: produto.mlItemId,
+        productName: produto.mlTitle,
+        productSku: produto.produto?.sku,
+        currentStock: estoqueAtual,
+        quantitySold: quantidadeVendida,
+        alertLevel: estoqueAtual <= 2 ? 'critical' : estoqueAtual <= 5 ? 'warning' : 'info',
+        timestamp: new Date().toISOString(),
+      };
+
+      console.log(`[STOCK_ALERT] Alerta criado:`, alert);
+
+      // ✅ TODO: Implementar sistema de notificações (email, webhook, etc.)
+      // await this.sendStockNotification(alert);
+    } catch (error) {
+      console.error(`[STOCK_ALERT] Erro ao criar alerta:`, error);
+    }
+  }
+
+  /**
+   * ✅ NOVO: Dispara evento de nova venda para métricas
+   */
+  private static async triggerSaleEvent(
+    accountId: string,
+    order: any
+  ): Promise<void> {
+    try {
+      const saleEvent = {
+        accountId,
+        orderId: order.id,
+        totalAmount: order.total_amount,
+        itemCount: order.order_items.length,
+        status: order.status,
+        timestamp: new Date(order.date_created),
+        items: order.order_items.map((item: any) => ({
+          mlItemId: item.item.id,
+          title: item.item.title,
+          quantity: item.quantity,
+          unitPrice: item.unit_price,
+          totalPrice: item.unit_price * item.quantity,
+        })),
+      };
+
+      console.log(`[SALE_EVENT] Nova venda registrada:`, {
+        orderId: saleEvent.orderId,
+        totalAmount: saleEvent.totalAmount,
+        itemCount: saleEvent.itemCount,
+      });
+
+      // ✅ TODO: Expandir para analytics em tempo real
+      // await this.updateRealTimeMetrics(saleEvent);
+    } catch (error) {
+      console.error(`[SALE_EVENT] Erro ao processar evento de venda:`, error);
+    }
+  }
+
+  /**
+   * ✅ NOVO: Processa webhook de pagamento
+   */
+  private static async processPaymentWebhook(
+    accountId: string,
+    resource: string
+  ): Promise<void> {
+    try {
+      console.log(`[WEBHOOK_PAYMENT] Processando pagamento: ${resource}`);
+
+      // Invalidar cache quando há mudanças de pagamento
+      const { mlCache } = await import("@/lib/cache");
+      mlCache.delete(`orders:${accountId}:recent`);
+      mlCache.delete(`metrics:${accountId}:dashboard`);
+
+      console.log(
+        `[WEBHOOK_PAYMENT] Cache invalidado por mudança de pagamento`
+      );
+    } catch (error) {
+      console.error(
+        `[WEBHOOK_PAYMENT] Erro ao processar webhook de pagamento:`,
+        error
+      );
       throw error;
     }
   }
@@ -1166,6 +1886,7 @@ export class MercadoLivreService {
     const totalRevenue = orders.reduce((sum: number, order) => {
       return sum + (order.total_amount || 0);
     }, 0);
+    // ✅ CORREÇÃO: Ticket médio já está correto aqui (valor total ÷ número de pedidos)
     const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
 
     return {
@@ -1179,7 +1900,7 @@ export class MercadoLivreService {
   /**
    * Obtém informações financeiras detalhadas do vendedor
    */
-  static async getSellerFinancialInfo(accessToken: string): Promise<{
+  static async getSellerFinancialInfo(accessToken: string, sellerId: string): Promise<{
     accountBalance: number;
     pendingBalance: number;
     availableBalance: number;
@@ -1211,6 +1932,7 @@ export class MercadoLivreService {
       // Tentar obter informações de vendas recentes para estimar valores
       try {
         const recentOrders = await this.getUserOrders(accessToken, {
+          seller: sellerId,
           limit: 50,
           status: "paid",
         });
@@ -1543,6 +2265,7 @@ export class MercadoLivreService {
    */
   static async getSalesPerformance(
     accessToken: string,
+    sellerId: string,
     dateFrom?: string,
     dateTo?: string
   ): Promise<{
@@ -1573,10 +2296,12 @@ export class MercadoLivreService {
         dateTo = new Date().toISOString().split("T")[0];
       }
 
-      // Obter pedidos pagos
+      // ✅ CORREÇÃO: Obter pedidos pagos COM seller ID obrigatório
       const paidOrders = await this.getUserOrders(accessToken, {
+        seller: sellerId,
         status: "paid",
         limit: 50,
+        sort: "date_desc", // Mais recentes primeiro
       });
 
       const orders = paidOrders.results || [];
@@ -1965,6 +2690,110 @@ export class MercadoLivreService {
     }
     console.log(`[ML_PKCE] Code verifier não encontrado para state: ${state}`);
     return null;
+  }
+
+  /**
+   * ✅ NOVO: Retry para sincronização de preços
+   */
+  private static async retryPriceSync(
+    itemId: string,
+    accessToken: string,
+    accountId: string,
+    maxRetries: number = 3
+  ): Promise<void> {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[PRICE_RETRY] Tentativa ${attempt}/${maxRetries} para item ${itemId}`);
+
+        // Buscar preços detalhados usando API oficial /prices
+        const pricesResponse = await fetch(
+          `https://api.mercadolibre.com/items/${itemId}/prices`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+
+        if (pricesResponse.ok) {
+          const pricesData = await pricesResponse.json();
+
+          // Processar dados de preço
+          const standardPrice = pricesData.prices?.find(
+            (p: any) =>
+              p.type === "standard" &&
+              p.conditions?.context_restrictions?.includes("channel_marketplace")
+          );
+
+          const promotionPrice = pricesData.prices?.find(
+            (p: any) =>
+              p.type === "promotion" &&
+              p.conditions?.context_restrictions?.includes("channel_marketplace")
+          );
+
+          let currentPrice, originalPrice, hasPromotion = false, promotionDiscount = 0;
+
+          if (promotionPrice) {
+            currentPrice = Math.round(promotionPrice.amount * 100);
+            originalPrice = Math.round(promotionPrice.regular_amount * 100);
+            hasPromotion = true;
+            promotionDiscount = Math.round(
+              ((promotionPrice.regular_amount - promotionPrice.amount) /
+                promotionPrice.regular_amount) *
+                100
+            );
+          } else if (standardPrice) {
+            currentPrice = Math.round(standardPrice.amount * 100);
+          }
+
+          if (currentPrice) {
+            // Atualizar no banco de dados
+            await prisma.produtoMercadoLivre.updateMany({
+              where: {
+                mlItemId: itemId,
+                mercadoLivreAccountId: accountId,
+              },
+              data: {
+                mlPrice: currentPrice,
+                mlOriginalPrice: originalPrice || null,
+                mlHasPromotion: hasPromotion,
+                mlPromotionDiscount: hasPromotion ? promotionDiscount : null,
+                lastSyncAt: new Date(),
+                syncStatus: "synced",
+              },
+            });
+
+            console.log(`[PRICE_RETRY] Preços atualizados com sucesso para ${itemId}`);
+            return; // Sucesso, sair do loop
+          }
+        }
+
+        throw new Error(`Resposta inválida da API de preços (${pricesResponse.status})`);
+      } catch (error) {
+        console.warn(`[PRICE_RETRY] Tentativa ${attempt} falhou para ${itemId}:`, error);
+
+        if (attempt === maxRetries) {
+          console.error(`[PRICE_RETRY] Todas as tentativas falharam para ${itemId}`);
+
+          // Marcar como erro no banco
+          await prisma.produtoMercadoLivre.updateMany({
+            where: {
+              mlItemId: itemId,
+              mercadoLivreAccountId: accountId,
+            },
+            data: {
+              syncStatus: "error",
+              syncError: `Erro ao buscar preços após ${maxRetries} tentativas`,
+              lastSyncAt: new Date(),
+            },
+          });
+        } else {
+          // Aguardar antes da próxima tentativa (backoff exponencial)
+          const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
+          await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+    }
   }
 
   /**

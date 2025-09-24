@@ -16,6 +16,7 @@ import {
   ArrowLeftRight,
   ShoppingCart,
 } from "lucide-react";
+import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayout } from "../../context/LayoutContext";
@@ -225,12 +226,27 @@ const Sidebar = () => {
           href="/saidas"
         />
 
-        <SidebarLink
-          icon={ShoppingCart}
+        <SidebarDropdown
+          icon={MercadoLivreIcon}
           label="Mercado Livre"
           isCollapsed={isSidebarCollapsed}
-          href="/configuracoes"
-        />
+        >
+          <SidebarSubLink
+            href="/mercado-livre"
+            icon={Layout}
+            label="Dashboard"
+          />
+          <SidebarSubLink
+            href="/mercado-livre/produtos"
+            icon={Package}
+            label="Produtos"
+          />
+          <SidebarSubLink
+            href="/mercado-livre/configuracoes"
+            icon={Settings}
+            label="Configurações"
+          />
+        </SidebarDropdown>
       </div>
 
       {/* Footer */}
