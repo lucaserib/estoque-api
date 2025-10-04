@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Produto } from "../../types";
 
 // UI Components
@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Barcode, PackageCheck, Info, Tag, DollarSign, X } from "lucide-react";
+import { Barcode, PackageCheck, Info, Tag, DollarSign, X, Store, Loader2 } from "lucide-react";
 import EANDisplay from "@/components/EANDisplay";
 
 interface ProdutoDetalhesDialogProps {
@@ -21,11 +21,46 @@ interface ProdutoDetalhesDialogProps {
   produto: Produto;
 }
 
+interface MLProductInfo {
+  mlItemId: string;
+  mlTitle: string;
+  mlPrice: number;
+  mlAvailableQuantity: number;
+  mlShippingMode?: string;
+  mlPermalink?: string;
+  mlStatus: string;
+}
+
 export function ProdutoDetalhesDialog({
   isOpen,
   onClose,
   produto,
 }: ProdutoDetalhesDialogProps) {
+  const [mlProducts, setMlProducts] = useState<MLProductInfo[]>([]);
+  const [loadingML, setLoadingML] = useState(false);
+
+  // Buscar produtos ML vinculados
+  useEffect(() => {
+    if (isOpen && produto.id) {
+      fetchMLProducts();
+    }
+  }, [isOpen, produto.id]);
+
+  const fetchMLProducts = async () => {
+    setLoadingML(true);
+    try {
+      const response = await fetch(`/api/produtos/${produto.id}/mercadolivre`);
+      if (response.ok) {
+        const data = await response.json();
+        setMlProducts(data.products || []);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar produtos ML:", error);
+    } finally {
+      setLoadingML(false);
+    }
+  };
+
   // Effect for cleanup on unmounting to prevent focus issues
   useEffect(() => {
     return () => {
@@ -187,6 +222,80 @@ export function ProdutoDetalhesDialog({
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Seção Mercado Livre */}
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg border border-yellow-100 dark:border-yellow-800">
+              <h3 className="font-medium text-yellow-700 dark:text-yellow-300 flex items-center gap-2 mb-2">
+                <Store className="h-5 w-5" />
+                Mercado Livre
+              </h3>
+              {loadingML ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
+                  <span className="ml-2 text-sm text-gray-500">Carregando...</span>
+                </div>
+              ) : mlProducts.length > 0 ? (
+                <div className="space-y-2">
+                  {mlProducts.map((mlProduct) => (
+                    <div
+                      key={mlProduct.mlItemId}
+                      className="bg-white/50 dark:bg-gray-800/50 p-3 rounded border border-yellow-200 dark:border-yellow-700"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2">
+                            {mlProduct.mlTitle}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            {mlProduct.mlItemId}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <Badge variant="outline" className="text-xs">
+                          R$ {(mlProduct.mlPrice / 100).toFixed(2)}
+                        </Badge>
+                        <Badge
+                          variant={
+                            mlProduct.mlAvailableQuantity > 0
+                              ? "default"
+                              : "destructive"
+                          }
+                          className="text-xs"
+                        >
+                          Estoque ML: {mlProduct.mlAvailableQuantity} un.
+                        </Badge>
+                        {mlProduct.mlShippingMode === "fulfillment" && (
+                          <Badge className="text-xs bg-purple-500 hover:bg-purple-600">
+                            Full
+                          </Badge>
+                        )}
+                        <Badge
+                          variant={mlProduct.mlStatus === "active" ? "default" : "secondary"}
+                          className="text-xs"
+                        >
+                          {mlProduct.mlStatus === "active" ? "Ativo" : "Pausado"}
+                        </Badge>
+                      </div>
+                      {mlProduct.mlPermalink && (
+                        <a
+                          href={mlProduct.mlPermalink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 mt-2 inline-block"
+                        >
+                          Ver anúncio →
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                  Produto não vinculado ao Mercado Livre
+                </p>
+              )}
             </div>
 
             {produto.isKit && (

@@ -141,11 +141,46 @@ export async function GET(req: NextRequest) {
               produto: true,
             },
           },
+          ProdutoMercadoLivre: {
+            select: {
+              mlAvailableQuantity: true,
+              mlSoldQuantity: true,
+              mlShippingMode: true,
+              mlStatus: true,
+            },
+          },
         },
       });
     }
 
-    return new Response(JSON.stringify(serializeWithEAN(produtos)), {
+    // Calcular totais de vendas e estoque Full para ordenação
+    const produtosComDados = produtos.map((produto: any) => {
+      const totalVendas = produto.ProdutoMercadoLivre?.reduce(
+        (sum: number, ml: any) => sum + (ml.mlSoldQuantity || 0),
+        0
+      ) || 0;
+
+      const estoqueFullTotal = produto.ProdutoMercadoLivre
+        ?.filter((ml: any) => ml.mlShippingMode === 'fulfillment')
+        .reduce((sum: number, ml: any) => sum + (ml.mlAvailableQuantity || 0), 0) || 0;
+
+      const estoqueMLTotal = produto.ProdutoMercadoLivre?.reduce(
+        (sum: number, ml: any) => sum + (ml.mlAvailableQuantity || 0),
+        0
+      ) || 0;
+
+      return {
+        ...produto,
+        _mlTotalVendas: totalVendas,
+        _mlEstoqueFull: estoqueFullTotal,
+        _mlEstoqueTotal: estoqueMLTotal,
+      };
+    });
+
+    // Ordenar por vendas totais (decrescente)
+    produtosComDados.sort((a: any, b: any) => b._mlTotalVendas - a._mlTotalVendas);
+
+    return new Response(JSON.stringify(serializeWithEAN(produtosComDados)), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

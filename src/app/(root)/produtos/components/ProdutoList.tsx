@@ -191,9 +191,10 @@ const ProdutoList = ({
                 <TableRow>
                   <TableHead className="font-medium">Nome</TableHead>
                   <TableHead className="font-medium">SKU</TableHead>
-                  <TableHead className="font-medium">EAN</TableHead>
+                  <TableHead className="font-medium">Estoque Local</TableHead>
+                  <TableHead className="font-medium">Full</TableHead>
+                  <TableHead className="font-medium">Vendas ML</TableHead>
                   <TableHead className="font-medium">Custo Médio</TableHead>
-                  <TableHead className="font-medium">Estoque</TableHead>
                   <TableHead className="font-medium text-right">
                     Ações
                   </TableHead>
@@ -211,14 +212,6 @@ const ProdutoList = ({
                       </TableCell>
                       <TableCell className="text-gray-600 dark:text-gray-300">
                         {produto.sku}
-                      </TableCell>
-                      <TableCell>
-                        <EANDisplay produto={produto} />
-                      </TableCell>
-                      <TableCell className="text-gray-600 dark:text-gray-300">
-                        {produto.custoMedio
-                          ? `R$ ${(produto.custoMedio / 100).toFixed(2)}`
-                          : "Não Definido"}
                       </TableCell>
                       <TableCell>
                         {stockData[produto.id] !== undefined ? (
@@ -252,6 +245,29 @@ const ProdutoList = ({
                             </span>
                           </div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        {produto._mlEstoqueFull ? (
+                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                            {produto._mlEstoqueFull}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {produto._mlTotalVendas ? (
+                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                            {produto._mlTotalVendas}
+                          </Badge>
+                        ) : (
+                          <span className="text-gray-400 text-sm">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-gray-600 dark:text-gray-300">
+                        {produto.custoMedio
+                          ? `R$ ${(produto.custoMedio / 100).toFixed(2)}`
+                          : "Não Definido"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -311,7 +327,7 @@ const ProdutoList = ({
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={7}
                       className="text-center py-8 text-gray-500 dark:text-gray-400"
                     >
                       {filterOptions.searchTerm

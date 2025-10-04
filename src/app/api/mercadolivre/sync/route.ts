@@ -176,6 +176,7 @@ export async function POST(request: NextRequest) {
                 mlPermalink: item.permalink,
                 mlThumbnail: item.thumbnail,
                 mlCategoryId: item.category_id,
+                mlShippingMode: item.shipping?.logistic_type || item.shipping?.mode || null, // ✅ NOVO: Modo de envio (fulfillment, me2, custom)
                 mlLastUpdated: new Date(item.last_updated || new Date()),
                 lastSyncAt: new Date(),
                 syncStatus: "synced",
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
               } else {
                 // Tentar extrair SKU real do produto ML
                 const realSku = MercadoLivreService.extractRealSku(item);
-                let localProductId;
+                let localProductId: string | null = null;
 
                 if (realSku) {
                   // Buscar produto local por SKU real
@@ -206,33 +207,30 @@ export async function POST(request: NextRequest) {
                   if (localProduct) {
                     localProductId = localProduct.id;
                     console.log(
-                      `[SYNC] Produto ${itemId} vinculado automaticamente com SKU ${realSku}`
+                      `[SYNC] ✅ Produto ${itemId} vinculado automaticamente com SKU ${realSku}`
                     );
                   } else {
-                    // SKU não encontrado - não criar produto temporário
                     console.log(
-                      `[SYNC] SKU ${realSku} não encontrado para produto ${itemId} - pulando criação automática`
+                      `[SYNC] ⚠️ SKU ${realSku} não encontrado localmente para ${itemId} - criando sem vínculo`
                     );
-                    return { type: 'skipped', itemId, reason: 'sku_not_found' };
                   }
                 } else {
-                  // Sem SKU real - não criar produto temporário
                   console.log(
-                    `[SYNC] Produto ${itemId} sem SKU real - pulando criação automática`
+                    `[SYNC] ⚠️ Produto ${itemId} sem SELLER_SKU - criando sem vínculo`
                   );
-                  return { type: 'skipped', itemId, reason: 'no_sku' };
                 }
 
-                // Criar produto ML vinculado ao produto local temporário
+                // Criar produto ML (com ou sem vínculo ao produto local)
                 await prisma.produtoMercadoLivre.create({
                   data: {
                     ...productData,
-                    produtoId: localProductId,
+                    produtoId: localProductId, // Pode ser null
                     mercadoLivreAccountId: accountId,
                     mlItemId: itemId,
+                    syncStatus: localProductId ? "synced" : "pending_link", // Status diferente se não vinculado
                   },
                 });
-                return { type: 'created', itemId };
+                return { type: 'created', itemId, linked: !!localProductId };
               }
             } catch (itemError) {
               const errorMessage = `Erro no produto ${itemId}: ${

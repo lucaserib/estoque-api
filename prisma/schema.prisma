@@ -27,6 +27,7 @@ model User {
   transferencias TransferenciaEstoque[]
 
   MercadoLivreAccount MercadoLivreAccount[]
+  BlingAccount        BlingAccount[]
 }
 
 model MercadoLivreAccount {
@@ -54,7 +55,7 @@ model MercadoLivreAccount {
 
 model ProdutoMercadoLivre {
   id                    String    @id @default(uuid())
-  produtoId             String
+  produtoId             String?   // Nullable - produto pode não estar vinculado
   mercadoLivreAccountId String
   mlItemId              String
   mlTitle               String
@@ -82,10 +83,9 @@ model ProdutoMercadoLivre {
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
-  produto             Produto             @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  produto             Produto?            @relation(fields: [produtoId], references: [id], onDelete: Cascade)
   mercadoLivreAccount MercadoLivreAccount @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)
 
-  @@unique([produtoId, mercadoLivreAccountId])
   @@unique([mlItemId, mercadoLivreAccountId])
   @@map("produtos_mercado_livre")
 }
@@ -312,4 +312,43 @@ model TransferenciaItem {
   produto       Produto              @relation(fields: [produtoId], references: [id])
 
   @@map("transferencia_itens")
+}
+
+// ==================== BLING INTEGRATION ====================
+
+model BlingAccount {
+  id           String   @id @default(uuid())
+  userId       String
+  accessToken  String   @db.Text
+  refreshToken String   @db.Text
+  expiresAt    DateTime
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  syncHistories BlingSyncHistory[]
+
+  @@map("bling_accounts")
+}
+
+model BlingSyncHistory {
+  id            String    @id @default(uuid())
+  blingAccountId String
+  syncType      String    // "produtos", "estoques", "full"
+  status        String    // "success", "error", "partial"
+  totalItems    Int       @default(0)
+  syncedItems   Int       @default(0)
+  newItems      Int       @default(0)
+  updatedItems  Int       @default(0)
+  errorItems    Int       @default(0)
+  errors        Json?
+  startedAt     DateTime  @default(now())
+  completedAt   DateTime?
+  duration      Int?      // Duração em segundos
+
+  blingAccount BlingAccount @relation(fields: [blingAccountId], references: [id], onDelete: Cascade)
+
+  @@map("bling_sync_history")
 }

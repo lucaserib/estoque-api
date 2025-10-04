@@ -80,7 +80,7 @@ export default function MercadoLivreProdutosPage() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("active"); // ✅ PADRÃO: Anúncios ativos
   const [stockFilter, setStockFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("sales"); // ✅ PADRÃO: Mais vendidos
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");

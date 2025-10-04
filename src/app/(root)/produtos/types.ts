@@ -21,6 +21,9 @@ export interface Produto {
       nome: string;
     };
   }>;
+  _mlTotalVendas?: number;
+  _mlEstoqueFull?: number;
+  _mlEstoqueTotal?: number;
 }
 
 export interface KitComponente {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useFetch } from "@/app/hooks/useFetch";
 import Header from "@/app/components/Header";
 import ProdutoList from "./components/ProdutoList";
@@ -15,6 +16,8 @@ import {
   Box,
   RefreshCw,
   LucideLoaderCircle,
+  Link2,
+  Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -46,6 +49,8 @@ const ProdutosPage = () => {
   } = useFetch<Produto[]>("/api/produtos");
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [updatingVendas, setUpdatingVendas] = useState(false);
 
   useEffect(() => {
     if (initialProdutos) {
@@ -56,8 +61,48 @@ const ProdutosPage = () => {
           codigoEAN: p.codigoEAN?.toString() || "",
         }))
       );
+
+      // Buscar estoque Full automaticamente
+      buscarEstoqueFull(initialProdutos);
     }
   }, [initialProdutos]);
+
+  // Buscar estoque Full em tempo real ao carregar
+  const buscarEstoqueFull = async (produtosAtuais: Produto[]) => {
+    try {
+      const response = await fetch("/api/produtos/estoque-full");
+      if (response.ok) {
+        const data = await response.json();
+
+        // Atualizar produtos com estoque Full
+        setProdutos((prev) =>
+          prev.map((produto) => ({
+            ...produto,
+            _mlEstoqueFull: data.estoqueFullPorProduto[produto.id] || 0,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Erro ao buscar estoque Full:", error);
+    }
+  };
+
+  // Buscar quantidade de produtos pendentes
+  useEffect(() => {
+    const fetchPendingCount = async () => {
+      try {
+        const response = await fetch("/api/produtos/pendentes");
+        if (response.ok) {
+          const data = await response.json();
+          setPendingCount(data.produtosPendentes?.length || 0);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar produtos pendentes:", error);
+      }
+    };
+
+    fetchPendingCount();
+  }, [refreshTrigger]);
 
   // Separar produtos e kits
   const kits = produtos.filter((p) => p.isKit);
@@ -67,6 +112,42 @@ const ProdutosPage = () => {
   const refreshData = async () => {
     await refetch();
     setRefreshTrigger((prev) => prev + 1);
+  };
+
+  // Atualizar dados ML (vendas dos últimos 90 dias + estoque Full)
+  const atualizarDadosML = async () => {
+    setUpdatingVendas(true);
+    try {
+      const response = await fetch("/api/produtos/vendas-ml");
+      if (response.ok) {
+        const data = await response.json();
+
+        // Atualizar produtos com vendas e estoque Full
+        setProdutos((prev) =>
+          prev.map((produto) => ({
+            ...produto,
+            _mlTotalVendas: data.vendasPorProduto[produto.id] || 0,
+            _mlEstoqueFull: data.estoqueFullPorProduto[produto.id] || 0,
+          }))
+        );
+
+        const totalFull = Object.values(data.estoqueFullPorProduto).reduce(
+          (sum: number, val: any) => sum + val,
+          0
+        );
+
+        toast.success(
+          `Dados atualizados! ${data.totalPedidos} pedidos (${data.periodo.descricao}) | ${totalFull} itens no Full`
+        );
+      } else {
+        throw new Error("Erro ao atualizar dados");
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar dados ML:", error);
+      toast.error("Erro ao atualizar dados do Mercado Livre");
+    } finally {
+      setUpdatingVendas(false);
+    }
   };
 
   const handleDeleteProduto = async (forceDelete: boolean) => {
@@ -157,13 +238,43 @@ const ProdutosPage = () => {
     <div className="container max-w-6xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <Header name="Gestão de Produtos" />
-        <Button
-          onClick={() => setShowCreateModal(true)}
-          className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-        >
-          <PlusCircle className="h-4 w-4" />
-          Novo Produto/Kit
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={atualizarDadosML}
+            disabled={updatingVendas}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${updatingVendas ? "animate-spin" : ""}`}
+            />
+            {updatingVendas ? "Atualizando..." : "Atualizar Dados"}
+          </Button>
+          <Link href="/produtos/importar">
+            <Button variant="outline" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Integrações
+            </Button>
+          </Link>
+          {pendingCount > 0 && (
+            <Link href="/produtos/vincular">
+              <Button variant="outline" className="gap-2 relative">
+                <Link2 className="h-4 w-4" />
+                Vincular Pendentes
+                <span className="ml-1 bg-orange-500 text-white text-xs rounded-full px-2 py-0.5">
+                  {pendingCount}
+                </span>
+              </Button>
+            </Link>
+          )}
+          <Button
+            onClick={() => setShowCreateModal(true)}
+            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+          >
+            <PlusCircle className="h-4 w-4" />
+            Novo Produto/Kit
+          </Button>
+        </div>
       </div>
 
       <Card className="mb-6 border border-gray-200 dark:border-gray-700 shadow-sm">
