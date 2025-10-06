@@ -52,56 +52,27 @@ const ProdutosPage = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [updatingVendas, setUpdatingVendas] = useState(false);
 
+  // Initialize produtos when data is loaded or refetched
+  // This updates produtos when initialProdutos changes (e.g., after refetch)
   useEffect(() => {
-    if (initialProdutos) {
+    if (initialProdutos && initialProdutos.length > 0) {
       // Garantir que todos os produtos tenham o campo EAN como string
-      setProdutos(
-        initialProdutos.map((p) => ({
-          ...p,
-          codigoEAN: p.codigoEAN?.toString() || "",
-        }))
-      );
+      // A API já retorna _mlTotalVendas e _mlEstoqueFull calculados
+      const formattedProdutos = initialProdutos.map((p) => ({
+        ...p,
+        codigoEAN: p.codigoEAN?.toString() || "",
+      }));
 
-      // Buscar estoque Full automaticamente
-      buscarEstoqueFull(initialProdutos);
+      setProdutos(formattedProdutos);
     }
-  }, [initialProdutos]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialProdutos]); // Update when initialProdutos changes
 
-  // Buscar estoque Full em tempo real ao carregar
-  const buscarEstoqueFull = async (produtosAtuais: Produto[]) => {
-    try {
-      const response = await fetch("/api/produtos/estoque-full");
-      if (response.ok) {
-        const data = await response.json();
-
-        // Atualizar produtos com estoque Full
-        setProdutos((prev) =>
-          prev.map((produto) => ({
-            ...produto,
-            _mlEstoqueFull: data.estoqueFullPorProduto[produto.id] || 0,
-          }))
-        );
-      }
-    } catch (error) {
-      console.error("Erro ao buscar estoque Full:", error);
-    }
-  };
-
-  // Buscar quantidade de produtos pendentes
+  // Buscar quantidade de produtos pendentes (produtos ML sem vínculo)
+  // Desabilitado por ora - não é crítico e está causando 404
   useEffect(() => {
-    const fetchPendingCount = async () => {
-      try {
-        const response = await fetch("/api/produtos/pendentes");
-        if (response.ok) {
-          const data = await response.json();
-          setPendingCount(data.produtosPendentes?.length || 0);
-        }
-      } catch (error) {
-        console.error("Erro ao buscar produtos pendentes:", error);
-      }
-    };
-
-    fetchPendingCount();
+    setPendingCount(0);
+    // TODO: Implementar busca de produtos pendentes quando necessário
   }, [refreshTrigger]);
 
   // Separar produtos e kits
@@ -114,33 +85,37 @@ const ProdutosPage = () => {
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  // Atualizar dados ML (vendas dos últimos 90 dias + estoque Full)
+  // Atualizar dados ML (vendas dos últimos 90 dias + estoque Full + status de reposição)
   const atualizarDadosML = async () => {
     setUpdatingVendas(true);
     try {
+      // 1. Chamar API para atualizar vendas e estoque no banco de dados
       const response = await fetch("/api/produtos/vendas-ml");
-      if (response.ok) {
-        const data = await response.json();
-
-        // Atualizar produtos com vendas e estoque Full
-        setProdutos((prev) =>
-          prev.map((produto) => ({
-            ...produto,
-            _mlTotalVendas: data.vendasPorProduto[produto.id] || 0,
-            _mlEstoqueFull: data.estoqueFullPorProduto[produto.id] || 0,
-          }))
-        );
-
-        const totalFull = Object.values(data.estoqueFullPorProduto).reduce(
-          (sum: number, val: any) => sum + val,
-          0
-        );
-
-        toast.success(
-          `Dados atualizados! ${data.totalPedidos} pedidos (${data.periodo.descricao}) | ${totalFull} itens no Full`
-        );
-      } else {
+      if (!response.ok) {
         throw new Error("Erro ao atualizar dados");
+      }
+
+      const data = await response.json();
+
+      // 2. Re-fetch produtos do banco para pegar TODOS os dados atualizados
+      // A API /api/produtos já calcula _mlTotalVendas e _mlEstoqueFull
+      await refetch();
+
+      const totalFull = Object.values(data.estoqueFullPorProduto || {}).reduce(
+        (sum: number, val: any) => sum + val,
+        0
+      );
+
+      toast.success(
+        `Dados atualizados! ${data.totalPedidos} pedidos (${data.periodo.descricao}) | ${totalFull} itens no Full`
+      );
+
+      // 3. Trigger refresh no ProdutoList para atualizar estoque local e status de reposição
+      setRefreshTrigger((prev) => prev + 1);
+
+      // 4. Atualizar status de reposição
+      if ((window as any).__refreshReplenishment) {
+        (window as any).__refreshReplenishment();
       }
     } catch (error) {
       console.error("Erro ao atualizar dados ML:", error);
@@ -322,6 +297,7 @@ const ProdutosPage = () => {
                   }
                   onEdit={handleEdit}
                   refreshTrigger={refreshTrigger}
+                  onRefreshReplenishment={() => {}}
                 />
               </TabsContent>
               <TabsContent value="kits" className="mt-0">

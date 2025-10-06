@@ -145,6 +145,7 @@ export async function GET(req: NextRequest) {
             select: {
               mlAvailableQuantity: true,
               mlSoldQuantity: true,
+              mlSold90Days: true,
               mlShippingMode: true,
               mlStatus: true,
             },
@@ -153,10 +154,11 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Calcular totais de vendas e estoque Full para ordenação
+    // Calcular totais de vendas (90 dias) e estoque Full para ordenação
     const produtosComDados = produtos.map((produto: any) => {
-      const totalVendas = produto.ProdutoMercadoLivre?.reduce(
-        (sum: number, ml: any) => sum + (ml.mlSoldQuantity || 0),
+      // Usar mlSold90Days ao invés de mlSoldQuantity (total de todos os tempos)
+      const totalVendas90d = produto.ProdutoMercadoLivre?.reduce(
+        (sum: number, ml: any) => sum + (ml.mlSold90Days || 0),
         0
       ) || 0;
 
@@ -171,7 +173,7 @@ export async function GET(req: NextRequest) {
 
       return {
         ...produto,
-        _mlTotalVendas: totalVendas,
+        _mlTotalVendas: totalVendas90d, // Vendas dos últimos 90 dias
         _mlEstoqueFull: estoqueFullTotal,
         _mlEstoqueTotal: estoqueMLTotal,
       };

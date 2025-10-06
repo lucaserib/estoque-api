@@ -1,10 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
-import { FaTrash, FaEdit, FaEye, FaLink, FaWarehouse } from "react-icons/fa";
-import { Search, Loader2, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
 import { Produto } from "../types";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -15,19 +11,19 @@ import {
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
 import { ProdutoEstoqueDialog } from "./dialogs/ProdutoEstoqueDialog";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { ProdutoPagination } from "./ProdutoPagination";
 import { ProdutoDetalhesDialog } from "./dialogs/ProdutoDetalhesDialog";
 import { ProdutoEditarDialog } from "./dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "./dialogs/ProdutoFornecedorDialog";
-import EANDisplay from "@/components/EANDisplay";
+import { ReposicaoModal } from "./ReposicaoModal";
+import { ProdutoTableRow } from "./ProdutoTableRow";
 
 interface ProdutoListProps {
   produtos: Produto[];
   onDelete: (id: string) => void;
   onEdit: (produto: Produto) => void;
   refreshTrigger?: number;
+  onRefreshReplenishment?: () => void;
 }
 
 interface StockItem {
@@ -43,6 +39,7 @@ const ProdutoList = ({
   onDelete,
   onEdit,
   refreshTrigger = 0,
+  onRefreshReplenishment,
 }: ProdutoListProps) => {
   const [filterOptions, setFilterOptions] = useState({
     searchTerm: "",
@@ -53,6 +50,7 @@ const ProdutoList = ({
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
+  const [showReposicaoModal, setShowReposicaoModal] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isLoadingStock, setIsLoadingStock] = useState(false);
   const [stockDetails, setStockDetails] = useState<StockItem[]>([]);
@@ -60,10 +58,19 @@ const ProdutoList = ({
   const [estoqueSegurancaData, setEstoqueSegurancaData] = useState<{
     [key: string]: number;
   }>({});
+  const [replenishmentStatus, setReplenishmentStatus] = useState<{
+    [key: string]: "ok" | "atencao" | "critico";
+  }>({});
+  const [lastReplenishmentFetch, setLastReplenishmentFetch] = useState<number>(0);
+  const [isLoadingReplenishment, setIsLoadingReplenishment] = useState(false);
   const itemsPerPage = 10;
+  const REPLENISHMENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutos em milissegundos
 
+  // Fetch stock data on mount and when produtos change OR refreshTrigger changes
   useEffect(() => {
     const fetchStockTotals = async () => {
+      if (produtos.length === 0) return;
+
       try {
         const stockPromises = produtos.map(async (produto) => {
           const response = await fetch(`/api/estoque/produto/${produto.id}`);
@@ -112,12 +119,77 @@ const ProdutoList = ({
       }
     };
 
-    if (produtos.length > 0) {
-      fetchStockTotals();
-    }
-  }, [produtos, refreshTrigger]);
+    fetchStockTotals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [produtos.length, refreshTrigger]); // Refetch when produtos or refreshTrigger change
 
-  const fetchStockDetails = async (produto: Produto) => {
+  // Função para buscar status de reposição com cache
+  const fetchReplenishmentStatus = async (forceRefresh = false) => {
+    const now = Date.now();
+    const cacheValid = now - lastReplenishmentFetch < REPLENISHMENT_CACHE_TTL;
+
+    // Se o cache ainda é válido e não é um refresh forçado, não faz nada
+    if (cacheValid && !forceRefresh) {
+      return;
+    }
+
+    setIsLoadingReplenishment(true);
+    try {
+      const statusPromises = produtos.map(async (produto) => {
+        try {
+          const response = await fetch(`/api/replenishment/suggestions/${produto.id}`);
+          if (!response.ok) return { produtoId: produto.id, status: "ok" as const };
+          const data = await response.json();
+          return { produtoId: produto.id, status: data.suggestion?.status || "ok" };
+        } catch {
+          return { produtoId: produto.id, status: "ok" as const };
+        }
+      });
+
+      const statusResults = await Promise.all(statusPromises);
+      const statusMap = statusResults.reduce(
+        (acc, { produtoId, status }) => {
+          acc[produtoId] = status;
+          return acc;
+        },
+        {} as { [key: string]: "ok" | "atencao" | "critico" }
+      );
+
+      setReplenishmentStatus(statusMap);
+      setLastReplenishmentFetch(Date.now());
+    } catch (error) {
+      console.error("Erro ao buscar status de reposição:", error);
+    } finally {
+      setIsLoadingReplenishment(false);
+    }
+  };
+
+  // DESABILITADO: Fetch automático de status de reposição
+  // Isso faz 40+ chamadas API e deixa a página muito lenta
+  // O status será carregado apenas quando o usuário abrir o modal
+  // useEffect(() => {
+  //   let isMounted = true;
+  //   if (produtos.length > 0 && lastReplenishmentFetch === 0) {
+  //     if (isMounted) {
+  //       fetchReplenishmentStatus();
+  //     }
+  //   }
+  //   return () => { isMounted = false; };
+  // }, []);
+
+  // Expõe a função de refresh via callback - APENAS configuração, não execução
+  useEffect(() => {
+    // Armazena a referência da função no window para ser chamada externamente
+    (window as any).__refreshReplenishment = () => fetchReplenishmentStatus(true);
+
+    return () => {
+      delete (window as any).__refreshReplenishment;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty deps - only set once
+
+  // Memoized callbacks to prevent re-renders
+  const fetchStockDetails = useCallback(async (produto: Produto) => {
     try {
       setSelectedProduto(produto);
       setIsLoadingStock(true);
@@ -133,7 +205,27 @@ const ProdutoList = ({
     } finally {
       setIsLoadingStock(false);
     }
-  };
+  }, []);
+
+  const handleViewDetails = useCallback((produto: Produto) => {
+    setSelectedProduto(produto);
+    setShowDetailsModal(true);
+  }, []);
+
+  const handleEdit = useCallback((produto: Produto) => {
+    setSelectedProduto(produto);
+    setShowEditModal(true);
+  }, []);
+
+  const handleViewSuppliers = useCallback((produto: Produto) => {
+    setSelectedProduto(produto);
+    setShowFornecedorModal(true);
+  }, []);
+
+  const handleViewReplenishment = useCallback((produto: Produto) => {
+    setSelectedProduto(produto);
+    setShowReposicaoModal(true);
+  }, []);
 
   const filteredProdutos = produtos.filter((produto) => {
     const matchesSearch =
@@ -203,126 +295,20 @@ const ProdutoList = ({
               <TableBody>
                 {currentItems.length > 0 ? (
                   currentItems.map((produto) => (
-                    <TableRow
+                    <ProdutoTableRow
                       key={produto.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 group"
-                    >
-                      <TableCell className="font-medium">
-                        {produto.nome}
-                      </TableCell>
-                      <TableCell className="text-gray-600 dark:text-gray-300">
-                        {produto.sku}
-                      </TableCell>
-                      <TableCell>
-                        {stockData[produto.id] !== undefined ? (
-                          <div className="flex items-center gap-1">
-                            <Badge
-                              className={
-                                stockData[produto.id] === 0
-                                  ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                                  : stockData[produto.id] <=
-                                    (estoqueSegurancaData[produto.id] || 0)
-                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
-                                  : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                              }
-                            >
-                              {stockData[produto.id]}
-                            </Badge>
-                            {stockData[produto.id] <=
-                              (estoqueSegurancaData[produto.id] || 0) &&
-                              stockData[produto.id] > 0 && (
-                                <AlertTriangle
-                                  className="h-4 w-4 text-amber-500"
-                                  data-tooltip="Estoque abaixo do nível mínimo"
-                                />
-                              )}
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <Loader2 className="h-4 w-4 animate-spin mr-1 text-gray-400" />
-                            <span className="text-xs text-gray-400">
-                              Carregando...
-                            </span>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {produto._mlEstoqueFull ? (
-                          <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
-                            {produto._mlEstoqueFull}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {produto._mlTotalVendas ? (
-                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                            {produto._mlTotalVendas}
-                          </Badge>
-                        ) : (
-                          <span className="text-gray-400 text-sm">-</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-gray-600 dark:text-gray-300">
-                        {produto.custoMedio
-                          ? `R$ ${(produto.custoMedio / 100).toFixed(2)}`
-                          : "Não Definido"}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedProduto(produto);
-                              setShowDetailsModal(true);
-                            }}
-                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                          >
-                            <FaEye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedProduto(produto);
-                              setShowEditModal(true);
-                            }}
-                            className="h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
-                          >
-                            <FaEdit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedProduto(produto);
-                              setShowFornecedorModal(true);
-                            }}
-                            className="h-8 w-8 p-0 text-purple-600 hover:text-purple-800 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-900/20"
-                          >
-                            <FaLink className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => fetchStockDetails(produto)}
-                            className="h-8 w-8 p-0 text-orange-600 hover:text-orange-800 hover:bg-orange-50 dark:text-orange-400 dark:hover:bg-orange-900/20"
-                          >
-                            <FaWarehouse className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onDelete(produto.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                          >
-                            <FaTrash className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                      produto={produto}
+                      stockQuantity={stockData[produto.id]}
+                      stockMinimum={estoqueSegurancaData[produto.id]}
+                      isLoadingStock={stockData[produto.id] === undefined}
+                      replenishmentStatus={replenishmentStatus[produto.id]}
+                      onDelete={onDelete}
+                      onViewDetails={handleViewDetails}
+                      onEdit={handleEdit}
+                      onViewSuppliers={handleViewSuppliers}
+                      onViewStock={fetchStockDetails}
+                      onViewReplenishment={handleViewReplenishment}
+                    />
                   ))
                 ) : (
                   <TableRow>
@@ -383,6 +369,14 @@ const ProdutoList = ({
             stockDetails={stockDetails}
             isLoading={isLoadingStock}
           />
+
+          {selectedProduto && (
+            <ReposicaoModal
+              isOpen={showReposicaoModal}
+              onClose={() => setShowReposicaoModal(false)}
+              produto={selectedProduto}
+            />
+          )}
         </>
       )}
     </div>

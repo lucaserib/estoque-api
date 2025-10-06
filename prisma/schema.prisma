@@ -28,6 +28,7 @@ model User {
 
   MercadoLivreAccount MercadoLivreAccount[]
   BlingAccount        BlingAccount[]
+  StockReplenishmentConfig StockReplenishmentConfig[]
 }
 
 model MercadoLivreAccount {
@@ -65,7 +66,8 @@ model ProdutoMercadoLivre {
   mlHasPromotion        Boolean   @default(false)
   mlPromotionDiscount   Int?
   mlAvailableQuantity   Int
-  mlSoldQuantity        Int       @default(0)
+  mlSoldQuantity        Int       @default(0) // Total de vendas (histórico completo)
+  mlSold90Days          Int?                  // Vendas dos últimos 90 dias (calculado)
   mlStatus              String
   mlCondition           String    @default("new")
   mlListingType         String    @default("gold_special")
@@ -351,4 +353,23 @@ model BlingSyncHistory {
   blingAccount BlingAccount @relation(fields: [blingAccountId], references: [id], onDelete: Cascade)
 
   @@map("bling_sync_history")
+}
+
+// ==================== STOCK REPLENISHMENT ====================
+
+model StockReplenishmentConfig {
+  id                String   @id @default(uuid())
+  userId            String
+  produtoId         String   // Cada produto tem sua própria configuração
+  avgDeliveryDays   Int      @default(7)     // Tempo médio de entrega do fornecedor
+  fullReleaseDays   Int      @default(3)     // Tempo médio até liberação no Full
+  safetyStock       Int      @default(10)    // Estoque mínimo de segurança (unidades)
+  minCoverageDays   Int      @default(30)    // Dias mínimos de cobertura de vendas
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, produtoId])
+  @@map("stock_replenishment_config")
 }

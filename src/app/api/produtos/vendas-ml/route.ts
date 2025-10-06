@@ -99,8 +99,9 @@ export async function GET(request: NextRequest) {
 
     console.log(`[VENDAS_ML] Total de pedidos encontrados: ${allOrders.length}`);
 
-    // Agrupar vendas por produto
-    const vendasPorProduto: { [key: string]: number } = {};
+    // Agrupar vendas POR ANÚNCIO ML (mlItemId)
+    // Importante: cada anúncio tem suas próprias vendas
+    const vendasPorAnuncio: { [mlItemId: string]: number } = {};
 
     for (const order of allOrders) {
       if (order.order_items) {
@@ -108,28 +109,21 @@ export async function GET(request: NextRequest) {
           const mlItemId = item.item.id;
           const quantity = item.quantity;
 
-          // Buscar produto local vinculado
-          const produtoML = await prisma.produtoMercadoLivre.findFirst({
-            where: {
-              mlItemId,
-              mercadoLivreAccountId: mlAccount.id,
-            },
-            select: {
-              produtoId: true,
-            },
-          });
-
-          if (produtoML?.produtoId) {
-            vendasPorProduto[produtoML.produtoId] =
-              (vendasPorProduto[produtoML.produtoId] || 0) + quantity;
-          }
+          // Somar vendas por mlItemId (não por produtoId!)
+          vendasPorAnuncio[mlItemId] =
+            (vendasPorAnuncio[mlItemId] || 0) + quantity;
         }
       }
     }
 
     console.log(
-      `[VENDAS_ML] Produtos com vendas: ${Object.keys(vendasPorProduto).length}`
+      `[VENDAS_ML] Anúncios ML com vendas nos últimos 90 dias: ${Object.keys(vendasPorAnuncio).length}`
     );
+
+    // Log detalhado das vendas por anúncio
+    Object.entries(vendasPorAnuncio).forEach(([mlItemId, quantidade]) => {
+      console.log(`[VENDAS_ML] Anúncio ${mlItemId}: ${quantidade} unidades vendidas (90 dias)`);
+    });
 
     // Buscar estoque Full ATUAL direto da API do ML (tempo real)
     console.log(`[VENDAS_ML] Buscando estoque Full em tempo real da API do ML...`);
@@ -185,6 +179,47 @@ export async function GET(request: NextRequest) {
       }`
     );
 
+    // Atualizar mlSold90Days no banco POR ANÚNCIO (mlItemId)
+    // IMPORTANTE: Cada anúncio tem suas próprias vendas!
+    console.log(`[VENDAS_ML] Atualizando vendas dos últimos 90 dias no banco de dados (por anúncio)...`);
+    for (const [mlItemId, quantidadeVendida] of Object.entries(vendasPorAnuncio)) {
+      try {
+        const updateResult = await prisma.produtoMercadoLivre.updateMany({
+          where: {
+            mlItemId: mlItemId, // Atualizar pelo mlItemId específico!
+            mercadoLivreAccountId: mlAccount.id,
+          },
+          data: {
+            mlSold90Days: quantidadeVendida, // IMPORTANTE: Vendas APENAS dos últimos 90 dias DESTE anúncio
+          },
+        });
+
+        console.log(`[VENDAS_ML] ✅ Anúncio ${mlItemId} atualizado: ${quantidadeVendida} vendas (90d) - ${updateResult.count} registros atualizados`);
+      } catch (updateError) {
+        console.error(`[VENDAS_ML] ❌ Erro ao atualizar vendas do anúncio ${mlItemId}:`, updateError);
+      }
+    }
+
+    // Também zerar anúncios sem vendas (para não usar dados antigos)
+    try {
+      const anunciosComVendas = Object.keys(vendasPorAnuncio);
+      const zeradosResult = await prisma.produtoMercadoLivre.updateMany({
+        where: {
+          mercadoLivreAccountId: mlAccount.id,
+          mlItemId: { notIn: anunciosComVendas },
+        },
+        data: {
+          mlSold90Days: 0,
+        },
+      });
+
+      console.log(`[VENDAS_ML] ✅ ${zeradosResult.count} anúncios sem vendas foram zerados`);
+    } catch (zeroError) {
+      console.error(`[VENDAS_ML] Erro ao zerar anúncios sem vendas:`, zeroError);
+    }
+
+    console.log(`[VENDAS_ML] ✅ Vendas atualizadas no banco de dados!`);
+
     return NextResponse.json({
       success: true,
       periodo: {
@@ -196,7 +231,7 @@ export async function GET(request: NextRequest) {
         )} até ${endDate.toLocaleDateString("pt-BR")}`,
       },
       totalPedidos: allOrders.length,
-      vendasPorProduto,
+      vendasPorAnuncio, // Vendas por anúncio ML
       estoqueFullPorProduto,
     });
   } catch (error) {
