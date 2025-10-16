@@ -166,7 +166,7 @@ export async function GET(request: NextRequest) {
           );
 
           // Buscar pedidos do período - começar com mais pedidos
-          let allOrders: any[] = [];
+          const allOrders: Array<Record<string, unknown>> = [];
           let offset = 0;
           const limit = 50;
           let hasMore = true;
@@ -265,7 +265,7 @@ export async function GET(request: NextRequest) {
           let totalRevenue = 0; // Total com frete
           let totalProductRevenue = 0; // Total só produtos
           let totalItems = 0;
-          let totalOrders = periodOrders.length;
+          const totalOrders = periodOrders.length;
 
           periodOrders.forEach((order) => {
             const orderDate = new Date(order.date_created);

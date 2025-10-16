@@ -867,7 +867,12 @@ export class MercadoLivreService {
    */
   static async saveWebhookEvent(
     accountId: string,
-    webhookData: any
+    webhookData: {
+      topic: string;
+      resource: string;
+      user_id: string;
+      application_id: string;
+    }
   ): Promise<void> {
     try {
       await prisma.mercadoLivreWebhook.create({

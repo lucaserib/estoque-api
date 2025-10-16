@@ -101,11 +101,11 @@ export interface MLItem {
     name: string;
     value_id: string;
     value_name: string;
-    value_struct: any;
+    value_struct: Record<string, unknown> | null;
     values: Array<{
       id: string;
       name: string;
-      struct: any;
+      struct: Record<string, unknown> | null;
     }>;
   }>;
   buying_mode: string;
@@ -130,10 +130,10 @@ export interface MLItem {
     id: string;
   }>;
   accepts_mercadopago: boolean;
-  non_mercado_pago_payment_methods: any[];
+  non_mercado_pago_payment_methods: unknown[];
   shipping: {
     mode: string;
-    methods: any[];
+    methods: unknown[];
     tags: string[];
     dimensions: string | null;
     local_pick_up: boolean;
@@ -171,24 +171,24 @@ export interface MLItem {
     };
     id: number;
   };
-  seller_contact: any;
-  location: any;
-  coverage_areas: any[];
+  seller_contact: Record<string, unknown> | null;
+  location: Record<string, unknown> | null;
+  coverage_areas: unknown[];
   attributes?: Array<{
     id: string;
     name: string;
     value_id: string | null;
     value_name: string | null;
-    value_struct: any;
+    value_struct: Record<string, unknown> | null;
     values: Array<{
       id: string;
       name: string;
-      struct: any;
+      struct: Record<string, unknown> | null;
     }>;
     attribute_group_id: string;
     attribute_group_name: string;
   }>;
-  warnings: any[];
+  warnings: unknown[];
   listing_source: string;
   variations?: Array<{
     id: number;
@@ -210,18 +210,18 @@ export interface MLItem {
       name: string;
       value_id: string | null;
       value_name: string | null;
-      value_struct: any;
+      value_struct: Record<string, unknown> | null;
     }>;
   }>;
   status: "active" | "paused" | "closed" | "under_review" | "inactive";
-  sub_status: any[];
+  sub_status: unknown[];
   tags: string[];
   warranty: string;
   catalog_product_id: string | null;
   domain_id: string;
   parent_item_id: string | null;
-  differential_pricing: any;
-  deal_ids: any[];
+  differential_pricing: Record<string, unknown> | null;
+  deal_ids: unknown[];
   automatic_relist: boolean;
   date_created: string;
   last_updated: string;
@@ -252,7 +252,7 @@ export interface MLError {
   message: string;
   error: string;
   status: number;
-  cause: any[];
+  cause: unknown[];
 }
 
 export interface MercadoLivreAccount {
@@ -298,7 +298,7 @@ export interface MercadoLivreAccountWithDetails extends MercadoLivreAccount {
         };
       };
     };
-    status?: any;
+    status?: Record<string, unknown>;
   };
 }
 
@@ -411,7 +411,7 @@ export interface MLCategory {
     mirror_slave_categories?: string[];
     price?: string;
     reservation_allowed?: string;
-    restrictions?: any[];
+    restrictions?: unknown[];
     rounded_address: boolean;
     seller_contact?: string;
     shipping_modes: string[];
@@ -457,7 +457,7 @@ export interface MLItemUpdate {
     mode: string;
     local_pick_up?: boolean;
     free_shipping?: boolean;
-    methods?: any[];
+    methods?: unknown[];
     dimensions?: string;
     tags?: string[];
   };
@@ -482,33 +482,27 @@ export interface MLOrder {
     unit_price: number;
     full_unit_price?: number;
   }>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  buyer: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  seller: any;
+  buyer: Record<string, unknown>;
+  seller: Record<string, unknown>;
   currency_id: string;
   order_request?: {
     return?: string;
     change?: number;
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  shipping: any;
+  shipping: Record<string, unknown>;
   total_amount: number;
   paid_amount?: number;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  payments?: any;
+  payments?: unknown;
   feedback?: {
     purchase?: {
       id: string;
       rating: string;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      message: any;
+      message: string | null;
     };
     sale?: {
       id: string;
       rating: string;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      message: any;
+      message: string | null;
     };
   };
   context?: {

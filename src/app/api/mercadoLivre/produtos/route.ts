@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
           "[PRODUTOS_API] 📦 Buscando TODOS os pedidos com paginação..."
         );
 
-        let allOrders = [];
+        const allOrders = [];
         let offset = 0;
         const limit = 50;
         let hasMore = true;

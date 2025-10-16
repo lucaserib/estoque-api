@@ -46,7 +46,7 @@ const PedidosPendentes = () => {
     refetch: refetchPedidos,
   } = useFetch<Pedido[]>(
     "/api/pedidos-compra",
-    (data: unknown[]) =>
+    (data: unknown) =>
       (data as Pedido[]).filter((pedido) => pedido.status === "pendente"),
     [refreshTrigger]
   );

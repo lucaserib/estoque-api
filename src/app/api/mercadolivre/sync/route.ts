@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
               let originalPrice = item.original_price
                 ? Math.round(item.original_price * 100)
                 : null;
-              let basePrice = item.base_price
+              const basePrice = item.base_price
                 ? Math.round(item.base_price * 100)
                 : null;
               let hasPromotion = false;

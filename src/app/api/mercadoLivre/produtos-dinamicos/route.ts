@@ -158,7 +158,7 @@ export async function GET(request: Request) {
       "[PRODUTOS_DINAMICOS_API] 📦 Buscando produtos em tempo real do ML..."
     );
 
-    let allMLProducts = [];
+    const allMLProducts = [];
     let offset = 0;
     const limit = 50;
 
@@ -373,7 +373,7 @@ export async function GET(request: Request) {
       const fimMes = new Date(agora.getFullYear(), agora.getMonth() + 1, 0);
 
       // Buscar pedidos do mês
-      let allOrders = [];
+      const allOrders = [];
       let orderOffset = 0;
 
       while (orderOffset < 500 && allOrders.length < 300) {
@@ -458,7 +458,7 @@ export async function GET(request: Request) {
     }
 
     // 4. ORDENAÇÃO DINÂMICA
-    let sortedProducts = [...produtos];
+    const sortedProducts = [...produtos];
 
     if (sortBy === "smart") {
       // Ordenação inteligente: ativos com vendas primeiro

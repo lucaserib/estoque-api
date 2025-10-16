@@ -85,7 +85,7 @@ export function useFetch<T = unknown>(
         );
       }
 
-      let responseData = await response.json();
+      const responseData = await response.json();
 
       // Process BigInt values
       const processedResponse = processBigIntValues(responseData);

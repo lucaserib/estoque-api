@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
 
       // ✅ CORREÇÃO: Calcular ticket médio corretamente (receita ÷ itens vendidos)
       let averageTicket = 0;
-      let totalItemsSold = weekSales; // weekSales já representa itens vendidos
+      const totalItemsSold = weekSales; // weekSales já representa itens vendidos
 
       try {
         if (totalRevenue > 0 && totalItemsSold > 0) {

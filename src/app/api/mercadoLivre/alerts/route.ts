@@ -6,6 +6,12 @@ import { withCache, createCacheKey } from "@/lib/cache";
 type AlertSeverity = "critical" | "warning" | "info";
 type AlertType = "stock" | "sync" | "sales";
 
+interface AlertAction {
+  label: string;
+  action: string;
+  urgent?: boolean;
+}
+
 interface Alert {
   id: string;
   type: AlertType;
@@ -13,8 +19,8 @@ interface Alert {
   title: string;
   message: string;
   timestamp: string | Date;
-  details?: any;
-  actions?: any[];
+  details?: Record<string, unknown>;
+  actions?: AlertAction[];
   url?: string;
 }
 

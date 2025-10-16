@@ -216,7 +216,7 @@ export async function GET(request: NextRequest) {
           // Calcular métricas de receita
           let totalProductRevenue = 0;
           let totalShippingRevenue = 0;
-          let totalOrders = ordersWithShipping.length;
+          const totalOrders = ordersWithShipping.length;
           let totalItems = 0;
 
           const dailyRevenueMap = new Map<string, DailyRevenue>();

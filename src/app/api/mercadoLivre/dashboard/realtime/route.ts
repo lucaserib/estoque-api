@@ -219,7 +219,7 @@ async function getSalesMetrics(
     const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
 
     // Calcular crescimento (comparar com período anterior)
-    let growthRate = 0;
+    const growthRate = 0;
     // TODO: Implementar cálculo de crescimento
 
     // Top produtos mais vendidos
