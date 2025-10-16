@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { getProductCost } from "@/helpers/productCostHelper";
 
 export async function GET(request: NextRequest) {
   try {
@@ -172,12 +173,17 @@ export async function POST(request: NextRequest) {
         let counter = 1;
 
         // Verificar se SKU já existe e gerar variação se necessário
-        while (await prisma.produto.findFirst({
-          where: { sku, userId: user.id }
-        })) {
+        while (
+          await prisma.produto.findFirst({
+            where: { sku, userId: user.id },
+          })
+        ) {
           sku = `${baseSku}_${counter}`;
           counter++;
         }
+
+        // Buscar custo correto (não do Bling, então passa undefined)
+        const custoMedio = await getProductCost(undefined, sku, user.id);
 
         // Criar produto local
         const localProduct = await prisma.produto.create({
@@ -186,7 +192,7 @@ export async function POST(request: NextRequest) {
             sku: sku,
             isKit: false,
             userId: user.id,
-            custoMedio: defaultValues?.custoMedio || 0,
+            custoMedio, // Usa custo da última compra ou zero
             ean: null,
           },
         });

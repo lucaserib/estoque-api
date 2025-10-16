@@ -114,6 +114,7 @@ export async function GET(
       fullReleaseDays: config?.fullReleaseDays || 3,
       safetyStock: config?.safetyStock || 10,
       minCoverageDays: config?.minCoverageDays || 30, // Dias mínimos de cobertura
+      analysisPeriodDays: config?.analysisPeriodDays || 90, // Período de análise: 30, 60 ou 90 dias
     };
 
     // 3. Buscar conta ativa do Mercado Livre
@@ -183,10 +184,10 @@ export async function GET(
 
     const estoqueTotal = estoqueLocal + estoqueFull;
 
-    // 6. Buscar vendas dos últimos 90 dias do cache/banco
+    // 6. Buscar vendas do período configurado
     // IMPORTANTE: Usamos os dados já calculados pelo endpoint /api/produtos/vendas-ml
     // que é chamado quando o usuário clica em "Atualizar Dados"
-    let totalVendas90d = 0;
+    let totalVendasPeriodo = 0;
 
     // Verificar se há dados de vendas armazenados no próprio produto
     // Buscamos mlSold90Days que foi previamente calculado pelo endpoint /api/produtos/vendas-ml
@@ -197,30 +198,45 @@ export async function GET(
       },
       select: {
         mlItemId: true,
-        mlSoldQuantity: true,   // Total histórico (só para debug)
-        mlSold90Days: true,     // Vendas dos últimos 90 dias (USADO!)
+        mlSoldQuantity: true, // Total histórico (só para debug)
+        mlSold90Days: true, // Vendas dos últimos 90 dias (base para cálculos)
       },
     });
 
-    // Se temos mlSold90Days no banco, usar isso
+    // Se temos mlSold90Days no banco, calcular proporcionalmente para o período escolhido
     // Caso contrário, retornar 0 (usuário precisa clicar em "Atualizar Dados")
     if (produtosML.length > 0) {
       console.log(`[REPLENISHMENT] Produtos ML vinculados: ${produtosML.length}`);
+
+      const totalVendas90d = produtosML.reduce(
+        (sum, pm) => sum + (pm.mlSold90Days || 0),
+        0
+      );
+
+      console.log(`[REPLENISHMENT] Total vendas 90 dias: ${totalVendas90d}`);
+
+      // Calcular vendas proporcionalmente ao período escolhido
+      // Se escolheu 30 dias: (vendas90d / 90) * 30
+      // Se escolheu 60 dias: (vendas90d / 90) * 60
+      // Se escolheu 90 dias: vendas90d (sem alteração)
+      totalVendasPeriodo = Math.round(
+        (totalVendas90d / 90) * params_config.analysisPeriodDays
+      );
+
+      console.log(
+        `[REPLENISHMENT] Vendas proporcionais para ${params_config.analysisPeriodDays} dias: ${totalVendasPeriodo}`
+      );
 
       produtosML.forEach((pm, idx) => {
         console.log(`[REPLENISHMENT] Produto ML ${idx + 1}:`, {
           mlItemId: pm.mlItemId,
           mlSoldQuantity: pm.mlSoldQuantity, // Total histórico (NÃO usar!)
-          mlSold90Days: pm.mlSold90Days,     // Vendas 90 dias (CORRETO!)
+          mlSold90Days: pm.mlSold90Days, // Vendas 90 dias (base)
         });
       });
-
-      totalVendas90d = produtosML.reduce((sum, pm) => sum + (pm.mlSold90Days || 0), 0);
-
-      console.log(`[REPLENISHMENT] Total vendas 90 dias calculado: ${totalVendas90d}`);
     }
 
-    // NOTA: Se totalVendas90d for 0, significa que os dados ainda não foram atualizados
+    // NOTA: Se totalVendasPeriodo for 0, significa que os dados ainda não foram atualizados
     // O usuário deve clicar no botão "Atualizar Dados" na página principal
     // Isso evita fazer 20+ requisições ao ML toda vez que abre o modal
 
@@ -232,8 +248,8 @@ export async function GET(
       tipoAnuncio = "full";
     }
 
-    // 8. Calcular média diária de vendas
-    const mediaDiaria = totalVendas90d / 90;
+    // 8. Calcular média diária de vendas baseada no período escolhido
+    const mediaDiaria = totalVendasPeriodo / params_config.analysisPeriodDays;
 
     // ========================================
     // NOVA LÓGICA INTELIGENTE DE REPOSIÇÃO
@@ -428,7 +444,7 @@ export async function GET(
       estoqueLocal,
       estoqueFull,
       estoqueTotal,
-      mediaVendas90d: totalVendas90d,
+      mediaVendas90d: totalVendasPeriodo, // Vendas do período configurado (não fixo em 90)
       mediaDiaria: parseFloat(mediaDiaria.toFixed(2)),
       reposicaoFull,
       reposicaoLocal,

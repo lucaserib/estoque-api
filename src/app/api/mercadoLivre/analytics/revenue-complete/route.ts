@@ -3,13 +3,14 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { withCache, createCacheKey } from "@/lib/cache";
+import { MLOrder as BaseMLOrder } from "@/types/mercadolivre";
 
-interface MLOrder {
+interface MLOrderWithShipping {
   id: string;
   status: string;
   date_created: string;
   total_amount: number;
-  total_amount_with_shipping: number;
+  total_amount_with_shipping?: number;
   order_items: Array<{
     item: {
       id: string;
@@ -20,13 +21,13 @@ interface MLOrder {
     full_unit_price: number;
   }>;
   shipping?: {
-    id: string;
+    id?: string;
     cost: number;
   };
   payments?: Array<{
-    transaction_amount: number;
-    shipping_cost: number;
-    total_paid_amount: number;
+    transaction_amount?: number;
+    shipping_cost?: number;
+    total_paid_amount?: number;
   }>;
 }
 
@@ -105,7 +106,7 @@ export async function GET(request: NextRequest) {
         cacheKey,
         async () => {
           // Buscar múltiplas páginas de pedidos para análise completa
-          const allOrders: MLOrder[] = [];
+          const allOrders: MLOrderWithShipping[] = [];
           let offset = 0;
           const maxRequests = 5; // Buscar até 250 pedidos
           const validStatuses = ['paid', 'delivered', 'ready_to_ship', 'shipped', 'handling'];
@@ -126,11 +127,11 @@ export async function GET(request: NextRequest) {
               }
 
               // Filtrar apenas pedidos válidos
-              const validOrders = orders.results.filter((order: MLOrder) =>
+              const validOrders = orders.results.filter((order: MLOrderWithShipping) =>
                 validStatuses.includes(order.status)
-              );
+              ) as MLOrderWithShipping[];
 
-              allOrders.push(...validOrders);
+              allOrders.push(...(validOrders as MLOrderWithShipping[]));
               offset += 50;
 
               if (orders.results.length < 50) {
@@ -157,7 +158,7 @@ export async function GET(request: NextRequest) {
           console.log(`[REVENUE_COMPLETE] Pedidos no período: ${relevantOrders.length}`);
 
           // Para cada pedido, buscar detalhes de shipping se disponível
-          const ordersWithShipping: MLOrder[] = [];
+          const ordersWithShipping: MLOrderWithShipping[] = [];
 
           for (const order of relevantOrders) {
             try {
@@ -188,7 +189,7 @@ export async function GET(request: NextRequest) {
 
               // Método 2: Verificar se tem shipping_cost nos payments
               if (shippingCost === 0 && order.payments && order.payments.length > 0) {
-                shippingCost = order.payments.reduce((sum, payment) =>
+                shippingCost = order.payments.reduce((sum: number, payment: any) =>
                   sum + (payment.shipping_cost || 0), 0);
               }
 
@@ -200,10 +201,11 @@ export async function GET(request: NextRequest) {
               ordersWithShipping.push({
                 ...order,
                 shipping: {
-                  ...order.shipping,
+                  ...(order.shipping || {}),
+                  id: order.shipping?.id || order.id,
                   cost: shippingCost
-                }
-              });
+                } as { id: string; cost: number }
+              } as MLOrderWithShipping);
 
             } catch (orderError) {
               console.warn(`[REVENUE_COMPLETE] Erro ao processar pedido ${order.id}:`, orderError);
@@ -224,14 +226,14 @@ export async function GET(request: NextRequest) {
             const dayKey = orderDate.toISOString().split('T')[0];
 
             // Calcular receita dos produtos
-            const orderProductRevenue = order.order_items.reduce((sum, item) =>
+            const orderProductRevenue = order.order_items.reduce((sum: number, item: any) =>
               sum + (item.unit_price * item.quantity), 0);
 
             // Receita de frete
             const orderShippingRevenue = order.shipping?.cost || 0;
 
             // Contar itens
-            const orderItemsCount = order.order_items.reduce((sum, item) =>
+            const orderItemsCount = order.order_items.reduce((sum: number, item: any) =>
               sum + item.quantity, 0);
 
             totalProductRevenue += orderProductRevenue;

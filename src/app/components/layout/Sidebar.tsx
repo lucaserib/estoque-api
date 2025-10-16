@@ -15,6 +15,8 @@ import {
   Settings,
   ArrowLeftRight,
   ShoppingCart,
+  TrendingDown,
+  BarChart3,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -202,6 +204,13 @@ const Sidebar = () => {
           href="/produtos"
         />
 
+        <SidebarLink
+          icon={TrendingDown}
+          label="Reposição"
+          isCollapsed={isSidebarCollapsed}
+          href="/reposicao"
+        />
+
         <SidebarDropdown
           icon={Warehouse}
           label="Estoque"
@@ -235,6 +244,11 @@ const Sidebar = () => {
             href="/mercado-livre"
             icon={Layout}
             label="Dashboard"
+          />
+          <SidebarSubLink
+            href="/mercado-livre/vendas"
+            icon={BarChart3}
+            label="Análise de Vendas"
           />
           <SidebarSubLink
             href="/mercado-livre/produtos"

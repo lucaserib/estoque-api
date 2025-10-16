@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { BlingService } from "@/services/blingService";
+import { getProductCost } from "@/helpers/productCostHelper";
 
 /**
  * POST /api/bling/produtos/importar
@@ -87,18 +88,35 @@ export async function POST(request: NextRequest) {
           });
 
           if (existingProduct) {
+            // Buscar custo correto (Bling ou última compra)
+            const custoMedio = await getProductCost(
+              blingProduct.precoCusto,
+              sku,
+              user.id
+            );
+
             // Atualizar produto existente
             await prisma.produto.update({
               where: { id: existingProduct.id },
               data: {
                 nome: blingProduct.nome,
                 ean: ean ? BigInt(ean) : null,
+                custoMedio, // Atualizar custo médio
               },
             });
 
             updatedItems++;
-            console.log(`[BLING] ✅ Produto ${sku} atualizado`);
+            console.log(
+              `[BLING] ✅ Produto ${sku} atualizado (custo: R$ ${(custoMedio / 100).toFixed(2)})`
+            );
           } else {
+            // Buscar custo correto (Bling ou última compra)
+            const custoMedio = await getProductCost(
+              blingProduct.precoCusto,
+              sku,
+              user.id
+            );
+
             // Criar novo produto
             await prisma.produto.create({
               data: {
@@ -107,14 +125,14 @@ export async function POST(request: NextRequest) {
                 ean: ean ? BigInt(ean) : null,
                 isKit: false,
                 userId: user.id,
-                custoMedio: blingProduct.preco
-                  ? Math.round(blingProduct.preco * 100)
-                  : 0,
+                custoMedio,
               },
             });
 
             newItems++;
-            console.log(`[BLING] ✅ Produto ${sku} criado`);
+            console.log(
+              `[BLING] ✅ Produto ${sku} criado (custo: R$ ${(custoMedio / 100).toFixed(2)})`
+            );
           }
         } catch (productError) {
           errorItems++;
@@ -140,7 +158,7 @@ export async function POST(request: NextRequest) {
           newItems,
           updatedItems,
           errorItems,
-          errors: errors.length > 0 ? errors : null,
+          errors: errors.length > 0 ? errors : [],
           completedAt: new Date(),
           duration,
         },

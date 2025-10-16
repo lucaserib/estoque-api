@@ -51,6 +51,7 @@ const ProdutosPage = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
   const [updatingVendas, setUpdatingVendas] = useState(false);
+  const [updatingBlingStock, setUpdatingBlingStock] = useState(false);
 
   // Initialize produtos when data is loaded or refetched
   // This updates produtos when initialProdutos changes (e.g., after refetch)
@@ -122,6 +123,39 @@ const ProdutosPage = () => {
       toast.error("Erro ao atualizar dados do Mercado Livre");
     } finally {
       setUpdatingVendas(false);
+    }
+  };
+
+  // Atualizar estoque local com dados do Bling
+  const atualizarEstoqueBling = async () => {
+    setUpdatingBlingStock(true);
+    try {
+      const response = await fetch("/api/produtos/estoque-bling", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Erro ao sincronizar estoque");
+      }
+
+      const data = await response.json();
+
+      toast.success(
+        `Estoque sincronizado! ${data.stats.updated}/${data.stats.total} produtos atualizados`
+      );
+
+      // Trigger refresh para atualizar estoque na tela
+      setRefreshTrigger((prev) => prev + 1);
+    } catch (error) {
+      console.error("Erro ao atualizar estoque do Bling:", error);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Erro ao sincronizar estoque do Bling"
+      );
+    } finally {
+      setUpdatingBlingStock(false);
     }
   };
 
@@ -217,13 +251,26 @@ const ProdutosPage = () => {
           <Button
             variant="outline"
             className="gap-2"
+            onClick={atualizarEstoqueBling}
+            disabled={updatingBlingStock}
+            title="Sincronizar estoque local com Bling"
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${updatingBlingStock ? "animate-spin" : ""}`}
+            />
+            {updatingBlingStock ? "Sincronizando..." : "Atualizar Estoque Bling"}
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
             onClick={atualizarDadosML}
             disabled={updatingVendas}
+            title="Atualizar vendas e estoque Full do Mercado Livre"
           >
             <RefreshCw
               className={`h-4 w-4 ${updatingVendas ? "animate-spin" : ""}`}
             />
-            {updatingVendas ? "Atualizando..." : "Atualizar Dados"}
+            {updatingVendas ? "Atualizando..." : "Atualizar Dados ML"}
           </Button>
           <Link href="/produtos/importar">
             <Button variant="outline" className="gap-2">

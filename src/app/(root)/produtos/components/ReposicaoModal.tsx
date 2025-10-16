@@ -37,6 +37,7 @@ interface ReplenishmentConfig {
   fullReleaseDays: number;
   safetyStock: number;
   minCoverageDays: number;
+  analysisPeriodDays: number;
 }
 
 interface ReplenishmentSuggestion {
@@ -90,8 +91,11 @@ export function ReposicaoModal({
     fullReleaseDays: 3,
     safetyStock: 10,
     minCoverageDays: 30,
+    analysisPeriodDays: 90,
   });
-  const [sugestao, setSugestao] = useState<ReplenishmentSuggestion | null>(null);
+  const [sugestao, setSugestao] = useState<ReplenishmentSuggestion | null>(
+    null
+  );
 
   // Fetch config and suggestion only when modal opens
   // Use separate effect to avoid double calls
@@ -116,6 +120,7 @@ export function ReposicaoModal({
             fullReleaseDays: data.config.fullReleaseDays,
             safetyStock: data.config.safetyStock,
             minCoverageDays: data.config.minCoverageDays || 30,
+            analysisPeriodDays: data.config.analysisPeriodDays || 90,
           });
         }
       }
@@ -186,7 +191,10 @@ export function ReposicaoModal({
         );
       default:
         return (
-          <Badge variant="outline" className="gap-1 text-green-600 border-green-600">
+          <Badge
+            variant="outline"
+            className="gap-1 text-green-600 border-green-600"
+          >
             <CheckCircle className="h-3 w-3" />
             OK
           </Badge>
@@ -204,7 +212,9 @@ export function ReposicaoModal({
               Sugestão de Reposição
             </DialogTitle>
             <DialogDescription className="text-gray-600 dark:text-gray-400 mt-2">
-              <span className="font-semibold text-gray-800 dark:text-gray-200">{produto.nome}</span>
+              <span className="font-semibold text-gray-800 dark:text-gray-200">
+                {produto.nome}
+              </span>
               <br />
               SKU: {produto.sku}
             </DialogDescription>
@@ -214,12 +224,68 @@ export function ReposicaoModal({
         <div className="space-y-6 p-6">
           {/* Configuração */}
           <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Parâmetros de Reposição</h3>
+            <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">
+              Parâmetros de Reposição
+            </h3>
+
+            {/* Período de Análise - Destacado */}
+            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-800">
+              <Label
+                htmlFor="analysisPeriodDays"
+                className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2 block"
+              >
+                📊 Período de Análise de Vendas
+              </Label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig({ ...config, analysisPeriodDays: 30 })
+                  }
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    config.analysisPeriodDays === 30
+                      ? "bg-purple-600 text-white shadow-lg scale-105"
+                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-600"
+                  }`}
+                >
+                  30 dias
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig({ ...config, analysisPeriodDays: 60 })
+                  }
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    config.analysisPeriodDays === 60
+                      ? "bg-purple-600 text-white shadow-lg scale-105"
+                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-600"
+                  }`}
+                >
+                  60 dias
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setConfig({ ...config, analysisPeriodDays: 90 })
+                  }
+                  className={`px-4 py-2 rounded-lg font-medium transition-all ${
+                    config.analysisPeriodDays === 90
+                      ? "bg-purple-600 text-white shadow-lg scale-105"
+                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-600"
+                  }`}
+                >
+                  90 dias
+                </button>
+              </div>
+              <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
+                ℹ️ Define quantos dias de vendas serão considerados para
+                calcular a média diária
+              </p>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="avgDeliveryDays">
-                  Tempo de Entrega (dias)
-                </Label>
+                <Label htmlFor="avgDeliveryDays">Tempo de Entrega (dias)</Label>
                 <Input
                   id="avgDeliveryDays"
                   type="number"
@@ -296,28 +362,48 @@ export function ReposicaoModal({
             <div className="space-y-5">
               {/* Header com Status Geral */}
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">Análise Inteligente</h3>
+                <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200">
+                  Análise Inteligente
+                </h3>
                 {getStatusBadge(sugestao.statusGeral)}
               </div>
 
               {/* Visão Geral dos Estoques */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Estoque Local</p>
-                  <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">{sugestao.estoqueLocal}</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">
+                    Estoque Local
+                  </p>
+                  <p className="text-2xl font-bold text-gray-800 dark:text-gray-100">
+                    {sugestao.estoqueLocal}
+                  </p>
                 </div>
                 <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Estoque Full</p>
-                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">{sugestao.estoqueFull}</p>
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">
+                    Estoque Full
+                  </p>
+                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                    {sugestao.estoqueFull}
+                  </p>
                 </div>
                 <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">Total</p>
-                  <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">{sugestao.estoqueTotal}</p>
+                  <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">
+                    Total
+                  </p>
+                  <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
+                    {sugestao.estoqueTotal}
+                  </p>
                 </div>
                 <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                  <p className="text-xs text-purple-600 dark:text-purple-400 mb-1">Tipo</p>
+                  <p className="text-xs text-purple-600 dark:text-purple-400 mb-1">
+                    Tipo
+                  </p>
                   <p className="text-lg font-bold text-purple-700 dark:text-purple-300 uppercase">
-                    {sugestao.tipoAnuncio === "full" ? "Full" : sugestao.tipoAnuncio === "local" ? "Local" : "Ambos"}
+                    {sugestao.tipoAnuncio === "full"
+                      ? "Full"
+                      : sugestao.tipoAnuncio === "local"
+                      ? "Local"
+                      : "Ambos"}
                   </p>
                 </div>
               </div>
@@ -325,14 +411,26 @@ export function ReposicaoModal({
               {/* Métricas de Vendas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">Vendas (90 dias)</p>
-                  <p className="text-3xl font-bold text-green-700 dark:text-green-300">{sugestao.mediaVendas90d}</p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">unidades vendidas</p>
+                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                    Vendas ({config.analysisPeriodDays} dias)
+                  </p>
+                  <p className="text-3xl font-bold text-green-700 dark:text-green-300">
+                    {sugestao.mediaVendas90d}
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    unidades vendidas
+                  </p>
                 </div>
                 <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
-                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-2">Média Diária</p>
-                  <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">{sugestao.mediaDiaria.toFixed(2)}</p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">unidades/dia</p>
+                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-2">
+                    Média Diária
+                  </p>
+                  <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">
+                    {sugestao.mediaDiaria.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                    unidades/dia
+                  </p>
                 </div>
               </div>
 
@@ -343,7 +441,9 @@ export function ReposicaoModal({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <Truck className="h-5 w-5 text-white" />
-                        <h4 className="font-semibold text-white">Reposição Full (Transferência Local → Full)</h4>
+                        <h4 className="font-semibold text-white">
+                          Reposição Full (Transferência Local → Full)
+                        </h4>
                       </div>
                       {getStatusBadge(sugestao.reposicaoFull.status)}
                     </div>
@@ -351,18 +451,30 @@ export function ReposicaoModal({
                   <div className="bg-blue-50 dark:bg-blue-950/30 p-4 space-y-3">
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">Dias Restantes</p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                          Dias Restantes
+                        </p>
                         <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
-                          {sugestao.reposicaoFull.diasRestantes > 999 ? "∞" : sugestao.reposicaoFull.diasRestantes}
+                          {sugestao.reposicaoFull.diasRestantes > 999
+                            ? "∞"
+                            : sugestao.reposicaoFull.diasRestantes}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">Ponto de Reposição</p>
-                        <p className="text-xl font-bold text-blue-900 dark:text-blue-100">{sugestao.reposicaoFull.pontoReposicao}</p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                          Ponto de Reposição
+                        </p>
+                        <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                          {sugestao.reposicaoFull.pontoReposicao}
+                        </p>
                       </div>
                       <div>
-                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">Sugerido</p>
-                        <p className="text-xl font-bold text-blue-900 dark:text-blue-100">{sugestao.reposicaoFull.quantidadeSugerida}</p>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                          Sugerido
+                        </p>
+                        <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                          {sugestao.reposicaoFull.quantidadeSugerida}
+                        </p>
                       </div>
                     </div>
 
@@ -373,25 +485,35 @@ export function ReposicaoModal({
                             <p className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                               {sugestao.reposicaoFull.mensagem}
                             </p>
-                            {sugestao.reposicaoFull?.acaoRecomendada === "aguardar_compra" && (
+                            {sugestao.reposicaoFull?.acaoRecomendada ===
+                              "aguardar_compra" && (
                               <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded">
                                 <p className="text-xs text-yellow-800 dark:text-yellow-200 flex items-center gap-1">
                                   <AlertTriangle className="h-3 w-3" />
-                                  <strong>Atenção:</strong> Será necessário comprar produtos do fornecedor antes de transferir para Full
+                                  <strong>Atenção:</strong> Será necessário
+                                  comprar produtos do fornecedor antes de
+                                  transferir para Full
                                 </p>
                               </div>
                             )}
-                            {sugestao.reposicaoFull?.acaoRecomendada === "transferir" && (
+                            {sugestao.reposicaoFull?.acaoRecomendada ===
+                              "transferir" && (
                               <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                                ✓ Estoque local disponível para transferência imediata
+                                ✓ Estoque local disponível para transferência
+                                imediata
                               </p>
                             )}
                           </div>
-                          {sugestao.reposicaoFull?.acaoRecomendada === "transferir" && (
+                          {sugestao.reposicaoFull?.acaoRecomendada ===
+                            "transferir" && (
                             <Button
                               size="sm"
                               className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shrink-0"
-                              onClick={() => toast.info("Funcionalidade de transferência em desenvolvimento")}
+                              onClick={() =>
+                                toast.info(
+                                  "Funcionalidade de transferência em desenvolvimento"
+                                )
+                              }
                             >
                               <Truck className="h-4 w-4" />
                               Transferir Agora
@@ -417,7 +539,9 @@ export function ReposicaoModal({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <ShoppingCart className="h-5 w-5 text-white" />
-                      <h4 className="font-semibold text-white">Reposição Local (Compra do Fornecedor)</h4>
+                      <h4 className="font-semibold text-white">
+                        Reposição Local (Compra do Fornecedor)
+                      </h4>
                     </div>
                     {getStatusBadge(sugestao.reposicaoLocal.status)}
                   </div>
@@ -425,18 +549,30 @@ export function ReposicaoModal({
                 <div className="bg-orange-50 dark:bg-orange-950/30 p-4 space-y-3">
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">Dias Restantes</p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">
+                        Dias Restantes
+                      </p>
                       <p className="text-xl font-bold text-orange-900 dark:text-orange-100">
-                        {sugestao.reposicaoLocal.diasRestantes > 999 ? "∞" : sugestao.reposicaoLocal.diasRestantes}
+                        {sugestao.reposicaoLocal.diasRestantes > 999
+                          ? "∞"
+                          : sugestao.reposicaoLocal.diasRestantes}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">Ponto de Reposição</p>
-                      <p className="text-xl font-bold text-orange-900 dark:text-orange-100">{sugestao.reposicaoLocal.pontoReposicao}</p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">
+                        Ponto de Reposição
+                      </p>
+                      <p className="text-xl font-bold text-orange-900 dark:text-orange-100">
+                        {sugestao.reposicaoLocal.pontoReposicao}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">Sugerido</p>
-                      <p className="text-xl font-bold text-orange-900 dark:text-orange-100">{sugestao.reposicaoLocal.quantidadeSugerida}</p>
+                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">
+                        Sugerido
+                      </p>
+                      <p className="text-xl font-bold text-orange-900 dark:text-orange-100">
+                        {sugestao.reposicaoLocal.quantidadeSugerida}
+                      </p>
                     </div>
                   </div>
 
@@ -448,16 +584,23 @@ export function ReposicaoModal({
                             {sugestao.reposicaoLocal.mensagem}
                           </p>
                           {/* Detalhamento da distribuição da compra */}
-                          {(sugestao.reposicaoLocal.quantidadeParaFull > 0 || sugestao.reposicaoLocal.quantidadeParaLocal > 0) && (
+                          {(sugestao.reposicaoLocal.quantidadeParaFull > 0 ||
+                            sugestao.reposicaoLocal.quantidadeParaLocal >
+                              0) && (
                             <div className="mt-2 space-y-1">
-                              {sugestao.reposicaoLocal.quantidadeParaFull > 0 && (
+                              {sugestao.reposicaoLocal.quantidadeParaFull >
+                                0 && (
                                 <p className="text-xs text-blue-600 dark:text-blue-400">
-                                  → {sugestao.reposicaoLocal.quantidadeParaFull} unidades para transferir ao Full
+                                  → {sugestao.reposicaoLocal.quantidadeParaFull}{" "}
+                                  unidades para transferir ao Full
                                 </p>
                               )}
-                              {sugestao.reposicaoLocal.quantidadeParaLocal > 0 && (
+                              {sugestao.reposicaoLocal.quantidadeParaLocal >
+                                0 && (
                                 <p className="text-xs text-gray-600 dark:text-gray-400">
-                                  → {sugestao.reposicaoLocal.quantidadeParaLocal} unidades permanecerão no Local
+                                  →{" "}
+                                  {sugestao.reposicaoLocal.quantidadeParaLocal}{" "}
+                                  unidades permanecerão no Local
                                 </p>
                               )}
                             </div>
@@ -466,7 +609,11 @@ export function ReposicaoModal({
                         <Button
                           size="sm"
                           className="gap-2 bg-orange-600 hover:bg-orange-700 text-white shrink-0"
-                          onClick={() => toast.info("Funcionalidade de pedido de compra em desenvolvimento")}
+                          onClick={() =>
+                            toast.info(
+                              "Funcionalidade de pedido de compra em desenvolvimento"
+                            )
+                          }
                         >
                           <ShoppingCart className="h-4 w-4" />
                           Gerar Pedido
@@ -485,98 +632,107 @@ export function ReposicaoModal({
               </div>
 
               {/* Ações Prioritárias Recomendadas */}
-              {sugestao.acoesPrioritarias && Array.isArray(sugestao.acoesPrioritarias) && sugestao.acoesPrioritarias.length > 0 && (
-                <div className="mt-5 border-t-2 border-gray-200 dark:border-gray-700 pt-5">
-                  <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
-                    <TrendingUp className="h-4 w-4 text-indigo-500" />
-                    Plano de Ação Recomendado
-                  </h3>
-                  <div className="space-y-2">
-                    {sugestao.acoesPrioritarias.map((acao, index) => (
-                      <div
-                        key={index}
-                        className={`flex items-center justify-between p-3 rounded-lg border-2 ${
-                          acao.prioridade === "alta"
-                            ? "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800"
-                            : acao.prioridade === "media"
-                            ? "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-800"
-                            : "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3 flex-1">
-                          <div
-                            className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
-                              acao.prioridade === "alta"
-                                ? "bg-red-500 text-white"
-                                : acao.prioridade === "media"
-                                ? "bg-yellow-500 text-white"
-                                : "bg-green-500 text-white"
-                            }`}
-                          >
-                            {index + 1}
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">
-                              {acao.tipo === "transferir_full" ? (
-                                <>
-                                  <Truck className="inline h-4 w-4 mr-1" />
-                                  Transferir {acao.quantidade} unidades
-                                </>
-                              ) : (
-                                <>
-                                  <ShoppingCart className="inline h-4 w-4 mr-1" />
-                                  Comprar {acao.quantidade} unidades
-                                </>
-                              )}
-                            </p>
-                            <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                              {acao.origem} → {acao.destino} • Prazo: {acao.prazo}
-                            </p>
-                          </div>
-                          <Badge
-                            variant={
-                              acao.prioridade === "alta"
-                                ? "destructive"
-                                : acao.prioridade === "media"
-                                ? "default"
-                                : "outline"
-                            }
-                            className={
-                              acao.prioridade === "media"
-                                ? "bg-yellow-500 hover:bg-yellow-600 text-white"
-                                : ""
-                            }
-                          >
-                            {acao.prioridade === "alta"
-                              ? "Urgente"
+              {sugestao.acoesPrioritarias &&
+                Array.isArray(sugestao.acoesPrioritarias) &&
+                sugestao.acoesPrioritarias.length > 0 && (
+                  <div className="mt-5 border-t-2 border-gray-200 dark:border-gray-700 pt-5">
+                    <h3 className="font-semibold text-sm text-gray-800 dark:text-gray-200 mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-indigo-500" />
+                      Plano de Ação Recomendado
+                    </h3>
+                    <div className="space-y-2">
+                      {sugestao.acoesPrioritarias.map((acao, index) => (
+                        <div
+                          key={index}
+                          className={`flex items-center justify-between p-3 rounded-lg border-2 ${
+                            acao.prioridade === "alta"
+                              ? "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800"
                               : acao.prioridade === "media"
-                              ? "Importante"
-                              : "Normal"}
-                          </Badge>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className={`ml-3 ${
-                            acao.tipo === "transferir_full"
-                              ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-                              : "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                              ? "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-800"
+                              : "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800"
                           }`}
-                          onClick={() => {
-                            if (acao.tipo === "transferir_full") {
-                              toast.info("Funcionalidade de transferência em desenvolvimento");
-                            } else {
-                              toast.info("Funcionalidade de pedido de compra em desenvolvimento");
-                            }
-                          }}
                         >
-                          {acao.tipo === "transferir_full" ? "Transferir" : "Gerar Pedido"}
-                        </Button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-3 flex-1">
+                            <div
+                              className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
+                                acao.prioridade === "alta"
+                                  ? "bg-red-500 text-white"
+                                  : acao.prioridade === "media"
+                                  ? "bg-yellow-500 text-white"
+                                  : "bg-green-500 text-white"
+                              }`}
+                            >
+                              {index + 1}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                                {acao.tipo === "transferir_full" ? (
+                                  <>
+                                    <Truck className="inline h-4 w-4 mr-1" />
+                                    Transferir {acao.quantidade} unidades
+                                  </>
+                                ) : (
+                                  <>
+                                    <ShoppingCart className="inline h-4 w-4 mr-1" />
+                                    Comprar {acao.quantidade} unidades
+                                  </>
+                                )}
+                              </p>
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                                {acao.origem} → {acao.destino} • Prazo:{" "}
+                                {acao.prazo}
+                              </p>
+                            </div>
+                            <Badge
+                              variant={
+                                acao.prioridade === "alta"
+                                  ? "destructive"
+                                  : acao.prioridade === "media"
+                                  ? "default"
+                                  : "outline"
+                              }
+                              className={
+                                acao.prioridade === "media"
+                                  ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                                  : ""
+                              }
+                            >
+                              {acao.prioridade === "alta"
+                                ? "Urgente"
+                                : acao.prioridade === "media"
+                                ? "Importante"
+                                : "Normal"}
+                            </Badge>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className={`ml-3 ${
+                              acao.tipo === "transferir_full"
+                                ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+                                : "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                            }`}
+                            onClick={() => {
+                              if (acao.tipo === "transferir_full") {
+                                toast.info(
+                                  "Funcionalidade de transferência em desenvolvimento"
+                                );
+                              } else {
+                                toast.info(
+                                  "Funcionalidade de pedido de compra em desenvolvimento"
+                                );
+                              }
+                            }}
+                          >
+                            {acao.tipo === "transferir_full"
+                              ? "Transferir"
+                              : "Gerar Pedido"}
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
           ) : (
             <div className="text-center py-4 text-muted-foreground">
@@ -591,26 +747,56 @@ export function ReposicaoModal({
             </p>
             <div className="space-y-2 text-xs text-gray-600 dark:text-gray-400">
               <div>
-                <p className="font-medium text-gray-700 dark:text-gray-300">Cálculos Base:</p>
+                <p className="font-medium text-gray-700 dark:text-gray-300">
+                  Cálculos Base:
+                </p>
                 <ul className="list-disc list-inside space-y-0.5 ml-2">
-                  <li>Média Diária = Vendas dos últimos 90 dias ÷ 90</li>
-                  <li>Dados de vendas atualizados automaticamente via sincronização ML</li>
+                  <li>
+                    Média Diária = Vendas do período selecionado (
+                    {config.analysisPeriodDays} dias) ÷{" "}
+                    {config.analysisPeriodDays}
+                  </li>
+                  <li>
+                    Vendas calculadas proporcionalmente a partir dos últimos 90
+                    dias
+                  </li>
+                  <li>
+                    Dados de vendas atualizados via sincronização ML ("Atualizar
+                    Dados")
+                  </li>
                 </ul>
               </div>
               <div>
-                <p className="font-medium text-gray-700 dark:text-gray-300">Reposição Full (Transferência):</p>
+                <p className="font-medium text-gray-700 dark:text-gray-300">
+                  Reposição Full (Transferência):
+                </p>
                 <ul className="list-disc list-inside space-y-0.5 ml-2">
-                  <li>Considera tempo de liberação após coleta (~{config.fullReleaseDays} dias)</li>
-                  <li>Verifica se há estoque local suficiente para transferir</li>
+                  <li>
+                    Considera tempo de liberação após coleta (~
+                    {config.fullReleaseDays} dias)
+                  </li>
+                  <li>
+                    Verifica se há estoque local suficiente para transferir
+                  </li>
                   <li>Mais rápido: produtos chegam ao Full em poucos dias</li>
                 </ul>
               </div>
               <div>
-                <p className="font-medium text-gray-700 dark:text-gray-300">Reposição Local (Compra):</p>
+                <p className="font-medium text-gray-700 dark:text-gray-300">
+                  Reposição Local (Compra):
+                </p>
                 <ul className="list-disc list-inside space-y-0.5 ml-2">
-                  <li>Considera tempo de entrega do fornecedor (~{config.avgDeliveryDays} dias)</li>
-                  <li>Garante cobertura mínima de {config.minCoverageDays} dias de vendas</li>
-                  <li>Inclui estoque de segurança de {config.safetyStock} unidades</li>
+                  <li>
+                    Considera tempo de entrega do fornecedor (~
+                    {config.avgDeliveryDays} dias)
+                  </li>
+                  <li>
+                    Garante cobertura mínima de {config.minCoverageDays} dias de
+                    vendas
+                  </li>
+                  <li>
+                    Inclui estoque de segurança de {config.safetyStock} unidades
+                  </li>
                 </ul>
               </div>
             </div>
@@ -622,7 +808,11 @@ export function ReposicaoModal({
             <Button variant="outline" onClick={onClose}>
               Fechar
             </Button>
-            <Button onClick={handleSalvar} disabled={loading} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Button
+              onClick={handleSalvar}
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white"
+            >
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -116,6 +116,7 @@ async function collectPerformanceMetrics(
     averageSyncTime: 0,
     lastSyncTime: null,
     syncHealthScore: 0,
+    successRate: 0,
   });
 
   const apiData = resolveMetric(apiMetrics, {
@@ -124,6 +125,7 @@ async function collectPerformanceMetrics(
     failedRequests: 0,
     averageResponseTime: 0,
     apiHealthScore: 0,
+    successRate: 0,
   });
 
   const cacheData = resolveMetric(cacheMetrics, {
@@ -131,6 +133,8 @@ async function collectPerformanceMetrics(
     entries: 0,
     memoryUsage: 0,
     efficiency: "N/A",
+    globalEntries: 0,
+    globalHitRate: 0,
   });
 
   const businessData = resolveMetric(businessMetrics, {
@@ -138,6 +142,7 @@ async function collectPerformanceMetrics(
     ordersProcessed: 0,
     revenueTracked: 0,
     stockUpdates: 0,
+    webhooksReceived: 0,
   });
 
   const errorData = resolveMetric(errorMetrics, {
@@ -145,12 +150,15 @@ async function collectPerformanceMetrics(
     criticalErrors: 0,
     errorRate: 0,
     topErrors: [],
+    errorProducts: [],
   });
 
   const systemData = resolveMetric(systemMetrics, {
     uptime: 0,
     memoryUsage: 0,
     cpuUsage: 0,
+    nodeVersion: process.version,
+    platform: process.platform,
   });
 
   // ✅ CALCULAR SCORE GERAL DE SAÚDE

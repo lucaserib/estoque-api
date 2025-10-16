@@ -83,6 +83,35 @@ export interface DashboardMetrics {
   warning?: string;
 }
 
+export interface CancelledOrder {
+  orderId: string;
+  date_created: string;
+  total_amount: number;
+  items_count: number;
+  buyer_nickname: string;
+  cancellation_reason?: string;
+}
+
+export interface CancelledProduct {
+  mlItemId: string;
+  productName: string;
+  sku: string;
+  totalCancelled: number;
+  totalCancelledRevenue: number;
+  cancellationCount: number;
+  cancellationRate: number;
+  lastCancellationDate: string;
+}
+
+export interface CancelledSalesData {
+  totalCancelledOrders: number;
+  totalCancelledItems: number;
+  totalCancelledRevenue: number;
+  cancellationRate: number;
+  orders: CancelledOrder[];
+  topCancelledProducts?: CancelledProduct[]; // Produtos com mais cancelamentos
+}
+
 export interface SalesAnalytics {
   period: {
     from: string;
@@ -91,7 +120,9 @@ export interface SalesAnalytics {
   };
   summary: {
     totalSales: number;
-    totalRevenue: number;
+    totalRevenue: number; // Total incluindo frete
+    totalProductRevenue?: number; // Total só produtos (novo)
+    totalShippingRevenue?: number; // Total só frete (novo)
     averageTicket: number;
     revenueGrowth: number;
     totalOrders: number;
@@ -124,6 +155,7 @@ export interface SalesAnalytics {
     status: string;
     itemsCount: number;
   }>;
+  cancelled?: CancelledSalesData;
 }
 
 export interface RestockSuggestion {

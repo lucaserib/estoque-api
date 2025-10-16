@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
         fullReleaseDays: 3,
         safetyStock: 10,
         minCoverageDays: 30,
+        analysisPeriodDays: 90,
       },
       isGlobal: !config, // Se não encontrou config, está usando valores padrão
     });
@@ -59,7 +60,14 @@ export async function POST(request: NextRequest) {
     const user = await verifyUser(request);
     const body = await request.json();
 
-    const { produtoId, avgDeliveryDays, fullReleaseDays, safetyStock, minCoverageDays } = body;
+    const {
+      produtoId,
+      avgDeliveryDays,
+      fullReleaseDays,
+      safetyStock,
+      minCoverageDays,
+      analysisPeriodDays,
+    } = body;
 
     if (!produtoId) {
       return NextResponse.json(
@@ -68,9 +76,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!avgDeliveryDays || !fullReleaseDays || safetyStock === undefined || !minCoverageDays) {
+    if (
+      !avgDeliveryDays ||
+      !fullReleaseDays ||
+      safetyStock === undefined ||
+      !minCoverageDays ||
+      !analysisPeriodDays
+    ) {
       return NextResponse.json(
         { error: "Dados incompletos" },
+        { status: 400 }
+      );
+    }
+
+    // Validar período de análise (30, 60 ou 90 dias)
+    if (![30, 60, 90].includes(analysisPeriodDays)) {
+      return NextResponse.json(
+        { error: "Período de análise deve ser 30, 60 ou 90 dias" },
         { status: 400 }
       );
     }
@@ -88,6 +110,7 @@ export async function POST(request: NextRequest) {
         fullReleaseDays,
         safetyStock,
         minCoverageDays,
+        analysisPeriodDays,
       },
       create: {
         userId: user.id,
@@ -96,6 +119,7 @@ export async function POST(request: NextRequest) {
         fullReleaseDays,
         safetyStock,
         minCoverageDays,
+        analysisPeriodDays,
       },
     });
 

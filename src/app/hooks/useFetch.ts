@@ -51,14 +51,14 @@ const processBigIntValues = (data: unknown): unknown => {
  * @param processData Optional function to process the response data
  * @param deps Additional dependencies for the useEffect hook
  */
-export function useFetch<T extends unknown[]>(
+export function useFetch<T = unknown>(
   url: string,
-  processData?: (data: unknown[]) => T,
+  processData?: (data: unknown) => T,
   deps: DependencyList = []
 ) {
-  // Initialize with empty array of the correct type
+  // Initialize with null or empty based on type
   const [state, setState] = useState<FetchState<T>>({
-    data: [] as unknown as T,
+    data: (Array.isArray([]) ? [] : null) as unknown as T,
     loading: true,
     error: null,
   });
@@ -87,19 +87,13 @@ export function useFetch<T extends unknown[]>(
 
       let responseData = await response.json();
 
-      // Ensure responseData is an array
-      if (!Array.isArray(responseData)) {
-        console.warn("API response is not an array, converting to array");
-        responseData = [responseData];
-      }
-
       // Process BigInt values
-      const processedResponse = processBigIntValues(responseData) as unknown[];
+      const processedResponse = processBigIntValues(responseData);
 
       // Apply processData function if provided
       const processedData = processData
         ? processData(processedResponse)
-        : (processedResponse as unknown as T);
+        : (processedResponse as T);
 
       setState({
         data: processedData,
@@ -109,7 +103,7 @@ export function useFetch<T extends unknown[]>(
     } catch (error) {
       console.error("Erro no fetch:", error);
       setState({
-        data: [] as unknown as T,
+        data: (Array.isArray([]) ? [] : null) as unknown as T,
         loading: false,
         error: error instanceof Error ? error.message : "Erro desconhecido",
       });

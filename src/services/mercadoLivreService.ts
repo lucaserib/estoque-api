@@ -873,12 +873,14 @@ export class MercadoLivreService {
       await prisma.mercadoLivreWebhook.create({
         data: {
           mercadoLivreAccountId: accountId,
+          mlNotificationId: `${webhookData.resource}_${Date.now()}`,
           topic: webhookData.topic,
           resource: webhookData.resource,
           userId: webhookData.user_id,
           applicationId: webhookData.application_id,
+          processed: true,
           processedAt: new Date(),
-          status: "processed",
+          attempts: 1,
         },
       });
     } catch (error) {
@@ -1489,122 +1491,6 @@ export class MercadoLivreService {
       orderBy: { startedAt: "desc" },
       take: limit,
     });
-  }
-
-  /**
-   * Processa webhook do ML
-   */
-  static async processWebhook(
-    accountId: string,
-    notificationData: {
-      resource: string;
-      user_id: string;
-      topic: string;
-      application_id: string;
-    }
-  ): Promise<void> {
-    // Salvar webhook no banco
-    const webhook = await prisma.mercadoLivreWebhook.create({
-      data: {
-        mercadoLivreAccountId: accountId,
-        mlNotificationId: `${notificationData.resource}_${Date.now()}`,
-        resource: notificationData.resource,
-        userId: notificationData.user_id,
-        topic: notificationData.topic,
-        applicationId: notificationData.application_id,
-        attempts: 0,
-        processed: false,
-      },
-    });
-
-    // Processar webhook baseado no tópico
-    try {
-      switch (notificationData.topic) {
-        case "items":
-          await this.processItemWebhook(accountId, notificationData.resource);
-          break;
-        case "orders":
-          await this.processOrderWebhook(accountId, notificationData.resource);
-          break;
-        default:
-          console.log(`Tópico não processado: ${notificationData.topic}`);
-      }
-
-      // Marcar como processado
-      await prisma.mercadoLivreWebhook.update({
-        where: { id: webhook.id },
-        data: {
-          processed: true,
-          processedAt: new Date(),
-          attempts: webhook.attempts + 1,
-        },
-      });
-    } catch (error) {
-      // Marcar erro
-      await prisma.mercadoLivreWebhook.update({
-        where: { id: webhook.id },
-        data: {
-          error: error instanceof Error ? error.message : "Erro desconhecido",
-          attempts: webhook.attempts + 1,
-        },
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Processa webhook de item
-   */
-  private static async processItemWebhook(
-    accountId: string,
-    resource: string
-  ): Promise<void> {
-    const itemId = resource.split("/").pop();
-    if (!itemId) return;
-
-    try {
-      const accessToken = await this.getValidToken(accountId);
-      const item = await this.getItem(itemId, accessToken);
-
-      // Atualizar produto no banco
-      await prisma.produtoMercadoLivre.updateMany({
-        where: {
-          mlItemId: itemId,
-          mercadoLivreAccountId: accountId,
-        },
-        data: {
-          // ✅ IMPLEMENTAÇÃO: Detectar e capturar preços promocionais na atualização
-          mlTitle: item.title,
-          mlPrice: Math.round(item.price * 100),
-          mlOriginalPrice: item.original_price
-            ? Math.round(item.original_price * 100)
-            : null,
-          mlBasePrice: item.base_price
-            ? Math.round(item.base_price * 100)
-            : null,
-          mlHasPromotion: Boolean(
-            item.original_price && item.original_price > item.price
-          ),
-          mlPromotionDiscount:
-            item.original_price && item.original_price > item.price
-              ? Math.round(
-                  ((item.original_price - item.price) / item.original_price) *
-                    100
-                )
-              : null,
-          mlAvailableQuantity: item.available_quantity,
-          mlSoldQuantity: item.sold_quantity,
-          mlStatus: item.status,
-          mlCondition: item.condition,
-          mlLastUpdated: new Date(item.last_updated),
-          lastSyncAt: new Date(),
-          syncStatus: "synced",
-        },
-      });
-    } catch (error) {
-      console.error(`Erro ao processar webhook do item ${itemId}:`, error);
-      throw error;
-    }
   }
 
   /**

@@ -3,6 +3,21 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { withCache, createCacheKey } from "@/lib/cache";
 
+type AlertSeverity = "critical" | "warning" | "info";
+type AlertType = "stock" | "sync" | "sales";
+
+interface Alert {
+  id: string;
+  type: AlertType;
+  severity: AlertSeverity;
+  title: string;
+  message: string;
+  timestamp: string | Date;
+  details?: any;
+  actions?: any[];
+  url?: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -64,8 +79,8 @@ export async function GET(request: NextRequest) {
 
         // Ordenar por criticidade e data
         return allAlerts
-          .sort((a, b) => {
-            const severityOrder = { critical: 3, warning: 2, info: 1 };
+          .sort((a: Alert, b: Alert) => {
+            const severityOrder: Record<AlertSeverity, number> = { critical: 3, warning: 2, info: 1 };
             if (severityOrder[a.severity] !== severityOrder[b.severity]) {
               return severityOrder[b.severity] - severityOrder[a.severity];
             }
@@ -119,7 +134,7 @@ export async function GET(request: NextRequest) {
 
 // ✅ FUNÇÕES DE ALERTAS
 
-async function getStockAlerts(accountId: string, severityFilter: string) {
+async function getStockAlerts(accountId: string, severityFilter: string): Promise<Alert[]> {
   const produtos = await prisma.produtoMercadoLivre.findMany({
     where: {
       mercadoLivreAccountId: accountId,
@@ -138,7 +153,7 @@ async function getStockAlerts(accountId: string, severityFilter: string) {
     },
   });
 
-  const alerts = [];
+  const alerts: Alert[] = [];
   const now = new Date();
 
   produtos.forEach(produtoML => {
@@ -147,7 +162,8 @@ async function getStockAlerts(accountId: string, severityFilter: string) {
       0
     ) || 0;
 
-    const estoqueSeguranca = produtoML.produto?.estoqueSeguranca || 10;
+    // Pegar estoque de segurança do primeiro armazém ou usar valor padrão
+    const estoqueSeguranca = produtoML.produto?.estoques[0]?.estoqueSeguranca || 10;
     const mlStock = produtoML.mlAvailableQuantity;
 
     // ✅ ALERTA CRÍTICO: Sem estoque
@@ -240,8 +256,8 @@ async function getStockAlerts(accountId: string, severityFilter: string) {
   return alerts;
 }
 
-async function getSyncAlerts(accountId: string, severityFilter: string) {
-  const alerts = [];
+async function getSyncAlerts(accountId: string, severityFilter: string): Promise<Alert[]> {
+  const alerts: Alert[] = [];
   const now = new Date();
 
   // ✅ PRODUTOS COM ERRO DE SINCRONIZAÇÃO
@@ -322,8 +338,8 @@ async function getSyncAlerts(accountId: string, severityFilter: string) {
   return alerts;
 }
 
-async function getSalesAlerts(accountId: string, severityFilter: string) {
-  const alerts = [];
+async function getSalesAlerts(accountId: string, severityFilter: string): Promise<Alert[]> {
+  const alerts: Alert[] = [];
   const now = new Date();
 
   // ✅ VERIFICAR PRODUTOS SEM VENDAS HÁ MUITO TEMPO

@@ -6,7 +6,8 @@ export interface BlingProduct {
   id: number;
   nome: string;
   codigo: string; // SKU
-  preco: number;
+  preco: number; // Preço de venda
+  precoCusto?: number; // Custo do produto (valor de compra)
   tipo: string;
   situacao: string;
   formato: string;
@@ -46,6 +47,28 @@ export interface BlingAuthTokens {
   expires_in: number; // segundos
   token_type: string;
   scope: string;
+}
+
+export interface BlingStockDeposit {
+  id: number;
+  nome: string;
+  saldo: number;
+  saldoVirtual: number;
+  desconsiderar: string; // "S" ou "N"
+}
+
+export interface BlingStockItem {
+  id: number;
+  codigo: string; // SKU
+  nome: string;
+  estoqueAtual?: number;
+  saldoFisicoTotal: number;
+  saldoVirtualTotal: number;
+  depositos: BlingStockDeposit[];
+}
+
+export interface BlingStockResponse {
+  data: BlingStockItem[];
 }
 
 // ==================== BLING SERVICE ====================
@@ -272,6 +295,54 @@ export class BlingService {
 
     console.log(`[BLING] ${allProducts.length} produtos encontrados`);
     return allProducts;
+  }
+
+  /**
+   * Busca saldo de estoque de produtos específicos
+   * Endpoint: GET /estoques/saldos
+   */
+  static async getProductsStock(
+    accessToken: string,
+    productIds?: number[],
+    page: number = 1,
+    limit: number = 100
+  ): Promise<BlingStockResponse> {
+    const params = new URLSearchParams({
+      pagina: page.toString(),
+      limite: limit.toString(),
+    });
+
+    // Adicionar IDs dos produtos se fornecidos
+    if (productIds && productIds.length > 0) {
+      productIds.forEach((id) => {
+        params.append("idsProdutos[]", id.toString());
+      });
+    }
+
+    console.log(
+      `[BLING] Buscando estoque - Página ${page}, ${productIds?.length || "todos"} produtos`
+    );
+
+    const response = await fetch(
+      `${this.BASE_URL}/estoques/saldos?${params.toString()}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`Erro ao buscar estoque do Bling: ${error}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      data: data.data || [],
+    };
   }
 
   /**

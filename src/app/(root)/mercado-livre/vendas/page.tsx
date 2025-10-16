@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
+import { VendasCanceladasSection } from "./components/VendasCanceladasSection";
+import ProdutosCanceladosSection from "./components/ProdutosCanceladosSection";
 import {
   Select,
   SelectContent,
@@ -22,7 +24,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { DatePicker } from "@/components/ui/date-picker";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import {
   LineChart,
   Line,
@@ -46,7 +52,6 @@ import {
   ShoppingCart,
   TrendingUp,
   TrendingDown,
-  Calendar,
   Package,
   Users,
   BarChart3,
@@ -75,7 +80,15 @@ import Link from "next/link";
 import { formatarReal, exibirValorEmReais } from "@/utils/currency";
 import type { MLAccount, SalesAnalytics } from "@/types/ml-analytics";
 
-const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82ca9d", "#ffc658"];
+const COLORS = [
+  "#0088FE",
+  "#00C49F",
+  "#FFBB28",
+  "#FF8042",
+  "#8884D8",
+  "#82ca9d",
+  "#ffc658",
+];
 
 interface SalesDataComplete extends SalesAnalytics {
   insights?: string[];
@@ -104,7 +117,9 @@ export default function MercadoLivreVendasPage() {
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<MLAccount[]>([]);
   const [salesData, setSalesData] = useState<SalesDataComplete | null>(null);
-  const [comparisonData, setComparisonData] = useState<PeriodComparison | null>(null);
+  const [comparisonData, setComparisonData] = useState<PeriodComparison | null>(
+    null
+  );
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState("30");
   const [customDateRange, setCustomDateRange] = useState<{
@@ -114,7 +129,15 @@ export default function MercadoLivreVendasPage() {
   const [loadingSales, setLoadingSales] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [viewMode, setViewMode] = useState<"overview" | "products" | "trends" | "compare" | "reports">("overview");
+  const [viewMode, setViewMode] = useState<
+    | "overview"
+    | "products"
+    | "trends"
+    | "compare"
+    | "reports"
+    | "cancelled"
+    | "produtos_cancelados"
+  >("overview");
   const [showComparison, setShowComparison] = useState(false);
 
   useEffect(() => {
@@ -133,7 +156,13 @@ export default function MercadoLivreVendasPage() {
         return () => clearInterval(interval);
       }
     }
-  }, [selectedAccount, selectedPeriod, autoRefreshEnabled, showComparison, customDateRange]);
+  }, [
+    selectedAccount,
+    selectedPeriod,
+    autoRefreshEnabled,
+    showComparison,
+    customDateRange,
+  ]);
 
   const loadAccounts = async () => {
     try {
@@ -189,8 +218,13 @@ export default function MercadoLivreVendasPage() {
       // Se há data customizada, usar ela
       if (customDateRange.start && customDateRange.end) {
         url += `&startDate=${customDateRange.start.toISOString()}&endDate=${customDateRange.end.toISOString()}`;
+        console.log('[VENDAS] Usando datas customizadas:', {
+          start: customDateRange.start.toISOString(),
+          end: customDateRange.end.toISOString()
+        });
       }
 
+      console.log('[VENDAS] URL da requisição:', url);
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -212,52 +246,66 @@ export default function MercadoLivreVendasPage() {
         },
         topSellingProducts: (data.data.trends.topProducts || [])
           .slice(0, 20)
-          .map((product: {
-            mlItemId: string;
-            productName: string;
-            totalSales: number;
-            totalRevenue: number;
-            salesCount: number;
-            averagePrice: number;
-            originalPrice?: number;
-            priceVariationPercentage?: number;
+          .map(
+            (product: {
+              mlItemId: string;
+              productName: string;
+              totalSales: number;
+              totalRevenue: number;
+              salesCount: number;
+              averagePrice: number;
+              originalPrice?: number;
+              priceVariationPercentage?: number;
+            }) => ({
+              itemId: product.mlItemId,
+              title: product.productName,
+              quantity: product.totalSales,
+              revenue: product.totalRevenue,
+              orders: product.salesCount,
+              averagePrice: product.averagePrice,
+              originalPrice: product.originalPrice || product.averagePrice,
+              discountPercentage: product.priceVariationPercentage || 0,
+            })
+          ),
+        salesChart: (data.data.trends.dailyRevenue || []).map(
+          (day: {
+            date: string;
+            revenue: number;
+            orders: number;
+            items: number;
           }) => ({
-            itemId: product.mlItemId,
-            title: product.productName,
-            quantity: product.totalSales,
-            revenue: product.totalRevenue,
-            orders: product.salesCount,
-            averagePrice: product.averagePrice,
-            originalPrice: product.originalPrice || product.averagePrice,
-            discountPercentage: product.priceVariationPercentage || 0,
-          })),
-        salesChart: (data.data.trends.dailyRevenue || []).map((day: {
-          date: string;
-          revenue: number;
-          orders: number;
-          items: number;
-        }) => ({
-          date: day.date,
-          items: day.items || 0,
-          revenue: day.revenue || 0,
-          orders: day.orders || 0,
-        })),
+            date: day.date,
+            items: day.items || 0,
+            revenue: day.revenue || 0,
+            orders: day.orders || 0,
+          })
+        ),
         categoryBreakdown: [],
         recentOrders: [],
         insights: data.insights || [],
         performanceIndicators: {
-          conversionRate: data.data.summary.totalOrders > 0
-            ? (data.data.summary.totalItems / data.data.summary.totalOrders) * 100
-            : 0,
+          conversionRate:
+            data.data.summary.totalOrders > 0
+              ? (data.data.summary.totalItems / data.data.summary.totalOrders) *
+                100
+              : 0,
           averageItemsPerOrder: data.data.summary.averageItemsPerOrder || 0,
-          dailyAverageRevenue: data.data.period.days > 0
-            ? data.data.summary.totalRevenue / data.data.period.days
-            : 0,
-          topProductContribution: data.data.trends.topProducts && data.data.trends.topProducts.length > 0 && data.data.summary.totalRevenue > 0
-            ? (data.data.trends.topProducts[0].totalRevenue / data.data.summary.totalRevenue) * 100
-            : 0,
-          priceVariationCoeff: calculatePriceVariation(data.data.trends.topProducts || []),
-        }
+          dailyAverageRevenue:
+            data.data.period.days > 0
+              ? data.data.summary.totalRevenue / data.data.period.days
+              : 0,
+          topProductContribution:
+            data.data.trends.topProducts &&
+            data.data.trends.topProducts.length > 0 &&
+            data.data.summary.totalRevenue > 0
+              ? (data.data.trends.topProducts[0].totalRevenue /
+                  data.data.summary.totalRevenue) *
+                100
+              : 0,
+          priceVariationCoeff: calculatePriceVariation(
+            data.data.trends.topProducts || []
+          ),
+        },
       };
 
       setSalesData(processedData);
@@ -274,7 +322,8 @@ export default function MercadoLivreVendasPage() {
           summary: {
             totalSales: data.data.comparison.previousPeriod.totalItems || 0,
             totalRevenue: data.data.comparison.previousPeriod.totalRevenue || 0,
-            averageTicket: data.data.comparison.previousPeriod.averageTicket || 0,
+            averageTicket:
+              data.data.comparison.previousPeriod.averageTicket || 0,
             revenueGrowth: 0,
             totalOrders: data.data.comparison.previousPeriod.totalOrders || 0,
           },
@@ -287,7 +336,7 @@ export default function MercadoLivreVendasPage() {
         setComparisonData({
           current: processedData,
           previous: processedPreviousData,
-          growth: data.data.comparison.growth
+          growth: data.data.comparison.growth,
         });
       } else {
         // Limpar dados de comparação se não foi solicitada
@@ -301,13 +350,15 @@ export default function MercadoLivreVendasPage() {
     }
   };
 
-
   const calculatePriceVariation = (products: { averagePrice?: number }[]) => {
     if (products.length === 0) return 0;
-    const prices = products.map(p => p.averagePrice || 0).filter(p => p > 0);
+    const prices = products
+      .map((p) => p.averagePrice || 0)
+      .filter((p) => p > 0);
     if (prices.length === 0) return 0;
     const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
-    const variance = prices.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / prices.length;
+    const variance =
+      prices.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / prices.length;
     return (Math.sqrt(variance) / mean) * 100;
   };
 
@@ -341,21 +392,23 @@ export default function MercadoLivreVendasPage() {
 
     const csvData = [
       ["Produto", "Vendas", "Receita", "Pedidos", "Preço Médio"],
-      ...salesData.topSellingProducts.map(product => [
+      ...salesData.topSellingProducts.map((product) => [
         product.title,
         product.quantity.toString(),
         product.revenue.toString(),
         product.orders.toString(),
-        product.averagePrice.toString()
-      ])
+        product.averagePrice.toString(),
+      ]),
     ];
 
-    const csvContent = csvData.map(row => row.join(",")).join("\n");
+    const csvContent = csvData.map((row) => row.join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `vendas-ml-${selectedPeriod}dias-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `vendas-ml-${selectedPeriod}dias-${
+      new Date().toISOString().split("T")[0]
+    }.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -388,7 +441,8 @@ export default function MercadoLivreVendasPage() {
               Nenhuma conta conectada
             </h3>
             <p className="text-muted-foreground mb-4">
-              Conecte sua conta do Mercado Livre para acessar relatórios avançados de vendas.
+              Conecte sua conta do Mercado Livre para acessar relatórios
+              avançados de vendas.
             </p>
             <Link href="/mercado-livre">
               <Button>Conectar Mercado Livre</Button>
@@ -414,20 +468,97 @@ export default function MercadoLivreVendasPage() {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg border border-blue-200">
           <div className="flex flex-wrap items-center gap-4">
-            <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
-              <SelectTrigger className="w-32">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="7">7 dias</SelectItem>
-                <SelectItem value="15">15 dias</SelectItem>
-                <SelectItem value="30">30 dias</SelectItem>
-                <SelectItem value="60">60 dias</SelectItem>
-                <SelectItem value="90">90 dias</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <Select
+                value={selectedPeriod}
+                onValueChange={(value) => {
+                  setSelectedPeriod(value);
+                  setCustomDateRange({ start: null, end: null }); // Limpar datas customizadas
+                }}
+              >
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="7">7 dias</SelectItem>
+                  <SelectItem value="15">15 dias</SelectItem>
+                  <SelectItem value="30">30 dias</SelectItem>
+                  <SelectItem value="60">60 dias</SelectItem>
+                  <SelectItem value="90">90 dias</SelectItem>
+                </SelectContent>
+              </Select>
 
-            <Select value={viewMode} onValueChange={(value: string) => setViewMode(value as typeof viewMode)}>
+              <span className="text-gray-400">ou</span>
+
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[140px] justify-start text-left font-normal",
+                        !customDateRange.start && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customDateRange.start ? (
+                        format(customDateRange.start, "dd/MM/yyyy")
+                      ) : (
+                        <span>Data inicial</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={customDateRange.start || undefined}
+                      onSelect={(date) =>
+                        setCustomDateRange({ ...customDateRange, start: date || null })
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                
+                <span className="text-gray-500">até</span>
+                
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-[140px] justify-start text-left font-normal",
+                        !customDateRange.end && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {customDateRange.end ? (
+                        format(customDateRange.end, "dd/MM/yyyy")
+                      ) : (
+                        <span>Data final</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={customDateRange.end || undefined}
+                      onSelect={(date) =>
+                        setCustomDateRange({ ...customDateRange, end: date || null })
+                      }
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <Select
+              value={viewMode}
+              onValueChange={(value: string) =>
+                setViewMode(value as typeof viewMode)
+              }
+            >
               <SelectTrigger className="w-40">
                 <SelectValue />
               </SelectTrigger>
@@ -436,6 +567,10 @@ export default function MercadoLivreVendasPage() {
                 <SelectItem value="products">Produtos</SelectItem>
                 <SelectItem value="trends">Tendências</SelectItem>
                 <SelectItem value="compare">Comparar</SelectItem>
+                <SelectItem value="cancelled">Pedidos Cancelados</SelectItem>
+                <SelectItem value="produtos_cancelados">
+                  Produtos Cancelados
+                </SelectItem>
                 <SelectItem value="reports">Relatórios</SelectItem>
               </SelectContent>
             </Select>
@@ -530,13 +665,22 @@ export default function MercadoLivreVendasPage() {
                     </p>
                     <div className="flex items-center gap-1 mt-1">
                       <span className="text-xs text-muted-foreground">
-                        {(salesData.summary.totalSales / parseInt(selectedPeriod)).toFixed(1)} por dia
+                        {(
+                          salesData.summary.totalSales /
+                          parseInt(selectedPeriod)
+                        ).toFixed(1)}{" "}
+                        por dia
                       </span>
                       {showComparison && comparisonData && (
                         <div className="flex items-center gap-1 ml-2">
                           {getTrendIcon(comparisonData.growth.itemsGrowth)}
-                          <span className={`text-xs font-medium ${getTrendColor(comparisonData.growth.itemsGrowth)}`}>
-                            {comparisonData.growth.itemsGrowth > 0 ? "+" : ""}{comparisonData.growth.itemsGrowth.toFixed(1)}%
+                          <span
+                            className={`text-xs font-medium ${getTrendColor(
+                              comparisonData.growth.itemsGrowth
+                            )}`}
+                          >
+                            {comparisonData.growth.itemsGrowth > 0 ? "+" : ""}
+                            {comparisonData.growth.itemsGrowth.toFixed(1)}%
                           </span>
                         </div>
                       )}
@@ -552,24 +696,38 @@ export default function MercadoLivreVendasPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm text-muted-foreground">
-                      Receita Total
+                      Receita Total (Produtos + Frete)
                     </p>
                     <p className="text-2xl font-bold text-blue-600">
                       {formatarReal(salesData.summary.totalRevenue)}
                     </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {formatarReal(salesData.performanceIndicators?.dailyAverageRevenue || 0)}/dia
-                      </span>
-                      {showComparison && comparisonData && (
-                        <div className="flex items-center gap-1 ml-2">
-                          {getTrendIcon(comparisonData.growth.revenueGrowth)}
-                          <span className={`text-xs font-medium ${getTrendColor(comparisonData.growth.revenueGrowth)}`}>
-                            {comparisonData.growth.revenueGrowth > 0 ? "+" : ""}{comparisonData.growth.revenueGrowth.toFixed(1)}%
-                          </span>
-                        </div>
+                    <div className="flex flex-col mt-1">
+                      {salesData.summary.totalProductRevenue !== undefined && (
+                        <span className="text-xs text-muted-foreground">
+                          Produtos:{" "}
+                          {formatarReal(salesData.summary.totalProductRevenue)}
+                        </span>
+                      )}
+                      {salesData.summary.totalShippingRevenue !== undefined && (
+                        <span className="text-xs text-muted-foreground">
+                          Frete:{" "}
+                          {formatarReal(salesData.summary.totalShippingRevenue)}
+                        </span>
                       )}
                     </div>
+                    {showComparison && comparisonData && (
+                      <div className="flex items-center gap-1 mt-1">
+                        {getTrendIcon(comparisonData.growth.revenueGrowth)}
+                        <span
+                          className={`text-xs font-medium ${getTrendColor(
+                            comparisonData.growth.revenueGrowth
+                          )}`}
+                        >
+                          {comparisonData.growth.revenueGrowth > 0 ? "+" : ""}
+                          {comparisonData.growth.revenueGrowth.toFixed(1)}%
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <DollarSign className="h-8 w-8 text-blue-600" />
                 </div>
@@ -587,12 +745,19 @@ export default function MercadoLivreVendasPage() {
                       {formatarReal(salesData.summary.averageTicket)}
                     </p>
                     <div className="flex items-center gap-1 mt-1">
-                      <span className="text-xs text-muted-foreground">Por item vendido</span>
+                      <span className="text-xs text-muted-foreground">
+                        Por item vendido
+                      </span>
                       {showComparison && comparisonData && (
                         <div className="flex items-center gap-1 ml-2">
                           {getTrendIcon(comparisonData.growth.ticketGrowth)}
-                          <span className={`text-xs font-medium ${getTrendColor(comparisonData.growth.ticketGrowth)}`}>
-                            {comparisonData.growth.ticketGrowth > 0 ? "+" : ""}{comparisonData.growth.ticketGrowth.toFixed(1)}%
+                          <span
+                            className={`text-xs font-medium ${getTrendColor(
+                              comparisonData.growth.ticketGrowth
+                            )}`}
+                          >
+                            {comparisonData.growth.ticketGrowth > 0 ? "+" : ""}
+                            {comparisonData.growth.ticketGrowth.toFixed(1)}%
                           </span>
                         </div>
                       )}
@@ -607,21 +772,27 @@ export default function MercadoLivreVendasPage() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                      Pedidos
-                    </p>
+                    <p className="text-sm text-muted-foreground">Pedidos</p>
                     <p className="text-2xl font-bold text-orange-600">
                       {salesData.summary.totalOrders.toLocaleString("pt-BR")}
                     </p>
                     <div className="flex items-center gap-1 mt-1">
                       <span className="text-xs text-muted-foreground">
-                        {salesData.performanceIndicators?.averageItemsPerOrder.toFixed(1)} itens/pedido
+                        {salesData.performanceIndicators?.averageItemsPerOrder.toFixed(
+                          1
+                        )}{" "}
+                        itens/pedido
                       </span>
                       {showComparison && comparisonData && (
                         <div className="flex items-center gap-1 ml-2">
                           {getTrendIcon(comparisonData.growth.ordersGrowth)}
-                          <span className={`text-xs font-medium ${getTrendColor(comparisonData.growth.ordersGrowth)}`}>
-                            {comparisonData.growth.ordersGrowth > 0 ? "+" : ""}{comparisonData.growth.ordersGrowth.toFixed(1)}%
+                          <span
+                            className={`text-xs font-medium ${getTrendColor(
+                              comparisonData.growth.ordersGrowth
+                            )}`}
+                          >
+                            {comparisonData.growth.ordersGrowth > 0 ? "+" : ""}
+                            {comparisonData.growth.ordersGrowth.toFixed(1)}%
                           </span>
                         </div>
                       )}
@@ -645,44 +816,87 @@ export default function MercadoLivreVendasPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">
-                    {(salesData.performanceIndicators?.conversionRate || 0).toFixed(1)}%
+                    {(
+                      salesData.performanceIndicators?.conversionRate || 0
+                    ).toFixed(1)}
+                    %
                   </div>
-                  <div className="text-sm text-muted-foreground">Taxa de Conversão</div>
+                  <div className="text-sm text-muted-foreground">
+                    Taxa de Conversão
+                  </div>
                   <Progress
-                    value={Math.min(salesData.performanceIndicators?.conversionRate || 0, 100)}
+                    value={Math.min(
+                      salesData.performanceIndicators?.conversionRate || 0,
+                      100
+                    )}
                     className="h-2 mt-2"
                   />
                 </div>
 
                 <div className="text-center">
                   <div className="text-2xl font-bold text-green-600">
-                    {(salesData.performanceIndicators?.topProductContribution || 0).toFixed(1)}%
+                    {(
+                      salesData.performanceIndicators?.topProductContribution ||
+                      0
+                    ).toFixed(1)}
+                    %
                   </div>
-                  <div className="text-sm text-muted-foreground">Top Produto (Receita)</div>
+                  <div className="text-sm text-muted-foreground">
+                    Top Produto (Receita)
+                  </div>
                   <Progress
-                    value={salesData.performanceIndicators?.topProductContribution || 0}
+                    value={
+                      salesData.performanceIndicators?.topProductContribution ||
+                      0
+                    }
                     className="h-2 mt-2"
                   />
                 </div>
 
                 <div className="text-center">
-                  <div className={`text-2xl font-bold ${getPerformanceColor(100 - (salesData.performanceIndicators?.priceVariationCoeff || 0))}`}>
-                    {(100 - (salesData.performanceIndicators?.priceVariationCoeff || 0)).toFixed(0)}%
+                  <div
+                    className={`text-2xl font-bold ${getPerformanceColor(
+                      100 -
+                        (salesData.performanceIndicators?.priceVariationCoeff ||
+                          0)
+                    )}`}
+                  >
+                    {(
+                      100 -
+                      (salesData.performanceIndicators?.priceVariationCoeff ||
+                        0)
+                    ).toFixed(0)}
+                    %
                   </div>
-                  <div className="text-sm text-muted-foreground">Consistência de Preços</div>
+                  <div className="text-sm text-muted-foreground">
+                    Consistência de Preços
+                  </div>
                   <Progress
-                    value={Math.max(0, 100 - (salesData.performanceIndicators?.priceVariationCoeff || 0))}
+                    value={Math.max(
+                      0,
+                      100 -
+                        (salesData.performanceIndicators?.priceVariationCoeff ||
+                          0)
+                    )}
                     className="h-2 mt-2"
                   />
                 </div>
 
                 <div className="text-center">
                   <div className="text-2xl font-bold text-purple-600">
-                    {(salesData.performanceIndicators?.averageItemsPerOrder || 0).toFixed(1)}
+                    {(
+                      salesData.performanceIndicators?.averageItemsPerOrder || 0
+                    ).toFixed(1)}
                   </div>
-                  <div className="text-sm text-muted-foreground">Itens por Pedido</div>
+                  <div className="text-sm text-muted-foreground">
+                    Itens por Pedido
+                  </div>
                   <Progress
-                    value={Math.min((salesData.performanceIndicators?.averageItemsPerOrder || 0) * 20, 100)}
+                    value={Math.min(
+                      (salesData.performanceIndicators?.averageItemsPerOrder ||
+                        0) * 20,
+                      100
+                    )}
                     className="h-2 mt-2"
                   />
                 </div>
@@ -712,7 +926,11 @@ export default function MercadoLivreVendasPage() {
                         labelFormatter={(value) => formatDate(value as string)}
                         formatter={(value: number, name: string) => [
                           name === "revenue" ? formatarReal(value) : value,
-                          name === "items" ? "Itens" : name === "revenue" ? "Receita" : "Pedidos",
+                          name === "items"
+                            ? "Itens Vendidos"
+                            : name === "revenue"
+                            ? "Receita Total (com frete)"
+                            : "Pedidos",
                         ]}
                       />
                       <Legend />
@@ -729,7 +947,7 @@ export default function MercadoLivreVendasPage() {
                         dataKey="revenue"
                         stroke="#3b82f6"
                         strokeWidth={3}
-                        name="Receita"
+                        name="Receita Total (com frete)"
                       />
                       <Line
                         yAxisId="left"
@@ -744,6 +962,113 @@ export default function MercadoLivreVendasPage() {
                 </CardContent>
               </Card>
 
+              {/* Composição da Receita - Produtos vs Frete */}
+              {salesData.summary.totalProductRevenue !== undefined &&
+                salesData.summary.totalShippingRevenue !== undefined && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <DollarSign className="h-5 w-5 text-green-500" />
+                        Composição da Receita
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Gráfico de Pizza */}
+                        <ResponsiveContainer width="100%" height={250}>
+                          <PieChart>
+                            <Pie
+                              data={[
+                                {
+                                  name: "Produtos",
+                                  value: salesData.summary.totalProductRevenue,
+                                },
+                                {
+                                  name: "Frete",
+                                  value: salesData.summary.totalShippingRevenue,
+                                },
+                              ]}
+                              cx="50%"
+                              cy="50%"
+                              labelLine={false}
+                              label={({ name, percent }) =>
+                                `${name}: ${(percent * 100).toFixed(1)}%`
+                              }
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                            >
+                              <Cell fill="#10b981" />
+                              <Cell fill="#f59e0b" />
+                            </Pie>
+                            <Tooltip
+                              formatter={(value) =>
+                                formatarReal(value as number)
+                              }
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+
+                        {/* Detalhes */}
+                        <div className="flex flex-col justify-center gap-4">
+                          <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-green-500 rounded-full" />
+                              <span className="font-medium">Produtos</span>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">
+                                {formatarReal(
+                                  salesData.summary.totalProductRevenue
+                                )}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(
+                                  (salesData.summary.totalProductRevenue /
+                                    salesData.summary.totalRevenue) *
+                                  100
+                                ).toFixed(1)}
+                                % do total
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+                            <div className="flex items-center gap-2">
+                              <div className="w-3 h-3 bg-orange-500 rounded-full" />
+                              <span className="font-medium">Frete</span>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-lg">
+                                {formatarReal(
+                                  salesData.summary.totalShippingRevenue
+                                )}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(
+                                  (salesData.summary.totalShippingRevenue /
+                                    salesData.summary.totalRevenue) *
+                                  100
+                                ).toFixed(1)}
+                                % do total
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="pt-3 border-t">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold">Total</span>
+                              <span className="font-bold text-xl">
+                                {formatarReal(salesData.summary.totalRevenue)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
               {/* Top 5 Produtos - Gráfico */}
               <Card>
                 <CardHeader>
@@ -756,25 +1081,35 @@ export default function MercadoLivreVendasPage() {
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
-                        data={salesData.topSellingProducts.slice(0, 5).map(product => ({
-                          name: product.title.length > 30
-                            ? product.title.substring(0, 30) + "..."
-                            : product.title,
-                          value: product.revenue,
-                        }))}
+                        data={salesData.topSellingProducts
+                          .slice(0, 5)
+                          .map((product) => ({
+                            name:
+                              product.title.length > 30
+                                ? product.title.substring(0, 30) + "..."
+                                : product.title,
+                            value: product.revenue,
+                          }))}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({value}) => formatarReal(value)}
+                        label={({ value }) => formatarReal(value)}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
                       >
-                        {salesData.topSellingProducts.slice(0, 5).map((_, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
+                        {salesData.topSellingProducts
+                          .slice(0, 5)
+                          .map((_, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={COLORS[index % COLORS.length]}
+                            />
+                          ))}
                       </Pie>
-                      <Tooltip formatter={(value) => formatarReal(value as number)} />
+                      <Tooltip
+                        formatter={(value) => formatarReal(value as number)}
+                      />
                     </PieChart>
                   </ResponsiveContainer>
                 </CardContent>
@@ -799,22 +1134,31 @@ export default function MercadoLivreVendasPage() {
                       <TableHead className="text-center">Receita</TableHead>
                       <TableHead className="text-center">Pedidos</TableHead>
                       <TableHead className="text-center">Preço Médio</TableHead>
-                      <TableHead className="text-center">Participação</TableHead>
+                      <TableHead className="text-center">
+                        Participação
+                      </TableHead>
                       <TableHead className="text-center">Performance</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {salesData.topSellingProducts.map((product, index) => {
-                      const participation = salesData.summary.totalRevenue > 0
-                        ? (product.revenue / salesData.summary.totalRevenue) * 100
-                        : 0;
-                      const itemsPerOrder = product.orders > 0 ? product.quantity / product.orders : 0;
+                      const participation =
+                        salesData.summary.totalRevenue > 0
+                          ? (product.revenue / salesData.summary.totalRevenue) *
+                            100
+                          : 0;
+                      const itemsPerOrder =
+                        product.orders > 0
+                          ? product.quantity / product.orders
+                          : 0;
 
                       return (
                         <TableRow key={product.itemId}>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Badge variant={index < 3 ? "default" : "secondary"}>
+                              <Badge
+                                variant={index < 3 ? "default" : "secondary"}
+                              >
                                 #{index + 1}
                               </Badge>
                               <div>
@@ -833,11 +1177,18 @@ export default function MercadoLivreVendasPage() {
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
-                            <div className="font-semibold">{product.quantity}</div>
+                            <div className="font-semibold">
+                              {product.quantity}
+                            </div>
                             <div className="text-xs text-muted-foreground">
                               {salesData.summary.totalSales > 0
-                                ? ((product.quantity / salesData.summary.totalSales) * 100).toFixed(1)
-                                : 0}%
+                                ? (
+                                    (product.quantity /
+                                      salesData.summary.totalSales) *
+                                    100
+                                  ).toFixed(1)
+                                : 0}
+                              %
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
@@ -873,7 +1224,10 @@ export default function MercadoLivreVendasPage() {
                               </Badge>
                             )}
                             {participation > 5 && (
-                              <Badge variant="secondary" className="bg-blue-500 text-white">
+                              <Badge
+                                variant="secondary"
+                                className="bg-blue-500 text-white"
+                              >
                                 <Zap className="h-3 w-3 mr-1" />
                                 Alta
                               </Badge>
@@ -907,10 +1261,15 @@ export default function MercadoLivreVendasPage() {
                       <div className="text-sm text-muted-foreground">
                         vs {comparisonData.previous.summary.totalSales}
                       </div>
-                      <div className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(comparisonData.growth.itemsGrowth)}`}>
+                      <div
+                        className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(
+                          comparisonData.growth.itemsGrowth
+                        )}`}
+                      >
                         {getTrendIcon(comparisonData.growth.itemsGrowth)}
                         <span className="font-medium">
-                          {comparisonData.growth.itemsGrowth > 0 ? "+" : ""}{comparisonData.growth.itemsGrowth.toFixed(1)}%
+                          {comparisonData.growth.itemsGrowth > 0 ? "+" : ""}
+                          {comparisonData.growth.itemsGrowth.toFixed(1)}%
                         </span>
                       </div>
                     </div>
@@ -918,15 +1277,25 @@ export default function MercadoLivreVendasPage() {
                     <div className="text-center p-4 border rounded-lg">
                       <div className="text-lg font-semibold">Receita</div>
                       <div className="text-2xl font-bold text-blue-600">
-                        {formatarReal(comparisonData.current.summary.totalRevenue)}
+                        {formatarReal(
+                          comparisonData.current.summary.totalRevenue
+                        )}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        vs {formatarReal(comparisonData.previous.summary.totalRevenue)}
+                        vs{" "}
+                        {formatarReal(
+                          comparisonData.previous.summary.totalRevenue
+                        )}
                       </div>
-                      <div className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(comparisonData.growth.revenueGrowth)}`}>
+                      <div
+                        className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(
+                          comparisonData.growth.revenueGrowth
+                        )}`}
+                      >
                         {getTrendIcon(comparisonData.growth.revenueGrowth)}
                         <span className="font-medium">
-                          {comparisonData.growth.revenueGrowth > 0 ? "+" : ""}{comparisonData.growth.revenueGrowth.toFixed(1)}%
+                          {comparisonData.growth.revenueGrowth > 0 ? "+" : ""}
+                          {comparisonData.growth.revenueGrowth.toFixed(1)}%
                         </span>
                       </div>
                     </div>
@@ -939,10 +1308,15 @@ export default function MercadoLivreVendasPage() {
                       <div className="text-sm text-muted-foreground">
                         vs {comparisonData.previous.summary.totalOrders}
                       </div>
-                      <div className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(comparisonData.growth.ordersGrowth)}`}>
+                      <div
+                        className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(
+                          comparisonData.growth.ordersGrowth
+                        )}`}
+                      >
                         {getTrendIcon(comparisonData.growth.ordersGrowth)}
                         <span className="font-medium">
-                          {comparisonData.growth.ordersGrowth > 0 ? "+" : ""}{comparisonData.growth.ordersGrowth.toFixed(1)}%
+                          {comparisonData.growth.ordersGrowth > 0 ? "+" : ""}
+                          {comparisonData.growth.ordersGrowth.toFixed(1)}%
                         </span>
                       </div>
                     </div>
@@ -950,15 +1324,25 @@ export default function MercadoLivreVendasPage() {
                     <div className="text-center p-4 border rounded-lg">
                       <div className="text-lg font-semibold">Ticket Médio</div>
                       <div className="text-2xl font-bold text-purple-600">
-                        {formatarReal(comparisonData.current.summary.averageTicket)}
+                        {formatarReal(
+                          comparisonData.current.summary.averageTicket
+                        )}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        vs {formatarReal(comparisonData.previous.summary.averageTicket)}
+                        vs{" "}
+                        {formatarReal(
+                          comparisonData.previous.summary.averageTicket
+                        )}
                       </div>
-                      <div className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(comparisonData.growth.ticketGrowth)}`}>
+                      <div
+                        className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(
+                          comparisonData.growth.ticketGrowth
+                        )}`}
+                      >
                         {getTrendIcon(comparisonData.growth.ticketGrowth)}
                         <span className="font-medium">
-                          {comparisonData.growth.ticketGrowth > 0 ? "+" : ""}{comparisonData.growth.ticketGrowth.toFixed(1)}%
+                          {comparisonData.growth.ticketGrowth > 0 ? "+" : ""}
+                          {comparisonData.growth.ticketGrowth.toFixed(1)}%
                         </span>
                       </div>
                     </div>
@@ -967,6 +1351,17 @@ export default function MercadoLivreVendasPage() {
               </Card>
             </div>
           )}
+
+          {viewMode === "cancelled" && salesData?.cancelled && (
+            <VendasCanceladasSection data={salesData.cancelled} />
+          )}
+
+          {viewMode === "produtos_cancelados" &&
+            salesData?.cancelled?.topCancelledProducts && (
+              <ProdutosCanceladosSection
+                products={salesData.cancelled.topCancelledProducts}
+              />
+            )}
 
           {viewMode === "reports" && (
             <div className="space-y-6">
@@ -979,7 +1374,10 @@ export default function MercadoLivreVendasPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer" onClick={exportToCSV}>
+                    <div
+                      className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                      onClick={exportToCSV}
+                    >
                       <div className="flex items-center gap-3">
                         <Download className="h-8 w-8 text-blue-600" />
                         <div>
@@ -995,7 +1393,9 @@ export default function MercadoLivreVendasPage() {
                       <div className="flex items-center gap-3">
                         <BarChart3 className="h-8 w-8 text-green-600" />
                         <div>
-                          <div className="font-semibold">Relatório de Performance</div>
+                          <div className="font-semibold">
+                            Relatório de Performance
+                          </div>
                           <div className="text-sm text-muted-foreground">
                             Análise completa de KPIs
                           </div>
@@ -1017,24 +1417,64 @@ export default function MercadoLivreVendasPage() {
                   </div>
 
                   <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 mb-2">Resumo do Período</h4>
+                    <h4 className="font-semibold text-blue-900 mb-2">
+                      Resumo do Período
+                    </h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       <div>
                         <div className="font-medium">Métricas Principais:</div>
                         <ul className="mt-1 space-y-1 text-muted-foreground">
-                          <li>• Total de itens vendidos: {salesData.summary.totalSales.toLocaleString("pt-BR")}</li>
-                          <li>• Receita total: {formatarReal(salesData.summary.totalRevenue)}</li>
-                          <li>• Total de pedidos: {salesData.summary.totalOrders.toLocaleString("pt-BR")}</li>
-                          <li>• Ticket médio: {formatarReal(salesData.summary.averageTicket)}</li>
+                          <li>
+                            • Total de itens vendidos:{" "}
+                            {salesData.summary.totalSales.toLocaleString(
+                              "pt-BR"
+                            )}
+                          </li>
+                          <li>
+                            • Receita total:{" "}
+                            {formatarReal(salesData.summary.totalRevenue)}
+                          </li>
+                          <li>
+                            • Total de pedidos:{" "}
+                            {salesData.summary.totalOrders.toLocaleString(
+                              "pt-BR"
+                            )}
+                          </li>
+                          <li>
+                            • Ticket médio:{" "}
+                            {formatarReal(salesData.summary.averageTicket)}
+                          </li>
                         </ul>
                       </div>
                       <div>
                         <div className="font-medium">Performance:</div>
                         <ul className="mt-1 space-y-1 text-muted-foreground">
-                          <li>• Taxa de conversão: {(salesData.performanceIndicators?.conversionRate || 0).toFixed(1)}%</li>
-                          <li>• Itens por pedido: {(salesData.performanceIndicators?.averageItemsPerOrder || 0).toFixed(1)}</li>
-                          <li>• Receita diária: {formatarReal(salesData.performanceIndicators?.dailyAverageRevenue || 0)}</li>
-                          <li>• Produtos únicos: {salesData.topSellingProducts.length}</li>
+                          <li>
+                            • Taxa de conversão:{" "}
+                            {(
+                              salesData.performanceIndicators?.conversionRate ||
+                              0
+                            ).toFixed(1)}
+                            %
+                          </li>
+                          <li>
+                            • Itens por pedido:{" "}
+                            {(
+                              salesData.performanceIndicators
+                                ?.averageItemsPerOrder || 0
+                            ).toFixed(1)}
+                          </li>
+                          <li>
+                            • Receita diária:{" "}
+                            {formatarReal(
+                              salesData.performanceIndicators
+                                ?.dailyAverageRevenue || 0
+                            )}
+                          </li>
+                          <li>
+                            • Produtos únicos:{" "}
+                            {salesData.topSellingProducts.length}
+                          </li>
                         </ul>
                       </div>
                     </div>

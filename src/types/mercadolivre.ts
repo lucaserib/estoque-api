@@ -88,6 +88,7 @@ export interface MLItem {
   id: string;
   title: string;
   category_id: string;
+  seller_custom_field?: string;
   price: number;
   base_price: number;
   original_price: number | null;
@@ -474,6 +475,8 @@ export interface MLOrder {
       title: string;
       category_id?: string;
       seller_custom_field?: string;
+      thumbnail?: string;
+      price?: number;
     };
     quantity: number;
     unit_price: number;
@@ -491,6 +494,7 @@ export interface MLOrder {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   shipping: any;
   total_amount: number;
+  paid_amount?: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   payments?: any;
   feedback?: {

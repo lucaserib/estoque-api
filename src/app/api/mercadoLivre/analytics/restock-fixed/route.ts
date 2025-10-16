@@ -144,7 +144,7 @@ export async function GET(request: NextRequest) {
                 ? {
                     id: fornecedor.id,
                     nome: fornecedor.nome,
-                    contato: fornecedor.email || fornecedor.telefone,
+                    contato: fornecedor.contato || "",
                   }
                 : null,
 
