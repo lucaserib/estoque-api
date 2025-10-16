@@ -474,7 +474,7 @@ export default function MercadoLivrePage() {
         <Alert>
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            {metrics.warning} - Algumas funcionalidades podem estar limitadas.
+            {metrics?.warning} - Algumas funcionalidades podem estar limitadas.
           </AlertDescription>
         </Alert>
       )}
