@@ -48,9 +48,6 @@ export async function GET(request: NextRequest) {
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
     });
 
     // Classificar produtos por status de configuração
@@ -58,33 +55,34 @@ export async function GET(request: NextRequest) {
       const mlProduct = product.ProdutoMercadoLivre[0];
       const hasCost = product.custoMedio && product.custoMedio > 0;
       const hasSupplier = product.fornecedores.length > 0;
-      
+
       const configurationStatus = hasCost ? "configured" : "pending";
-      
+
       return {
         id: product.id,
         nome: product.nome,
         sku: product.sku,
         custoMedio: product.custoMedio,
         isKit: product.isKit,
-        createdAt: product.createdAt,
         configurationStatus,
         hasCost,
         hasSupplier,
         needsConfiguration: !hasCost,
-        mlData: mlProduct ? {
-          mlItemId: mlProduct.mlItemId,
-          mlTitle: mlProduct.mlTitle,
-          mlPrice: mlProduct.mlPrice / 100, // Converter de centavos
-          mlStatus: mlProduct.mlStatus,
-          mlThumbnail: mlProduct.mlThumbnail,
-          mlPermalink: mlProduct.mlPermalink,
-          isFull: mlProduct.mlShippingMode === "fulfillment",
-          lastSyncAt: mlProduct.lastSyncAt,
-          account: mlProduct.mercadoLivreAccount,
-        } : null,
-        suppliers: product.fornecedores.map(pf => pf.fornecedor),
-        warehouses: product.estoques.map(e => ({
+        mlData: mlProduct
+          ? {
+              mlItemId: mlProduct.mlItemId,
+              mlTitle: mlProduct.mlTitle,
+              mlPrice: mlProduct.mlPrice / 100, // Converter de centavos
+              mlStatus: mlProduct.mlStatus,
+              mlThumbnail: mlProduct.mlThumbnail,
+              mlPermalink: mlProduct.mlPermalink,
+              isFull: mlProduct.mlShippingMode === "fulfillment",
+              lastSyncAt: mlProduct.lastSyncAt,
+              account: mlProduct.mercadoLivreAccount,
+            }
+          : null,
+        suppliers: product.fornecedores.map((pf) => pf.fornecedor),
+        warehouses: product.estoques.map((e) => ({
           ...e.armazem,
           quantidade: e.quantidade,
         })),
@@ -92,17 +90,24 @@ export async function GET(request: NextRequest) {
     });
 
     // Filtrar por status se especificado
-    const filteredProducts = status && status !== "all" 
-      ? processedProducts.filter(p => p.configurationStatus === status)
-      : processedProducts;
+    const filteredProducts =
+      status && status !== "all"
+        ? processedProducts.filter((p) => p.configurationStatus === status)
+        : processedProducts;
 
     // Estatísticas
     const stats = {
       total: processedProducts.length,
-      pending: processedProducts.filter(p => p.configurationStatus === "pending").length,
-      configured: processedProducts.filter(p => p.configurationStatus === "configured").length,
-      fullProducts: processedProducts.filter(p => p.mlData?.isFull).length,
-      flexProducts: processedProducts.filter(p => p.mlData && !p.mlData.isFull).length,
+      pending: processedProducts.filter(
+        (p) => p.configurationStatus === "pending"
+      ).length,
+      configured: processedProducts.filter(
+        (p) => p.configurationStatus === "configured"
+      ).length,
+      fullProducts: processedProducts.filter((p) => p.mlData?.isFull).length,
+      flexProducts: processedProducts.filter(
+        (p) => p.mlData && !p.mlData.isFull
+      ).length,
     };
 
     return NextResponse.json({
@@ -148,7 +153,7 @@ export async function PATCH(request: NextRequest) {
 
     // Preparar dados para atualização
     const updateData: any = {};
-    
+
     if (updates.nome !== undefined) updateData.nome = updates.nome;
     if (updates.sku !== undefined) updateData.sku = updates.sku;
     if (updates.custoMedio !== undefined) {

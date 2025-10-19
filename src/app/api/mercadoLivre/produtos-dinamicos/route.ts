@@ -40,15 +40,18 @@ async function verifyUserForAPI(request: Request) {
     // Criar um NextRequest simulado para getToken
     const url = new URL(request.url);
     const headers = new Headers(request.headers);
-    
+
     // Detectar se é HTTPS
-    const isSecure = url.protocol === "https:" || headers.get("x-forwarded-proto") === "https";
-    
+    const isSecure =
+      url.protocol === "https:" || headers.get("x-forwarded-proto") === "https";
+
     const token = await getToken({
       req: request as any, // Next.js pode lidar com Request regular
       secret: process.env.NEXTAUTH_SECRET,
       secureCookie: isSecure,
-      cookieName: isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token"
+      cookieName: isSecure
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
     });
 
     if (!token || !token.id) {
@@ -56,7 +59,10 @@ async function verifyUserForAPI(request: Request) {
     }
 
     const userId = token.id as string;
-    console.log("[PRODUTOS_DINAMICOS_API] ✅ Token válido para usuário:", userId);
+    console.log(
+      "[PRODUTOS_DINAMICOS_API] ✅ Token válido para usuário:",
+      userId
+    );
 
     // Verificar/criar usuário no banco
     let user = await prisma.user.findUnique({
@@ -80,7 +86,10 @@ async function verifyUserForAPI(request: Request) {
 
     return user;
   } catch (error) {
-    console.log("[PRODUTOS_DINAMICOS_API] ❌ Erro de autenticação:", error.message);
+    console.log(
+      "[PRODUTOS_DINAMICOS_API] ❌ Erro de autenticação:",
+      error instanceof Error ? error.message : String(error)
+    );
     throw error;
   }
 }
@@ -266,7 +275,7 @@ export async function GET(request: Request) {
               const pricesData = await pricesResponse.json();
 
               const promotionPrice = pricesData.prices?.find(
-                (p) =>
+                (p: any) =>
                   p.type === "promotion" &&
                   p.conditions?.context_restrictions?.includes(
                     "channel_marketplace"
@@ -342,7 +351,7 @@ export async function GET(request: Request) {
         } catch (error) {
           console.log(
             `[PRODUTOS_DINAMICOS_API] ❌ Erro geral ${itemId}:`,
-            error.message
+            error instanceof Error ? error.message : String(error)
           );
           return null;
         }
@@ -438,13 +447,14 @@ export async function GET(request: Request) {
 
       // Adicionar dados de vendas aos produtos
       produtos.forEach((produto) => {
+        if (!produto) return;
         const sales = salesByProduct.get(produto.mlItemId) || {
           quantity: 0,
           revenue: 0,
         };
         const diasEsteMs = agora.getDate();
 
-        produto.salesData = {
+        (produto as any).salesData = {
           quantityThisMonth: sales.quantity,
           revenueThisMonth: sales.revenue,
           salesVelocity: sales.quantity / diasEsteMs,
@@ -463,6 +473,7 @@ export async function GET(request: Request) {
     if (sortBy === "smart") {
       // Ordenação inteligente: ativos com vendas primeiro
       sortedProducts.sort((a, b) => {
+        if (!a || !b) return 0;
         // Prioridade 1: Status ativo
         if (a.mlStatus === "active" && b.mlStatus !== "active") return -1;
         if (b.mlStatus === "active" && a.mlStatus !== "active") return 1;
@@ -472,8 +483,8 @@ export async function GET(request: Request) {
         if (b.mlHasPromotion && !a.mlHasPromotion) return 1;
 
         // Prioridade 3: Vendas no mês
-        const salesA = a.salesData?.quantityThisMonth || 0;
-        const salesB = b.salesData?.quantityThisMonth || 0;
+        const salesA = (a as any).salesData?.quantityThisMonth || 0;
+        const salesB = (b as any).salesData?.quantityThisMonth || 0;
         if (salesA !== salesB) return salesB - salesA;
 
         // Prioridade 4: Vinculado a produto local
@@ -484,18 +495,21 @@ export async function GET(request: Request) {
       });
     } else if (sortBy === "sales") {
       sortedProducts.sort((a, b) => {
-        const salesA = a.salesData?.quantityThisMonth || 0;
-        const salesB = b.salesData?.quantityThisMonth || 0;
+        if (!a || !b) return 0;
+        const salesA = (a as any).salesData?.quantityThisMonth || 0;
+        const salesB = (b as any).salesData?.quantityThisMonth || 0;
         return sortOrder === "desc" ? salesB - salesA : salesA - salesB;
       });
     } else if (sortBy === "price") {
       sortedProducts.sort((a, b) => {
+        if (!a || !b) return 0;
         return sortOrder === "desc"
           ? b.mlPrice - a.mlPrice
           : a.mlPrice - b.mlPrice;
       });
     } else if (sortBy === "stock") {
       sortedProducts.sort((a, b) => {
+        if (!a || !b) return 0;
         return sortOrder === "desc"
           ? b.mlAvailableQuantity - a.mlAvailableQuantity
           : a.mlAvailableQuantity - b.mlAvailableQuantity;
@@ -527,7 +541,10 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error("[PRODUTOS_DINAMICOS_API] ❌ Erro geral:", error);
     return NextResponse.json(
-      { success: false, error: error.message },
+      {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
       { status: 500 }
     );
   } finally {

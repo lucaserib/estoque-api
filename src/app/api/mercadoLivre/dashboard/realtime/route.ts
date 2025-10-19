@@ -203,13 +203,12 @@ async function getSalesMetrics(
   const cacheKey = createCacheKey("realtime_sales", accountId, period);
 
   const fetcher = async () => {
-    const ordersData = await MercadoLivreService.getCachedUserOrders(
+    const ordersData = await MercadoLivreService.getUserOrders(
       accessToken,
-      accountId,
       {
-        status: "paid",
-        period: period as any,
-        forceRefresh,
+        seller: accountId,
+        sort: "date_desc",
+        limit: 50,
       }
     );
 
@@ -274,7 +273,13 @@ async function getStockMetrics(accountId: string) {
 
     let lowStockCount = 0;
     let outOfStockCount = 0;
-    const criticalAlerts = [];
+    const criticalAlerts: Array<{
+      mlItemId: string;
+      title: string;
+      stock: number;
+      localStock: number;
+      level: string;
+    }> = [];
 
     produtos.forEach(produtoML => {
       const localStock = produtoML.produto?.estoques.reduce(
@@ -359,12 +364,12 @@ async function getRecentOrdersMetrics(
   const cacheKey = createCacheKey("realtime_orders", accountId);
 
   const fetcher = async () => {
-    const ordersData = await MercadoLivreService.getCachedUserOrders(
+    const ordersData = await MercadoLivreService.getUserOrders(
       accessToken,
-      accountId,
       {
-        period: "today",
-        forceRefresh,
+        seller: accountId,
+        sort: "date_desc",
+        limit: 50,
       }
     );
 

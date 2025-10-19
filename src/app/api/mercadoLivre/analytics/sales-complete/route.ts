@@ -3,6 +3,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { withCache, createCacheKey } from "@/lib/cache";
+import type { MLOrder } from "@/types/mercadolivre";
 
 interface SalesProduct {
   mlItemId: string;
@@ -166,7 +167,7 @@ export async function GET(request: NextRequest) {
           );
 
           // Buscar pedidos do período - começar com mais pedidos
-          const allOrders: Array<Record<string, unknown>> = [];
+          const allOrders: MLOrder[] = [];
           let offset = 0;
           const limit = 50;
           let hasMore = true;
@@ -185,7 +186,7 @@ export async function GET(request: NextRequest) {
               );
 
               if (ordersResponse.results && ordersResponse.results.length > 0) {
-                allOrders = allOrders.concat(ordersResponse.results);
+                allOrders.push(...ordersResponse.results);
                 offset += limit;
                 hasMore = ordersResponse.results.length === limit;
               } else {
@@ -427,10 +428,10 @@ export async function GET(request: NextRequest) {
               date_created: order.date_created,
               total_amount: orderRevenue,
               items_count: orderItems,
-              buyer_nickname: order.buyer?.nickname || "N/A",
+              buyer_nickname: (order.buyer as any)?.nickname || "N/A",
               cancellation_reason:
-                order.status_detail?.description || 
-                order.status_detail ||
+                (order.status_detail as any)?.description || 
+                (order.status_detail as string) ||
                 order.status, // Incluir o status se não tiver detalhe
             });
           });

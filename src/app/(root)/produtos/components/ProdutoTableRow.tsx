@@ -93,10 +93,9 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
               {stockMinimum !== undefined &&
                 stockQuantity <= stockMinimum &&
                 stockQuantity > 0 && (
-                  <AlertTriangle
-                    className="h-4 w-4 text-amber-500"
-                    title="Estoque abaixo do nível mínimo"
-                  />
+                  <span title="Estoque abaixo do nível mínimo">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  </span>
                 )}
             </div>
           ) : (

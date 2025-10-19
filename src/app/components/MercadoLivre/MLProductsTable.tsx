@@ -15,33 +15,40 @@ interface Product {
   mlItemId: string;
   mlTitle: string;
   mlPrice: number;
-  mlOriginalPrice?: number;
-  mlHasPromotion: boolean;
-  mlPromotionDiscount?: number;
+  mlOriginalPrice?: number | null;
+  mlBasePrice?: number | null;
+  mlHasPromotion?: boolean;
+  mlPromotionDiscount?: number | null;
   mlSavings?: number;
-  mlStatus: string;
   mlAvailableQuantity: number;
+  mlSoldQuantity: number;
+  mlStatus: string;
   mlThumbnail?: string;
+  mlPermalink: string;
+  produto?: {
+    id: string;
+    nome: string;
+    sku: string;
+    estoqueLocal?: number;
+  } | null;
   localProduct?: {
     id: string;
     nome: string;
     sku: string;
   } | null;
-  localStock: number;
-  stockStatus: string;
-  lastSync: string;
-  syncStatus: string;
-  salesData: {
-    quantityThisMonth: number;
-    revenueThisMonth: number;
-    salesVelocity: number;
-    daysInMonth: number;
-    quantityPreviousMonth: number;
-    revenuePreviousMonth: number;
-    quantityGrowth: number;
-    revenueGrowth: number;
-    totalHistoricalSales: number;
-  };
+  localStock?: number;
+  stockStatus?: "ok" | "low" | "out" | "unlinked" | string;
+  lastSync?: string;
+  lastSyncAt?: string;
+  syncStatus?: string;
+  salesData?: {
+    quantityThisMonth?: number;
+    revenueThisMonth?: number;
+    salesVelocity?: number;
+    daysInMonth?: number;
+    quantity30d?: number;
+    revenue30d?: number;
+  } | null;
 }
 
 interface MLProductsTableProps {
@@ -138,7 +145,10 @@ export default function MLProductsTable({
               ) : products.length === 0 ? (
                 // Estado vazio
                 <TableRow>
-                  <td colSpan={9} className="p-8 text-center text-muted-foreground">
+                  <td
+                    colSpan={9}
+                    className="p-8 text-center text-muted-foreground"
+                  >
                     <div className="space-y-2">
                       <div className="text-lg font-medium">
                         Nenhum produto encontrado
@@ -171,22 +181,32 @@ export default function MLProductsTable({
           <div className="p-4 border-t bg-muted/50">
             <div className="flex justify-between items-center text-sm text-muted-foreground">
               <div>
-                Mostrando <span className="font-medium">{products.length}</span> produtos
+                Mostrando <span className="font-medium">{products.length}</span>{" "}
+                produtos
               </div>
               <div className="flex gap-4">
                 <div>
-                  Ativos: <span className="font-medium text-green-600">
-                    {products.filter(p => p.mlStatus === 'active').length}
+                  Ativos:{" "}
+                  <span className="font-medium text-green-600">
+                    {products.filter((p) => p.mlStatus === "active").length}
                   </span>
                 </div>
                 <div>
-                  Com vendas: <span className="font-medium text-blue-600">
-                    {products.filter(p => p.salesData.quantityThisMonth > 0).length}
+                  Com vendas:{" "}
+                  <span className="font-medium text-blue-600">
+                    {
+                      products.filter(
+                        (p) =>
+                          p.salesData?.quantityThisMonth &&
+                          p.salesData.quantityThisMonth > 0
+                      ).length
+                    }
                   </span>
                 </div>
                 <div>
-                  Vinculados: <span className="font-medium text-purple-600">
-                    {products.filter(p => p.localProduct).length}
+                  Vinculados:{" "}
+                  <span className="font-medium text-purple-600">
+                    {products.filter((p) => p.localProduct).length}
                   </span>
                 </div>
               </div>

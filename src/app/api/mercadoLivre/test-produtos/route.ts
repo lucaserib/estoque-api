@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   try {
     console.log("[TEST_PRODUTOS] 🚀 Iniciando sem auth para debug...");
-    
+
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
 
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     console.log("[TEST_PRODUTOS] 🔍 Buscando conta ML...");
-    
+
     // Buscar conta sem verificar usuário para debug
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
@@ -32,11 +32,11 @@ export async function GET(request: NextRequest) {
         { status: 404 }
       );
     }
-    
+
     console.log("[TEST_PRODUTOS] ✅ Conta encontrada:", account.mlUserId);
 
     console.log("[TEST_PRODUTOS] 📦 Buscando produtos...");
-    
+
     // Buscar produtos ML
     const produtosML = await prisma.produtoMercadoLivre.findMany({
       where: {
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[TEST_PRODUTOS] ✅ ${produtosML.length} produtos encontrados`);
 
-    const products = produtosML.map(produto => ({
+    const products = produtosML.map((produto) => ({
       id: produto.id,
       mlItemId: produto.mlItemId,
       mlTitle: produto.mlTitle?.substring(0, 60) + "...",
@@ -59,17 +59,21 @@ export async function GET(request: NextRequest) {
       mlPromotionDiscount: produto.mlPromotionDiscount,
       mlAvailableQuantity: produto.mlAvailableQuantity,
       mlSoldQuantity: produto.mlSoldQuantity,
-      
+
       // Preços formatados corretamente
       priceFormatted: `R$ ${(produto.mlPrice / 100).toFixed(2)}`,
-      originalPriceFormatted: produto.mlOriginalPrice ? `R$ ${(produto.mlOriginalPrice / 100).toFixed(2)}` : null,
-      savingsFormatted: produto.mlOriginalPrice ? `R$ ${((produto.mlOriginalPrice - produto.mlPrice) / 100).toFixed(2)}` : null,
-      
+      originalPriceFormatted: produto.mlOriginalPrice
+        ? `R$ ${(produto.mlOriginalPrice / 100).toFixed(2)}`
+        : null,
+      savingsFormatted: produto.mlOriginalPrice
+        ? `R$ ${((produto.mlOriginalPrice - produto.mlPrice) / 100).toFixed(2)}`
+        : null,
+
       salesData: {
         quantity30d: produto.mlSoldQuantity || 0,
         revenue30d: (produto.mlSoldQuantity || 0) * (produto.mlPrice || 0),
         salesVelocity: (produto.mlSoldQuantity || 0) / 30,
-      }
+      },
     }));
 
     console.log("[TEST_PRODUTOS] ✅ Produtos formatados, retornando...");
@@ -79,16 +83,19 @@ export async function GET(request: NextRequest) {
       total: products.length,
       debug: "Sem autenticação para teste",
       summary: {
-        withPromotion: products.filter(p => p.mlHasPromotion).length,
-        active: products.filter(p => p.mlStatus === "active").length,
-        paused: products.filter(p => p.mlStatus === "paused").length,
-      }
+        withPromotion: products.filter((p) => p.mlHasPromotion).length,
+        active: products.filter((p) => p.mlStatus === "active").length,
+        paused: products.filter((p) => p.mlStatus === "paused").length,
+      },
     });
-
   } catch (error) {
     console.error("[TEST_PRODUTOS] ❌ Erro:", error);
     return NextResponse.json(
-      { error: `Erro específico: ${error.message}` },
+      {
+        error: `Erro específico: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      },
       { status: 500 }
     );
   }

@@ -87,7 +87,9 @@ export async function POST(request: NextRequest) {
         if (precosResponse.ok) {
           resultados.precos = await precosResponse.json();
           console.log(
-            `[QUICK_SYNC] ✅ Preços: ${resultados.precos.updated} atualizados`
+            `[QUICK_SYNC] ✅ Preços: ${
+              resultados.precos?.updated || 0
+            } atualizados`
           );
         } else {
           console.warn(
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
           resultados.vendas = await vendasResponse.json();
           console.log(
             `[QUICK_SYNC] ✅ Vendas: ${
-              resultados.vendas.summary?.totalQuantity || 0
+              resultados.vendas?.summary?.totalQuantity || 0
             } itens vendidos`
           );
         } else {
@@ -201,11 +203,16 @@ export async function POST(request: NextRequest) {
               : "Vendas atualizadas com sucesso",
 
           detalhes: [
-            updatePrices && resultados.precos?.updated > 0
-              ? `${resultados.precos.updated} preços atualizados, ${resultados.precos.withPromotion} com promoção`
+            updatePrices && (resultados.precos as any)?.updated > 0
+              ? `${(resultados.precos as any).updated} preços atualizados, ${
+                  (resultados.precos as any).withPromotion
+                } com promoção`
               : null,
-            updateSales && resultados.vendas?.summary?.totalQuantity > 0
-              ? `${resultados.vendas.summary.totalQuantity} vendas processadas em ${period} dias`
+            updateSales &&
+            (resultados.vendas as any)?.summary?.totalQuantity > 0
+              ? `${
+                  (resultados.vendas as any).summary.totalQuantity
+                } vendas processadas em ${period} dias`
               : null,
           ].filter(Boolean),
 

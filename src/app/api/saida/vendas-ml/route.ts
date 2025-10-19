@@ -285,7 +285,7 @@ export async function GET(request: NextRequest) {
               tracking_number: order.shipping.tracking_number,
             }
           : undefined,
-        payments: order.payments?.map((p) => ({
+        payments: (order.payments as any)?.map?.((p: any) => ({
           payment_type: p.payment_type_id,
           status: p.status,
         })),

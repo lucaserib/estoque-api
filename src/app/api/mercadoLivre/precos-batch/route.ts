@@ -19,14 +19,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[PRECOS_BATCH] Iniciando atualização ${forceUpdate ? 'forçada' : 'inteligente'} de preços`);
+    console.log(
+      `[PRECOS_BATCH] Iniciando atualização ${
+        forceUpdate ? "forçada" : "inteligente"
+      } de preços`
+    );
 
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: { id: accountId, userId: user.id, isActive: true },
     });
 
     if (!account) {
-      return NextResponse.json({ error: "Conta não encontrada" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Conta não encontrada" },
+        { status: 404 }
+      );
     }
 
     const accessToken = await MercadoLivreService.getValidToken(accountId);
@@ -39,12 +46,14 @@ export async function POST(request: NextRequest) {
       where: {
         mercadoLivreAccountId: accountId,
         mlStatus: "active",
-        ...(forceUpdate ? {} : {
-          OR: [
-            { lastSyncAt: null },
-            { lastSyncAt: { lt: cutoffTime } }
-          ]
-        })
+        ...(!forceUpdate
+          ? {
+              OR: [
+                { lastSyncAt: null as any },
+                { lastSyncAt: { lt: cutoffTime } },
+              ],
+            }
+          : {}),
       },
       select: {
         id: true,
@@ -53,10 +62,10 @@ export async function POST(request: NextRequest) {
         mlPrice: true,
         mlOriginalPrice: true,
         mlHasPromotion: true,
-        lastSyncAt: true
+        lastSyncAt: true,
       },
       orderBy: { lastSyncAt: "asc" }, // Mais antigos primeiro
-      take: 50 // ✅ PERFORMANCE: Processar em lotes de 50
+      take: 50, // ✅ PERFORMANCE: Processar em lotes de 50
     });
 
     console.log(`[PRECOS_BATCH] ${produtos.length} produtos para atualizar`);
@@ -65,7 +74,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Nenhum produto precisa de atualização",
-        updated: 0
+        updated: 0,
       });
     }
 
@@ -99,23 +108,29 @@ export async function POST(request: NextRequest) {
             const data = await response.json();
 
             // ✅ PROCESSAMENTO: Extrair preços conforme documentação ML
-            const standardPrice = data.prices?.find((p: {
-              type: string;
-              amount: number;
-              conditions?: { context_restrictions?: string[] };
-            }) => 
-              p.type === "standard" && 
-              p.conditions?.context_restrictions?.includes("channel_marketplace")
+            const standardPrice = data.prices?.find(
+              (p: {
+                type: string;
+                amount: number;
+                conditions?: { context_restrictions?: string[] };
+              }) =>
+                p.type === "standard" &&
+                p.conditions?.context_restrictions?.includes(
+                  "channel_marketplace"
+                )
             );
 
-            const promotionPrice = data.prices?.find((p: {
-              type: string;
-              amount: number;
-              regular_amount: number;
-              conditions?: { context_restrictions?: string[] };
-            }) => 
-              p.type === "promotion" && 
-              p.conditions?.context_restrictions?.includes("channel_marketplace")
+            const promotionPrice = data.prices?.find(
+              (p: {
+                type: string;
+                amount: number;
+                regular_amount: number;
+                conditions?: { context_restrictions?: string[] };
+              }) =>
+                p.type === "promotion" &&
+                p.conditions?.context_restrictions?.includes(
+                  "channel_marketplace"
+                )
             );
 
             // ✅ CÁLCULO: Determinar preços finais
@@ -129,8 +144,9 @@ export async function POST(request: NextRequest) {
               originalPrice = Math.round(promotionPrice.regular_amount * 100);
               hasPromotion = true;
               promotionDiscount = Math.round(
-                ((promotionPrice.regular_amount - promotionPrice.amount) / 
-                 promotionPrice.regular_amount) * 100
+                ((promotionPrice.regular_amount - promotionPrice.amount) /
+                  promotionPrice.regular_amount) *
+                  100
               );
               withPromotion++;
             }
@@ -146,7 +162,9 @@ export async function POST(request: NextRequest) {
                 data: {
                   mlPrice: finalPrice,
                   mlOriginalPrice: originalPrice,
-                  mlBasePrice: standardPrice ? Math.round(standardPrice.amount * 100) : null,
+                  mlBasePrice: standardPrice
+                    ? Math.round(standardPrice.amount * 100)
+                    : null,
                   mlHasPromotion: hasPromotion,
                   mlPromotionDiscount: promotionDiscount,
                   lastSyncAt: new Date(),
@@ -155,11 +173,14 @@ export async function POST(request: NextRequest) {
 
               updated++;
 
-              console.log(`[PRECOS_BATCH] ✅ ${produto.mlItemId}: R$ ${(finalPrice/100).toFixed(2)}${
-                hasPromotion ? ` (${promotionDiscount}% OFF)` : ''
-              }`);
+              console.log(
+                `[PRECOS_BATCH] ✅ ${produto.mlItemId}: R$ ${(
+                  finalPrice / 100
+                ).toFixed(2)}${
+                  hasPromotion ? ` (${promotionDiscount}% OFF)` : ""
+                }`
+              );
             }
-
           } catch (error) {
             console.error(`[PRECOS_BATCH] Erro ${produto.mlItemId}:`, error);
             errors.push(`${produto.mlItemId}: ${error}`);
@@ -168,10 +189,12 @@ export async function POST(request: NextRequest) {
       );
 
       // ✅ DELAY: Evitar rate limiting
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
-    console.log(`[PRECOS_BATCH] ✅ Concluído: ${updated} atualizados, ${withPromotion} com promoção`);
+    console.log(
+      `[PRECOS_BATCH] ✅ Concluído: ${updated} atualizados, ${withPromotion} com promoção`
+    );
 
     return NextResponse.json({
       success: true,
@@ -181,10 +204,9 @@ export async function POST(request: NextRequest) {
       errors: errors.slice(0, 10), // Máximo 10 erros
       summary: {
         message: `${updated} produtos atualizados, ${withPromotion} com promoção ativa`,
-        nextUpdate: forceUpdate ? "Imediato" : "30 minutos"
-      }
+        nextUpdate: forceUpdate ? "Imediato" : "30 minutos",
+      },
     });
-
   } catch (error) {
     console.error("[PRECOS_BATCH] Erro:", error);
     return NextResponse.json(

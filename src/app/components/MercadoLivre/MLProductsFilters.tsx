@@ -16,8 +16,8 @@ interface MLProductsFiltersProps {
   setSearchTerm: (value: string) => void;
   sortBy: string;
   setSortBy: (value: string) => void;
-  sortOrder: string;
-  setSortOrder: (value: string) => void;
+  sortOrder: "asc" | "desc";
+  setSortOrder: (value: "asc" | "desc") => void;
   statusFilter: string;
   setStatusFilter: (value: string) => void;
   stockFilter: string;
@@ -77,7 +77,10 @@ export default function MLProductsFilters({
           </SelectContent>
         </Select>
 
-        <Select value={sortOrder} onValueChange={setSortOrder}>
+        <Select
+          value={sortOrder}
+          onValueChange={(value) => setSortOrder(value as "asc" | "desc")}
+        >
           <SelectTrigger className="w-[100px]">
             <SelectValue />
           </SelectTrigger>
@@ -123,7 +126,9 @@ export default function MLProductsFilters({
         variant="outline"
         size="default"
       >
-        <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+        <RefreshCw
+          className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+        />
         Atualizar
       </Button>
 
@@ -133,7 +138,8 @@ export default function MLProductsFilters({
           <span className="font-medium">{totalProducts}</span> produtos
         </div>
         <div>
-          <span className="font-medium text-green-600">{activeProducts}</span> ativos
+          <span className="font-medium text-green-600">{activeProducts}</span>{" "}
+          ativos
         </div>
         {accountsCount > 0 && (
           <div>

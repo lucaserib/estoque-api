@@ -127,11 +127,11 @@ export async function GET(request: NextRequest) {
               }
 
               // Filtrar apenas pedidos válidos
-              const validOrders = orders.results.filter((order: MLOrderWithShipping) =>
+              const validOrders = (orders.results as unknown as MLOrderWithShipping[]).filter((order: MLOrderWithShipping) =>
                 validStatuses.includes(order.status)
-              ) as MLOrderWithShipping[];
+              );
 
-              allOrders.push(...(validOrders as MLOrderWithShipping[]));
+              allOrders.push(...validOrders);
               offset += 50;
 
               if (orders.results.length < 50) {

@@ -757,7 +757,7 @@ export class MercadoLivreService {
           ? Math.round(item.original_price * 100)
           : null;
         basePrice = item.base_price ? Math.round(item.base_price * 100) : null;
-        hasPromotion = originalPrice && originalPrice > currentPrice;
+        hasPromotion = !!(originalPrice && originalPrice > currentPrice);
         if (hasPromotion && originalPrice) {
           promotionDiscount = Math.round(
             ((originalPrice - currentPrice) / originalPrice) * 100
@@ -767,10 +767,15 @@ export class MercadoLivreService {
         // ✅ NOVO: Programar retry para buscar preços posteriormente
         setTimeout(async () => {
           try {
-            console.log(`[SYNC_RETRY] Tentando novamente buscar preços para ${item.id}`);
+            console.log(
+              `[SYNC_RETRY] Tentando novamente buscar preços para ${item.id}`
+            );
             await this.retryPriceSync(item.id, accessToken, accountId);
           } catch (retryError) {
-            console.warn(`[SYNC_RETRY] Falha no retry de preços para ${item.id}:`, retryError);
+            console.warn(
+              `[SYNC_RETRY] Falha no retry de preços para ${item.id}:`,
+              retryError
+            );
           }
         }, 30000); // Retry após 30 segundos
       }
@@ -1526,7 +1531,7 @@ export class MercadoLivreService {
 
         // ✅ MELHORADO: Usar sistema de cache inteligente
         const { mlCache } = await import("@/lib/cache");
-        mlCache.invalidateSales(accountId);
+        mlCache.invalidatePattern(`ml:${accountId}:sales`);
 
         // ✅ NOVO: Atualizar quantidade vendida e disparar notificações
         for (const item of order.order_items) {
@@ -1547,7 +1552,11 @@ export class MercadoLivreService {
 
             // ✅ NOVO: Verificar se produto precisa de restock
             if (updated.count > 0) {
-              await this.checkAndNotifyLowStock(accountId, item.item.id, item.quantity);
+              await this.checkAndNotifyLowStock(
+                accountId,
+                item.item.id,
+                item.quantity
+              );
             }
 
             console.log(
@@ -1606,13 +1615,15 @@ export class MercadoLivreService {
       if (!produto || !produto.produto) return;
 
       // Calcular estoque total local
-      const estoqueTotal = produto.produto.estoques.reduce(
-        (total, estoque) => total + estoque.quantidade,
-        0
-      );
+      const estoqueTotal =
+        produto.produto?.estoques?.reduce(
+          (total, estoque) => total + estoque.quantidade,
+          0
+        ) || 0;
 
       // Verificar se estoque está baixo (menos de 5 unidades ou 20% do estoque de segurança)
-      const estoqueSeguranca = produto.produto.estoqueSeguranca || 10;
+      const estoqueSeguranca =
+        produto.produto?.estoques?.[0]?.estoqueSeguranca || 10;
       const limiteAlerta = Math.max(5, Math.round(estoqueSeguranca * 0.2));
 
       if (estoqueTotal <= limiteAlerta) {
@@ -1621,7 +1632,12 @@ export class MercadoLivreService {
         );
 
         // ✅ NOVO: Criar alerta de estoque baixo
-        await this.createStockAlert(accountId, produto, estoqueTotal, quantitySold);
+        await this.createStockAlert(
+          accountId,
+          produto,
+          estoqueTotal,
+          quantitySold
+        );
       }
 
       // ✅ NOVO: Se estoque ML for maior que local, sincronizar
@@ -1656,7 +1672,12 @@ export class MercadoLivreService {
         productSku: produto.produto?.sku,
         currentStock: estoqueAtual,
         quantitySold: quantidadeVendida,
-        alertLevel: estoqueAtual <= 2 ? 'critical' : estoqueAtual <= 5 ? 'warning' : 'info',
+        alertLevel:
+          estoqueAtual <= 2
+            ? "critical"
+            : estoqueAtual <= 5
+            ? "warning"
+            : "info",
         timestamp: new Date().toISOString(),
       };
 
@@ -1791,7 +1812,10 @@ export class MercadoLivreService {
   /**
    * Obtém informações financeiras detalhadas do vendedor
    */
-  static async getSellerFinancialInfo(accessToken: string, sellerId: string): Promise<{
+  static async getSellerFinancialInfo(
+    accessToken: string,
+    sellerId: string
+  ): Promise<{
     accountBalance: number;
     pendingBalance: number;
     availableBalance: number;
@@ -2482,7 +2506,7 @@ export class MercadoLivreService {
           const skuAttribute = mlItem.attributes?.find(
             (attr) => attr.id === "SELLER_SKU"
           );
-          sku = skuAttribute?.value_name;
+          sku = skuAttribute?.value_name || undefined;
         }
 
         if (sku) {
@@ -2594,7 +2618,9 @@ export class MercadoLivreService {
   ): Promise<void> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[PRICE_RETRY] Tentativa ${attempt}/${maxRetries} para item ${itemId}`);
+        console.log(
+          `[PRICE_RETRY] Tentativa ${attempt}/${maxRetries} para item ${itemId}`
+        );
 
         // Buscar preços detalhados usando API oficial /prices
         const pricesResponse = await fetch(
@@ -2613,16 +2639,23 @@ export class MercadoLivreService {
           const standardPrice = pricesData.prices?.find(
             (p: any) =>
               p.type === "standard" &&
-              p.conditions?.context_restrictions?.includes("channel_marketplace")
+              p.conditions?.context_restrictions?.includes(
+                "channel_marketplace"
+              )
           );
 
           const promotionPrice = pricesData.prices?.find(
             (p: any) =>
               p.type === "promotion" &&
-              p.conditions?.context_restrictions?.includes("channel_marketplace")
+              p.conditions?.context_restrictions?.includes(
+                "channel_marketplace"
+              )
           );
 
-          let currentPrice, originalPrice, hasPromotion = false, promotionDiscount = 0;
+          let currentPrice,
+            originalPrice,
+            hasPromotion = false,
+            promotionDiscount = 0;
 
           if (promotionPrice) {
             currentPrice = Math.round(promotionPrice.amount * 100);
@@ -2654,17 +2687,26 @@ export class MercadoLivreService {
               },
             });
 
-            console.log(`[PRICE_RETRY] Preços atualizados com sucesso para ${itemId}`);
+            console.log(
+              `[PRICE_RETRY] Preços atualizados com sucesso para ${itemId}`
+            );
             return; // Sucesso, sair do loop
           }
         }
 
-        throw new Error(`Resposta inválida da API de preços (${pricesResponse.status})`);
+        throw new Error(
+          `Resposta inválida da API de preços (${pricesResponse.status})`
+        );
       } catch (error) {
-        console.warn(`[PRICE_RETRY] Tentativa ${attempt} falhou para ${itemId}:`, error);
+        console.warn(
+          `[PRICE_RETRY] Tentativa ${attempt} falhou para ${itemId}:`,
+          error
+        );
 
         if (attempt === maxRetries) {
-          console.error(`[PRICE_RETRY] Todas as tentativas falharam para ${itemId}`);
+          console.error(
+            `[PRICE_RETRY] Todas as tentativas falharam para ${itemId}`
+          );
 
           // Marcar como erro no banco
           await prisma.produtoMercadoLivre.updateMany({
@@ -2681,7 +2723,7 @@ export class MercadoLivreService {
         } else {
           // Aguardar antes da próxima tentativa (backoff exponencial)
           const delay = Math.pow(2, attempt) * 1000; // 2s, 4s, 8s
-          await new Promise(resolve => setTimeout(resolve, delay));
+          await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
     }

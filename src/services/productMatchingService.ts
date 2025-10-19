@@ -206,7 +206,7 @@ export class ProductMatchingService {
     if (results.length > 0 && results[0].score !== undefined) {
       const bestMatch = results[0];
       // Converter score do Fuse (0-1, menor é melhor) para confidence (0-100, maior é melhor)
-      const confidence = Math.round((1 - bestMatch.score) * 100);
+      const confidence = Math.round((1 - (bestMatch.score || 0)) * 100);
 
       return {
         product: {
@@ -294,8 +294,7 @@ export class ProductMatchingService {
     if (longer.length === 0) return 100;
 
     const editDistance = this.levenshteinDistance(longer, shorter);
-    const similarity =
-      ((longer.length - editDistance) / longer.length) * 100;
+    const similarity = ((longer.length - editDistance) / longer.length) * 100;
 
     return Math.round(similarity);
   }

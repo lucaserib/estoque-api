@@ -1,12 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Link2, Loader2, Search, CheckCircle2, Package, Store, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Link2,
+  Loader2,
+  Search,
+  CheckCircle2,
+  Package,
+  Store,
+  AlertCircle,
+} from "lucide-react";
 import { toast } from "sonner";
 import Header from "@/app/components/Header";
 import { Badge } from "@/components/ui/badge";
@@ -33,7 +48,7 @@ interface LocalProduct {
   estoqueTotal: number;
 }
 
-export default function VincularProdutosPage() {
+function VincularProdutosContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
@@ -65,7 +80,9 @@ export default function VincularProdutosPage() {
         const mlAccounts = await mlRes.json();
         const activeML = Array.isArray(mlAccounts)
           ? mlAccounts.find((acc: { isActive: boolean }) => acc.isActive)
-          : mlAccounts.accounts?.find((acc: { isActive: boolean }) => acc.isActive);
+          : mlAccounts.accounts?.find(
+              (acc: { isActive: boolean }) => acc.isActive
+            );
 
         if (activeML) {
           setMlAccount(activeML);
@@ -118,9 +135,7 @@ export default function VincularProdutosPage() {
       );
 
       // Remover da lista de pendentes
-      setProdutosPendentes((prev) =>
-        prev.filter((p) => p.id !== selectedML)
-      );
+      setProdutosPendentes((prev) => prev.filter((p) => p.id !== selectedML));
 
       // Limpar seleção
       setSelectedML(null);
@@ -133,14 +148,16 @@ export default function VincularProdutosPage() {
     }
   };
 
-  const filteredML = produtosPendentes.filter((p) =>
-    p.mlTitle.toLowerCase().includes(searchML.toLowerCase()) ||
-    p.mlItemId.toLowerCase().includes(searchML.toLowerCase())
+  const filteredML = produtosPendentes.filter(
+    (p) =>
+      p.mlTitle.toLowerCase().includes(searchML.toLowerCase()) ||
+      p.mlItemId.toLowerCase().includes(searchML.toLowerCase())
   );
 
-  const filteredLocal = produtosLocais.filter((p) =>
-    p.nome.toLowerCase().includes(searchLocal.toLowerCase()) ||
-    p.sku.toLowerCase().includes(searchLocal.toLowerCase())
+  const filteredLocal = produtosLocais.filter(
+    (p) =>
+      p.nome.toLowerCase().includes(searchLocal.toLowerCase()) ||
+      p.sku.toLowerCase().includes(searchLocal.toLowerCase())
   );
 
   if (status === "loading" || loading) {
@@ -171,7 +188,8 @@ export default function VincularProdutosPage() {
               Conecte sua conta do Mercado Livre
             </h3>
             <p className="text-muted-foreground mb-6">
-              Para vincular produtos, primeiro conecte sua conta do Mercado Livre.
+              Para vincular produtos, primeiro conecte sua conta do Mercado
+              Livre.
             </p>
             <Button onClick={() => router.push("/produtos/importar")}>
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -224,7 +242,8 @@ export default function VincularProdutosPage() {
             <CardHeader>
               <CardTitle>Selecione os Produtos para Vincular</CardTitle>
               <CardDescription>
-                Escolha um produto do Mercado Livre e vincule com um produto local
+                Escolha um produto do Mercado Livre e vincule com um produto
+                local
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -340,7 +359,9 @@ export default function VincularProdutosPage() {
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1">
-                            <p className="font-medium text-sm">{produto.nome}</p>
+                            <p className="font-medium text-sm">
+                              {produto.nome}
+                            </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
                               SKU: {produto.sku}
                             </p>
@@ -351,7 +372,9 @@ export default function VincularProdutosPage() {
                             )}
                             <Badge
                               variant={
-                                produto.estoqueTotal > 0 ? "default" : "secondary"
+                                produto.estoqueTotal > 0
+                                  ? "default"
+                                  : "secondary"
                               }
                               className="text-xs mt-1"
                             >
@@ -380,7 +403,9 @@ export default function VincularProdutosPage() {
                   <Checkbox
                     id="syncStock"
                     checked={syncStock}
-                    onCheckedChange={(checked) => setSyncStock(checked as boolean)}
+                    onCheckedChange={(checked) =>
+                      setSyncStock(checked as boolean)
+                    }
                   />
                   <label
                     htmlFor="syncStock"
@@ -414,5 +439,19 @@ export default function VincularProdutosPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function VincularProdutosPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto p-6 flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
+      <VincularProdutosContent />
+    </Suspense>
   );
 }

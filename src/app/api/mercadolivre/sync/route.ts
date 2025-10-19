@@ -61,26 +61,40 @@ export async function POST(request: NextRequest) {
         productBatches.push(itemsResponse.results.slice(i, i + BATCH_SIZE));
       }
 
-      console.log(`[SYNC] Processando ${itemsResponse.results.length} produtos em ${productBatches.length} lotes de ${BATCH_SIZE}`);
+      console.log(
+        `[SYNC] Processando ${itemsResponse.results.length} produtos em ${productBatches.length} lotes de ${BATCH_SIZE}`
+      );
 
       // Processar cada lote em paralelo
-      for (let batchIndex = 0; batchIndex < productBatches.length; batchIndex++) {
+      for (
+        let batchIndex = 0;
+        batchIndex < productBatches.length;
+        batchIndex++
+      ) {
         const batch = productBatches[batchIndex];
-        console.log(`[SYNC] Processando lote ${batchIndex + 1}/${productBatches.length} com ${batch.length} produtos`);
+        console.log(
+          `[SYNC] Processando lote ${batchIndex + 1}/${
+            productBatches.length
+          } com ${batch.length} produtos`
+        );
 
         // Processar produtos do lote em paralelo
         const batchResults = await Promise.allSettled(
           batch.map(async (itemId) => {
             try {
-              const item = await MercadoLivreService.getItem(itemId, accessToken);
+              const item = await MercadoLivreService.getItem(
+                itemId,
+                accessToken
+              );
 
               // Verificar se já existe
-              const existingProduct = await prisma.produtoMercadoLivre.findFirst({
-                where: {
-                  mlItemId: itemId,
-                  mercadoLivreAccountId: accountId,
-                },
-              });
+              const existingProduct =
+                await prisma.produtoMercadoLivre.findFirst({
+                  where: {
+                    mlItemId: itemId,
+                    mercadoLivreAccountId: accountId,
+                  },
+                });
 
               // ✅ IMPLEMENTAÇÃO MELHORADA: Buscar preços promocionais via API /prices
               let currentPrice = Math.round(item.price * 100);
@@ -96,8 +110,10 @@ export async function POST(request: NextRequest) {
               // ✅ CORREÇÃO CRÍTICA: Buscar preços detalhados se não encontrou promoção
               if (!originalPrice || originalPrice <= currentPrice) {
                 try {
-                  console.log(`[SYNC] 🔍 Buscando preços detalhados para ${itemId}...`);
-                  
+                  console.log(
+                    `[SYNC] 🔍 Buscando preços detalhados para ${itemId}...`
+                  );
+
                   const pricesResponse = await fetch(
                     `https://api.mercadolibre.com/items/${itemId}/prices`,
                     {
@@ -107,52 +123,81 @@ export async function POST(request: NextRequest) {
 
                   if (pricesResponse.ok) {
                     const pricesData = await pricesResponse.json();
-                    
+
                     // Buscar preço padrão
-                    const standardPrice = pricesData.prices?.find((p: any) => 
-                      p.type === "standard" && 
-                      p.conditions?.context_restrictions?.includes("channel_marketplace")
+                    const standardPrice = pricesData.prices?.find(
+                      (p: any) =>
+                        p.type === "standard" &&
+                        p.conditions?.context_restrictions?.includes(
+                          "channel_marketplace"
+                        )
                     );
 
                     // Buscar preço promocional
-                    const promotionPrice = pricesData.prices?.find((p: any) => 
-                      p.type === "promotion" && 
-                      p.conditions?.context_restrictions?.includes("channel_marketplace")
+                    const promotionPrice = pricesData.prices?.find(
+                      (p: any) =>
+                        p.type === "promotion" &&
+                        p.conditions?.context_restrictions?.includes(
+                          "channel_marketplace"
+                        )
                     );
 
                     if (promotionPrice && promotionPrice.regular_amount) {
                       // Encontrou promoção ativa!
                       currentPrice = Math.round(promotionPrice.amount * 100);
-                      originalPrice = Math.round(promotionPrice.regular_amount * 100);
+                      originalPrice = Math.round(
+                        promotionPrice.regular_amount * 100
+                      );
                       hasPromotion = true;
-                      
-                      console.log(`[SYNC] 🏷️ PROMOÇÃO ENCONTRADA: ${itemId} - R$ ${(currentPrice/100).toFixed(2)} (era R$ ${(originalPrice/100).toFixed(2)})`);
+
+                      console.log(
+                        `[SYNC] 🏷️ PROMOÇÃO ENCONTRADA: ${itemId} - R$ ${(
+                          currentPrice / 100
+                        ).toFixed(2)} (era R$ ${(originalPrice / 100).toFixed(
+                          2
+                        )})`
+                      );
                     } else if (standardPrice) {
                       currentPrice = Math.round(standardPrice.amount * 100);
-                      console.log(`[SYNC] 💰 Preço padrão: ${itemId} - R$ ${(currentPrice/100).toFixed(2)}`);
+                      console.log(
+                        `[SYNC] 💰 Preço padrão: ${itemId} - R$ ${(
+                          currentPrice / 100
+                        ).toFixed(2)}`
+                      );
                     }
                   } else {
-                    console.log(`[SYNC] ⚠️ Erro ao buscar preços detalhados para ${itemId}: ${pricesResponse.status}`);
+                    console.log(
+                      `[SYNC] ⚠️ Erro ao buscar preços detalhados para ${itemId}: ${pricesResponse.status}`
+                    );
                   }
                 } catch (priceError) {
-                  console.error(`[SYNC] ❌ Erro ao buscar preços para ${itemId}:`, priceError);
+                  console.error(
+                    `[SYNC] ❌ Erro ao buscar preços para ${itemId}:`,
+                    priceError
+                  );
                 }
               } else {
                 hasPromotion = true;
-                console.log(`[SYNC] 🏷️ Promoção detectada via item básico: ${itemId}`);
+                console.log(
+                  `[SYNC] 🏷️ Promoção detectada via item básico: ${itemId}`
+                );
               }
 
               // Calcular desconto se há promoção
-              if (hasPromotion && originalPrice && originalPrice > currentPrice) {
+              if (
+                hasPromotion &&
+                originalPrice &&
+                originalPrice > currentPrice
+              ) {
                 promotionDiscount = Math.round(
                   ((originalPrice - currentPrice) / originalPrice) * 100
                 );
               }
 
               console.log(
-                `[SYNC] ${item.title} - Preço: R$ ${(currentPrice / 100).toFixed(
-                  2
-                )}${
+                `[SYNC] ${item.title} - Preço: R$ ${(
+                  currentPrice / 100
+                ).toFixed(2)}${
                   hasPromotion
                     ? ` (Original: R$ ${(originalPrice! / 100).toFixed(
                         2
@@ -176,7 +221,8 @@ export async function POST(request: NextRequest) {
                 mlPermalink: item.permalink,
                 mlThumbnail: item.thumbnail,
                 mlCategoryId: item.category_id,
-                mlShippingMode: item.shipping?.logistic_type || item.shipping?.mode || null, // ✅ NOVO: Modo de envio (fulfillment, me2, custom)
+                mlShippingMode:
+                  item.shipping?.logistic_type || item.shipping?.mode || null, // ✅ NOVO: Modo de envio (fulfillment, me2, custom)
                 mlLastUpdated: new Date(item.last_updated || new Date()),
                 lastSyncAt: new Date(),
                 syncStatus: "synced",
@@ -189,7 +235,7 @@ export async function POST(request: NextRequest) {
                   where: { id: existingProduct.id },
                   data: productData,
                 });
-                return { type: 'updated', itemId };
+                return { type: "updated", itemId };
               } else {
                 // Tentar extrair SKU real do produto ML
                 const realSku = MercadoLivreService.extractRealSku(item);
@@ -230,37 +276,47 @@ export async function POST(request: NextRequest) {
                     syncStatus: localProductId ? "synced" : "pending_link", // Status diferente se não vinculado
                   },
                 });
-                return { type: 'created', itemId, linked: !!localProductId };
+                return { type: "created", itemId, linked: !!localProductId };
               }
             } catch (itemError) {
               const errorMessage = `Erro no produto ${itemId}: ${
-                itemError instanceof Error ? itemError.message : "Erro desconhecido"
+                itemError instanceof Error
+                  ? itemError.message
+                  : "Erro desconhecido"
               }`;
               console.error(`[SYNC] ${errorMessage}`);
-              return { type: 'error', itemId, error: errorMessage };
+              return { type: "error", itemId, error: errorMessage };
             }
           })
         );
 
         // Processar resultados do lote
         batchResults.forEach((result) => {
-          if (result.status === 'fulfilled') {
+          if (result.status === "fulfilled") {
             const value = result.value;
             switch (value?.type) {
-              case 'updated':
+              case "updated":
                 updatedItems++;
-                console.log(`[SYNC] Produto ${value.itemId} atualizado com sucesso`);
+                console.log(
+                  `[SYNC] Produto ${value.itemId} atualizado com sucesso`
+                );
                 break;
-              case 'created':
+              case "created":
                 newItems++;
-                console.log(`[SYNC] Produto ${value.itemId} criado com sucesso`);
+                console.log(
+                  `[SYNC] Produto ${value.itemId} criado com sucesso`
+                );
                 break;
-              case 'skipped':
-                console.log(`[SYNC] Produto ${value.itemId} pulado: ${value.reason}`);
+              case "skipped":
+                console.log(
+                  `[SYNC] Produto ${value.itemId} pulado: ${
+                    (value as any).reason
+                  }`
+                );
                 break;
-              case 'error':
+              case "error":
                 errorItems++;
-                errors.push(value.error);
+                errors.push((value as any).error);
                 break;
             }
           } else {
@@ -273,7 +329,7 @@ export async function POST(request: NextRequest) {
 
         // Pequena pausa entre lotes para não sobrecarregar a API
         if (batchIndex < productBatches.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise((resolve) => setTimeout(resolve, 200));
         }
       }
 

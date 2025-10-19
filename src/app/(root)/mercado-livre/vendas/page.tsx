@@ -26,7 +26,11 @@ import {
 } from "@/components/ui/table";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -218,13 +222,13 @@ export default function MercadoLivreVendasPage() {
       // Se há data customizada, usar ela
       if (customDateRange.start && customDateRange.end) {
         url += `&startDate=${customDateRange.start.toISOString()}&endDate=${customDateRange.end.toISOString()}`;
-        console.log('[VENDAS] Usando datas customizadas:', {
+        console.log("[VENDAS] Usando datas customizadas:", {
           start: customDateRange.start.toISOString(),
-          end: customDateRange.end.toISOString()
+          end: customDateRange.end.toISOString(),
         });
       }
 
-      console.log('[VENDAS] URL da requisição:', url);
+      console.log("[VENDAS] URL da requisição:", url);
       const response = await fetch(url);
 
       if (!response.ok) {
@@ -315,8 +319,8 @@ export default function MercadoLivreVendasPage() {
       if (data.data?.comparison) {
         const processedPreviousData: SalesDataComplete = {
           period: {
-            startDate: "",
-            endDate: "",
+            from: "",
+            to: "",
             days: data.data.period.days,
           },
           summary: {
@@ -513,15 +517,18 @@ export default function MercadoLivreVendasPage() {
                       mode="single"
                       selected={customDateRange.start || undefined}
                       onSelect={(date) =>
-                        setCustomDateRange({ ...customDateRange, start: date || null })
+                        setCustomDateRange({
+                          ...customDateRange,
+                          start: date || null,
+                        })
                       }
                       initialFocus
                     />
                   </PopoverContent>
                 </Popover>
-                
+
                 <span className="text-gray-500">até</span>
-                
+
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -544,7 +551,10 @@ export default function MercadoLivreVendasPage() {
                       mode="single"
                       selected={customDateRange.end || undefined}
                       onSelect={(date) =>
-                        setCustomDateRange({ ...customDateRange, end: date || null })
+                        setCustomDateRange({
+                          ...customDateRange,
+                          end: date || null,
+                        })
                       }
                       initialFocus
                     />

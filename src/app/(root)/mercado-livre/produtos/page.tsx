@@ -39,9 +39,9 @@ interface MLProduct {
     id: string;
     nome: string;
     sku: string;
-  };
+  } | null;
   localStock?: number;
-  stockStatus?: "ok" | "low" | "out" | "unlinked";
+  stockStatus?: "ok" | "low" | "out" | "unlinked" | string;
   lastSync?: string;
   lastSyncAt?: string; // ✅ NOVO: Campo da API dinâmica
   syncStatus?: string;

@@ -5,10 +5,10 @@ import { prisma } from "@/lib/prisma";
 export async function GET(request: NextRequest) {
   try {
     console.log("[PRODUTOS_SIMPLE] Iniciando...");
-    
+
     const user = await verifyUser(request);
     console.log("[PRODUTOS_SIMPLE] Usuário verificado:", user.id);
-    
+
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
 
@@ -38,29 +38,32 @@ export async function GET(request: NextRequest) {
         mlPromotionDiscount: true,
         mlSoldQuantity: true,
         mlAvailableQuantity: true,
-      }
+      },
     });
 
     console.log(`[PRODUTOS_SIMPLE] ${produtos.length} produtos encontrados`);
 
-    const formattedProducts = produtos.map(produto => ({
+    const formattedProducts = produtos.map((produto) => ({
       ...produto,
       salesData: {
         quantity30d: produto.mlSoldQuantity || 0,
         revenue30d: (produto.mlSoldQuantity || 0) * (produto.mlPrice || 0),
         salesVelocity: (produto.mlSoldQuantity || 0) / 30,
-      }
+      },
     }));
 
     return NextResponse.json({
       products: formattedProducts,
       total: formattedProducts.length,
     });
-
   } catch (error) {
     console.error("[PRODUTOS_SIMPLE] Erro:", error);
     return NextResponse.json(
-      { error: `Erro interno: ${error.message}` },
+      {
+        error: `Erro interno: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      },
       { status: 500 }
     );
   }

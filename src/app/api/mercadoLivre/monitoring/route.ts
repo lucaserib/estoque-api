@@ -34,14 +34,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[MONITORING] Coletando métricas de performance para ${accountId} (${period})`);
+    console.log(
+      `[MONITORING] Coletando métricas de performance para ${accountId} (${period})`
+    );
 
     const cacheKey = createCacheKey("monitoring", accountId, period);
 
     const monitoringData = await withCache(
       cacheKey,
       async () => {
-        const metrics = await collectPerformanceMetrics(accountId, user.id, period, includeDetails);
+        const metrics = await collectPerformanceMetrics(
+          accountId,
+          user.id,
+          period,
+          includeDetails
+        );
         return metrics;
       },
       "metrics",
@@ -85,7 +92,9 @@ async function collectPerformanceMetrics(
   const periodMs = getPeriodMs(period);
   const startDate = new Date(now.getTime() - periodMs);
 
-  console.log(`[MONITORING] Coletando métricas de ${startDate.toISOString()} até ${now.toISOString()}`);
+  console.log(
+    `[MONITORING] Coletando métricas de ${startDate.toISOString()} até ${now.toISOString()}`
+  );
 
   // ✅ MÉTRICAS PARALELAS
   const [
@@ -105,7 +114,10 @@ async function collectPerformanceMetrics(
   ]);
 
   // Helper para resolver Promise.allSettled
-  const resolveMetric = <T>(result: PromiseSettledResult<T>, fallback: T): T => {
+  const resolveMetric = <T>(
+    result: PromiseSettledResult<T>,
+    fallback: T
+  ): T => {
     return result.status === "fulfilled" ? result.value : fallback;
   };
 
@@ -217,7 +229,11 @@ async function collectPerformanceMetrics(
 
   // ✅ ADICIONAR DETALHES SE SOLICITADO
   if (includeDetails) {
-    result.details = await collectDetailedMetrics(accountId, startDate, now);
+    (result as any).details = await collectDetailedMetrics(
+      accountId,
+      startDate,
+      now
+    );
   }
 
   return result;
@@ -226,49 +242,60 @@ async function collectPerformanceMetrics(
 /**
  * ✅ MÉTRICAS DE SINCRONIZAÇÃO
  */
-async function collectSyncMetrics(accountId: string, startDate: Date, endDate: Date) {
+async function collectSyncMetrics(
+  accountId: string,
+  startDate: Date,
+  endDate: Date
+) {
   try {
     // Buscar histórico de sincronizações
     const syncHistory = await prisma.mercadoLivreSyncHistory.findMany({
       where: {
-        accountId,
-        createdAt: {
+        mercadoLivreAccountId: accountId,
+        startedAt: {
           gte: startDate,
           lte: endDate,
         },
       },
       orderBy: {
-        createdAt: "desc",
+        startedAt: "desc",
       },
     });
 
     const totalSyncs = syncHistory.length;
-    const successfulSyncs = syncHistory.filter(s => s.status === "completed").length;
-    const failedSyncs = syncHistory.filter(s => s.status === "error").length;
+    const successfulSyncs = syncHistory.filter(
+      (s) => s.status === "completed"
+    ).length;
+    const failedSyncs = syncHistory.filter((s) => s.status === "error").length;
 
     // Calcular tempo médio de sincronização
     const syncTimes = syncHistory
-      .filter(s => s.duration && s.duration > 0)
-      .map(s => s.duration!);
+      .filter((s) => s.duration && s.duration > 0)
+      .map((s) => s.duration!);
 
-    const averageSyncTime = syncTimes.length > 0
-      ? Math.round(syncTimes.reduce((sum, time) => sum + time, 0) / syncTimes.length)
-      : 0;
+    const averageSyncTime =
+      syncTimes.length > 0
+        ? Math.round(
+            syncTimes.reduce((sum, time) => sum + time, 0) / syncTimes.length
+          )
+        : 0;
 
     // Última sincronização
     const lastSync = syncHistory[0];
 
     // Score de saúde da sincronização
-    const successRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
-    const timeScore = averageSyncTime > 0 ? Math.max(0, 100 - (averageSyncTime / 1000)) : 100; // Penalizar se > 10s
-    const syncHealthScore = Math.round((successRate * 0.7) + (timeScore * 0.3));
+    const successRate =
+      totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 100;
+    const timeScore =
+      averageSyncTime > 0 ? Math.max(0, 100 - averageSyncTime / 1000) : 100; // Penalizar se > 10s
+    const syncHealthScore = Math.round(successRate * 0.7 + timeScore * 0.3);
 
     return {
       totalSyncs,
       successfulSyncs,
       failedSyncs,
       averageSyncTime,
-      lastSyncTime: lastSync?.createdAt.toISOString() || null,
+      lastSyncTime: lastSync?.startedAt.toISOString() || null,
       syncHealthScore: Math.min(100, syncHealthScore),
       successRate: Math.round(successRate * 100) / 100,
     };
@@ -281,7 +308,11 @@ async function collectSyncMetrics(accountId: string, startDate: Date, endDate: D
 /**
  * ✅ MÉTRICAS DE API (SIMULADAS - em produção usar APM real)
  */
-async function collectApiMetrics(accountId: string, startDate: Date, endDate: Date) {
+async function collectApiMetrics(
+  accountId: string,
+  startDate: Date,
+  endDate: Date
+) {
   try {
     // Por enquanto, usar dados de produtos como proxy para atividade da API
     const productsActivity = await prisma.produtoMercadoLivre.findMany({
@@ -299,16 +330,27 @@ async function collectApiMetrics(accountId: string, startDate: Date, endDate: Da
     });
 
     const totalRequests = productsActivity.length;
-    const successfulRequests = productsActivity.filter(p => p.syncStatus === "synced").length;
-    const failedRequests = productsActivity.filter(p => p.syncStatus === "error").length;
+    const successfulRequests = productsActivity.filter(
+      (p) => p.syncStatus === "synced"
+    ).length;
+    const failedRequests = productsActivity.filter(
+      (p) => p.syncStatus === "error"
+    ).length;
 
     // Simular tempo de resposta baseado na atividade
-    const averageResponseTime = totalRequests > 0 ? Math.random() * 1000 + 200 : 0; // 200-1200ms
+    const averageResponseTime =
+      totalRequests > 0 ? Math.random() * 1000 + 200 : 0; // 200-1200ms
 
     // Score de saúde da API
-    const successRate = totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 100;
-    const responseTimeScore = averageResponseTime > 0 ? Math.max(0, 100 - (averageResponseTime / 10)) : 100;
-    const apiHealthScore = Math.round((successRate * 0.6) + (responseTimeScore * 0.4));
+    const successRate =
+      totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 100;
+    const responseTimeScore =
+      averageResponseTime > 0
+        ? Math.max(0, 100 - averageResponseTime / 10)
+        : 100;
+    const apiHealthScore = Math.round(
+      successRate * 0.6 + responseTimeScore * 0.4
+    );
 
     return {
       totalRequests,
@@ -350,54 +392,55 @@ async function collectCacheMetrics(userId: string) {
 /**
  * ✅ MÉTRICAS DE NEGÓCIO
  */
-async function collectBusinessMetrics(accountId: string, startDate: Date, endDate: Date) {
+async function collectBusinessMetrics(
+  accountId: string,
+  startDate: Date,
+  endDate: Date
+) {
   try {
-    const [
-      productsProcessed,
-      stockUpdates,
-      webhooksReceived,
-    ] = await Promise.all([
-      // Produtos processados
-      prisma.produtoMercadoLivre.count({
-        where: {
-          mercadoLivreAccountId: accountId,
-          lastSyncAt: {
-            gte: startDate,
-            lte: endDate,
+    const [productsProcessed, stockUpdates, webhooksReceived] =
+      await Promise.all([
+        // Produtos processados
+        prisma.produtoMercadoLivre.count({
+          where: {
+            mercadoLivreAccountId: accountId,
+            lastSyncAt: {
+              gte: startDate,
+              lte: endDate,
+            },
           },
-        },
-      }),
+        }),
 
-      // Atualizações de estoque
-      prisma.produtoMercadoLivre.count({
-        where: {
-          mercadoLivreAccountId: accountId,
-          lastSyncAt: {
-            gte: startDate,
-            lte: endDate,
+        // Atualizações de estoque
+        prisma.produtoMercadoLivre.count({
+          where: {
+            mercadoLivreAccountId: accountId,
+            lastSyncAt: {
+              gte: startDate,
+              lte: endDate,
+            },
+            syncStatus: "synced",
           },
-          syncStatus: "synced",
-        },
-      }),
+        }),
 
-      // Webhooks recebidos (se tivermos tabela de webhooks)
-      prisma.mercadoLivreWebhook?.count?.({
-        where: {
-          accountId,
-          createdAt: {
-            gte: startDate,
-            lte: endDate,
+        // Webhooks recebidos (se tivermos tabela de webhooks)
+        prisma.mercadoLivreWebhook?.count?.({
+          where: {
+            mercadoLivreAccountId: accountId,
+            receivedAt: {
+              gte: startDate,
+              lte: endDate,
+            },
           },
-        },
-      }) || Promise.resolve(0),
-    ]);
+        }) || Promise.resolve(0),
+      ]);
 
     return {
       productsProcessed,
       stockUpdates,
       webhooksReceived,
       ordersProcessed: 0, // TODO: Implementar quando tivermos tabela de pedidos
-      revenueTracked: 0,  // TODO: Implementar rastreamento de receita
+      revenueTracked: 0, // TODO: Implementar rastreamento de receita
     };
   } catch (error) {
     console.error("[MONITORING] Erro ao coletar métricas de negócio:", error);
@@ -408,7 +451,11 @@ async function collectBusinessMetrics(accountId: string, startDate: Date, endDat
 /**
  * ✅ MÉTRICAS DE ERRO
  */
-async function collectErrorMetrics(accountId: string, startDate: Date, endDate: Date) {
+async function collectErrorMetrics(
+  accountId: string,
+  startDate: Date,
+  endDate: Date
+) {
   try {
     const errorProducts = await prisma.produtoMercadoLivre.findMany({
       where: {
@@ -427,15 +474,16 @@ async function collectErrorMetrics(accountId: string, startDate: Date, endDate: 
     });
 
     const totalErrors = errorProducts.length;
-    const criticalErrors = errorProducts.filter(p =>
-      p.syncError?.toLowerCase().includes("critical") ||
-      p.syncError?.toLowerCase().includes("authorization") ||
-      p.syncError?.toLowerCase().includes("forbidden")
+    const criticalErrors = errorProducts.filter(
+      (p) =>
+        p.syncError?.toLowerCase().includes("critical") ||
+        p.syncError?.toLowerCase().includes("authorization") ||
+        p.syncError?.toLowerCase().includes("forbidden")
     ).length;
 
     // Agrupar erros por tipo
     const errorTypes = new Map<string, number>();
-    errorProducts.forEach(product => {
+    errorProducts.forEach((product) => {
       if (product.syncError) {
         const errorType = extractErrorType(product.syncError);
         errorTypes.set(errorType, (errorTypes.get(errorType) || 0) + 1);
@@ -454,7 +502,8 @@ async function collectErrorMetrics(accountId: string, startDate: Date, endDate: 
       },
     });
 
-    const errorRate = totalProducts > 0 ? (totalErrors / totalProducts) * 100 : 0;
+    const errorRate =
+      totalProducts > 0 ? (totalErrors / totalProducts) * 100 : 0;
 
     return {
       totalErrors,
@@ -495,11 +544,16 @@ async function collectSystemMetrics() {
 
 function getPeriodMs(period: string): number {
   switch (period) {
-    case "1h": return 60 * 60 * 1000;
-    case "24h": return 24 * 60 * 60 * 1000;
-    case "7d": return 7 * 24 * 60 * 60 * 1000;
-    case "30d": return 30 * 24 * 60 * 60 * 1000;
-    default: return 24 * 60 * 60 * 1000;
+    case "1h":
+      return 60 * 60 * 1000;
+    case "24h":
+      return 24 * 60 * 60 * 1000;
+    case "7d":
+      return 7 * 24 * 60 * 60 * 1000;
+    case "30d":
+      return 30 * 24 * 60 * 60 * 1000;
+    default:
+      return 24 * 60 * 60 * 1000;
   }
 }
 
@@ -507,10 +561,10 @@ function calculateOverallHealthScore(scores: any): number {
   const weights = { sync: 0.3, api: 0.3, cache: 0.2, errors: 0.2 };
 
   return Math.round(
-    (scores.sync * weights.sync) +
-    (scores.api * weights.api) +
-    (scores.cache * weights.cache) +
-    (scores.errors * weights.errors)
+    scores.sync * weights.sync +
+      scores.api * weights.api +
+      scores.cache * weights.cache +
+      scores.errors * weights.errors
   );
 }
 
@@ -527,7 +581,8 @@ function extractErrorType(errorMessage: string): string {
 
   if (error.includes("timeout")) return "timeout";
   if (error.includes("authorization") || error.includes("token")) return "auth";
-  if (error.includes("network") || error.includes("connection")) return "network";
+  if (error.includes("network") || error.includes("connection"))
+    return "network";
   if (error.includes("rate limit")) return "rate_limit";
   if (error.includes("validation")) return "validation";
   if (error.includes("not found")) return "not_found";
@@ -539,19 +594,27 @@ function generatePerformanceInsights(data: any): string[] {
   const insights = [];
 
   if (data.syncData.syncHealthScore < 70) {
-    insights.push(`Performance de sincronização baixa (${data.syncData.syncHealthScore}%) - Verificar conectividade`);
+    insights.push(
+      `Performance de sincronização baixa (${data.syncData.syncHealthScore}%) - Verificar conectividade`
+    );
   }
 
   if (data.cacheData.hitRate < 60) {
-    insights.push(`Taxa de acerto do cache baixa (${data.cacheData.hitRate}%) - Revisar estratégia de cache`);
+    insights.push(
+      `Taxa de acerto do cache baixa (${data.cacheData.hitRate}%) - Revisar estratégia de cache`
+    );
   }
 
   if (data.errorData.errorRate > 10) {
-    insights.push(`Taxa de erro alta (${data.errorData.errorRate}%) - Investigar problemas críticos`);
+    insights.push(
+      `Taxa de erro alta (${data.errorData.errorRate}%) - Investigar problemas críticos`
+    );
   }
 
   if (data.apiData.averageResponseTime > 2000) {
-    insights.push(`Tempo de resposta da API alto (${data.apiData.averageResponseTime}ms) - Otimizar requisições`);
+    insights.push(
+      `Tempo de resposta da API alto (${data.apiData.averageResponseTime}ms) - Otimizar requisições`
+    );
   }
 
   if (data.overallHealthScore >= 90) {
@@ -565,7 +628,9 @@ function generateRecommendations(data: any): string[] {
   const recommendations = [];
 
   if (data.syncData.averageSyncTime > 10000) {
-    recommendations.push("Implementar sincronização incremental para reduzir tempo");
+    recommendations.push(
+      "Implementar sincronização incremental para reduzir tempo"
+    );
   }
 
   if (data.cacheData.hitRate < 70) {
@@ -573,7 +638,9 @@ function generateRecommendations(data: any): string[] {
   }
 
   if (data.errorData.totalErrors > 5) {
-    recommendations.push("Configurar retry automático para reduzir erros temporários");
+    recommendations.push(
+      "Configurar retry automático para reduzir erros temporários"
+    );
   }
 
   if (data.overallHealthScore < 60) {
@@ -583,7 +650,11 @@ function generateRecommendations(data: any): string[] {
   return recommendations.slice(0, 3); // Máximo 3 recomendações
 }
 
-async function collectDetailedMetrics(accountId: string, startDate: Date, endDate: Date) {
+async function collectDetailedMetrics(
+  accountId: string,
+  startDate: Date,
+  endDate: Date
+) {
   // TODO: Implementar métricas detalhadas se necessário
   return {
     timeline: [], // Métricas por hora/dia

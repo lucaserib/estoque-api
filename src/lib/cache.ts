@@ -44,7 +44,7 @@ class IntelligentCache {
       default: 5 * 60 * 1000, // 5 minutos
     };
 
-    let ttl = baseTTL[dataType] || baseTTL["default"];
+    let ttl = baseTTL[dataType as keyof typeof baseTTL] || baseTTL["default"];
 
     // Ajustes baseados no contexto
     if (context) {

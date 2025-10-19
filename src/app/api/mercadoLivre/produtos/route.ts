@@ -353,7 +353,7 @@ export async function GET(request: NextRequest) {
         console.log(
           `[PRODUTOS_API] - ${p.mlItemId}: R$ ${(p.mlPrice / 100).toFixed(
             2
-          )} (original: R$ ${(p.mlOriginalPrice / 100).toFixed(2)}) - ${
+          )} (original: R$ ${((p.mlOriginalPrice || p.mlPrice) / 100).toFixed(2)}) - ${
             p.mlPromotionDiscount
           }% OFF`
         );
