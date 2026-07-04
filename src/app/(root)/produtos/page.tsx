@@ -102,10 +102,9 @@ const ProdutosPage = () => {
       // A API /api/produtos já calcula _mlTotalVendas e _mlEstoqueFull
       await refetch();
 
-      const totalFull = Object.values(data.estoqueFullPorProduto || {}).reduce(
-        (sum: number, val: any) => sum + val,
-        0
-      );
+      const totalFull = (
+        Object.values(data.estoqueFullPorProduto || {}) as number[]
+      ).reduce((sum, val) => sum + val, 0);
 
       toast.success(
         `Dados atualizados! ${data.totalPedidos} pedidos (${data.periodo.descricao}) | ${totalFull} itens no Full`
@@ -115,8 +114,11 @@ const ProdutosPage = () => {
       setRefreshTrigger((prev) => prev + 1);
 
       // 4. Atualizar status de reposição
-      if ((window as any).__refreshReplenishment) {
-        (window as any).__refreshReplenishment();
+      const replenishmentWindow = window as Window & {
+        __refreshReplenishment?: () => void;
+      };
+      if (replenishmentWindow.__refreshReplenishment) {
+        replenishmentWindow.__refreshReplenishment();
       }
     } catch (error) {
       console.error("Erro ao atualizar dados ML:", error);

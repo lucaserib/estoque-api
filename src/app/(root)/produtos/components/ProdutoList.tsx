@@ -34,6 +34,10 @@ interface StockItem {
   armazem?: { id: string; nome: string };
 }
 
+type WindowWithReplenishment = Window & {
+  __refreshReplenishment?: () => void;
+};
+
 const ProdutoList = ({
   produtos,
   onDelete,
@@ -180,10 +184,11 @@ const ProdutoList = ({
   // Expõe a função de refresh via callback - APENAS configuração, não execução
   useEffect(() => {
     // Armazena a referência da função no window para ser chamada externamente
-    (window as any).__refreshReplenishment = () => fetchReplenishmentStatus(true);
+    (window as WindowWithReplenishment).__refreshReplenishment = () =>
+      fetchReplenishmentStatus(true);
 
     return () => {
-      delete (window as any).__refreshReplenishment;
+      delete (window as WindowWithReplenishment).__refreshReplenishment;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty deps - only set once

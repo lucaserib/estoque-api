@@ -160,6 +160,9 @@ export default function MercadoLivreVendasPage() {
         return () => clearInterval(interval);
       }
     }
+    // Refetch quando os filtros mudam; loadSalesData é recriado a cada render
+    // e já reflete estes estados, então incluí-lo causaria refetch em loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     selectedAccount,
     selectedPeriod,

@@ -3,6 +3,13 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 
+type SellerMetrics = Awaited<ReturnType<typeof MercadoLivreService.getSellerMetrics>>;
+type StockInfo = Awaited<ReturnType<typeof MercadoLivreService.getStockInfo>>;
+type ShippingInfo = Awaited<ReturnType<typeof MercadoLivreService.getShippingInfo>>;
+type SalesPerformance = Awaited<ReturnType<typeof MercadoLivreService.getSalesPerformance>>;
+type MarketplaceFees = Awaited<ReturnType<typeof MercadoLivreService.getMarketplaceFees>>;
+type SalesProduct = SalesPerformance["topSellingProducts"][number];
+
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -181,29 +188,29 @@ function calculateHealthScore(metrics: {
   return Math.round(score);
 }
 
-function calculateInventoryTurnover(stockInfo: any, salesPerformance: any): number {
+function calculateInventoryTurnover(stockInfo: StockInfo, salesPerformance: SalesPerformance): number {
   if (stockInfo.totalStock === 0) return 0;
 
   const totalSold = salesPerformance.topSellingProducts.reduce(
-    (sum: number, product: any) => sum + product.soldQuantity, 0
+    (sum: number, product: SalesProduct) => sum + product.soldQuantity, 0
   );
 
   // Turnover simples: vendido / estoque atual (mensal)
   return totalSold / stockInfo.totalStock;
 }
 
-function calculateMonthlyCosts(salesPerformance: any, fees: any): number {
+function calculateMonthlyCosts(salesPerformance: SalesPerformance, fees: MarketplaceFees): number {
   if (salesPerformance.totalRevenue === 0) return 0;
 
   return salesPerformance.totalRevenue * fees.totalFeeRate;
 }
 
 function generateRecommendations(data: {
-  stockInfo: any;
-  salesPerformance: any;
-  shippingInfo: any;
-  sellerMetrics: any;
-  lowStockHighSales: any[];
+  stockInfo: StockInfo;
+  salesPerformance: SalesPerformance;
+  shippingInfo: ShippingInfo;
+  sellerMetrics: SellerMetrics;
+  lowStockHighSales: StockInfo["lowStockProducts"];
 }): Array<{
   type: 'warning' | 'success' | 'info' | 'critical';
   title: string;

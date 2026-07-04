@@ -1,4 +1,5 @@
 // src/app/(root)/saidas/components/VendaMLDetalhesDialog.tsx
+import Image from "next/image";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { VendaML } from "../types";
@@ -311,9 +312,11 @@ export function VendaMLDetalhesDialog({
                         <TableCell>
                           <div className="flex items-start gap-3">
                             {item.thumbnail && (
-                              <img
+                              <Image
                                 src={item.thumbnail}
                                 alt={item.title}
+                                width={48}
+                                height={48}
                                 className="w-12 h-12 object-cover rounded border border-gray-200 dark:border-gray-700"
                               />
                             )}

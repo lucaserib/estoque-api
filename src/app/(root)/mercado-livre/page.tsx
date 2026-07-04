@@ -69,6 +69,9 @@ export default function MercadoLivrePage() {
     if (selectedAccount) {
       loadAllData();
     }
+    // loadAllData é recriada a cada render; incluí-la dispararia refetch em loop.
+    // Intenção: recarregar dados apenas quando a conta selecionada muda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount]);
 
   // ✅ CORREÇÃO: Effect separado para auto-refresh
@@ -81,6 +84,10 @@ export default function MercadoLivrePage() {
         clearInterval(pollingInterval);
       }
     };
+    // setupAutoRefresh/pollingInterval são omitidos de propósito: setupAutoRefresh
+    // chama setPollingInterval e depende de pollingInterval, então incluí-los aqui
+    // criaria um loop infinito de setup/clear. Reconfigura só ao mudar auto-refresh/conta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefreshEnabled, selectedAccount]); // ✅ DEPENDÊNCIAS CORRETAS
 
   const loadAllData = async () => {
@@ -117,6 +124,10 @@ export default function MercadoLivrePage() {
 
       setPollingInterval(interval);
     }
+    // loadAllData é recriada a cada render; incluí-la anularia a memoização.
+    // selectedAccount já é dependência, então o callback recaptura a loadAllData
+    // correta sempre que a conta muda.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefreshEnabled, selectedAccount, pollingInterval]);
 
   const toggleAutoRefresh = () => {

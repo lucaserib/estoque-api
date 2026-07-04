@@ -107,6 +107,7 @@ export default function MercadoLivreProdutosPage() {
       loadProducts();
       loadLocalProducts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recarrega somente quando a conta selecionada muda
   }, [selectedAccount]);
 
   // Recarregar produtos quando filtros mudarem
@@ -114,6 +115,7 @@ export default function MercadoLivreProdutosPage() {
     if (selectedAccount) {
       loadProducts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reexecuta quando conta ou filtros mudam; loadProducts lê esses mesmos valores
   }, [selectedAccount, sortBy, sortOrder, statusFilter, stockFilter]);
 
   // ✅ NOVO: Auto-refetch inicial quando abre a aba (com toast apenas se não for inicial)
@@ -123,6 +125,7 @@ export default function MercadoLivreProdutosPage() {
       console.log("🔄 Auto-refetch: Atualizando dados ao abrir aba...");
       loadProducts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- executa apenas uma vez ao montar
   }, []); // Executa apenas uma vez ao montar
 
   // Filtrar produtos localmente apenas por termo de busca

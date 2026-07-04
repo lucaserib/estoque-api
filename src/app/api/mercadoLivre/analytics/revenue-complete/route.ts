@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
 
               // Método 2: Verificar se tem shipping_cost nos payments
               if (shippingCost === 0 && order.payments && order.payments.length > 0) {
-                shippingCost = order.payments.reduce((sum: number, payment: any) =>
+                shippingCost = order.payments.reduce((sum: number, payment) =>
                   sum + (payment.shipping_cost || 0), 0);
               }
 
@@ -226,14 +226,14 @@ export async function GET(request: NextRequest) {
             const dayKey = orderDate.toISOString().split('T')[0];
 
             // Calcular receita dos produtos
-            const orderProductRevenue = order.order_items.reduce((sum: number, item: any) =>
+            const orderProductRevenue = order.order_items.reduce((sum: number, item) =>
               sum + (item.unit_price * item.quantity), 0);
 
             // Receita de frete
             const orderShippingRevenue = order.shipping?.cost || 0;
 
             // Contar itens
-            const orderItemsCount = order.order_items.reduce((sum: number, item: any) =>
+            const orderItemsCount = order.order_items.reduce((sum: number, item) =>
               sum + item.quantity, 0);
 
             totalProductRevenue += orderProductRevenue;

@@ -243,6 +243,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     } finally {
       setIsLoadingProdutos(false);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- callback must stay stable; produtosFornecedor.length is only read in a debug log, adding it would restart the loadProdutosFornecedor effect and cause a refetch loop
   }, []);
 
   // Quando o fornecedor muda, carregar seus produtos

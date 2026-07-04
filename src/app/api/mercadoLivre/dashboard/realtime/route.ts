@@ -444,7 +444,13 @@ async function getPerformanceMetrics(accountId: string) {
   return await withCache(cacheKey, fetcher, "metrics", "realtime");
 }
 
-function calculateStockHealthScore(stock: any): number {
+interface StockHealthMetrics {
+  totalProducts: number;
+  lowStockCount: number;
+  outOfStockCount: number;
+}
+
+function calculateStockHealthScore(stock: StockHealthMetrics): number {
   if (stock.totalProducts === 0) return 100;
 
   const outOfStockRate = (stock.outOfStockCount / stock.totalProducts) * 100;
@@ -454,7 +460,15 @@ function calculateStockHealthScore(stock: any): number {
   return Math.max(0, 100 - (outOfStockRate * 2) - lowStockRate);
 }
 
-function generateInsights(data: any): string[] {
+interface InsightsData {
+  sales: { totalSales: number; growthRate: number };
+  stock: { outOfStockCount: number; lowStockCount: number };
+  activeProducts: { total: number; active: number };
+  recentOrders: unknown;
+  performance: { syncHealthScore: number };
+}
+
+function generateInsights(data: InsightsData): string[] {
   const insights = [];
 
   // Insights de vendas

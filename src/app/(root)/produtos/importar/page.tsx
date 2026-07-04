@@ -71,6 +71,8 @@ export default function ImportarProdutosPage() {
     if (status === "authenticated") {
       checkConnections();
     }
+    // checkConnections is a stable component-scope loader; run only when auth status changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [status]);
 
   const checkConnections = async () => {

@@ -229,11 +229,11 @@ async function collectPerformanceMetrics(
 
   // ✅ ADICIONAR DETALHES SE SOLICITADO
   if (includeDetails) {
-    (result as any).details = await collectDetailedMetrics(
-      accountId,
-      startDate,
-      now
-    );
+    (
+      result as typeof result & {
+        details?: Awaited<ReturnType<typeof collectDetailedMetrics>>;
+      }
+    ).details = await collectDetailedMetrics(accountId, startDate, now);
   }
 
   return result;
@@ -557,7 +557,12 @@ function getPeriodMs(period: string): number {
   }
 }
 
-function calculateOverallHealthScore(scores: any): number {
+function calculateOverallHealthScore(scores: {
+  sync: number;
+  api: number;
+  cache: number;
+  errors: number;
+}): number {
   const weights = { sync: 0.3, api: 0.3, cache: 0.2, errors: 0.2 };
 
   return Math.round(
@@ -590,7 +595,14 @@ function extractErrorType(errorMessage: string): string {
   return "other";
 }
 
-function generatePerformanceInsights(data: any): string[] {
+function generatePerformanceInsights(data: {
+  syncData: Awaited<ReturnType<typeof collectSyncMetrics>>;
+  apiData: Awaited<ReturnType<typeof collectApiMetrics>>;
+  cacheData: Awaited<ReturnType<typeof collectCacheMetrics>>;
+  businessData: Awaited<ReturnType<typeof collectBusinessMetrics>>;
+  errorData: Awaited<ReturnType<typeof collectErrorMetrics>>;
+  overallHealthScore: number;
+}): string[] {
   const insights = [];
 
   if (data.syncData.syncHealthScore < 70) {
@@ -624,7 +636,13 @@ function generatePerformanceInsights(data: any): string[] {
   return insights.slice(0, 3); // Máximo 3 insights
 }
 
-function generateRecommendations(data: any): string[] {
+function generateRecommendations(data: {
+  syncData: Awaited<ReturnType<typeof collectSyncMetrics>>;
+  apiData: Awaited<ReturnType<typeof collectApiMetrics>>;
+  cacheData: Awaited<ReturnType<typeof collectCacheMetrics>>;
+  errorData: Awaited<ReturnType<typeof collectErrorMetrics>>;
+  overallHealthScore: number;
+}): string[] {
   const recommendations = [];
 
   if (data.syncData.averageSyncTime > 10000) {

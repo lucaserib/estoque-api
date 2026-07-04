@@ -203,15 +203,15 @@ export async function POST(request: NextRequest) {
               : "Vendas atualizadas com sucesso",
 
           detalhes: [
-            updatePrices && (resultados.precos as any)?.updated > 0
-              ? `${(resultados.precos as any).updated} preços atualizados, ${
-                  (resultados.precos as any).withPromotion
+            updatePrices && (resultados.precos?.updated || 0) > 0
+              ? `${resultados.precos?.updated} preços atualizados, ${
+                  resultados.precos?.withPromotion
                 } com promoção`
               : null,
             updateSales &&
-            (resultados.vendas as any)?.summary?.totalQuantity > 0
+            (resultados.vendas?.summary?.totalQuantity || 0) > 0
               ? `${
-                  (resultados.vendas as any).summary.totalQuantity
+                  resultados.vendas?.summary?.totalQuantity
                 } vendas processadas em ${period} dias`
               : null,
           ].filter(Boolean),

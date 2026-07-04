@@ -377,7 +377,8 @@ export async function GET(request: NextRequest) {
       // Calcular estoque local total
       const totalLocalStock =
         produtoML.produto?.estoques.reduce(
-          (sum: number, estoque: any) => sum + estoque.quantidade,
+          (sum: number, estoque: { quantidade: number }) =>
+            sum + estoque.quantidade,
           0
         ) || 0;
 
