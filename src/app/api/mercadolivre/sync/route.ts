@@ -3,6 +3,62 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 
+/**
+ * GET /api/mercadolivre/sync?accountId=xxx           -> produtos sincronizados da conta
+ * GET /api/mercadolivre/sync?accountId=xxx&action=history -> histórico de sincronizações
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const user = await verifyUser(request);
+    const { searchParams } = new URL(request.url);
+    const accountId = searchParams.get("accountId");
+    const action = searchParams.get("action");
+
+    if (!accountId) {
+      return NextResponse.json(
+        { error: "ID da conta não fornecido" },
+        { status: 400 }
+      );
+    }
+
+    // Verificar se a conta pertence ao usuário
+    const account = await prisma.mercadoLivreAccount.findFirst({
+      where: { id: accountId, userId: user.id },
+    });
+
+    if (!account) {
+      return NextResponse.json(
+        { error: "Conta não encontrada" },
+        { status: 404 }
+      );
+    }
+
+    // Histórico de sincronizações
+    if (action === "history") {
+      const history = await prisma.mercadoLivreSyncHistory.findMany({
+        where: { mercadoLivreAccountId: accountId },
+        orderBy: { startedAt: "desc" },
+        take: 50,
+      });
+      return NextResponse.json(history);
+    }
+
+    // Produtos sincronizados da conta
+    const produtos = await prisma.produtoMercadoLivre.findMany({
+      where: { mercadoLivreAccountId: accountId },
+      include: { produto: true },
+      orderBy: { lastSyncAt: "desc" },
+    });
+    return NextResponse.json(produtos);
+  } catch (error) {
+    console.error("[SYNC][GET] Erro:", error);
+    return NextResponse.json(
+      { error: "Erro ao carregar dados de sincronização" },
+      { status: 500 }
+    );
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -126,7 +182,12 @@ export async function POST(request: NextRequest) {
 
                     // Buscar preço padrão
                     const standardPrice = pricesData.prices?.find(
-                      (p: any) =>
+                      (p: {
+                        type?: string;
+                        amount?: number;
+                        regular_amount?: number;
+                        conditions?: { context_restrictions?: string[] };
+                      }) =>
                         p.type === "standard" &&
                         p.conditions?.context_restrictions?.includes(
                           "channel_marketplace"
@@ -135,7 +196,12 @@ export async function POST(request: NextRequest) {
 
                     // Buscar preço promocional
                     const promotionPrice = pricesData.prices?.find(
-                      (p: any) =>
+                      (p: {
+                        type?: string;
+                        amount?: number;
+                        regular_amount?: number;
+                        conditions?: { context_restrictions?: string[] };
+                      }) =>
                         p.type === "promotion" &&
                         p.conditions?.context_restrictions?.includes(
                           "channel_marketplace"
@@ -310,13 +376,13 @@ export async function POST(request: NextRequest) {
               case "skipped":
                 console.log(
                   `[SYNC] Produto ${value.itemId} pulado: ${
-                    (value as any).reason
+                    (value as { reason?: string }).reason
                   }`
                 );
                 break;
               case "error":
                 errorItems++;
-                errors.push((value as any).error);
+                errors.push((value as { error: string }).error);
                 break;
             }
           } else {

@@ -152,6 +152,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Preparar dados para atualização
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- objeto de update dinâmico do Prisma
     const updateData: any = {};
 
     if (updates.nome !== undefined) updateData.nome = updates.nome;

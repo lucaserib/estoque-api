@@ -142,6 +142,7 @@ export function FornecedorProdutoDialog({
         clearTimeout(searchTimeout);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce de busca; incluir searchTimeout/handleProdutoSearch causaria refetch em loop
   }, [produtoSearch, produtosVinculados]); // Adicionado produtosVinculados como dependência
 
   const handleProdutoSearch = async () => {

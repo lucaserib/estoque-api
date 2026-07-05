@@ -80,6 +80,7 @@ export async function GET(request: NextRequest) {
       let totalRevenue = 0;
       let pendingOrders = 0;
       let hasRecentSalesData = false;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- resposta bruta de pedidos do ML (via cache)
       let ordersData: any = null; // ✅ CORREÇÃO: Armazenar orders para uso posterior
 
       try {
@@ -123,6 +124,7 @@ export async function GET(request: NextRequest) {
         if (ordersData && ordersData.results) {
           hasRecentSalesData = true;
 
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- objeto de pedido bruto do ML
           ordersData.results.forEach((order: any) => {
             const orderDate = new Date(order.date_created);
 
@@ -138,11 +140,11 @@ export async function GET(request: NextRequest) {
             ) {
               // Calcular quantidades e receita real dos itens
               const orderItemsCount = order.order_items.reduce(
-                (sum: number, item: any) => sum + item.quantity,
+                (sum: number, item: { quantity: number; unit_price: number }) => sum + item.quantity,
                 0
               );
               const orderRevenue = order.order_items.reduce(
-                (sum: number, item: any) =>
+                (sum: number, item: { quantity: number; unit_price: number }) =>
                   sum + item.unit_price * item.quantity,
                 0
               );

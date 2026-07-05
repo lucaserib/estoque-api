@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -99,6 +100,7 @@ export default function MercadoLivreConfigPage() {
       nickname: string;
       country_id: string;
       site_id: string;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reputação bruta do ML (estrutura variável)
       reputation?: any;
     };
     metrics?: {
@@ -192,6 +194,7 @@ export default function MercadoLivreConfigPage() {
       condition: string;
       availableQuantity: number;
     }>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- itens brutos vindos da API do ML
     existingProducts: Array<any>;
     summary: {
       total: number;
@@ -208,6 +211,7 @@ export default function MercadoLivreConfigPage() {
     success: boolean;
     imported: number;
     errors: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- itens brutos do resultado de importação
     products: Array<any>;
   } | null>(null);
 
@@ -221,6 +225,7 @@ export default function MercadoLivreConfigPage() {
     hasCost: boolean;
     hasSupplier: boolean;
     needsConfiguration: boolean;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- payload bruto do produto ML
     mlData: any;
   }>>([]);
   const [loadingImportedProducts, setLoadingImportedProducts] = useState(false);
@@ -481,6 +486,7 @@ export default function MercadoLivreConfigPage() {
         }
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- loadAccounts é estável (useCallback); evita reprocessar o callback
   }, [callbackProcessed, isNgrokUrl, getLocalhostUrl]);
 
   // Processar resultados salvos no localStorage (vindos do ngrok)
@@ -534,6 +540,7 @@ export default function MercadoLivreConfigPage() {
       // Limpar URL
       window.history.replaceState({}, "", window.location.pathname);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- roda uma vez; loadAccounts é estável via useCallback
   }, []);
 
   const loadAccounts = useCallback(async () => {
@@ -1968,9 +1975,11 @@ export default function MercadoLivreConfigPage() {
                               />
                               
                               {product.thumbnail && (
-                                <img
+                                <Image
                                   src={product.thumbnail}
                                   alt={product.title}
+                                  width={48}
+                                  height={48}
                                   className="w-12 h-12 object-cover rounded border"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).style.display = 'none';
@@ -2159,9 +2168,11 @@ export default function MercadoLivreConfigPage() {
                           >
                             <div className="flex items-center gap-4">
                               {product.mlData?.mlThumbnail && (
-                                <img
+                                <Image
                                   src={product.mlData.mlThumbnail}
                                   alt={product.nome}
+                                  width={64}
+                                  height={64}
                                   className="w-16 h-16 object-cover rounded border"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).style.display = 'none';

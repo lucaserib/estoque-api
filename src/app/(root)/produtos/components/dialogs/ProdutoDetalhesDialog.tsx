@@ -44,6 +44,7 @@ export function ProdutoDetalhesDialog({
     if (isOpen && produto.id) {
       fetchMLProducts();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- roda ao abrir o dialog; fetchMLProducts é recriada a cada render
   }, [isOpen, produto.id]);
 
   const fetchMLProducts = async () => {

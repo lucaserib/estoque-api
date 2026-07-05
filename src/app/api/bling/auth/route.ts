@@ -29,7 +29,8 @@ export async function GET(request: NextRequest) {
       const user = await verifyUser(request);
 
       // Gerar state único para segurança
-      const state = `${user.id}-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      // Separador "_" pois o user.id é um UUID que contém "-"
+      const state = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
       // Salvar state temporário (opcional, para validação)
       // Você pode salvar em Redis ou sessão se quiser validar depois

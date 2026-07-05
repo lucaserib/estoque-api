@@ -431,6 +431,7 @@ async function syncBestSellingProducts(
 /**
  * ✅ HELPER: Atualizar produto a partir dos dados do ML
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- item bruto da API do ML
 async function updateProductFromML(item: any, accountId: string, userId: string) {
   // Processar preços
   const currentPrice = Math.round(item.price * 100);

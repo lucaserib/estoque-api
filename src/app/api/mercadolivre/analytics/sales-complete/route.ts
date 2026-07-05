@@ -277,7 +277,7 @@ export async function GET(request: NextRequest) {
             let orderProductRevenue = 0;
             let orderItems = 0;
 
-            order.order_items.forEach((item: any) => {
+            order.order_items.forEach((item: { unit_price: number; quantity: number; item: { id: string; title: string; seller_sku?: string } }) => {
               const itemRevenue = item.unit_price * item.quantity;
               const itemCount = item.quantity;
 
@@ -393,7 +393,7 @@ export async function GET(request: NextRequest) {
             const orderDate = new Date(order.date_created);
 
             // Processar itens cancelados
-            order.order_items.forEach((item: any) => {
+            order.order_items.forEach((item: { unit_price: number; quantity: number; item: { id: string; title: string; seller_sku?: string } }) => {
               const itemQuantity = item.quantity;
               const itemRevenue = item.unit_price * item.quantity;
               orderItems += itemQuantity;
@@ -428,9 +428,9 @@ export async function GET(request: NextRequest) {
               date_created: order.date_created,
               total_amount: orderRevenue,
               items_count: orderItems,
-              buyer_nickname: (order.buyer as any)?.nickname || "N/A",
+              buyer_nickname: (order.buyer as { nickname?: string })?.nickname || "N/A",
               cancellation_reason:
-                (order.status_detail as any)?.description || 
+                (order.status_detail as { description?: string })?.description ||
                 (order.status_detail as string) ||
                 order.status, // Incluir o status se não tiver detalhe
             });
@@ -546,6 +546,7 @@ export async function GET(request: NextRequest) {
               `[SALES_COMPLETE] Buscando dados do período anterior: ${prevStartDate.toISOString()} até ${prevEndDate.toISOString()}`
             );
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lista bruta de pedidos do ML
             let allPrevOrders: any[] = [];
             let offset = 0;
             const limit = 50;
@@ -619,7 +620,7 @@ export async function GET(request: NextRequest) {
               let orderProductRevenue = 0;
               
               // Contar itens e calcular receita de produtos
-              order.order_items.forEach((item: any) => {
+              order.order_items.forEach((item: { unit_price: number; quantity: number; item: { id: string; title: string; seller_sku?: string } }) => {
                 prevItems += item.quantity;
                 orderProductRevenue += item.unit_price * item.quantity;
               });

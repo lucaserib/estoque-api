@@ -155,19 +155,25 @@ export async function GET(req: NextRequest) {
     }
 
     // Calcular totais de vendas (90 dias) e estoque Full para ordenação
+    interface MLRel {
+      mlSold90Days?: number | null;
+      mlShippingMode?: string | null;
+      mlAvailableQuantity?: number | null;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- registro do Prisma com relações condicionais
     const produtosComDados = produtos.map((produto: any) => {
       // Usar mlSold90Days ao invés de mlSoldQuantity (total de todos os tempos)
       const totalVendas90d = produto.ProdutoMercadoLivre?.reduce(
-        (sum: number, ml: any) => sum + (ml.mlSold90Days || 0),
+        (sum: number, ml: MLRel) => sum + (ml.mlSold90Days || 0),
         0
       ) || 0;
 
       const estoqueFullTotal = produto.ProdutoMercadoLivre
-        ?.filter((ml: any) => ml.mlShippingMode === 'fulfillment')
-        .reduce((sum: number, ml: any) => sum + (ml.mlAvailableQuantity || 0), 0) || 0;
+        ?.filter((ml: MLRel) => ml.mlShippingMode === 'fulfillment')
+        .reduce((sum: number, ml: MLRel) => sum + (ml.mlAvailableQuantity || 0), 0) || 0;
 
       const estoqueMLTotal = produto.ProdutoMercadoLivre?.reduce(
-        (sum: number, ml: any) => sum + (ml.mlAvailableQuantity || 0),
+        (sum: number, ml: MLRel) => sum + (ml.mlAvailableQuantity || 0),
         0
       ) || 0;
 
@@ -180,7 +186,10 @@ export async function GET(req: NextRequest) {
     });
 
     // Ordenar por vendas totais (decrescente)
-    produtosComDados.sort((a: any, b: any) => b._mlTotalVendas - a._mlTotalVendas);
+    produtosComDados.sort(
+      (a: { _mlTotalVendas: number }, b: { _mlTotalVendas: number }) =>
+        b._mlTotalVendas - a._mlTotalVendas
+    );
 
     return new Response(JSON.stringify(serializeWithEAN(produtosComDados)), {
       status: 200,

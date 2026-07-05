@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { PrismaClient } from "@prisma/client";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
@@ -6,21 +6,40 @@ import { MercadoLivreService } from "@/services/mercadoLivreService";
 const prisma = new PrismaClient();
 
 // Cache simples em memória com TTL de 3 minutos
-const cache = new Map();
+interface MLPrice {
+  type?: string;
+  amount?: number;
+  regular_amount?: number;
+  conditions?: { context_restrictions?: string[] };
+}
+
+interface CachedResult {
+  products: unknown[];
+  pagination: { total: number; page: number; limit: number; pages: number };
+}
+
+interface SalesData {
+  quantityThisMonth: number;
+  revenueThisMonth: number;
+  salesVelocity: number;
+  daysInMonth: number;
+}
+
+const cache = new Map<string, { data: CachedResult; timestamp: number }>();
 const CACHE_TTL = 3 * 60 * 1000; // 3 minutos
 
-function getCacheKey(accountId: string, filters: any): string {
+function getCacheKey(accountId: string, filters: Record<string, string>): string {
   return `produtos_${accountId}_${JSON.stringify(filters)}`;
 }
 
-function setCache(key: string, data: any): void {
+function setCache(key: string, data: CachedResult): void {
   cache.set(key, {
     data,
     timestamp: Date.now(),
   });
 }
 
-function getCache(key: string): any | null {
+function getCache(key: string): CachedResult | null {
   const cached = cache.get(key);
   if (!cached) return null;
 
@@ -46,7 +65,7 @@ async function verifyUserForAPI(request: Request) {
       url.protocol === "https:" || headers.get("x-forwarded-proto") === "https";
 
     const token = await getToken({
-      req: request as any, // Next.js pode lidar com Request regular
+      req: request as unknown as NextRequest, // Next.js pode lidar com Request regular
       secret: process.env.NEXTAUTH_SECRET,
       secureCookie: isSecure,
       cookieName: isSecure
@@ -275,7 +294,7 @@ export async function GET(request: Request) {
               const pricesData = await pricesResponse.json();
 
               const promotionPrice = pricesData.prices?.find(
-                (p: any) =>
+                (p: MLPrice) =>
                   p.type === "promotion" &&
                   p.conditions?.context_restrictions?.includes(
                     "channel_marketplace"
@@ -346,7 +365,7 @@ export async function GET(request: Request) {
             produto: produtoLocal,
             lastSyncAt: new Date().toISOString(),
             // Campos de vendas serão preenchidos depois se necessário
-            salesData: null,
+            salesData: null as SalesData | null,
           };
         } catch (error) {
           console.log(
@@ -454,7 +473,7 @@ export async function GET(request: Request) {
         };
         const diasEsteMs = agora.getDate();
 
-        (produto as any).salesData = {
+        produto.salesData = {
           quantityThisMonth: sales.quantity,
           revenueThisMonth: sales.revenue,
           salesVelocity: sales.quantity / diasEsteMs,
@@ -483,8 +502,8 @@ export async function GET(request: Request) {
         if (b.mlHasPromotion && !a.mlHasPromotion) return 1;
 
         // Prioridade 3: Vendas no mês
-        const salesA = (a as any).salesData?.quantityThisMonth || 0;
-        const salesB = (b as any).salesData?.quantityThisMonth || 0;
+        const salesA = a.salesData?.quantityThisMonth || 0;
+        const salesB = b.salesData?.quantityThisMonth || 0;
         if (salesA !== salesB) return salesB - salesA;
 
         // Prioridade 4: Vinculado a produto local
@@ -496,8 +515,8 @@ export async function GET(request: Request) {
     } else if (sortBy === "sales") {
       sortedProducts.sort((a, b) => {
         if (!a || !b) return 0;
-        const salesA = (a as any).salesData?.quantityThisMonth || 0;
-        const salesB = (b as any).salesData?.quantityThisMonth || 0;
+        const salesA = a.salesData?.quantityThisMonth || 0;
+        const salesB = b.salesData?.quantityThisMonth || 0;
         return sortOrder === "desc" ? salesB - salesA : salesA - salesB;
       });
     } else if (sortBy === "price") {

@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         ...(!forceUpdate
           ? {
               OR: [
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Prisma não tipa filtro `null` neste campo DateTime
                 { lastSyncAt: null as any },
                 { lastSyncAt: { lt: cutoffTime } },
               ],

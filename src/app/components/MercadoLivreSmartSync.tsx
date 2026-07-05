@@ -104,6 +104,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
     }, 30000);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- polling por conta/modo; fetchSmartProducts é recriada a cada render
   }, [accountId, syncMode]);
 
   const fetchSmartProducts = async () => {

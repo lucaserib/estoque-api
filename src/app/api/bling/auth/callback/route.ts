@@ -27,8 +27,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Extrair userId do state
-    const userId = state.split("-")[0];
+    // Extrair userId do state (separador "_" pois o UUID contém "-")
+    const userId = state.split("_")[0];
 
     if (!userId) {
       return NextResponse.json(

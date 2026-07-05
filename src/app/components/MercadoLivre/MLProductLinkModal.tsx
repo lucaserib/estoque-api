@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import {
   Dialog,
   DialogContent,
@@ -94,9 +95,11 @@ export default function MLProductLinkModal({
               <h4 className="font-medium mb-3">Produto do Mercado Livre</h4>
               <div className="flex items-center space-x-4 p-4 border rounded-lg bg-muted/50">
                 {selectedProduct.mlThumbnail && (
-                  <img
+                  <Image
                     src={selectedProduct.mlThumbnail}
                     alt={selectedProduct.mlTitle}
+                    width={64}
+                    height={64}
                     className="w-16 h-16 rounded-md object-cover"
                   />
                 )}

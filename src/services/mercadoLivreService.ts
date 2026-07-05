@@ -1217,7 +1217,7 @@ export class MercadoLivreService {
 
       if (data.results && data.results.length > 0) {
         const statusBreakdown = data.results.reduce(
-          (acc: Record<string, number>, order: any) => {
+          (acc: Record<string, number>, order: { status: string }) => {
             acc[order.status] = (acc[order.status] || 0) + 1;
             return acc;
           },
@@ -1659,7 +1659,7 @@ export class MercadoLivreService {
    */
   private static async createStockAlert(
     accountId: string,
-    produto: any,
+    produto: { mlItemId: string; mlTitle: string; produto?: { sku?: string } | null },
     estoqueAtual: number,
     quantidadeVendida: number
   ): Promise<void> {
@@ -1695,7 +1695,17 @@ export class MercadoLivreService {
    */
   private static async triggerSaleEvent(
     accountId: string,
-    order: any
+    order: {
+      id: string | number;
+      total_amount: number;
+      status: string;
+      date_created: string;
+      order_items: Array<{
+        item: { id: string; title: string };
+        quantity: number;
+        unit_price: number;
+      }>;
+    }
   ): Promise<void> {
     try {
       const saleEvent = {
@@ -1705,7 +1715,7 @@ export class MercadoLivreService {
         itemCount: order.order_items.length,
         status: order.status,
         timestamp: new Date(order.date_created),
-        items: order.order_items.map((item: any) => ({
+        items: order.order_items.map((item) => ({
           mlItemId: item.item.id,
           title: item.item.title,
           quantity: item.quantity,
@@ -2637,7 +2647,12 @@ export class MercadoLivreService {
 
           // Processar dados de preço
           const standardPrice = pricesData.prices?.find(
-            (p: any) =>
+            (p: {
+              type?: string;
+              amount?: number;
+              regular_amount?: number;
+              conditions?: { context_restrictions?: string[] };
+            }) =>
               p.type === "standard" &&
               p.conditions?.context_restrictions?.includes(
                 "channel_marketplace"
@@ -2645,7 +2660,12 @@ export class MercadoLivreService {
           );
 
           const promotionPrice = pricesData.prices?.find(
-            (p: any) =>
+            (p: {
+              type?: string;
+              amount?: number;
+              regular_amount?: number;
+              conditions?: { context_restrictions?: string[] };
+            }) =>
               p.type === "promotion" &&
               p.conditions?.context_restrictions?.includes(
                 "channel_marketplace"

@@ -69,6 +69,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
         clearInterval(intervalId);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setup na montagem/conta; intervalId é gerenciado dentro do efeito
   }, [accountId]);
 
   useEffect(() => {
@@ -94,6 +95,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
         clearInterval(intervalId);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- (re)cria o intervalo; incluir intervalId/runAutoSync causaria loop de setInterval
   }, [isEnabled, syncInterval, accountId]);
 
   const loadAutoSyncStats = async () => {

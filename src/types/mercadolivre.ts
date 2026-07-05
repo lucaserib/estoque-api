@@ -197,7 +197,7 @@ export interface MLItem {
       name: string;
       value_id: string | null;
       value_name: string | null;
-      value_struct: any;
+      value_struct: { number: number; unit: string } | null;
     }>;
     price: number;
     available_quantity: number;

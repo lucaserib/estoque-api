@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
@@ -156,9 +157,11 @@ export default function MLProductRow({
       <TableCell>
         <div className="flex items-center space-x-3">
           {product.mlThumbnail && (
-            <img
+            <Image
               src={product.mlThumbnail}
               alt={product.mlTitle}
+              width={40}
+              height={40}
               className="w-10 h-10 rounded-md object-cover"
             />
           )}

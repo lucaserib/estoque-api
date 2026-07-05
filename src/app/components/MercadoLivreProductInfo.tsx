@@ -3,6 +3,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,7 @@ export default function MercadoLivreProductInfo({
 
   useEffect(() => {
     loadMlProducts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- recarrega ao mudar o produto; loadMlProducts é recriada a cada render
   }, [produtoId]);
 
   const loadMlProducts = async () => {
@@ -185,9 +187,11 @@ export default function MercadoLivreProductInfo({
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-3">
                   {mlProduct.mlThumbnail && (
-                    <img
+                    <Image
                       src={mlProduct.mlThumbnail}
                       alt={mlProduct.mlTitle}
+                      width={48}
+                      height={48}
                       className="w-12 h-12 object-cover rounded border"
                     />
                   )}
