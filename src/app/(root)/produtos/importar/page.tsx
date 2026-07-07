@@ -145,7 +145,18 @@ export default function ImportarProdutosPage() {
         body: JSON.stringify({ accountId: blingAccount.id }),
       });
 
-      if (!response.ok) throw new Error("Erro na importação");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => null);
+        if (errorData?.code === "BLING_RECONNECT_REQUIRED") {
+          updateStepStatus("import", "error");
+          toast.error("Sua conexão com o Bling expirou", {
+            description: "Reconecte sua conta para continuar a importação.",
+            action: { label: "Reconectar", onClick: () => connectBling() },
+          });
+          return;
+        }
+        throw new Error(errorData?.error || "Erro na importação");
+      }
 
       const result = await response.json();
 

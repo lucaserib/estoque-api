@@ -30,7 +30,13 @@ export async function GET(request: NextRequest) {
     // Extrair userId do state (separador "_" pois o UUID contém "-")
     const userId = state.split("_")[0];
 
-    if (!userId) {
+    // Validar que o userId é um UUID íntegro antes de gravar no banco
+    const uuidRegex =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!userId || !uuidRegex.test(userId)) {
+      console.error(
+        `[BLING] State inválido no callback — userId corrompido: "${userId}"`
+      );
       return NextResponse.json(
         { error: "State inválido" },
         { status: 400 }

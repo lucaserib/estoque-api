@@ -128,6 +128,19 @@ const ProdutosPage = () => {
     }
   };
 
+  // Reconectar Bling (token expirado/revogado)
+  const reconectarBling = async () => {
+    try {
+      const response = await fetch("/api/bling/auth?action=connect");
+      if (!response.ok) throw new Error("Erro ao conectar Bling");
+      const data = await response.json();
+      window.location.href = data.authUrl;
+    } catch (error) {
+      console.error("Erro ao reconectar Bling:", error);
+      toast.error("Erro ao iniciar reconexão com o Bling");
+    }
+  };
+
   // Atualizar estoque local com dados do Bling
   const atualizarEstoqueBling = async () => {
     setUpdatingBlingStock(true);
@@ -137,8 +150,15 @@ const ProdutosPage = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Erro ao sincronizar estoque");
+        const errorData = await response.json().catch(() => null);
+        if (errorData?.code === "BLING_RECONNECT_REQUIRED") {
+          toast.error("Sua conexão com o Bling expirou", {
+            description: "Reconecte sua conta para atualizar o estoque.",
+            action: { label: "Reconectar", onClick: () => reconectarBling() },
+          });
+          return;
+        }
+        throw new Error(errorData?.message || "Erro ao sincronizar estoque");
       }
 
       const data = await response.json();

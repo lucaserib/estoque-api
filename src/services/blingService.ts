@@ -153,6 +153,10 @@ export class BlingService {
 
     if (!response.ok) {
       const error = await response.text();
+      // Refresh token inválido/revogado: exige reconexão do usuário
+      if (error.includes("invalid_grant")) {
+        throw new Error("BLING_RECONNECT_REQUIRED");
+      }
       throw new Error(`Erro ao renovar token do Bling: ${error}`);
     }
 
@@ -160,7 +164,9 @@ export class BlingService {
   }
 
   /**
-   * Obtém token válido (renova se necessário)
+   * Obtém token válido (renova se necessário).
+   * Lança "BLING_RECONNECT_REQUIRED" se o refresh token for inválido —
+   * nesse caso a conta é marcada como inativa e o usuário precisa reconectar.
    */
   static async getValidToken(accountId: string): Promise<string> {
     const account = await prisma.blingAccount.findUnique({
@@ -178,7 +184,24 @@ export class BlingService {
     if (expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
       console.log("[BLING] Token expirando, renovando...");
 
-      const tokens = await this.refreshAccessToken(account.refreshToken);
+      let tokens: BlingAuthTokens;
+      try {
+        tokens = await this.refreshAccessToken(account.refreshToken);
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "BLING_RECONNECT_REQUIRED"
+        ) {
+          console.error(
+            `[BLING] Refresh token inválido para conta ${accountId} — marcando como inativa`
+          );
+          await prisma.blingAccount.update({
+            where: { id: accountId },
+            data: { isActive: false },
+          });
+        }
+        throw error;
+      }
 
       // Atualizar tokens no banco
       await prisma.blingAccount.update({
@@ -187,6 +210,7 @@ export class BlingService {
           accessToken: tokens.access_token,
           refreshToken: tokens.refresh_token,
           expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+          isActive: true,
         },
       });
 

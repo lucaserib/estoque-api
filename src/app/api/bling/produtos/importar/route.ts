@@ -194,6 +194,20 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("Erro ao importar produtos do Bling:", error);
+
+    if (
+      error instanceof Error &&
+      error.message === "BLING_RECONNECT_REQUIRED"
+    ) {
+      return NextResponse.json(
+        {
+          error: "Sua conexão com o Bling expirou. Reconecte para continuar.",
+          code: "BLING_RECONNECT_REQUIRED",
+        },
+        { status: 401 }
+      );
+    }
+
     return NextResponse.json(
       {
         error:
