@@ -2,20 +2,94 @@
 @tailwind components;
 @tailwind utilities;
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
+/* ============================================================
+   Estoca — Design tokens (shadcn CSS variables)
+   Verde-esmeralda + neutros slate. darkMode: "class".
+   ============================================================ */
+@layer base {
+  :root {
+    --background: 210 40% 98%; /* #F8FAFC */
+    --foreground: 222 47% 11%; /* #0F172A */
+    --card: 0 0% 100%; /* #FFFFFF */
+    --card-foreground: 222 47% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    --border: 214 32% 91%; /* #E2E8F0 */
+    --input: 214 32% 91%;
+    --primary: 161 94% 30%; /* #059669 esmeralda */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%; /* #64748B */
+    --accent: 210 40% 94%;
+    --accent-foreground: 222 47% 11%;
+    --success: 161 94% 30%; /* #059669 */
+    --success-foreground: 0 0% 100%;
+    --warning: 32 95% 44%; /* #D97706 */
+    --warning-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%; /* #DC2626 */
+    --destructive-foreground: 0 0% 100%;
+    --info: 221 83% 53%; /* #2563EB */
+    --info-foreground: 0 0% 100%;
+    --ring: 161 94% 30%;
+    --radius: 0.5rem;
+    --chart-1: 161 94% 30%; /* #059669 */
+    --chart-2: 221 83% 53%; /* #2563EB */
+    --chart-3: 38 92% 50%; /* #F59E0B */
+    --chart-4: 258 90% 66%; /* #8B5CF6 */
+    --chart-5: 330 81% 60%; /* #EC4899 */
+  }
 
-html,
-body,
-#root .app {
-  height: 100%;
-  width: 100%;
-  @apply text-sm;
-  @apply bg-gray-50;
-  @apply text-gray-900;
+  .dark {
+    --background: 218 47% 8%; /* #0B1220 */
+    --foreground: 214 32% 91%;
+    --card: 220 41% 11%; /* #101826 */
+    --card-foreground: 214 32% 91%;
+    --popover: 220 41% 11%;
+    --popover-foreground: 214 32% 91%;
+    --border: 217 33% 17%; /* #1E293B */
+    --input: 217 33% 17%;
+    --primary: 158 64% 52%; /* #34D399 */
+    --primary-foreground: 165 80% 10%;
+    --secondary: 217 33% 14%;
+    --secondary-foreground: 214 32% 91%;
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 65%; /* #94A3B8 */
+    --accent: 217 33% 17%;
+    --accent-foreground: 214 32% 91%;
+    --success: 158 64% 52%;
+    --success-foreground: 165 80% 10%;
+    --warning: 43 96% 56%; /* #FBBF24 */
+    --warning-foreground: 26 83% 14%;
+    --destructive: 0 91% 71%; /* #F87171 */
+    --destructive-foreground: 0 63% 15%;
+    --info: 213 94% 68%; /* #60A5FA */
+    --info-foreground: 222 47% 11%;
+    --ring: 158 64% 52%;
+    --chart-1: 158 64% 52%;
+    --chart-2: 213 94% 68%;
+    --chart-3: 43 96% 56%;
+    --chart-4: 255 92% 76%;
+    --chart-5: 329 86% 70%;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+    @apply border-border;
+  }
+
+  html,
+  body {
+    height: 100%;
+    width: 100%;
+  }
+
+  body {
+    @apply text-sm bg-background text-foreground antialiased;
+  }
 }
 
 @media (min-width: 768px) {
@@ -137,7 +211,7 @@ body,
 .loading-overlay {
   position: absolute;
   inset: 0;
-  background-color: rgba(255, 255, 255, 0.7);
+  background-color: hsl(var(--background) / 0.7);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -145,16 +219,12 @@ body,
   border-radius: inherit;
 }
 
-.dark .loading-overlay {
-  background-color: rgba(17, 24, 39, 0.7);
-}
-
 .spinner {
   width: 40px;
   height: 40px;
-  border: 3px solid rgba(99, 102, 241, 0.3);
+  border: 3px solid hsl(var(--primary) / 0.3);
   border-radius: 50%;
-  border-top-color: #4f46e5;
+  border-top-color: hsl(var(--primary));
   animation: spin 1s linear infinite;
 }
 
@@ -191,12 +261,12 @@ textarea,
 
 /* Estilos específicos para páginas de autenticação */
 .auth-input {
-  @apply bg-indigo-900/50 border-indigo-700 text-white rounded-lg;
-  @apply focus:ring-blue-500 focus:border-blue-500;
+  @apply bg-card border-input text-foreground rounded-lg;
+  @apply focus:ring-ring focus:border-primary;
 }
 
 .auth-button {
-  @apply bg-[hsl(221.2,76.3%,33.22%)] hover:bg-[hsl(221.2,76.3%,28%)] text-white font-medium;
+  @apply bg-primary hover:bg-primary/90 text-primary-foreground font-medium;
   @apply transition-all duration-200 transform hover:scale-[1.02];
 }
 
