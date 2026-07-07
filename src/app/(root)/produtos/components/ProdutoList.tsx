@@ -76,45 +76,22 @@ const ProdutoList = ({
       if (produtos.length === 0) return;
 
       try {
-        const stockPromises = produtos.map(async (produto) => {
-          const response = await fetch(`/api/estoque/produto/${produto.id}`);
-          if (!response.ok) throw new Error("Erro ao buscar estoque");
+        // Uma única chamada batch em vez de um fetch por produto (N+1)
+        const ids = produtos.map((p) => p.id).join(",");
+        const response = await fetch(`/api/estoque/produtos-batch?ids=${ids}`);
+        if (!response.ok) throw new Error("Erro ao buscar estoque");
 
-          const stockItems: StockItem[] = await response.json();
-          const totalQuantity = stockItems.reduce(
-            (sum, item) => sum + item.quantidade,
-            0
-          );
+        const batch: Record<
+          string,
+          { totalQuantity: number; estoqueSeguranca: number }
+        > = await response.json();
 
-          const estoqueSeguranca = stockItems.reduce(
-            (sum, item) => Math.max(sum, item.estoqueSeguranca || 0),
-            0
-          );
-
-          return {
-            produtoId: produto.id,
-            totalQuantity,
-            estoqueSeguranca,
-          };
-        });
-
-        const stockResults = await Promise.all(stockPromises);
-
-        const stockMap = stockResults.reduce(
-          (acc, { produtoId, totalQuantity }) => {
-            acc[produtoId] = totalQuantity;
-            return acc;
-          },
-          {} as { [key: string]: number }
-        );
-
-        const estoqueSegurancaMap = stockResults.reduce(
-          (acc, { produtoId, estoqueSeguranca }) => {
-            acc[produtoId] = estoqueSeguranca;
-            return acc;
-          },
-          {} as { [key: string]: number }
-        );
+        const stockMap: { [key: string]: number } = {};
+        const estoqueSegurancaMap: { [key: string]: number } = {};
+        for (const [produtoId, info] of Object.entries(batch)) {
+          stockMap[produtoId] = info.totalQuantity;
+          estoqueSegurancaMap[produtoId] = info.estoqueSeguranca;
+        }
 
         setStockData(stockMap);
         setEstoqueSegurancaData(estoqueSegurancaMap);

@@ -16,14 +16,28 @@ export async function GET(request: NextRequest) {
         );
 
         const state = user.id; // Usar ID do usuário como state
-        const authUrl = await MercadoLivreService.getAuthURL(state);
+        const { authUrl, codeVerifier } =
+          await MercadoLivreService.getAuthURLWithVerifier(state);
 
-        return NextResponse.json({
+        const response = NextResponse.json({
           authUrl,
           redirectUri: process.env.ML_REDIRECT_URI,
           state,
           success: true,
         });
+
+        // Persistir o code_verifier em cookie httpOnly: em serverless o
+        // connect e o callback podem cair em instâncias diferentes e o
+        // cache em memória se perde entre elas
+        response.cookies.set("ml_pkce_verifier", codeVerifier, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 10 * 60, // 10 minutos
+          path: "/",
+        });
+
+        return response;
       } catch (error) {
         console.error("[ML_AUTH] Erro ao gerar URL:", error);
         return NextResponse.json(
@@ -166,11 +180,18 @@ export async function POST(request: NextRequest) {
     console.log(`[ML_AUTH] Processando callback para usuário ${userId}`);
 
     try {
-      // Trocar código por tokens
-      console.log("[ML_AUTH] Trocando código por tokens...");
+      // Trocar código por tokens (verifier vem do cookie httpOnly definido
+      // no connect; fallback para o cache em memória em dev)
+      const cookieVerifier = request.cookies.get("ml_pkce_verifier")?.value;
+      console.log(
+        `[ML_AUTH] Trocando código por tokens... (verifier via cookie: ${
+          cookieVerifier ? "sim" : "não"
+        })`
+      );
       const authResponse = await MercadoLivreService.exchangeCodeForToken(
         code,
-        state
+        state,
+        cookieVerifier
       );
 
       // Obter informações do usuário ML
@@ -190,7 +211,7 @@ export async function POST(request: NextRequest) {
       );
 
       console.log(`[ML_AUTH] Conta conectada com sucesso. ID: ${account.id}`);
-      return NextResponse.json({
+      const successResponse = NextResponse.json({
         success: true,
         account: {
           id: account.id,
@@ -198,6 +219,9 @@ export async function POST(request: NextRequest) {
           siteId: account.siteId,
         },
       });
+      // Verifier é de uso único — limpar o cookie após a troca
+      successResponse.cookies.delete("ml_pkce_verifier");
+      return successResponse;
     } catch (mlError) {
       console.error("[ML_AUTH] Erro específico do ML:", mlError);
 

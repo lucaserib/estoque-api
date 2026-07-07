@@ -230,10 +230,6 @@ const Dashboard = () => {
     setLoadingSaidas(true);
     setLoadingData(true);
 
-    toast.info("Atualizando dados do dashboard...", {
-      duration: 2000,
-    });
-
     try {
       console.log("Buscando dados com filtros:", {
         startDate: dateFilter.startDate,

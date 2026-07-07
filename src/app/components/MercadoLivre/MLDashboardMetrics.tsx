@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import MLMetricsCard from "./MLMetricsCard";
 import { DashboardMetrics } from "@/types/ml-analytics";
+import { exibirValorEmReais } from "@/utils/currency";
 
 interface MLDashboardMetricsProps {
   metrics: DashboardMetrics;
@@ -36,7 +37,7 @@ export default function MLDashboardMetrics({
         <MLMetricsCard
           title="Receita Semanal"
           value={metrics.totalRevenue}
-          subtitle={`Ticket médio: ${metrics.averageTicket}`}
+          subtitle={`Ticket médio: ${exibirValorEmReais(metrics.averageTicket)}`}
           icon={DollarSign}
           color="blue"
           trend={metrics.salesGrowth === "positive" ? "up" : "neutral"}

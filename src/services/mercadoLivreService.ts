@@ -98,13 +98,34 @@ export class MercadoLivreService {
   }
 
   /**
+   * Gera URL de autorização do ML com PKCE.
+   * Retorna também o code_verifier para que o caller possa persisti-lo
+   * fora do processo (ex.: cookie httpOnly) — em serverless, connect e
+   * callback podem cair em instâncias diferentes e o Map em memória se perde.
+   */
+  static async getAuthURLWithVerifier(
+    state?: string
+  ): Promise<{ authUrl: string; codeVerifier: string }> {
+    const codeVerifier = await this.generateCodeVerifier();
+    const authUrl = await this.buildAuthURL(codeVerifier, state);
+    return { authUrl, codeVerifier };
+  }
+
+  /**
    * Gera URL de autorização do ML com PKCE
    */
   static async getAuthURL(state?: string): Promise<string> {
+    const codeVerifier = await this.generateCodeVerifier();
+    return this.buildAuthURL(codeVerifier, state);
+  }
+
+  private static async buildAuthURL(
+    codeVerifier: string,
+    state?: string
+  ): Promise<string> {
     this.validateConfig();
 
-    // Gerar code_verifier e code_challenge para PKCE
-    const codeVerifier = await this.generateCodeVerifier();
+    // Gerar code_challenge para PKCE
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
     // Salvar code_verifier associado ao state (userId)
@@ -211,16 +232,18 @@ export class MercadoLivreService {
    */
   static async exchangeCodeForToken(
     code: string,
-    state?: string
+    state?: string,
+    externalVerifier?: string
   ): Promise<MLAuthResponse> {
     try {
       console.log(`[ML_TOKEN] Iniciando troca de código por token`);
       console.log(`[ML_TOKEN] Código: ${code.substring(0, 20)}...`);
       console.log(`[ML_TOKEN] State: ${state}`);
 
-      // Buscar code_verifier do cache usando o state
-      let verifier: string | null = null;
-      if (state) {
+      // Verifier persistido fora do processo (cookie) tem prioridade;
+      // fallback para o cache em memória (dev/local)
+      let verifier: string | null = externalVerifier || null;
+      if (!verifier && state) {
         verifier = this.getCodeVerifier(state);
       }
 

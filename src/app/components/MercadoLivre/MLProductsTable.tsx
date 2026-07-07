@@ -129,7 +129,14 @@ export default function MLProductsTable({
                 <TableHead className="w-[120px]">Preço</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
                 <TableHead className="w-[100px]">Estoque ML</TableHead>
-                <TableHead className="w-[160px]">Vendas (Set/2025)</TableHead>
+                <TableHead className="w-[160px]">
+                  Vendas (
+                  {new Date().toLocaleDateString("pt-BR", {
+                    month: "short",
+                    year: "numeric",
+                  })}
+                  )
+                </TableHead>
                 <TableHead className="w-[200px]">Produto Local</TableHead>
                 <TableHead className="w-[120px]">Estoque Local</TableHead>
                 <TableHead className="w-[100px]">Última Sync</TableHead>

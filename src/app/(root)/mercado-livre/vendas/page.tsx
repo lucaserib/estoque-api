@@ -97,7 +97,6 @@ const COLORS = [
 interface SalesDataComplete extends SalesAnalytics {
   insights?: string[];
   performanceIndicators?: {
-    conversionRate: number;
     averageItemsPerOrder: number;
     dailyAverageRevenue: number;
     topProductContribution: number;
@@ -291,11 +290,6 @@ export default function MercadoLivreVendasPage() {
         recentOrders: [],
         insights: data.insights || [],
         performanceIndicators: {
-          conversionRate:
-            data.data.summary.totalOrders > 0
-              ? (data.data.summary.totalItems / data.data.summary.totalOrders) *
-                100
-              : 0,
           averageItemsPerOrder: data.data.summary.averageItemsPerOrder || 0,
           dailyAverageRevenue:
             data.data.period.days > 0
@@ -830,20 +824,13 @@ export default function MercadoLivreVendasPage() {
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-600">
                     {(
-                      salesData.performanceIndicators?.conversionRate || 0
+                      salesData.performanceIndicators?.averageItemsPerOrder ||
+                      0
                     ).toFixed(1)}
-                    %
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    Taxa de Conversão
+                    Itens por Pedido
                   </div>
-                  <Progress
-                    value={Math.min(
-                      salesData.performanceIndicators?.conversionRate || 0,
-                      100
-                    )}
-                    className="h-2 mt-2"
-                  />
                 </div>
 
                 <div className="text-center">
@@ -1462,14 +1449,6 @@ export default function MercadoLivreVendasPage() {
                       <div>
                         <div className="font-medium">Performance:</div>
                         <ul className="mt-1 space-y-1 text-muted-foreground">
-                          <li>
-                            • Taxa de conversão:{" "}
-                            {(
-                              salesData.performanceIndicators?.conversionRate ||
-                              0
-                            ).toFixed(1)}
-                            %
-                          </li>
                           <li>
                             • Itens por pedido:{" "}
                             {(
