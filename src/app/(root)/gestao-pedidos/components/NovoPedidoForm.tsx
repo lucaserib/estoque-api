@@ -522,7 +522,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
               </div>
 
               {isLoadingProdutos ? (
-                <div className="flex items-center justify-center p-6 text-gray-500">
+                <div className="flex items-center justify-center p-6 text-muted-foreground">
                   <Loader2 className="h-6 w-6 animate-spin text-primary " />
                   <span className="ml-2 text-muted-foreground">
                     Carregando produtos...

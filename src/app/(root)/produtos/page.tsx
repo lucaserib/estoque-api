@@ -321,7 +321,7 @@ const ProdutosPage = () => {
         </div>
       </div>
 
-      <Card className="mb-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+      <Card className="mb-6 border border-border shadow-sm">
         <CardContent className="p-0">
           <Tabs
             defaultValue="produtos"
@@ -331,24 +331,24 @@ const ProdutosPage = () => {
             }
             className="w-full"
           >
-            <TabsList className="w-full grid grid-cols-2 bg-gray-100 dark:bg-gray-800 rounded-t-lg h-12">
+            <TabsList className="w-full grid grid-cols-2 bg-muted rounded-t-lg h-12">
               <TabsTrigger
                 value="produtos"
-                className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 flex items-center gap-2"
+                className="rounded-md data-[state=active]:bg-card flex items-center gap-2"
               >
                 <Package className="h-4 w-4" />
                 Produtos
-                <span className="ml-1 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">
+                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">
                   {regularProducts.length}
                 </span>
               </TabsTrigger>
               <TabsTrigger
                 value="kits"
-                className="rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 flex items-center gap-2"
+                className="rounded-md data-[state=active]:bg-card flex items-center gap-2"
               >
                 <Box className="h-4 w-4" />
                 Kits
-                <span className="ml-1 text-xs bg-gray-200 dark:bg-gray-700 rounded-full px-2 py-0.5">
+                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">
                   {kits.length}
                 </span>
               </TabsTrigger>

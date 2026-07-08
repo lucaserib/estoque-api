@@ -85,7 +85,7 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
           );
         case "local":
           return (
-            <Badge variant="outline" className="text-gray-600 border-gray-600">
+            <Badge variant="outline" className="text-muted-foreground border-border">
               Local
             </Badge>
           );
@@ -105,7 +105,7 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
 
     return (
       <tr
-        className={`border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
+        className={`border-b border-border hover:bg-background transition-colors ${
           item.statusGeral === "critico"
             ? "bg-red-50 dark:bg-red-950/20"
             : item.statusGeral === "atencao"
@@ -121,10 +121,10 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
         {/* Produto */}
         <td className="px-4 py-3">
           <div>
-            <p className="font-medium text-gray-900 dark:text-gray-100">
+            <p className="font-medium text-foreground">
               {item.produtoNome}
             </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               SKU: {item.sku}
             </p>
           </div>
@@ -137,7 +137,7 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
 
         {/* Estoque Local */}
         <td className="px-4 py-3 text-center">
-          <span className="font-medium text-gray-900 dark:text-gray-100">
+          <span className="font-medium text-foreground">
             {item.estoqueLocal}
           </span>
         </td>
@@ -157,7 +157,7 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
                 ? "text-red-600 dark:text-red-400"
                 : diasRestantesMenor < 7
                 ? "text-yellow-600 dark:text-yellow-400"
-                : "text-gray-900 dark:text-gray-100"
+                : "text-foreground"
             }`}
           >
             {diasRestantesMenor > 999 ? "∞" : `${diasRestantesMenor}d`}
@@ -167,8 +167,8 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
         {/* Média Diária */}
         <td className="px-4 py-3 text-center">
           <div className="flex items-center justify-center gap-1">
-            <TrendingUp className="h-3 w-3 text-gray-500" />
-            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+            <TrendingUp className="h-3 w-3 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">
               {item.mediaDiaria.toFixed(1)}
             </span>
           </div>
@@ -184,12 +184,12 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
                   {item.reposicaoFull.quantidadeSugerida}
                 </span>
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {formatCurrency(item.reposicaoFull.custoTotal * 100)}
               </span>
             </div>
           ) : (
-            <span className="text-gray-400">-</span>
+            <span className="text-muted-foreground">-</span>
           )}
         </td>
 
@@ -203,12 +203,12 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
                   {item.reposicaoLocal.quantidadeSugerida}
                 </span>
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-muted-foreground">
                 {formatCurrency(item.reposicaoLocal.custoTotal * 100)}
               </span>
             </div>
           ) : (
-            <span className="text-gray-400">-</span>
+            <span className="text-muted-foreground">-</span>
           )}
         </td>
 

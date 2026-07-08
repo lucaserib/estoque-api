@@ -93,7 +93,7 @@ export function VendasCanceladasSection({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-sm font-medium text-muted-foreground">
                   Pedidos Cancelados
                 </p>
                 <h3 className="text-2xl font-bold text-red-600 dark:text-red-400 mt-1">
@@ -111,7 +111,7 @@ export function VendasCanceladasSection({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-sm font-medium text-muted-foreground">
                   Itens Cancelados
                 </p>
                 <h3 className="text-2xl font-bold text-orange-600 dark:text-orange-400 mt-1">
@@ -129,7 +129,7 @@ export function VendasCanceladasSection({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-sm font-medium text-muted-foreground">
                   Receita Perdida
                 </p>
                 <h3 className="text-xl font-bold text-rose-600 dark:text-rose-400 mt-1">
@@ -155,7 +155,7 @@ export function VendasCanceladasSection({
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                <p className="text-sm font-medium text-muted-foreground">
                   Taxa de Cancelamento
                 </p>
                 <h3
@@ -200,7 +200,7 @@ export function VendasCanceladasSection({
         <CardContent>
           <div className="border rounded-md overflow-hidden">
             <Table>
-              <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+              <TableHeader className="bg-background">
                 <TableRow>
                   <TableHead className="font-medium">Data</TableHead>
                   <TableHead className="font-medium">Pedido</TableHead>
@@ -217,7 +217,7 @@ export function VendasCanceladasSection({
                   <TableRow>
                     <TableCell
                       colSpan={6}
-                      className="text-center py-8 text-gray-500"
+                      className="text-center py-8 text-muted-foreground"
                     >
                       Nenhum pedido cancelado encontrado
                     </TableCell>
@@ -226,11 +226,11 @@ export function VendasCanceladasSection({
                   data.orders.map((order) => (
                     <TableRow
                       key={order.orderId}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      className="hover:bg-background"
                     >
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
                           <div>
                             <div className="font-medium">
                               {format(
@@ -239,7 +239,7 @@ export function VendasCanceladasSection({
                                 { locale: ptBR }
                               )}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <div className="text-xs text-muted-foreground">
                               {format(new Date(order.date_created), "HH:mm", {
                                 locale: ptBR,
                               })}
@@ -248,13 +248,13 @@ export function VendasCanceladasSection({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="font-mono text-sm text-gray-600 dark:text-gray-300">
+                        <div className="font-mono text-sm text-muted-foreground">
                           {order.orderId.substring(0, 12)}...
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <User className="h-4 w-4 text-gray-400" />
+                          <User className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">
                             {order.buyer_nickname}
                           </span>
@@ -263,7 +263,7 @@ export function VendasCanceladasSection({
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className="bg-gray-100 dark:bg-gray-800"
+                          className="bg-muted"
                         >
                           <Package className="h-3 w-3 mr-1" />
                           {order.items_count}{" "}

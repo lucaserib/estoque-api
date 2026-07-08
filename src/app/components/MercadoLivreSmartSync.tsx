@@ -242,23 +242,23 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">{summary.total || 0}</div>
-                <div className="text-sm text-gray-500">Total ML</div>
+                <div className="text-sm text-muted-foreground">Total ML</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">{summary.potential_matches || 0}</div>
-                <div className="text-sm text-gray-500">Match Potencial</div>
+                <div className="text-sm text-muted-foreground">Match Potencial</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-600">{summary.similar_found || 0}</div>
-                <div className="text-sm text-gray-500">Similares</div>
+                <div className="text-sm text-muted-foreground">Similares</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-600">{summary.unmatched || 0}</div>
-                <div className="text-sm text-gray-500">Não Vinculados</div>
+                <div className="text-sm text-muted-foreground">Não Vinculados</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-gray-600">{summary.matched || 0}</div>
-                <div className="text-sm text-gray-500">Vinculados</div>
+                <div className="text-2xl font-bold text-muted-foreground">{summary.matched || 0}</div>
+                <div className="text-sm text-muted-foreground">Vinculados</div>
               </div>
             </div>
           )}
@@ -302,7 +302,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                           <div className="font-medium text-sm line-clamp-2 max-w-xs">
                             {produto.title}
                           </div>
-                          <div className="text-xs text-gray-500">{produto.mlItemId}</div>
+                          <div className="text-xs text-muted-foreground">{produto.mlItemId}</div>
                         </div>
                       </div>
                     </TableCell>
@@ -312,7 +312,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                           {produto.realSku}
                         </Badge>
                       ) : (
-                        <span className="text-gray-400 text-sm">Sem SKU</span>
+                        <span className="text-muted-foreground text-sm">Sem SKU</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -332,14 +332,14 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                       {produto.localProduct ? (
                         <div>
                           <div className="font-medium text-sm">{produto.localProduct.nome}</div>
-                          <div className="text-xs text-gray-500">{produto.localProduct.sku}</div>
+                          <div className="text-xs text-muted-foreground">{produto.localProduct.sku}</div>
                         </div>
                       ) : produto.suggestedMatches.length > 0 ? (
                         <div className="text-sm text-blue-600">
                           {produto.suggestedMatches.length} sugestão(ões)
                         </div>
                       ) : (
-                        <span className="text-gray-400 text-sm">Não vinculado</span>
+                        <span className="text-muted-foreground text-sm">Não vinculado</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -360,7 +360,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleIgnoreProduct(produto.mlItemId)}
-                            className="h-8 text-gray-500"
+                            className="h-8 text-muted-foreground"
                           >
                             <Unlink className="h-3 w-3 mr-1" />
                             Ignorar
@@ -393,7 +393,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
 
           {selectedProduct && (
             <div className="space-y-4">
-              <div className="bg-gray-50 dark:bg-gray-900 p-4 rounded-md">
+              <div className="bg-background p-4 rounded-md">
                 <h4 className="font-medium mb-2">Produto Mercado Livre</h4>
                 <div className="flex items-center gap-3">
                   <MLImage
@@ -405,7 +405,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                   />
                   <div>
                     <div className="font-medium">{selectedProduct.title}</div>
-                    <div className="text-sm text-gray-500">{selectedProduct.mlItemId}</div>
+                    <div className="text-sm text-muted-foreground">{selectedProduct.mlItemId}</div>
                     {selectedProduct.realSku && (
                       <div className="text-sm">
                         <Badge variant="outline" className="font-mono">
@@ -422,7 +422,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
 
                 {selectedProduct.suggestedMatches.length > 0 && (
                   <div className="mb-4">
-                    <p className="text-sm text-gray-600 mb-2">Sugestões baseadas em SKU/nome:</p>
+                    <p className="text-sm text-muted-foreground mb-2">Sugestões baseadas em SKU/nome:</p>
                     <div className="space-y-2">
                       {selectedProduct.suggestedMatches.map((suggestion) => (
                         <div
@@ -430,14 +430,14 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                           className={`p-3 border rounded-md cursor-pointer transition-colors ${
                             selectedLocalProduct === suggestion.id
                               ? 'bg-blue-50 border-blue-200'
-                              : 'hover:bg-gray-50'
+                              : 'hover:bg-background'
                           }`}
                           onClick={() => setSelectedLocalProduct(suggestion.id)}
                         >
                           <div className="flex justify-between items-center">
                             <div>
                               <div className="font-medium">{suggestion.nome}</div>
-                              <div className="text-sm text-gray-500">SKU: {suggestion.sku}</div>
+                              <div className="text-sm text-muted-foreground">SKU: {suggestion.sku}</div>
                             </div>
                             {selectedLocalProduct === suggestion.id && (
                               <CheckCircle className="h-5 w-5 text-blue-600" />
@@ -449,7 +449,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                   </div>
                 )}
 
-                <p className="text-sm text-gray-500 mt-4">
+                <p className="text-sm text-muted-foreground mt-4">
                   💡 Para vincular com outros produtos, utilize a busca manual na aba principal de produtos ML.
                 </p>
               </div>

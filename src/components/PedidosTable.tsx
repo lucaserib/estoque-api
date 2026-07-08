@@ -302,15 +302,15 @@ const PedidosTable = ({
 
   if (data.length === 0) {
     return (
-      <div className="text-center p-8 bg-gray-50 rounded-md border border-gray-200">
+      <div className="text-center p-8 bg-background rounded-md border border-border">
         <div className="flex flex-col items-center justify-center space-y-3">
-          <div className="rounded-full bg-gray-100 p-3">
-            <AlertCircle className="h-6 w-6 text-gray-500" />
+          <div className="rounded-full bg-muted p-3">
+            <AlertCircle className="h-6 w-6 text-muted-foreground" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-foreground">
             Nenhum pedido encontrado
           </h3>
-          <p className="text-sm text-gray-500 max-w-sm">
+          <p className="text-sm text-muted-foreground max-w-sm">
             {status === "confirmado"
               ? "Não há pedidos concluídos para o período selecionado."
               : "Não há pedidos que correspondam aos critérios selecionados."}
@@ -331,7 +331,7 @@ const PedidosTable = ({
       {status === "confirmado" && (
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-sm text-muted-foreground">
               {selectedPedidos.size} pedido(s) selecionado(s)
             </p>
           </div>
@@ -357,10 +357,10 @@ const PedidosTable = ({
         </div>
       )}
 
-      <Card className="w-full border border-gray-200 dark:border-gray-800 overflow-hidden shadow-sm">
+      <Card className="w-full border border-border overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+            <TableHeader className="bg-background">
               <TableRow>
                 {status === "confirmado" && (
                   <TableHead className="w-10">
@@ -372,7 +372,7 @@ const PedidosTable = ({
                           currentItems.length > 0
                         }
                         onChange={toggleSelectAll}
-                        className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
+                        className="h-4 w-4 rounded border-input text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
                       />
                     </div>
                   </TableHead>

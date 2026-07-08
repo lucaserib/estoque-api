@@ -135,10 +135,10 @@ const ReposicaoPage = () => {
         {/* Header com ação */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <h1 className="text-2xl font-bold text-foreground">
               Análise de Reposição
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               Produtos que precisam de reposição urgente
             </p>
           </div>
@@ -209,17 +209,17 @@ const ReposicaoPage = () => {
             <ReplenishmentSummaryCards summary={analysisData.summary} />
 
             {/* Tabela de Produtos */}
-            <Card className="border-gray-200 dark:border-gray-700">
+            <Card className="border-border">
               <CardContent className="p-0">
                 {(analysisData?.results?.length || 0) === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 px-4">
                     <div className="h-16 w-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-4">
                       <Package className="h-8 w-8 text-green-600 dark:text-green-400" />
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
                       Nenhum produto precisa de reposição
                     </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 text-center max-w-md">
+                    <p className="text-sm text-muted-foreground text-center max-w-md">
                       Todos os produtos estão com estoque adequado. Clique em
                       "Verificar Estoque" para atualizar a análise.
                     </p>
@@ -227,44 +227,44 @@ const ReposicaoPage = () => {
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full">
-                      <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                      <thead className="bg-background border-b border-border">
                         <tr>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Status
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Produto
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Tipo
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Estoque Local
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Estoque Full
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Dias Rest.
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Média/Dia
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Repor Full
                           </th>
-                          <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Comprar
                           </th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Custo Total
                           </th>
-                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
                             Ações
                           </th>
                         </tr>
                       </thead>
-                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                      <tbody className="bg-card divide-y divide-border">
                         {analysisData?.results?.map((item) => (
                           <ReplenishmentTableRow
                             key={item.produtoId}
@@ -281,15 +281,15 @@ const ReposicaoPage = () => {
 
             {/* Rodapé com estatísticas */}
             {(analysisData?.results?.length || 0) > 0 && (
-              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center justify-between p-4 bg-background rounded-lg border border-border">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <TrendingDown className="h-4 w-4" />
                   <span>
                     Exibindo {analysisData?.results?.length || 0} produto(s) que precisam
                     de atenção
                   </span>
                 </div>
-                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                <div className="text-sm font-medium text-foreground">
                   Investimento necessário:{" "}
                   {new Intl.NumberFormat("pt-BR", {
                     style: "currency",

@@ -92,19 +92,19 @@ const CardValorEstoque = ({
               </div>
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <p className="text-sm font-medium text-gray-600">
+            <div className="bg-background p-4 rounded-lg">
+              <p className="text-sm font-medium text-muted-foreground">
                 Valor Médio por Item
               </p>
               <h3 className="text-2xl font-bold mt-1">
                 {valorMedio ? exibirValorEmReais(valorMedio) : "R$ 0,00"}
               </h3>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-muted-foreground mt-2">
                 Representa o custo médio por item no seu estoque
               </p>
             </div>
 
-            <div className="flex items-center text-sm text-gray-500 mt-2">
+            <div className="flex items-center text-sm text-muted-foreground mt-2">
               <BarChart className="h-4 w-4 mr-1 text-blue-500" />
               Atualizado em{" "}
               {new Date().toLocaleDateString("pt-BR", {

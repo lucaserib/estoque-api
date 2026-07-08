@@ -17,10 +17,10 @@ export function PedidoLoadingSkeleton() {
 
   return (
     <div className="space-y-4 animate-pulse">
-      <Card className="w-full border border-gray-100 dark:border-gray-800 overflow-hidden">
+      <Card className="w-full border border-border overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+            <TableHeader className="bg-background">
               <TableRow>
                 <TableHead className="w-20">
                   <Skeleton className="h-4 w-16" />

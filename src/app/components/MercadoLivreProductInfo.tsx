@@ -89,14 +89,14 @@ export default function MercadoLivreProductInfo({
       inactive: {
         label: "Inativo",
         variant: "secondary" as const,
-        color: "text-gray-600",
+        color: "text-muted-foreground",
       },
     };
 
     const statusInfo = statusMap[status as keyof typeof statusMap] || {
       label: status,
       variant: "outline" as const,
-      color: "text-gray-600",
+      color: "text-muted-foreground",
     };
 
     return (
@@ -131,7 +131,7 @@ export default function MercadoLivreProductInfo({
       <Card className={className}>
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
           <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
-          <p className="text-sm text-gray-600 mb-4">{error}</p>
+          <p className="text-sm text-muted-foreground mb-4">{error}</p>
           <Button variant="outline" size="sm" onClick={loadMlProducts}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Tentar Novamente
@@ -152,11 +152,11 @@ export default function MercadoLivreProductInfo({
         </CardHeader>
         <CardContent>
           <div className="text-center py-4">
-            <Store className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-            <p className="text-sm text-gray-600">
+            <Store className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
               Este produto não está vinculado ao Mercado Livre
             </p>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Conecte sua conta ML e sincronize para ver os dados
             </p>
           </div>
@@ -199,7 +199,7 @@ export default function MercadoLivreProductInfo({
                     <h4 className="font-medium text-sm line-clamp-2 mb-1">
                       {mlProduct.mlTitle}
                     </h4>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       ID: {mlProduct.mlItemId}
                     </p>
                   </div>
@@ -231,7 +231,7 @@ export default function MercadoLivreProductInfo({
                 <div className="flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-green-600" />
                   <div>
-                    <p className="text-xs text-gray-500">Preço</p>
+                    <p className="text-xs text-muted-foreground">Preço</p>
                     <p className="font-medium">
                       {exibirValorEmReais(mlProduct.mlPrice)}
                     </p>
@@ -241,7 +241,7 @@ export default function MercadoLivreProductInfo({
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-blue-600" />
                   <div>
-                    <p className="text-xs text-gray-500">Disponível</p>
+                    <p className="text-xs text-muted-foreground">Disponível</p>
                     <p className="font-medium">
                       {mlProduct.mlAvailableQuantity} un.
                     </p>
@@ -252,7 +252,7 @@ export default function MercadoLivreProductInfo({
               {/* Categoria e última sincronização */}
               <div className="space-y-2">
                 {mlProduct.mlCategoryId && (
-                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>Categoria:</span>
                     <Badge variant="outline" className="text-xs">
                       {mlProduct.mlCategoryId}
@@ -260,7 +260,7 @@ export default function MercadoLivreProductInfo({
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 text-xs text-gray-500">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" />
                   <span>Última sincronização:</span>
                   <span>{formatDate(mlProduct.lastSyncAt.toString())}</span>

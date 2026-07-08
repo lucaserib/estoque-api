@@ -211,7 +211,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           <div className="flex items-center justify-between">
             <div>
               <h4 className="font-medium">Ativar Sincronização Automática</h4>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Mantém produtos atualizados automaticamente em tempo real
               </p>
             </div>
@@ -275,7 +275,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Produtos Sincronizados</p>
+                <p className="text-sm text-muted-foreground">Produtos Sincronizados</p>
                 <p className="text-2xl font-bold text-green-600">{stats.synced || 0}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
@@ -287,7 +287,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Com Erro</p>
+                <p className="text-sm text-muted-foreground">Com Erro</p>
                 <p className="text-2xl font-bold text-red-600">{stats.error || 0}</p>
               </div>
               <AlertCircle className="h-8 w-8 text-red-600" />
@@ -299,10 +299,10 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Ignorados</p>
-                <p className="text-2xl font-bold text-gray-600">{stats.ignored || 0}</p>
+                <p className="text-sm text-muted-foreground">Ignorados</p>
+                <p className="text-2xl font-bold text-muted-foreground">{stats.ignored || 0}</p>
               </div>
-              <Pause className="h-8 w-8 text-gray-600" />
+              <Pause className="h-8 w-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
@@ -311,7 +311,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Desatualizados</p>
+                <p className="text-sm text-muted-foreground">Desatualizados</p>
                 <p className="text-2xl font-bold text-orange-600">{staleProducts}</p>
               </div>
               <Clock className="h-8 w-8 text-orange-600" />
@@ -331,18 +331,18 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Última Sincronização</p>
+              <p className="text-sm text-muted-foreground mb-1">Última Sincronização</p>
               <p className="font-medium">{formatTimeAgo(lastSync)}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-1">Status</p>
+              <p className="text-sm text-muted-foreground mb-1">Status</p>
               {getStatusBadge(lastSyncStatus)}
             </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-2">
-              <p className="text-sm text-gray-500">Progresso Geral</p>
+              <p className="text-sm text-muted-foreground">Progresso Geral</p>
               <span className="text-sm font-medium">{getSyncProgress()}%</span>
             </div>
             <Progress value={getSyncProgress()} className="h-2" />

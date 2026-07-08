@@ -548,8 +548,8 @@ const BarcodeReader = ({
       >
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
-            <Barcode className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <Barcode className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-foreground">
               EAN-13
             </span>
 
@@ -609,9 +609,9 @@ const BarcodeReader = ({
                 className="h-7 w-7 p-0 rounded-full"
               >
                 {isSoundEnabled ? (
-                  <Volume2 className="h-4 w-4 text-gray-500" />
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
                 ) : (
-                  <VolumeX className="h-4 w-4 text-gray-500" />
+                  <VolumeX className="h-4 w-4 text-muted-foreground" />
                 )}
               </Button>
             </div>
@@ -678,10 +678,10 @@ const BarcodeReader = ({
 
       {/* Continuous mode items list */}
       {continuousModeActive && scannedItems.length > 0 && (
-        <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-md p-4">
+        <div className="mt-4 border border-border rounded-md p-4">
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-sm font-medium flex items-center gap-2">
-              <Package className="h-4 w-4 text-gray-500" />
+              <Package className="h-4 w-4 text-muted-foreground" />
               Scanned Items ({scannedItems.length})
             </h3>
             <Button
@@ -697,7 +697,7 @@ const BarcodeReader = ({
             {scannedItems.map((item, index) => (
               <div
                 key={`${item}-${index}`}
-                className="flex justify-between items-center py-2 px-3 bg-gray-50 dark:bg-gray-800 rounded text-sm"
+                className="flex justify-between items-center py-2 px-3 bg-background rounded text-sm"
               >
                 <span className="font-medium">{item}</span>
                 <Badge>Item {index + 1}</Badge>

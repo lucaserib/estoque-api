@@ -173,7 +173,7 @@ export const DashboardFilters = ({
   };
 
   return (
-    <div className="mt-6 bg-white rounded-lg p-4 border shadow-sm">
+    <div className="mt-6 bg-card rounded-lg p-4 border shadow-sm">
       {/* Cabeçalho do filtro com toggle para mobile */}
       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-4">
         <div className="flex items-center gap-2">
@@ -243,9 +243,9 @@ export const DashboardFilters = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 justify-start text-left font-normal gap-2 bg-white hover:bg-gray-50 border-gray-200"
+                    className="flex-1 justify-start text-left font-normal gap-2 bg-card hover:bg-background border-border"
                   >
-                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span className="truncate">
                       {renderPeriodoSelecionado()}
                     </span>

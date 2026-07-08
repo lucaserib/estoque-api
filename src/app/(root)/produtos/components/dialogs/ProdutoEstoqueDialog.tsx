@@ -88,11 +88,11 @@ export function ProdutoEstoqueDialog({
         }
       }}
     >
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <Warehouse className="h-5 w-5 text-indigo-500" />
                 Estoque de {produto.nome}
               </DialogTitle>
@@ -100,7 +100,7 @@ export function ProdutoEstoqueDialog({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -110,11 +110,11 @@ export function ProdutoEstoqueDialog({
 
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2 space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <div className="bg-background p-4 rounded-lg border border-border">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <Package className="h-5 w-5 text-gray-500" />
-                  <h3 className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  <Package className="h-5 w-5 text-muted-foreground" />
+                  <h3 className="text-base font-medium text-foreground">
                     {produto.sku}
                   </h3>
                 </div>
@@ -134,22 +134,22 @@ export function ProdutoEstoqueDialog({
                 <div className="flex justify-center items-center py-10">
                   <div className="flex flex-col items-center">
                     <Loader2 className="h-10 w-10 text-indigo-500 animate-spin mb-2" />
-                    <p className="text-gray-500 dark:text-gray-400">
+                    <p className="text-muted-foreground">
                       Carregando informações de estoque...
                     </p>
                   </div>
                 </div>
               ) : stockDetails.length === 0 ? (
-                <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
-                  <Warehouse className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-500 dark:text-gray-400">
+                <div className="bg-background p-6 rounded-lg border border-border text-center">
+                  <Warehouse className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">
                     Nenhum estoque cadastrado para este produto.
                   </p>
                 </div>
               ) : (
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="border border-border rounded-lg overflow-hidden">
                   <Table>
-                    <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableHeader className="bg-background">
                       <TableRow>
                         <TableHead className="font-medium">Armazém</TableHead>
                         <TableHead className="font-medium text-center">
@@ -202,7 +202,7 @@ export function ProdutoEstoqueDialog({
                                   {item.estoqueSeguranca} un.
                                 </Badge>
                               ) : (
-                                <span className="text-gray-400 text-sm italic">
+                                <span className="text-muted-foreground text-sm italic">
                                   Não definido
                                 </span>
                               )}
@@ -212,7 +212,7 @@ export function ProdutoEstoqueDialog({
                                 <Progress
                                   value={percentual}
                                   max={100}
-                                  className={`h-2 bg-gray-200 dark:bg-gray-700 ${progressClass}`}
+                                  className={`h-2 bg-muted ${progressClass}`}
                                 />
                                 {isCritical && (
                                   <div className="mt-1 flex items-center">

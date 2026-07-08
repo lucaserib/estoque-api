@@ -806,7 +806,7 @@ const Dashboard = () => {
         loadingSaidas={loadingSaidas}
       />
 
-      <div className="min-h-[650px] md:min-h-[700px] h-[calc(100vh-350px)] relative bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="min-h-[650px] md:min-h-[700px] h-[calc(100vh-350px)] relative bg-card rounded-lg shadow-sm overflow-hidden">
         <div
           className={`absolute inset-0 transition-opacity duration-300 ease-in-out ${
             activeView === "overview"
@@ -814,7 +814,7 @@ const Dashboard = () => {
               : "opacity-0 z-0 invisible pointer-events-none"
           }`}
         >
-          <div className="h-full w-full flex flex-col bg-white rounded-lg overflow-hidden">
+          <div className="h-full w-full flex flex-col bg-card rounded-lg overflow-hidden">
             <Tabs
               defaultValue="overview"
               className="flex flex-col h-full w-full"
@@ -951,7 +951,7 @@ const Dashboard = () => {
               style={{ height: "calc(100% - 100px)" }}
             >
               {loadingEntradas && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-20">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/70 z-20">
                   <Loader2 className="h-10 w-10 animate-spin text-emerald-500 mb-4" />
                   <p className="text-sm text-muted-foreground">
                     Carregando entradas...
@@ -1025,7 +1025,7 @@ const Dashboard = () => {
               style={{ height: "calc(100% - 100px)" }}
             >
               {loadingSaidas && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-20">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/70 z-20">
                   <Loader2 className="h-10 w-10 animate-spin text-orange-500 mb-4" />
                   <p className="text-sm text-muted-foreground">
                     Carregando saídas...
@@ -1072,7 +1072,7 @@ const Dashboard = () => {
               style={{ height: "calc(100% - 100px)" }}
             >
               {loadingData && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/70 z-20">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-card/70 z-20">
                   <Loader2 className="h-10 w-10 animate-spin text-red-500 mb-4" />
                   <p className="text-sm text-muted-foreground">
                     Carregando alertas de estoque...

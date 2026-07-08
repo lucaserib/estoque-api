@@ -81,15 +81,15 @@ const CriarArmazem = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 bg-white dark:bg-gray-900 rounded-md shadow-md">
-      <h1 className="text-2xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+    <div className="max-w-md mx-auto mt-10 p-6 bg-card rounded-md shadow-md">
+      <h1 className="text-2xl font-bold mb-4 text-foreground">
         Criar Armazém
       </h1>
       <form onSubmit={handleSubmit}>
         <div className="mb-4">
           <label
             htmlFor="nome"
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
+            className="block text-sm font-medium text-foreground"
           >
             Nome do Armazém
           </label>
@@ -99,7 +99,7 @@ const CriarArmazem = () => {
             name="nome"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-input focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
           />
         </div>
         {message && (
@@ -119,16 +119,16 @@ const CriarArmazem = () => {
         </button>
       </form>
 
-      <h2 className="text-xl font-bold mt-10 mb-4 text-gray-900 dark:text-gray-100">
+      <h2 className="text-xl font-bold mt-10 mb-4 text-foreground">
         Armazéns Criados
       </h2>
       <ul className="space-y-4">
         {armazens.map((armazem) => (
           <li
             key={armazem.id}
-            className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-800 rounded-md shadow-md"
+            className="flex justify-between items-center p-4 bg-muted rounded-md shadow-md"
           >
-            <span className="text-gray-900 dark:text-gray-100">
+            <span className="text-foreground">
               {armazem.nome}
             </span>
             <button

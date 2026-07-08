@@ -471,7 +471,7 @@ export default function MercadoLivrePage() {
         <div className="flex items-center gap-2">
           <div
             className={`h-2 w-2 rounded-full ${
-              autoRefreshEnabled ? "bg-green-500" : "bg-gray-400"
+              autoRefreshEnabled ? "bg-green-500" : "bg-muted-foreground/50"
             }`}
           />
           <span className="text-sm text-muted-foreground">

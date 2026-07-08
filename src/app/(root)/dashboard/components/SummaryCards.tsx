@@ -46,7 +46,7 @@ export const SummaryCards = ({
       >
         <CardContent className="p-6 relative h-full flex items-center justify-center">
           {loadingData && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-lg">
+            <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-[2px] z-10 rounded-lg">
               <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
             </div>
           )}
@@ -81,7 +81,7 @@ export const SummaryCards = ({
       >
         <CardContent className="p-6 relative h-full flex items-center justify-center">
           {loadingEntradas && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-lg">
+            <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-[2px] z-10 rounded-lg">
               <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
             </div>
           )}
@@ -124,7 +124,7 @@ export const SummaryCards = ({
       >
         <CardContent className="p-6 relative h-full flex items-center justify-center">
           {loadingSaidas && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-lg">
+            <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-[2px] z-10 rounded-lg">
               <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
             </div>
           )}
@@ -164,7 +164,7 @@ export const SummaryCards = ({
       >
         <CardContent className="p-6 relative h-full flex items-center justify-center">
           {loadingData && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/60 backdrop-blur-[2px] z-10 rounded-lg">
+            <div className="absolute inset-0 flex items-center justify-center bg-card/60 backdrop-blur-[2px] z-10 rounded-lg">
               <Loader2 className="h-8 w-8 animate-spin text-red-500" />
             </div>
           )}

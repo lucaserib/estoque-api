@@ -60,7 +60,7 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
       if (isAttention) {
         return "bg-yellow-50/50 dark:bg-yellow-950/20 hover:bg-yellow-100/50 dark:hover:bg-yellow-950/30";
       }
-      return "hover:bg-gray-50 dark:hover:bg-gray-800/50";
+      return "hover:bg-background";
     };
 
     return (
@@ -77,15 +77,15 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
           </div>
         </TableCell>
 
-        <TableCell className="text-gray-600 dark:text-gray-300">
+        <TableCell className="text-muted-foreground">
           {produto.sku}
         </TableCell>
 
         <TableCell>
           {isLoadingStock ? (
             <div className="flex items-center">
-              <Loader2 className="h-4 w-4 animate-spin mr-1 text-gray-400" />
-              <span className="text-xs text-gray-400">Carregando...</span>
+              <Loader2 className="h-4 w-4 animate-spin mr-1 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Carregando...</span>
             </div>
           ) : stockQuantity !== undefined ? (
             <div className="flex items-center gap-1">
@@ -99,7 +99,7 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
                 )}
             </div>
           ) : (
-            <span className="text-gray-400 text-sm">-</span>
+            <span className="text-muted-foreground text-sm">-</span>
           )}
         </TableCell>
 
@@ -109,7 +109,7 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
               {produto._mlEstoqueFull}
             </Badge>
           ) : (
-            <span className="text-gray-400 text-sm">-</span>
+            <span className="text-muted-foreground text-sm">-</span>
           )}
         </TableCell>
 
@@ -119,11 +119,11 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
               {produto._mlTotalVendas}
             </Badge>
           ) : (
-            <span className="text-gray-400 text-sm">-</span>
+            <span className="text-muted-foreground text-sm">-</span>
           )}
         </TableCell>
 
-        <TableCell className="text-gray-600 dark:text-gray-300">
+        <TableCell className="text-muted-foreground">
           {produto.custoMedio
             ? `R$ ${(produto.custoMedio / 100).toFixed(2)}`
             : "Não Definido"}

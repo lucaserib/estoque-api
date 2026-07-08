@@ -76,29 +76,29 @@ export function FornecedorEditDialog({
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
         <div
-          className="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75 backdrop-blur-sm transition-opacity"
+          className="fixed inset-0 bg-muted-foreground bg-opacity-75 dark:bg-opacity-75 backdrop-blur-sm transition-opacity"
           onClick={onClose}
         ></div>
 
         {/* Modal content */}
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <div className="inline-block align-bottom bg-card rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
           <div className="absolute top-0 right-0 pt-4 pr-4">
             <button
               onClick={onClose}
-              className="bg-white dark:bg-gray-800 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
+              className="bg-card rounded-md text-muted-foreground hover:text-muted-foreground focus:outline-none"
             >
               <X size={24} />
             </button>
           </div>
 
           <div className="px-6 pt-6 pb-8">
-            <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-white mb-6">
+            <h3 className="text-lg font-semibold leading-6 text-foreground mb-6">
               Editar Fornecedor
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Nome
                 </label>
                 <input
@@ -106,51 +106,51 @@ export function FornecedorEditDialog({
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   required
-                  className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Inscrição Estadual
                 </label>
                 <input
                   type="text"
                   value={inscricaoEstadual}
                   onChange={(e) => setInscricaoEstadual(e.target.value)}
-                  className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   CNPJ
                 </label>
                 <input
                   type="text"
                   value={cnpj}
                   onChange={(e) => setCnpj(e.target.value)}
-                  className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Contato
                 </label>
                 <input
                   type="text"
                   value={contato}
                   onChange={(e) => setContato(e.target.value)}
-                  className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Endereço
                 </label>
                 <input
                   type="text"
                   value={endereco}
                   onChange={(e) => setEndereco(e.target.value)}
-                  className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -158,7 +158,7 @@ export function FornecedorEditDialog({
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  className="px-4 py-2 border border-input rounded-md text-foreground bg-card hover:bg-background"
                 >
                   Cancelar
                 </button>

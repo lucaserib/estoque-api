@@ -204,9 +204,9 @@ export function EstoqueSegurancaCalculator({
 
         <ScrollArea className="max-h-[500px] pr-4">
           <div className="space-y-4">
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="bg-background p-4 rounded-lg border border-border">
               <h3 className="text-sm font-medium mb-2">Informações</h3>
-              <div className="text-sm text-gray-600 dark:text-gray-300 space-y-1">
+              <div className="text-sm text-muted-foreground space-y-1">
                 <p>
                   <span className="font-medium">Produto:</span> {produtoNome}
                 </p>
@@ -258,7 +258,7 @@ export function EstoqueSegurancaCalculator({
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="leadTime" className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-500" />
+                    <Clock className="h-4 w-4 text-muted-foreground" />
                     Tempo de reposição (em dias)
                   </Label>
                   <Input
@@ -270,7 +270,7 @@ export function EstoqueSegurancaCalculator({
                     placeholder="Ex: 7"
                     disabled={isSubmitting}
                   />
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Tempo médio entre o pedido e recebimento do produto
                   </p>
                 </div>
@@ -278,7 +278,7 @@ export function EstoqueSegurancaCalculator({
                 {isCalculating ? (
                   <div className="flex flex-col items-center justify-center py-6">
                     <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mb-2" />
-                    <p className="text-sm text-gray-500">
+                    <p className="text-sm text-muted-foreground">
                       Calculando estoque de segurança...
                     </p>
                   </div>
@@ -291,25 +291,25 @@ export function EstoqueSegurancaCalculator({
 
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-300">
+                        <span className="text-muted-foreground">
                           Média de saídas diárias:
                         </span>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                        <span className="font-medium text-foreground">
                           {mediaSaidas.toFixed(2)} unidades/dia
                         </span>
                       </div>
 
                       <div className="flex justify-between">
-                        <span className="text-gray-600 dark:text-gray-300">
+                        <span className="text-muted-foreground">
                           Tempo de reposição:
                         </span>
-                        <span className="font-medium text-gray-800 dark:text-gray-200">
+                        <span className="font-medium text-foreground">
                           {leadTime} dias
                         </span>
                       </div>
 
                       <div className="flex justify-between border-t border-blue-200 dark:border-blue-700 pt-2 mt-2">
-                        <span className="text-gray-700 dark:text-gray-200 font-medium">
+                        <span className="text-foreground font-medium">
                           Estoque de segurança sugerido:
                         </span>
                         <span className="font-bold text-blue-700 dark:text-blue-300">
@@ -318,7 +318,7 @@ export function EstoqueSegurancaCalculator({
                       </div>
                     </div>
 
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                    <p className="text-xs text-muted-foreground mt-3">
                       Cálculo: Média diária × Tempo de reposição × Fator de
                       segurança (1.5)
                     </p>
@@ -345,7 +345,7 @@ export function EstoqueSegurancaCalculator({
                   placeholder="Ex: 10"
                   disabled={isSubmitting}
                 />
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Defina manualmente quantas unidades deseja manter como estoque
                   mínimo
                 </p>

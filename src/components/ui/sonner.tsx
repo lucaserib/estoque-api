@@ -25,13 +25,13 @@ const Toaster = ({ ...props }: ToasterProps) => {
         duration: TOAST_DURATION,
         classNames: {
           toast:
-            "group toast group-[.toaster]:border group-[.toaster]:bg-white group-[.toaster]:border-gray-200 group-[.toaster]:shadow-lg group-[.toaster]:rounded-xl group-[.toaster]:dark:bg-gray-800 group-[.toaster]:dark:border-gray-700",
-          title: "font-medium text-sm text-gray-900 dark:text-gray-100",
-          description: "text-xs text-gray-600 dark:text-gray-400 mt-1",
+            "group toast group-[.toaster]:border group-[.toaster]:bg-card group-[.toaster]:border-border group-[.toaster]:shadow-lg group-[.toaster]:rounded-xl",
+          title: "font-medium text-sm text-foreground",
+          description: "text-xs text-muted-foreground mt-1",
           actionButton:
             "bg-indigo-500 text-white text-xs font-medium py-1 px-3 rounded-md",
           cancelButton:
-            "bg-gray-300 text-gray-800 text-xs font-medium py-1 px-3 rounded-md",
+            "bg-muted text-foreground text-xs font-medium py-1 px-3 rounded-md",
           closeButton:
             "absolute top-2 right-2 opacity-70 hover:opacity-100 transition-opacity",
           success:

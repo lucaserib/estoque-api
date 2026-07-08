@@ -257,7 +257,7 @@ function VincularProdutosContent() {
                     </h3>
                   </div>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar por título ou MLB..."
                       value={searchML}
@@ -270,7 +270,7 @@ function VincularProdutosContent() {
                       <div
                         key={produto.id}
                         onClick={() => setSelectedML(produto.id)}
-                        className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-b last:border-b-0 transition-colors ${
+                        className={`p-4 cursor-pointer hover:bg-background border-b last:border-b-0 transition-colors ${
                           selectedML === produto.id
                             ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
                             : ""
@@ -290,7 +290,7 @@ function VincularProdutosContent() {
                             <p className="font-medium text-sm truncate">
                               {produto.mlTitle}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-muted-foreground">
                               {produto.mlItemId}
                             </p>
                             <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -321,7 +321,7 @@ function VincularProdutosContent() {
                       </div>
                     ))}
                     {filteredML.length === 0 && (
-                      <div className="p-8 text-center text-gray-500">
+                      <div className="p-8 text-center text-muted-foreground">
                         <AlertCircle className="h-8 w-8 mx-auto mb-2" />
                         <p>Nenhum produto encontrado</p>
                       </div>
@@ -338,7 +338,7 @@ function VincularProdutosContent() {
                     </h3>
                   </div>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar por nome ou SKU..."
                       value={searchLocal}
@@ -351,7 +351,7 @@ function VincularProdutosContent() {
                       <div
                         key={produto.id}
                         onClick={() => setSelectedLocal(produto.id)}
-                        className={`p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 border-b last:border-b-0 transition-colors ${
+                        className={`p-4 cursor-pointer hover:bg-background border-b last:border-b-0 transition-colors ${
                           selectedLocal === produto.id
                             ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
                             : ""
@@ -362,11 +362,11 @@ function VincularProdutosContent() {
                             <p className="font-medium text-sm">
                               {produto.nome}
                             </p>
-                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                            <p className="text-xs text-muted-foreground">
                               SKU: {produto.sku}
                             </p>
                             {produto.ean && (
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs text-muted-foreground">
                                 EAN: {produto.ean}
                               </p>
                             )}
@@ -388,7 +388,7 @@ function VincularProdutosContent() {
                       </div>
                     ))}
                     {filteredLocal.length === 0 && (
-                      <div className="p-8 text-center text-gray-500">
+                      <div className="p-8 text-center text-muted-foreground">
                         <AlertCircle className="h-8 w-8 mx-auto mb-2" />
                         <p>Nenhum produto encontrado</p>
                       </div>

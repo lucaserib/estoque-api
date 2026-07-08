@@ -203,10 +203,10 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"></div>
 
         {/* Modal container */}
-        <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-xl text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl w-full">
+        <div className="inline-block align-bottom bg-card rounded-xl text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl w-full">
           {/* Header */}
-          <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="flex justify-between items-center p-6 border-b border-border">
+            <h2 className="text-xl font-bold text-foreground">
               Novo {formType === "kit" ? "Kit" : "Produto"}
             </h2>
             <Button
@@ -214,7 +214,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
               size="icon"
               onClick={onClose}
               disabled={isSubmitting}
-              className="rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+              className="rounded-full hover:bg-muted"
             >
               <X className="h-5 w-5" />
             </Button>
@@ -229,17 +229,17 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                 onValueChange={(v) => setFormType(v as "produto" | "kit")}
                 className="mb-6"
               >
-                <TabsList className="grid grid-cols-2 w-full bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
+                <TabsList className="grid grid-cols-2 w-full bg-muted p-1 rounded-md">
                   <TabsTrigger
                     value="produto"
-                    className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+                    className="flex items-center gap-2 data-[state=active]:bg-card"
                   >
                     <Package className="h-4 w-4" />
                     Produto
                   </TabsTrigger>
                   <TabsTrigger
                     value="kit"
-                    className="flex items-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-700"
+                    className="flex items-center gap-2 data-[state=active]:bg-card"
                   >
                     <Package className="h-4 w-4" />
                     Kit
@@ -248,7 +248,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
               </Tabs>
 
               {/* Campos comuns para Produto e Kit */}
-              <Card className="mb-6 border border-gray-200 dark:border-gray-700">
+              <Card className="mb-6 border border-border">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-md">Informações Básicas</CardTitle>
                 </CardHeader>
@@ -279,7 +279,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                     <div className="space-y-2 md:col-span-2">
                       <Label htmlFor="ean">EAN (Código de barras)</Label>
                       <div className="flex items-center">
-                        <Barcode className="h-4 w-4 text-gray-400 mr-2" />
+                        <Barcode className="h-4 w-4 text-muted-foreground mr-2" />
                         <Input
                           id="ean"
                           placeholder="EAN (opcional)"
@@ -290,7 +290,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                           disabled={isSubmitting}
                         />
                       </div>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         O código EAN deve conter apenas números
                       </p>
                     </div>
@@ -300,7 +300,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
 
               {/* Campos específicos para Kit */}
               {formType === "kit" && (
-                <Card className="mb-6 border border-gray-200 dark:border-gray-700">
+                <Card className="mb-6 border border-border">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-md flex items-center gap-2">
                       <Package className="h-5 w-5 text-indigo-500" />
@@ -371,7 +371,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                               {searchResults.map((produto) => (
                                 <div
                                   key={produto.id}
-                                  className={`px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center ${
+                                  className={`px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center ${
                                     selectedProdutoId === produto.id
                                       ? "bg-blue-50 dark:bg-blue-900/20"
                                       : ""
@@ -384,7 +384,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                                     <p className="font-medium">
                                       {produto.nome}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    <p className="text-xs text-muted-foreground">
                                       SKU: {produto.sku}
                                     </p>
                                   </div>
@@ -414,21 +414,21 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                       ) : (
                         produtoSearch &&
                         !isSearching && (
-                          <div className="text-center py-2 text-gray-500 dark:text-gray-400 text-sm">
+                          <div className="text-center py-2 text-muted-foreground text-sm">
                             Nenhum produto encontrado. Tente outro termo.
                           </div>
                         )
                       )}
 
                       <div className="mt-4">
-                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        <h4 className="text-sm font-medium text-foreground mb-2">
                           Produtos no Kit ({kitProdutos.length})
                         </h4>
 
                         {kitProdutos.length === 0 ? (
-                          <div className="text-center py-6 bg-gray-50 dark:bg-gray-800 rounded-md border border-dashed border-gray-300 dark:border-gray-700">
-                            <Package className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <div className="text-center py-6 bg-background rounded-md border border-dashed border-input">
+                            <Package className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                            <p className="text-sm text-muted-foreground">
                               Adicione produtos ao seu kit
                             </p>
                           </div>
@@ -447,14 +447,14 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                                 return (
                                   <div
                                     key={kitProduto.produtoId}
-                                    className="flex justify-between items-center border rounded-md p-2 bg-gray-50 dark:bg-gray-800"
+                                    className="flex justify-between items-center border rounded-md p-2 bg-background"
                                   >
                                     <div className="flex-1">
-                                      <span className="text-sm text-gray-900 dark:text-gray-200">
+                                      <span className="text-sm text-foreground">
                                         {produto?.nome ||
                                           "Produto não encontrado"}
                                       </span>
-                                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                                      <div className="text-xs text-muted-foreground">
                                         SKU: {produto?.sku || "N/A"}
                                       </div>
                                     </div>
@@ -509,7 +509,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                   variant="outline"
                   onClick={onClose}
                   disabled={isSubmitting}
-                  className="border-gray-200 dark:border-gray-700"
+                  className="border-border"
                 >
                   Cancelar
                 </Button>

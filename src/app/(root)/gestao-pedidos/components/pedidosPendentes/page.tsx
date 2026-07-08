@@ -306,7 +306,7 @@ const PedidosPendentes = () => {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
-        <p className="ml-2 text-gray-500 dark:text-gray-400">
+        <p className="ml-2 text-muted-foreground">
           Carregando pedidos pendentes...
         </p>
       </div>
@@ -328,9 +328,9 @@ const PedidosPendentes = () => {
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 shadow-xl rounded-xl p-6">
+    <div className="bg-card shadow-xl rounded-xl p-6">
       <div className="flex justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">
+        <h2 className="text-2xl font-bold text-foreground tracking-tight">
           Pedidos Pendentes ({filteredPedidos.length})
         </h2>
         <Button
@@ -364,17 +364,17 @@ const PedidosPendentes = () => {
       />
 
       {pedidos?.length === 0 ? (
-        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-8 rounded-lg text-center">
-          <h3 className="text-xl font-semibold mb-2 text-gray-700 dark:text-gray-300">
+        <div className="bg-background border border-border p-8 rounded-lg text-center">
+          <h3 className="text-xl font-semibold mb-2 text-foreground">
             Nenhum pedido pendente
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
+          <p className="text-muted-foreground mb-4">
             Crie um novo pedido de compra para começar.
           </p>
         </div>
       ) : filteredPedidos.length === 0 ? (
-        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-6 rounded-lg text-center">
-          <p className="text-gray-500 dark:text-gray-400">
+        <div className="bg-background border border-border p-6 rounded-lg text-center">
+          <p className="text-muted-foreground">
             Nenhum pedido encontrado com os critérios de pesquisa.
           </p>
         </div>
@@ -434,11 +434,11 @@ const PedidosPendentes = () => {
                   </p>
                 </div>
 
-                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">
+                <div className="mt-3 pt-3 border-t border-border">
+                  <p className="text-sm text-muted-foreground mb-1 font-medium">
                     Produtos:
                   </p>
-                  <ul className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
+                  <ul className="text-xs text-muted-foreground space-y-1">
                     {pedido.produtos.slice(0, 3).map((produto) => (
                       <li key={produto.produtoId}>
                         {produto.produto?.sku}: {produto.quantidade} un. ×{" "}
@@ -459,9 +459,9 @@ const PedidosPendentes = () => {
       )}
 
       {editPedido && (
-        <div className="mt-6 p-6 bg-gray-50 dark:bg-gray-800 rounded-lg shadow-inner">
+        <div className="mt-6 p-6 bg-background rounded-lg shadow-inner">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 flex items-center">
+            <h3 className="text-xl font-semibold text-foreground flex items-center">
               <FaEdit className="mr-2 text-indigo-500" />
               Editar e Confirmar Pedido #{editPedido.id}
             </h3>
@@ -664,7 +664,7 @@ const PedidosPendentes = () => {
       )}
 
       <div className="mt-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h3 className="text-lg font-semibold text-foreground">
           Total Geral: {formatBRL(calcularValorTotal())}
         </h3>
       </div>

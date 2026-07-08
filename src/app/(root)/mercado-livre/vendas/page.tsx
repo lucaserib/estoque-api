@@ -373,13 +373,13 @@ export default function MercadoLivreVendasPage() {
   const getTrendIcon = (value: number) => {
     if (value > 0) return <ArrowUpRight className="h-4 w-4 text-green-500" />;
     if (value < 0) return <ArrowDownRight className="h-4 w-4 text-red-500" />;
-    return <Minus className="h-4 w-4 text-gray-500" />;
+    return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
   const getTrendColor = (value: number) => {
     if (value > 0) return "text-green-600";
     if (value < 0) return "text-red-600";
-    return "text-gray-600";
+    return "text-muted-foreground";
   };
 
   const getPerformanceColor = (percentage: number) => {
@@ -489,7 +489,7 @@ export default function MercadoLivreVendasPage() {
                 </SelectContent>
               </Select>
 
-              <span className="text-gray-400">ou</span>
+              <span className="text-muted-foreground">ou</span>
 
               <div className="flex items-center gap-2">
                 <Popover>
@@ -524,7 +524,7 @@ export default function MercadoLivreVendasPage() {
                   </PopoverContent>
                 </Popover>
 
-                <span className="text-gray-500">até</span>
+                <span className="text-muted-foreground">até</span>
 
                 <Popover>
                   <PopoverTrigger asChild>
@@ -587,7 +587,7 @@ export default function MercadoLivreVendasPage() {
               size="sm"
               onClick={loadSalesData}
               disabled={loadingSales}
-              className="bg-white/50"
+              className="bg-card/50"
             >
               <RefreshCw
                 className={`h-4 w-4 mr-2 ${loadingSales ? "animate-spin" : ""}`}
@@ -599,7 +599,7 @@ export default function MercadoLivreVendasPage() {
               variant={showComparison ? "default" : "outline"}
               size="sm"
               onClick={() => setShowComparison(!showComparison)}
-              className={showComparison ? "" : "bg-white/50"}
+              className={showComparison ? "" : "bg-card/50"}
             >
               <GitCompare className="h-4 w-4 mr-2" />
               Comparar
@@ -610,7 +610,7 @@ export default function MercadoLivreVendasPage() {
               size="sm"
               onClick={exportToCSV}
               disabled={!salesData}
-              className="bg-white/50"
+              className="bg-card/50"
             >
               <Download className="h-4 w-4 mr-2" />
               Exportar
@@ -623,7 +623,7 @@ export default function MercadoLivreVendasPage() {
                 className={`h-2 w-2 rounded-full ${
                   autoRefreshEnabled
                     ? "bg-green-500 animate-pulse"
-                    : "bg-gray-400"
+                    : "bg-muted-foreground/50"
                 }`}
               />
               <span className="text-sm text-muted-foreground">

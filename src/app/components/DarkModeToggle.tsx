@@ -23,12 +23,12 @@ const DarkModeToggle = () => {
           />
           <div className="block bg-gray-600 w-8 h-4 rounded-full"></div>
           <div
-            className={`dot absolute left-1 top-0.5 bg-white w-3 h-3 rounded-full transition ${
+            className={`dot absolute left-1 top-0.5 bg-card w-3 h-3 rounded-full transition ${
               darkMode ? "transform translate-x-full bg-blue-500" : ""
             }`}
           ></div>
         </div>
-        <div className="ml-3 text-black dark:text-gray-300">
+        <div className="ml-3 text-black">
           {darkMode ? "Modo Escuro" : "Modo Claro"}
         </div>
       </label>

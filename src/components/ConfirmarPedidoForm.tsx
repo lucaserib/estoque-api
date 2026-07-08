@@ -231,7 +231,7 @@ const ConfirmarPedidoForm = ({
             name="armazemId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="flex items-center gap-2 text-base font-medium text-gray-700 dark:text-gray-300">
+                <FormLabel className="flex items-center gap-2 text-base font-medium text-foreground">
                   <Warehouse className="h-4 w-4 text-indigo-500" />
                   Armazém de Destino <span className="text-red-500">*</span>
                 </FormLabel>
@@ -241,11 +241,11 @@ const ConfirmarPedidoForm = ({
                   disabled={isSubmitting}
                 >
                   <FormControl>
-                    <SelectTrigger className="h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                    <SelectTrigger className="h-10 bg-card border-input">
                       <SelectValue placeholder="Selecione um armazém" />
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent className="bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                  <SelectContent className="bg-card border-input">
                     {armazens.length > 0 ? (
                       armazens.map((armazem) => (
                         <SelectItem key={armazem.id} value={armazem.id}>
@@ -253,7 +253,7 @@ const ConfirmarPedidoForm = ({
                         </SelectItem>
                       ))
                     ) : (
-                      <div className="p-2 text-gray-500 dark:text-gray-400 text-center">
+                      <div className="p-2 text-muted-foreground text-center">
                         Nenhum armazém encontrado
                       </div>
                     )}
@@ -270,7 +270,7 @@ const ConfirmarPedidoForm = ({
             name="comentarios"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-base font-medium text-gray-700 dark:text-gray-300">
+                <FormLabel className="text-base font-medium text-foreground">
                   Comentários (opcional)
                 </FormLabel>
                 <FormControl>
@@ -278,7 +278,7 @@ const ConfirmarPedidoForm = ({
                     placeholder="Adicione comentários sobre o recebimento do pedido"
                     {...field}
                     disabled={isSubmitting}
-                    className="resize-none h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                    className="resize-none h-10 bg-card border-input"
                   />
                 </FormControl>
                 <FormMessage className="text-red-500" />
@@ -288,12 +288,12 @@ const ConfirmarPedidoForm = ({
         </div>
 
         {/* Informações do Pedido */}
-        <Card className="border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50">
+        <Card className="border-input bg-background">
           <CardContent className="p-4 space-y-2">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="h-5 w-5 text-indigo-500" />
-                <h3 className="font-semibold text-lg text-gray-800 dark:text-gray-200">
+                <h3 className="font-semibold text-lg text-foreground">
                   Pedido #{pedido.id}
                 </h3>
               </div>
@@ -302,7 +302,7 @@ const ConfirmarPedidoForm = ({
               </Badge>
             </div>
 
-            <div className="text-gray-700 dark:text-gray-300">
+            <div className="text-foreground">
               <span className="font-medium">Fornecedor:</span>{" "}
               {pedido.fornecedor.nome}
             </div>
@@ -321,39 +321,39 @@ const ConfirmarPedidoForm = ({
         </Card>
 
         {/* Tabela de produtos */}
-        <Card className="border-gray-300 dark:border-gray-600 overflow-hidden">
+        <Card className="border-input overflow-hidden">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-gray-100 dark:bg-gray-800">
+                <TableHeader className="bg-muted">
                   <TableRow>
-                    <TableHead className="font-medium text-gray-700 dark:text-gray-300">
+                    <TableHead className="font-medium text-foreground">
                       Produto
                     </TableHead>
-                    <TableHead className="w-24 text-center font-medium text-gray-700 dark:text-gray-300">
+                    <TableHead className="w-24 text-center font-medium text-foreground">
                       <div className="flex items-center justify-center gap-1">
                         Qtd. Pedida
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <HelpCircle className="h-3 w-3 text-gray-400" />
+                              <HelpCircle className="h-3 w-3 text-muted-foreground" />
                             </TooltipTrigger>
-                            <TooltipContent className="bg-white dark:bg-gray-800 p-2 text-xs max-w-xs">
+                            <TooltipContent className="bg-card p-2 text-xs max-w-xs">
                               Quantidade original do pedido
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
                     </TableHead>
-                    <TableHead className="w-24 text-center font-medium text-gray-700 dark:text-gray-300">
+                    <TableHead className="w-24 text-center font-medium text-foreground">
                       <div className="flex items-center justify-center gap-1">
                         Qtd. Recebida
                         <TooltipProvider>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <HelpCircle className="h-3 w-3 text-gray-400" />
+                              <HelpCircle className="h-3 w-3 text-muted-foreground" />
                             </TooltipTrigger>
-                            <TooltipContent className="bg-white dark:bg-gray-800 p-2 text-xs max-w-xs">
+                            <TooltipContent className="bg-card p-2 text-xs max-w-xs">
                               Quantidade que você realmente recebeu. Se for
                               menor que a quantidade pedida, um novo pedido será
                               criado automaticamente para os itens faltantes.
@@ -362,13 +362,13 @@ const ConfirmarPedidoForm = ({
                         </TooltipProvider>
                       </div>
                     </TableHead>
-                    <TableHead className="w-32 text-right font-medium text-gray-700 dark:text-gray-300">
+                    <TableHead className="w-32 text-right font-medium text-foreground">
                       Custo Unitário
                     </TableHead>
-                    <TableHead className="w-24 text-right font-medium text-gray-700 dark:text-gray-300">
+                    <TableHead className="w-24 text-right font-medium text-foreground">
                       Multiplicador
                     </TableHead>
-                    <TableHead className="w-32 text-right font-medium text-gray-700 dark:text-gray-300">
+                    <TableHead className="w-32 text-right font-medium text-foreground">
                       Subtotal
                     </TableHead>
                   </TableRow>
@@ -388,17 +388,17 @@ const ConfirmarPedidoForm = ({
                     return (
                       <TableRow
                         key={produto.produtoId}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                        className="hover:bg-background"
                       >
                         <TableCell>
-                          <div className="font-medium text-gray-800 dark:text-gray-200">
+                          <div className="font-medium text-foreground">
                             {produto.produto?.nome || "Produto não encontrado"}
                           </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                          <div className="text-xs text-muted-foreground">
                             SKU: {produto.produto?.sku || "N/A"}
                           </div>
                         </TableCell>
-                        <TableCell className="text-center text-gray-700 dark:text-gray-300">
+                        <TableCell className="text-center text-foreground">
                           {produto.quantidade}
                         </TableCell>
                         <TableCell className="text-center">
@@ -413,7 +413,7 @@ const ConfirmarPedidoForm = ({
                               )
                             }
                             disabled={isSubmitting}
-                            className={`w-20 text-center mx-auto bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 ${
+                            className={`w-20 text-center mx-auto bg-card border-input ${
                               quantidade < produto.quantidade
                                 ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20"
                                 : ""
@@ -433,13 +433,13 @@ const ConfirmarPedidoForm = ({
                               )
                             }
                             disabled={isSubmitting}
-                            className="w-24 text-right ml-auto bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                            className="w-24 text-right ml-auto bg-card border-input"
                           />
                         </TableCell>
-                        <TableCell className="text-right text-gray-700 dark:text-gray-300">
+                        <TableCell className="text-right text-foreground">
                           {multiplicador}x
                         </TableCell>
-                        <TableCell className="text-right font-medium text-gray-800 dark:text-gray-200">
+                        <TableCell className="text-right font-medium text-foreground">
                           {formatBRL(subtotal)}
                         </TableCell>
                       </TableRow>
@@ -447,14 +447,14 @@ const ConfirmarPedidoForm = ({
                   })}
 
                   {/* Linha do total */}
-                  <TableRow className="border-t-2 bg-gray-50 dark:bg-gray-900/50">
+                  <TableRow className="border-t-2 bg-background">
                     <TableCell
                       colSpan={5}
-                      className="text-right font-semibold text-gray-800 dark:text-gray-200"
+                      className="text-right font-semibold text-foreground"
                     >
                       Valor Total:
                     </TableCell>
-                    <TableCell className="text-right font-bold text-gray-800 dark:text-gray-200">
+                    <TableCell className="text-right font-bold text-foreground">
                       {formatBRL(calcularValorTotal())}
                     </TableCell>
                   </TableRow>
@@ -471,7 +471,7 @@ const ConfirmarPedidoForm = ({
             variant="outline"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="border-input hover:bg-muted"
           >
             Cancelar
           </Button>

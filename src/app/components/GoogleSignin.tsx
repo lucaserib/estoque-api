@@ -18,7 +18,7 @@ const GoogleSignin = () => {
   return (
     <Button
       onClick={handleGoogleSignin}
-      className="w-full flex items-center justify-center gap-3 bg-white/90 text-gray-700 font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-white transition-all duration-300 active:scale-95"
+      className="w-full flex items-center justify-center gap-3 bg-card/90 text-foreground font-semibold py-3 px-6 rounded-lg shadow-md hover:bg-card transition-all duration-300 active:scale-95"
     >
       <FaGoogle className="w-5 h-5 text-red-500" />
       Entrar com Google

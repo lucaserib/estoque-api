@@ -247,11 +247,11 @@ const TransferenciasPage = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <Header name="Transferência de Estoque" />
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Transfira produtos entre armazéns de forma simples e segura
             </p>
           </div>
@@ -274,12 +274,12 @@ const TransferenciasPage = () => {
         </CardHeader>
         <CardContent>
           {transferencias.length === 0 ? (
-            <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-md border border-dashed border-gray-300 dark:border-gray-700">
-              <ArrowLeftRight className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-              <h3 className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-2">
+            <div className="text-center py-8 bg-background rounded-md border border-dashed border-input">
+              <ArrowLeftRight className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <h3 className="text-lg font-medium text-muted-foreground mb-2">
                 Nenhuma transferência registrada
               </h3>
-              <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
                 Não há transferências cadastradas. Use o botão &quot;Nova Transferência&quot; para começar.
               </p>
             </div>
@@ -300,7 +300,7 @@ const TransferenciasPage = () => {
                   <TableRow key={transferencia.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
                         {format(new Date(transferencia.data), "dd/MM/yyyy", {
                           locale: ptBR,
                         })}
@@ -308,13 +308,13 @@ const TransferenciasPage = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Warehouse className="h-4 w-4 text-gray-400" />
+                        <Warehouse className="h-4 w-4 text-muted-foreground" />
                         {transferencia.armazemOrigem.nome}
                       </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Warehouse className="h-4 w-4 text-gray-400" />
+                        <Warehouse className="h-4 w-4 text-muted-foreground" />
                         {transferencia.armazemDestino.nome}
                       </div>
                     </TableCell>
@@ -326,13 +326,13 @@ const TransferenciasPage = () => {
                     <TableCell>
                       {transferencia.observacoes ? (
                         <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-gray-400" />
+                          <FileText className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm truncate max-w-40">
                             {transferencia.observacoes}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-gray-400 text-sm">-</span>
+                        <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
                     <TableCell>
@@ -394,7 +394,7 @@ const TransferenciasPage = () => {
           {armazemOrigemId && (
             <div className="space-y-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -500,7 +500,7 @@ const TransferenciasPage = () => {
                                   </Button>
                                 </div>
                               ) : (
-                                <span className="text-gray-400">-</span>
+                                <span className="text-muted-foreground">-</span>
                               )}
                             </TableCell>
                           </TableRow>

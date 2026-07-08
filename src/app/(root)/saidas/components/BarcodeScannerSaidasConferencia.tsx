@@ -362,16 +362,16 @@ const BarcodeScannerSaidasConferencia = ({
           produtos serão incrementados a cada leitura.
         </p>
 
-        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 bg-white/50 dark:bg-gray-800/30 p-3 rounded-md">
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3 bg-card/50 p-3 rounded-md">
           <div className="flex items-center gap-2">
-            <Warehouse className="h-4 w-4 text-gray-500" />
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <Warehouse className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-foreground">
               Armazém: <strong>{saida.armazem.nome}</strong>
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-gray-500" />
-            <span className="text-sm text-gray-700 dark:text-gray-300">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-foreground">
               Data: <strong>{new Date(saida.data).toLocaleDateString()}</strong>
             </span>
           </div>
@@ -379,7 +379,7 @@ const BarcodeScannerSaidasConferencia = ({
       </div>
 
       {mostrarConfirmacao && (
-        <div className="absolute z-10 top-full mt-2 right-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-red-200 dark:border-red-800 p-3 w-64">
+        <div className="absolute z-10 top-full mt-2 right-0 bg-card rounded-lg shadow-lg border border-red-200 dark:border-red-800 p-3 w-64">
           <p className="text-sm text-red-600 dark:text-red-400 mb-2">
             Tem certeza? Você perderá todos os {calcularTotalContado()} itens
             contados.
@@ -423,8 +423,8 @@ const BarcodeScannerSaidasConferencia = ({
         validateBarcode={validarCodigoBarras}
       />
 
-      <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-        <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="border border-border rounded-lg overflow-hidden">
+        <div className="bg-background px-4 py-3 border-b border-border">
           <div className="flex items-center justify-between">
             <h3 className="font-medium flex items-center gap-2">
               <Barcode className="h-4 w-4 text-indigo-500" />
@@ -498,10 +498,10 @@ const BarcodeScannerSaidasConferencia = ({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium text-gray-800 dark:text-gray-200">
+                      <div className="font-medium text-foreground">
                         {detalhe.produto.nome || "Produto não encontrado"}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <div className="text-xs text-muted-foreground">
                         SKU: {detalhe.produto.sku || "N/A"}
                       </div>
                     </TableCell>
@@ -510,7 +510,7 @@ const BarcodeScannerSaidasConferencia = ({
                         className={`
                           ${
                             quantidadeConferida === 0
-                              ? "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300"
+                              ? "bg-muted text-foreground"
                               : diferente
                               ? quantidadeConferida < detalhe.quantidade
                                 ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
@@ -525,13 +525,13 @@ const BarcodeScannerSaidasConferencia = ({
                     <TableCell>
                       {temEAN ? (
                         <div className="flex items-center gap-1">
-                          <Barcode className="h-3 w-3 text-gray-500" />
+                          <Barcode className="h-3 w-3 text-muted-foreground" />
                           <span className="font-mono text-xs">
                             {getCodigoEAN(detalhe.produto as ProdutoComEAN)}
                           </span>
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-500 italic">
+                        <span className="text-xs text-muted-foreground italic">
                           Não cadastrado
                         </span>
                       )}
@@ -539,17 +539,17 @@ const BarcodeScannerSaidasConferencia = ({
                     <TableCell className="text-right">
                       {ultimoScan ? (
                         <div className="flex items-center justify-end gap-1.5">
-                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                          <span className="text-xs text-muted-foreground">
                             {ultimoScan.timestamp.toLocaleTimeString()}
                           </span>
                           <CheckCircle2 className="h-4 w-4 text-green-500" />
                         </div>
                       ) : temEAN ? (
-                        <span className="text-xs text-gray-500 italic">
+                        <span className="text-xs text-muted-foreground italic">
                           Não lido
                         </span>
                       ) : (
-                        <X className="h-4 w-4 text-gray-400 ml-auto" />
+                        <X className="h-4 w-4 text-muted-foreground ml-auto" />
                       )}
                     </TableCell>
                   </TableRow>
@@ -604,8 +604,8 @@ const BarcodeScannerSaidasConferencia = ({
       )}
 
       {historicoScans.length > 0 && (
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-          <div className="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+        <div className="border border-border rounded-lg overflow-hidden">
+          <div className="bg-background px-4 py-3 border-b border-border flex justify-between items-center">
             <h3 className="font-medium flex items-center gap-2">
               <Package className="h-4 w-4 text-indigo-500" />
               Histórico de Leituras

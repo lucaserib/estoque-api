@@ -375,12 +375,12 @@ export function SaidaList({ saidas }: SaidaListProps) {
   if (!saidas || saidas.length === 0) {
     // Mantenha o código existente para quando não há saídas...
     return (
-      <div className="text-center py-8 bg-gray-50 dark:bg-gray-900/50 rounded-md border border-dashed border-gray-300 dark:border-gray-700">
-        <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-        <h3 className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-2">
+      <div className="text-center py-8 bg-background rounded-md border border-dashed border-input">
+        <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+        <h3 className="text-lg font-medium text-muted-foreground mb-2">
           Nenhuma saída registrada
         </h3>
-        <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-md mx-auto">
+        <p className="text-muted-foreground mb-6 max-w-md mx-auto">
           Não há registros de saída no período selecionado. Use o botão
           &quot;Nova Saída&quot; para registrar a movimentação de produtos.
         </p>
@@ -392,7 +392,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
     <div className="space-y-4">
       {/* Botões para exportação */}
       <div className="flex justify-between items-center mb-2">
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-muted-foreground">
           {selectedIds.length > 0 ? (
             <span className="font-medium text-indigo-600">
               {selectedIds.length}{" "}
@@ -421,7 +421,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
 
       <div className="border rounded-md overflow-hidden">
         <Table>
-          <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+          <TableHeader className="bg-background">
             <TableRow>
               <TableHead className="w-12">
                 <Checkbox
@@ -443,7 +443,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
             {saidas.map((saida) => (
               <TableRow
                 key={saida.id}
-                className="hover:bg-gray-50 dark:hover:bg-gray-800/50 group"
+                className="hover:bg-background group"
               >
                 <TableCell>
                   <Checkbox
@@ -454,7 +454,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-400" />
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>
                       {format(new Date(saida.data), "dd/MM/yyyy", {
                         locale: ptBR,
@@ -464,7 +464,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Warehouse className="h-4 w-4 text-gray-400" />
+                    <Warehouse className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{saida.armazem.nome}</span>
                   </div>
                 </TableCell>
@@ -479,7 +479,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
                       <Badge
                         key={detalhe.id}
                         variant="outline"
-                        className="bg-gray-50 dark:bg-gray-800"
+                        className="bg-background"
                       >
                         {detalhe.isKit && <Package className="h-3 w-3 mr-1" />}
                         {detalhe.produto.sku} ({detalhe.quantidade})
@@ -488,7 +488,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
                     {saida.detalhes.length > 2 && (
                       <Badge
                         variant="outline"
-                        className="bg-gray-50 dark:bg-gray-800"
+                        className="bg-background"
                       >
                         +{saida.detalhes.length - 2} itens
                       </Badge>

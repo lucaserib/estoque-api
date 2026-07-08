@@ -16,7 +16,7 @@ export function SaidaLoadingSkeleton() {
     <div className="space-y-4">
       <div className="border rounded-md overflow-hidden">
         <Table>
-          <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+          <TableHeader className="bg-background">
             <TableRow>
               <TableHead className="font-medium">
                 <Skeleton className="h-4 w-24" />

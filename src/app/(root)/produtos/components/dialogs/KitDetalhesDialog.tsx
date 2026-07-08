@@ -58,11 +58,11 @@ export function KitDetalhesDialog({
         }
       }}
     >
-      <DialogContent className="max-w-xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <Box className="h-5 w-5 text-indigo-500" />
                 Detalhes do Kit
               </DialogTitle>
@@ -70,7 +70,7 @@ export function KitDetalhesDialog({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -80,24 +80,24 @@ export function KitDetalhesDialog({
 
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2 space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <div className="bg-background p-4 rounded-lg border border-border">
               <div className="grid grid-cols-1 gap-2">
                 <div className="flex flex-col">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-sm text-muted-foreground">
                     Nome:
                   </span>
-                  <span className="text-base font-medium text-gray-900 dark:text-gray-100">
+                  <span className="text-base font-medium text-foreground">
                     {kit.nome}
                   </span>
                 </div>
 
                 <div className="flex flex-col mt-3">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-sm text-muted-foreground">
                     SKU:
                   </span>
                   <div className="flex items-center">
-                    <Barcode className="h-4 w-4 text-gray-400 mr-1" />
-                    <span className="text-base font-medium text-gray-900 dark:text-gray-100">
+                    <Barcode className="h-4 w-4 text-muted-foreground mr-1" />
+                    <span className="text-base font-medium text-foreground">
                       {kit.sku}
                     </span>
                   </div>
@@ -119,9 +119,9 @@ export function KitDetalhesDialog({
               </h3>
 
               {kit.componentes && kit.componentes.length > 0 ? (
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="border border-border rounded-lg overflow-hidden">
                   <Table>
-                    <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableHeader className="bg-background">
                       <TableRow>
                         <TableHead className="font-medium">Produto</TableHead>
                         <TableHead className="font-medium">SKU</TableHead>
@@ -137,7 +137,7 @@ export function KitDetalhesDialog({
                             {componente.produto?.nome ||
                               "Produto não encontrado"}
                           </TableCell>
-                          <TableCell className="text-gray-600 dark:text-gray-300">
+                          <TableCell className="text-muted-foreground">
                             {componente.produto?.sku || "N/A"}
                           </TableCell>
                           <TableCell className="text-right">
@@ -154,9 +154,9 @@ export function KitDetalhesDialog({
                   </Table>
                 </div>
               ) : (
-                <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
-                  <Package className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-500 dark:text-gray-400">
+                <div className="bg-background p-6 rounded-lg border border-border text-center">
+                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">
                     Este kit não possui componentes ou os dados não estão
                     disponíveis.
                   </p>

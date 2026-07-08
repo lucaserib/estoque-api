@@ -94,7 +94,7 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
       statusConfig[status as keyof typeof statusConfig] || {
         label: status,
         color:
-          "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
+          "bg-muted text-foreground",
       }
     );
   };
@@ -102,12 +102,12 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
   // If there are no vendas, show a message
   if (!vendas || vendas.length === 0) {
     return (
-      <div className="text-center py-12 bg-gray-50 dark:bg-gray-900/50 rounded-md border border-dashed border-gray-300 dark:border-gray-700">
-        <ShoppingCart className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-        <h3 className="text-lg font-medium text-gray-600 dark:text-gray-300 mb-2">
+      <div className="text-center py-12 bg-background rounded-md border border-dashed border-input">
+        <ShoppingCart className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+        <h3 className="text-lg font-medium text-muted-foreground mb-2">
           Nenhuma venda encontrada
         </h3>
-        <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
+        <p className="text-muted-foreground max-w-md mx-auto">
           Não há vendas do Mercado Livre no período selecionado ou que
           correspondam aos critérios de busca.
         </p>
@@ -119,7 +119,7 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
     <div className="space-y-4">
       <div className="border rounded-md overflow-hidden">
         <Table>
-          <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+          <TableHeader className="bg-background">
             <TableRow>
               <TableHead className="font-medium">Data</TableHead>
               <TableHead className="font-medium">Pedido</TableHead>
@@ -137,18 +137,18 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
               return (
                 <TableRow
                   key={venda.id}
-                  className="hover:bg-gray-50 dark:hover:bg-gray-800/50 group"
+                  className="hover:bg-background group"
                 >
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span>
                         {format(new Date(venda.date_created), "dd/MM/yyyy", {
                           locale: ptBR,
                         })}
                       </span>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 ml-6">
+                    <div className="text-xs text-muted-foreground ml-6">
                       {format(new Date(venda.date_created), "HH:mm", {
                         locale: ptBR,
                       })}
@@ -163,13 +163,13 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
 
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-gray-400" />
+                      <User className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <div className="font-medium text-sm">
                           {venda.buyer.nickname}
                         </div>
                         {(venda.buyer.first_name || venda.buyer.last_name) && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400">
+                          <div className="text-xs text-muted-foreground">
                             {venda.buyer.first_name} {venda.buyer.last_name}
                           </div>
                         )}
@@ -190,7 +190,7 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
                       {countTotalItems(venda) === 1 ? "item" : "itens"}
                     </Badge>
                     {venda.items.length > 1 && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      <div className="text-xs text-muted-foreground mt-1">
                         {venda.items.length} produtos
                       </div>
                     )}
@@ -204,7 +204,7 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
                       </span>
                     </div>
                     {venda.paid_amount !== venda.total_amount && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <div className="text-xs text-muted-foreground">
                         Pago:{" "}
                         {formatCurrency(venda.paid_amount, venda.currency_id)}
                       </div>

@@ -79,11 +79,11 @@ const GestaoPedidos = () => {
 
   return (
     <div className="container max-w-screen-xl mx-auto p-4 md:p-6 space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-4 md:p-6">
         <div className="flex justify-between items-center">
           <div>
             <Header name="Gestão de Pedidos" />
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Gerencie seus pedidos de compra e monitore o fluxo de entrada de
               produtos
             </p>
@@ -114,7 +114,7 @@ const GestaoPedidos = () => {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-6 bg-white dark:bg-gray-800">
+          <CardContent className="p-6 bg-card">
             <NovoPedidoForm
               onSuccess={() => {
                 setIsFormOpen(false);
@@ -127,15 +127,15 @@ const GestaoPedidos = () => {
         <>
           {/* Dashboard cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <Card className="bg-card border border-border shadow-sm overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex items-center">
                   <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <p className="text-sm font-medium text-muted-foreground">
                       Pedidos Pendentes
                     </p>
                     <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      <h3 className="text-2xl font-bold text-foreground">
                         {isLoadingStats ? "-" : stats.pendentes}
                       </h3>
                       <Button
@@ -153,15 +153,15 @@ const GestaoPedidos = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <Card className="bg-card border border-border shadow-sm overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex items-center">
                   <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <p className="text-sm font-medium text-muted-foreground">
                       Pedidos Concluídos
                     </p>
                     <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      <h3 className="text-2xl font-bold text-foreground">
                         {isLoadingStats ? "-" : stats.concluidos}
                       </h3>
                       <Button
@@ -179,15 +179,15 @@ const GestaoPedidos = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+            <Card className="bg-card border border-border shadow-sm overflow-hidden">
               <CardContent className="p-0">
                 <div className="flex items-center">
                   <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                    <p className="text-sm font-medium text-muted-foreground">
                       Valor Total (30 dias)
                     </p>
                     <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                      <h3 className="text-2xl font-bold text-foreground">
                         {isLoadingStats
                           ? "-"
                           : `R$ ${(stats.valorTotal / 100).toFixed(2)}`}
@@ -209,19 +209,19 @@ const GestaoPedidos = () => {
           </div>
 
           {/* Filtros */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <Card className="bg-card border border-border shadow-sm">
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row justify-between gap-4">
                 <div className="flex flex-1 gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Buscar pedido, fornecedor..."
                       value={filter.searchTerm}
                       onChange={(e) =>
                         handleFilterChange({ searchTerm: e.target.value })
                       }
-                      className="pl-9 h-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
+                      className="pl-9 h-10 bg-background border-border"
                     />
                   </div>
                   <DatePickerWithRange
@@ -235,7 +235,7 @@ const GestaoPedidos = () => {
                 <Button
                   variant="outline"
                   onClick={handleExport}
-                  className="h-10 border-gray-200 bg-gray-50 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800 gap-2"
+                  className="h-10 border-border bg-background hover:bg-muted gap-2"
                 >
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">Exportar</span>
@@ -245,14 +245,14 @@ const GestaoPedidos = () => {
           </Card>
 
           {/* Tabs and content */}
-          <Card className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+          <Card className="bg-card border border-border shadow-sm overflow-hidden">
             <Tabs
               defaultValue="concluidos"
               value={activeTab}
               onValueChange={setActiveTab}
             >
-              <div className="px-4 pt-4 border-b border-gray-200 dark:border-gray-700">
-                <TabsList className="grid w-full grid-cols-2 h-10 bg-gray-100 dark:bg-gray-900 p-1 rounded-md">
+              <div className="px-4 pt-4 border-b border-border">
+                <TabsList className="grid w-full grid-cols-2 h-10 bg-muted p-1 rounded-md">
                   <TabsTrigger
                     value="pendentes"
                     className="flex gap-2 items-center data-[state=active]:bg-amber-100 data-[state=active]:text-amber-900 dark:data-[state=active]:bg-amber-900/40 dark:data-[state=active]:text-amber-100 rounded-md transition-colors"

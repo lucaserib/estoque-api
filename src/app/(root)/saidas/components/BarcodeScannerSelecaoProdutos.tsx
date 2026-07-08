@@ -636,7 +636,7 @@ export default function BarcodeScannerSelecaoProdutos({
       {/* Cabeçalho do Scanner */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
             <Scan className="h-5 w-5 text-indigo-500" />
             Leitura de Código de Barras
           </h3>
@@ -650,7 +650,7 @@ export default function BarcodeScannerSelecaoProdutos({
             Voltar para Modo Manual
           </Button>
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+        <p className="text-sm text-muted-foreground">
           Escaneie o código de barras dos produtos para adicioná-los à saída.
           Cada leitura incrementa a quantidade em 1.
         </p>
@@ -676,9 +676,9 @@ export default function BarcodeScannerSelecaoProdutos({
       </div>
 
       {/* Pesquisa alternativa por produto */}
-      <div className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
-        <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
-          <Search className="h-4 w-4 text-gray-500" />
+      <div className="p-4 border border-border rounded-lg">
+        <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
           Busca direta por produto
         </h4>
 
@@ -740,14 +740,14 @@ export default function BarcodeScannerSelecaoProdutos({
       {/* Lista de produtos selecionados */}
       {produtosSelecionados.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
             <Package className="h-5 w-5 text-indigo-500" />
             Produtos Selecionados ({totalEscaneado} itens)
           </h3>
 
           <div className="border rounded-lg overflow-hidden">
             <Table>
-              <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+              <TableHeader className="bg-background">
                 <TableRow>
                   <TableHead className="font-medium">Produto</TableHead>
                   <TableHead className="font-medium text-center">
@@ -762,13 +762,13 @@ export default function BarcodeScannerSelecaoProdutos({
                 {produtosSelecionados.map((item) => (
                   <TableRow
                     key={item.sku}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    className="hover:bg-background"
                   >
                     <TableCell>
-                      <div className="font-medium text-gray-900 dark:text-gray-100">
+                      <div className="font-medium text-foreground">
                         {item.nome}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <div className="text-xs text-muted-foreground">
                         SKU: {item.sku}
                       </div>
                     </TableCell>
@@ -825,7 +825,7 @@ export default function BarcodeScannerSelecaoProdutos({
       {historicoScans.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <History className="h-5 w-5 text-indigo-500" />
               Histórico de Leituras
             </h3>
@@ -833,18 +833,18 @@ export default function BarcodeScannerSelecaoProdutos({
               variant="ghost"
               size="sm"
               onClick={limparHistorico}
-              className="text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+              className="text-muted-foreground hover:text-foreground"
             >
               Limpar Histórico
             </Button>
           </div>
 
-          <ScrollArea className="h-[200px] rounded-lg border border-gray-200 dark:border-gray-700">
+          <ScrollArea className="h-[200px] rounded-lg border border-border">
             <div className="p-3">
               {historicoScans.map((scan, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-800 last:border-0"
+                  className="flex items-center justify-between py-2 border-b border-border last:border-0"
                 >
                   <div className="flex items-center gap-2">
                     {validarCodigoBarras(scan.codigo) ? (
@@ -856,12 +856,12 @@ export default function BarcodeScannerSelecaoProdutos({
                       <div className="font-medium">
                         {scan.produtoNome || "Produto desconhecido"}
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <div className="text-xs text-muted-foreground">
                         Código: {scan.codigo}
                       </div>
                     </div>
                   </div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                  <div className="text-xs text-muted-foreground">
                     {scan.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -876,9 +876,9 @@ export default function BarcodeScannerSelecaoProdutos({
       )}
 
       {/* Dicas e instruções */}
-      <Alert className="bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
-        <Info className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-        <AlertDescription className="text-gray-600 dark:text-gray-400">
+      <Alert className="bg-background border-border">
+        <Info className="h-4 w-4 text-muted-foreground" />
+        <AlertDescription className="text-muted-foreground">
           <p>
             <strong>Dicas:</strong>
           </p>

@@ -75,12 +75,12 @@ const EstoqueSegurancaCard = ({
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-green-100 mb-4">
             <AlertTriangle className="h-6 w-6 text-green-600" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900">
+          <h3 className="text-lg font-medium text-foreground">
             {searchTerm
               ? "Nenhum produto encontrado para a pesquisa"
               : "Nenhum produto em estoque crítico"}
           </h3>
-          <p className="text-gray-500 mt-2">
+          <p className="text-muted-foreground mt-2">
             {searchTerm
               ? `Sua pesquisa por &quot;${searchTerm}&quot; não retornou resultados.`
               : "Todos os seus produtos estão com níveis de estoque adequados."}
@@ -111,7 +111,7 @@ const EstoqueSegurancaCard = ({
                     <TableCell className="font-medium">
                       <div className="flex flex-col">
                         <span>{item.nome}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-muted-foreground">
                           {item.quantidade}/{item.estoqueSeguranca} unidades
                         </span>
                       </div>
@@ -121,7 +121,7 @@ const EstoqueSegurancaCard = ({
                       {item.armazem}
                     </TableCell>
                     <TableCell>
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                      <div className="w-full bg-muted rounded-full h-2.5">
                         <div
                           className={`h-2.5 rounded-full ${statusClass}`}
                           style={{ width: `${percentual}%` }}
@@ -138,7 +138,7 @@ const EstoqueSegurancaCard = ({
 
       {filteredData.length > 0 && (
         <div className="flex justify-between items-center mt-4">
-          <div className="text-sm text-gray-500">
+          <div className="text-sm text-muted-foreground">
             Mostrando {filteredData.length} produto
             {filteredData.length !== 1 ? "s" : ""} em estoque crítico
             {searchTerm && (

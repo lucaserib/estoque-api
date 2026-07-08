@@ -61,47 +61,47 @@ const EditarProdutoModal = ({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-11/12 max-w-md">
+      <div className="bg-card p-6 rounded-lg shadow-lg w-11/12 max-w-md">
         <h2 className="text-xl font-bold mb-4">Editar Produto</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               Nome
             </label>
             <input
               type="text"
               value={nome}
               onChange={(e) => setNome(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+              className="w-full px-4 py-2 border border-input rounded-md"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               SKU
             </label>
             <input
               type="text"
               value={sku}
               onChange={(e) => setSku(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+              className="w-full px-4 py-2 border border-input rounded-md"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-medium text-foreground">
               EAN
             </label>
             <input
               type="text"
               value={ean}
               onChange={(e) => setEan(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+              className="w-full px-4 py-2 border border-input rounded-md"
             />
           </div>
         </div>
         <div className="mt-6 flex justify-end space-x-4">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+            className="px-4 py-2 bg-secondary text-secondary-foreground rounded-md hover:bg-secondary/80"
           >
             Cancelar
           </button>

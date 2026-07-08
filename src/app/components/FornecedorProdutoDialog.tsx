@@ -379,11 +379,11 @@ export function FornecedorProdutoDialog({
         }
       }}
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <Link className="h-5 w-5 text-indigo-500" />
                 Produtos de {fornecedor.nome}
               </DialogTitle>
@@ -392,7 +392,7 @@ export function FornecedorProdutoDialog({
                 size="icon"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -414,16 +414,16 @@ export function FornecedorProdutoDialog({
                   <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
                 </div>
               ) : produtosVinculados.length === 0 ? (
-                <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
-                  <Package className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-500 dark:text-gray-400">
+                <div className="bg-background p-6 rounded-lg border border-border text-center">
+                  <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">
                     Nenhum produto vinculado a este fornecedor.
                   </p>
                 </div>
               ) : (
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="border border-border rounded-lg overflow-hidden">
                   <Table>
-                    <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableHeader className="bg-background">
                       <TableRow>
                         <TableHead className="font-medium">Produto</TableHead>
                         <TableHead className="font-medium">Preço</TableHead>
@@ -442,7 +442,7 @@ export function FornecedorProdutoDialog({
                               <div className="font-medium">
                                 {vinculo.produto?.nome || "Nome não disponível"}
                               </div>
-                              <div className="text-xs text-gray-500">
+                              <div className="text-xs text-muted-foreground">
                                 SKU: {vinculo.produto?.sku || "N/A"}
                               </div>
                             </div>
@@ -512,7 +512,7 @@ export function FornecedorProdutoDialog({
                                     size="sm"
                                     onClick={() => setEditingId(null)}
                                     disabled={isSubmitting}
-                                    className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-background"
                                   >
                                     <X className="h-4 w-4" />
                                   </Button>
@@ -559,7 +559,7 @@ export function FornecedorProdutoDialog({
             )}
 
             {/* Adicionar Novo Produto */}
-            <div className="bg-gray-50 dark:bg-gray-800/20 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="bg-background p-4 rounded-lg border border-border">
               <h3 className="text-md font-semibold mb-4 flex items-center gap-2">
                 <Plus className="h-4 w-4 text-indigo-500" />
                 Vincular Novo Produto
@@ -582,7 +582,7 @@ export function FornecedorProdutoDialog({
                       {isSearching ? (
                         <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
                       ) : (
-                        <Search className="h-4 w-4 text-gray-400" />
+                        <Search className="h-4 w-4 text-muted-foreground" />
                       )}
                     </div>
                   </div>
@@ -599,7 +599,7 @@ export function FornecedorProdutoDialog({
                         {searchResults.map((produto) => (
                           <div
                             key={produto.id}
-                            className={`px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 flex justify-between items-center ${
+                            className={`px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center ${
                               selectedProdutoId === produto.id
                                 ? "bg-blue-50 dark:bg-blue-900/20"
                                 : ""
@@ -608,7 +608,7 @@ export function FornecedorProdutoDialog({
                           >
                             <div>
                               <p className="font-medium">{produto.nome}</p>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                              <p className="text-xs text-muted-foreground">
                                 SKU: {produto.sku}
                               </p>
                             </div>
@@ -638,8 +638,8 @@ export function FornecedorProdutoDialog({
                 ) : (
                   produtoSearch &&
                   !isSearching && (
-                    <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm bg-gray-50 dark:bg-gray-800/50 rounded-md border border-gray-200 dark:border-gray-700">
-                      <Package className="h-8 w-8 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                    <div className="text-center py-4 text-muted-foreground text-sm bg-background rounded-md border border-border">
+                      <Package className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                       <p>Nenhum produto encontrado para &quot;{produtoSearch}&quot;</p>
                       <p className="text-xs mt-1">Verifique se o produto existe ou ajuste o termo de busca</p>
                     </div>

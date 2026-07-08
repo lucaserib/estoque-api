@@ -250,13 +250,13 @@ const FluxoFinanceiroChart = () => {
                 </div>
               </div>
 
-              <div className="rounded-lg bg-gray-50 dark:bg-gray-800 p-4 flex items-center space-x-4">
-                <div className="rounded-full bg-gray-100 dark:bg-gray-700 p-2">
-                  <PiggyBank className="h-5 w-5 text-gray-600 dark:text-gray-400" />
+              <div className="rounded-lg bg-background p-4 flex items-center space-x-4">
+                <div className="rounded-full bg-muted p-2">
+                  <PiggyBank className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="flex items-center space-x-1">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                    <p className="text-sm text-muted-foreground">
                       Variação
                     </p>
                     <p className="text-lg font-bold flex items-center">
@@ -444,7 +444,7 @@ const FluxoFinanceiroChart = () => {
             </Tabs>
           </div>
         ) : (
-          <p className="text-center text-gray-500">Nenhum dado encontrado.</p>
+          <p className="text-center text-muted-foreground">Nenhum dado encontrado.</p>
         )}
       </CardContent>
     </Card>

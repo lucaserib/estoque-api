@@ -67,11 +67,11 @@ export function SaidaDetalhesDialog({
         }
       }}
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <ShoppingBag className="h-5 w-5 text-indigo-500" />
                 Detalhes da Saída
               </DialogTitle>
@@ -91,7 +91,7 @@ export function SaidaDetalhesDialog({
                   variant="ghost"
                   size="icon"
                   onClick={onClose}
-                  className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                  className="h-8 w-8 rounded-full border border-border"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -102,14 +102,14 @@ export function SaidaDetalhesDialog({
 
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-background p-4 rounded-lg border border-border">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">
                     Data da Saída:
                   </span>
-                  <span className="text-gray-900 dark:text-gray-100">
+                  <span className="text-foreground">
                     {format(new Date(saida.data), "dd/MM/yyyy", {
                       locale: ptBR,
                     })}
@@ -117,11 +117,11 @@ export function SaidaDetalhesDialog({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Warehouse className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <Warehouse className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">
                     Armazém:
                   </span>
-                  <span className="text-gray-900 dark:text-gray-100">
+                  <span className="text-foreground">
                     {saida.armazem.nome}
                   </span>
                 </div>
@@ -129,11 +129,11 @@ export function SaidaDetalhesDialog({
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">
                     Total de Itens:
                   </span>
-                  <span className="text-gray-900 dark:text-gray-100">
+                  <span className="text-foreground">
                     {saida.detalhes.reduce(
                       (acc, detalhe) => acc + detalhe.quantidade,
                       0
@@ -143,11 +143,11 @@ export function SaidaDetalhesDialog({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Box className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <Box className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">
                     ID da Saída:
                   </span>
-                  <span className="text-gray-900 dark:text-gray-100">
+                  <span className="text-foreground">
                     #{saida.id}
                   </span>
                 </div>
@@ -155,25 +155,25 @@ export function SaidaDetalhesDialog({
             </div>
 
             <div className="mb-4">
-              <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4 text-indigo-500" />
                 Lista de Produtos
               </h3>
 
-              <div className="overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
+              <div className="overflow-hidden rounded-md border border-border">
                 <Table>
-                  <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                  <TableHeader className="bg-background">
                     <TableRow>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400">
+                      <TableHead className="font-medium text-muted-foreground">
                         Produto
                       </TableHead>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400">
+                      <TableHead className="font-medium text-muted-foreground">
                         SKU
                       </TableHead>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400 text-center">
+                      <TableHead className="font-medium text-muted-foreground text-center">
                         Quantidade
                       </TableHead>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400 text-center">
+                      <TableHead className="font-medium text-muted-foreground text-center">
                         Tipo
                       </TableHead>
                     </TableRow>
@@ -182,14 +182,14 @@ export function SaidaDetalhesDialog({
                     {saida.detalhes.map((detalhe) => (
                       <TableRow
                         key={detalhe.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50 group"
+                        className="hover:bg-background group"
                       >
                         <TableCell>
-                          <div className="font-medium text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                          <div className="font-medium text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                             {detalhe.produto.nome}
                           </div>
                         </TableCell>
-                        <TableCell className="text-gray-600 dark:text-gray-300">
+                        <TableCell className="text-muted-foreground">
                           {detalhe.produto.sku}
                         </TableCell>
                         <TableCell className="text-center font-medium">

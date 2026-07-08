@@ -314,7 +314,7 @@ export default function ImportarProdutosPage() {
                         ? "bg-blue-100 text-blue-600"
                         : step.status === "error"
                         ? "bg-red-100 text-red-600"
-                        : "bg-gray-100 text-gray-600"
+                        : "bg-muted text-muted-foreground"
                     }`}
                   >
                     {step.icon}
@@ -380,19 +380,19 @@ export default function ImportarProdutosPage() {
                 <div className="text-3xl font-bold text-green-600">
                   {matchingResults.summary.byType.ean}
                 </div>
-                <div className="text-sm text-gray-600">Por EAN</div>
+                <div className="text-sm text-muted-foreground">Por EAN</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-blue-600">
                   {matchingResults.summary.byType.sku}
                 </div>
-                <div className="text-sm text-gray-600">Por SKU</div>
+                <div className="text-sm text-muted-foreground">Por SKU</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl font-bold text-yellow-600">
                   {matchingResults.summary.byType.fuzzy}
                 </div>
-                <div className="text-sm text-gray-600">Por Similaridade</div>
+                <div className="text-sm text-muted-foreground">Por Similaridade</div>
               </div>
             </div>
 

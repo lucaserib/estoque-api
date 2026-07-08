@@ -133,7 +133,7 @@ export default function MLProductRow({
       },
       unlinked: {
         variant: "outline",
-        color: "bg-gray-100 text-gray-800",
+        color: "bg-muted text-foreground",
         icon: <Unlink className="h-3 w-3" />,
       },
     };
@@ -240,7 +240,7 @@ export default function MLProductRow({
           {/* ✅ NOVO: Comparação com mês anterior */}
           {product.salesData?.quantityPreviousMonth &&
             product.salesData.quantityPreviousMonth > 0 && (
-              <div className="text-xs text-gray-500 mt-1">
+              <div className="text-xs text-muted-foreground mt-1">
                 Mês anterior: {product.salesData.quantityPreviousMonth} unid.
                 {product.salesData.quantityGrowth !== undefined &&
                   product.salesData.quantityGrowth !== 0 && (

@@ -241,19 +241,19 @@ export function ReplenishmentDetailModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-start justify-between">
               <div>
-                <DialogTitle className="flex items-center gap-2 text-xl font-bold text-gray-800 dark:text-gray-100">
+                <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
                   <Package className="h-5 w-5 text-purple-500" />
                   Análise Detalhada de Reposição
                 </DialogTitle>
-                <DialogDescription className="text-gray-600 dark:text-gray-400 mt-2">
+                <DialogDescription className="text-muted-foreground mt-2">
                   {produto && (
                     <>
-                      <span className="font-semibold text-gray-800 dark:text-gray-200">
+                      <span className="font-semibold text-foreground">
                         {produto.nome}
                       </span>
                       <br />
@@ -280,7 +280,7 @@ export function ReplenishmentDetailModal({
               {calculando ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-                  <span className="ml-3 text-gray-600 dark:text-gray-400">
+                  <span className="ml-3 text-muted-foreground">
                     Calculando sugestões...
                   </span>
                 </div>
@@ -290,18 +290,18 @@ export function ReplenishmentDetailModal({
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                           Estoque Local
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center justify-between">
-                          <span className="text-3xl font-bold text-gray-900 dark:text-gray-100">
+                          <span className="text-3xl font-bold text-foreground">
                             {sugestao.estoqueLocal}
                           </span>
-                          <Box className="h-8 w-8 text-gray-400" />
+                          <Box className="h-8 w-8 text-muted-foreground" />
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-muted-foreground mt-2">
                           {sugestao.reposicaoLocal.diasRestantes > 999
                             ? "Estoque ilimitado"
                             : `${sugestao.reposicaoLocal.diasRestantes} dias restantes`}
@@ -311,7 +311,7 @@ export function ReplenishmentDetailModal({
 
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                           Estoque Full
                         </CardTitle>
                       </CardHeader>
@@ -322,7 +322,7 @@ export function ReplenishmentDetailModal({
                           </span>
                           <Truck className="h-8 w-8 text-blue-400" />
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-muted-foreground mt-2">
                           {sugestao.reposicaoFull
                             ? sugestao.reposicaoFull.diasRestantes > 999
                               ? "Estoque ilimitado"
@@ -334,7 +334,7 @@ export function ReplenishmentDetailModal({
 
                     <Card>
                       <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
                           Média Diária
                         </CardTitle>
                       </CardHeader>
@@ -345,7 +345,7 @@ export function ReplenishmentDetailModal({
                           </span>
                           <TrendingUp className="h-8 w-8 text-purple-400" />
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">
+                        <p className="text-xs text-muted-foreground mt-2">
                           {sugestao.mediaVendas90d} vendas ({config.analysisPeriodDays}d)
                         </p>
                       </CardContent>
@@ -386,7 +386,7 @@ export function ReplenishmentDetailModal({
                                 {index + 1}
                               </div>
                               <div className="flex-1">
-                                <p className="font-semibold text-gray-900 dark:text-gray-100">
+                                <p className="font-semibold text-foreground">
                                   {acao.tipo === "transferir_full" ? (
                                     <>
                                       <Truck className="inline h-4 w-4 mr-1" />
@@ -399,15 +399,15 @@ export function ReplenishmentDetailModal({
                                     </>
                                   )}
                                 </p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                                <p className="text-sm text-muted-foreground mt-1">
                                   {acao.origem} → {acao.destino}
                                 </p>
                                 <div className="flex items-center gap-3 mt-2">
-                                  <span className="flex items-center gap-1 text-xs text-gray-500">
+                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                     <Clock className="h-3 w-3" />
                                     Prazo: {acao.prazo}
                                   </span>
-                                  <span className="flex items-center gap-1 text-xs text-gray-500">
+                                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
                                     <DollarSign className="h-3 w-3" />
                                     Custo: {formatCurrency((acao.quantidade * (produto?.custoMedio || 0)))}
                                   </span>
@@ -470,20 +470,20 @@ export function ReplenishmentDetailModal({
                         <CardContent className="pt-4 space-y-3">
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div>
-                              <p className="text-gray-500">Ponto Reposição:</p>
+                              <p className="text-muted-foreground">Ponto Reposição:</p>
                               <p className="font-bold text-blue-600">
                                 {sugestao.reposicaoFull.pontoReposicao} un
                               </p>
                             </div>
                             <div>
-                              <p className="text-gray-500">Sugerido:</p>
+                              <p className="text-muted-foreground">Sugerido:</p>
                               <p className="font-bold text-blue-600">
                                 {sugestao.reposicaoFull.quantidadeSugerida} un
                               </p>
                             </div>
                           </div>
                           <div className="pt-2 border-t">
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
+                            <p className="text-sm text-foreground">
                               {sugestao.reposicaoFull.mensagem}
                             </p>
                           </div>
@@ -505,20 +505,20 @@ export function ReplenishmentDetailModal({
                       <CardContent className="pt-4 space-y-3">
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
-                            <p className="text-gray-500">Ponto Reposição:</p>
+                            <p className="text-muted-foreground">Ponto Reposição:</p>
                             <p className="font-bold text-orange-600">
                               {sugestao.reposicaoLocal.pontoReposicao} un
                             </p>
                           </div>
                           <div>
-                            <p className="text-gray-500">Sugerido:</p>
+                            <p className="text-muted-foreground">Sugerido:</p>
                             <p className="font-bold text-orange-600">
                               {sugestao.reposicaoLocal.quantidadeSugerida} un
                             </p>
                           </div>
                         </div>
                         <div className="pt-2 border-t">
-                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                          <p className="text-sm text-foreground">
                             {sugestao.reposicaoLocal.mensagem}
                           </p>
                         </div>
@@ -527,7 +527,7 @@ export function ReplenishmentDetailModal({
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   Nenhuma análise disponível
                 </div>
               )}
@@ -554,7 +554,7 @@ export function ReplenishmentDetailModal({
                       className={`px-6 py-4 rounded-lg font-semibold text-lg transition-all ${
                         config.analysisPeriodDays === 30
                           ? "bg-purple-600 text-white shadow-lg scale-105"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-600"
+                          : "bg-muted text-foreground border-2 border-input hover:border-purple-400 dark:hover:border-purple-600"
                       }`}
                     >
                       30 dias
@@ -568,7 +568,7 @@ export function ReplenishmentDetailModal({
                       className={`px-6 py-4 rounded-lg font-semibold text-lg transition-all ${
                         config.analysisPeriodDays === 60
                           ? "bg-purple-600 text-white shadow-lg scale-105"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-600"
+                          : "bg-muted text-foreground border-2 border-input hover:border-purple-400 dark:hover:border-purple-600"
                       }`}
                     >
                       60 dias
@@ -582,13 +582,13 @@ export function ReplenishmentDetailModal({
                       className={`px-6 py-4 rounded-lg font-semibold text-lg transition-all ${
                         config.analysisPeriodDays === 90
                           ? "bg-purple-600 text-white shadow-lg scale-105"
-                          : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-2 border-gray-300 dark:border-gray-600 hover:border-purple-400 dark:hover:border-purple-600"
+                          : "bg-muted text-foreground border-2 border-input hover:border-purple-400 dark:hover:border-purple-600"
                       }`}
                     >
                       90 dias
                     </button>
                   </div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-3">
+                  <p className="text-sm text-muted-foreground mt-3">
                     ℹ️ Define quantos dias de vendas serão considerados para calcular a média diária.
                     A análise será recalculada automaticamente ao mudar o período.
                   </p>
@@ -684,21 +684,21 @@ export function ReplenishmentDetailModal({
                     <CardContent>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <p className="text-gray-500">Nome:</p>
+                          <p className="text-muted-foreground">Nome:</p>
                           <p className="font-semibold">{produto.nome}</p>
                         </div>
                         <div>
-                          <p className="text-gray-500">SKU:</p>
+                          <p className="text-muted-foreground">SKU:</p>
                           <p className="font-semibold">{produto.sku}</p>
                         </div>
                         <div>
-                          <p className="text-gray-500">Custo Médio:</p>
+                          <p className="text-muted-foreground">Custo Médio:</p>
                           <p className="font-semibold text-green-600">
                             {formatCurrency(produto.custoMedio)}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500">Estoque Total:</p>
+                          <p className="text-muted-foreground">Estoque Total:</p>
                           <p className="font-semibold">
                             {produto.estoques.reduce((sum, e) => sum + e.quantidade, 0)} un
                           </p>
@@ -717,7 +717,7 @@ export function ReplenishmentDetailModal({
                         {produto.estoques.map((estoque, index) => (
                           <div
                             key={index}
-                            className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                            className="flex justify-between items-center p-3 bg-background rounded-lg"
                           >
                             <span className="font-medium">{estoque.armazem.nome}</span>
                             <span className="font-bold text-lg">{estoque.quantidade} un</span>
@@ -733,7 +733,7 @@ export function ReplenishmentDetailModal({
         </div>
 
         {/* Footer Fixo */}
-        <div className="sticky bottom-0 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-6 rounded-b-xl">
+        <div className="sticky bottom-0 backdrop-blur-md bg-card/90 border-t border-border p-6 rounded-b-xl">
           <DialogFooter className="flex items-center justify-between">
             <Button variant="outline" onClick={onClose}>
               Fechar

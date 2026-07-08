@@ -69,7 +69,7 @@ export function ProdutoPagination({
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 py-4 mt-2">
-      <div className="text-sm text-gray-600 dark:text-gray-400 order-2 sm:order-1">
+      <div className="text-sm text-muted-foreground order-2 sm:order-1">
         Mostrando {currentFirstItem}-{currentLastItem} de {totalItems} itens
       </div>
 
@@ -79,7 +79,7 @@ export function ProdutoPagination({
           size="icon"
           onClick={() => onPageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700"
+          className="h-8 w-8 p-0 border-border"
         >
           <ChevronLeft className="h-4 w-4" />
           <span className="sr-only">Página anterior</span>
@@ -91,7 +91,7 @@ export function ProdutoPagination({
               return (
                 <span
                   key={`ellipsis-${index}`}
-                  className="px-2 text-gray-500 dark:text-gray-400"
+                  className="px-2 text-muted-foreground"
                 >
                   …
                 </span>
@@ -107,7 +107,7 @@ export function ProdutoPagination({
                 className={`h-8 w-8 p-0 ${
                   currentPage === page
                     ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                    : "border-gray-200 dark:border-gray-700"
+                    : "border-border"
                 }`}
               >
                 {page}
@@ -122,7 +122,7 @@ export function ProdutoPagination({
           size="icon"
           onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className="h-8 w-8 p-0 border-gray-200 dark:border-gray-700"
+          className="h-8 w-8 p-0 border-border"
         >
           <ChevronRight className="h-4 w-4" />
           <span className="sr-only">Próxima página</span>

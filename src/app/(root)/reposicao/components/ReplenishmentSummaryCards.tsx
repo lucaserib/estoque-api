@@ -26,19 +26,19 @@ export function ReplenishmentSummaryCards({ summary }: ReplenishmentSummaryCards
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {/* Total de Produtos */}
-      <Card className="border-gray-200 dark:border-gray-700">
+      <Card className="border-border">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <p className="text-sm font-medium text-muted-foreground">
                 Produtos Alerta
               </p>
-              <h3 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mt-2">
+              <h3 className="text-3xl font-bold text-foreground mt-2">
                 {summary.total}
               </h3>
             </div>
-            <div className="h-12 w-12 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center">
-              <AlertCircle className="h-6 w-6 text-gray-600 dark:text-gray-400" />
+            <div className="h-12 w-12 bg-muted rounded-full flex items-center justify-center">
+              <AlertCircle className="h-6 w-6 text-muted-foreground" />
             </div>
           </div>
         </CardContent>

@@ -67,11 +67,11 @@ export function DatePickerWithRange({
             id="date"
             variant="outline"
             className={cn(
-              "w-full h-10 justify-start text-left font-normal bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700",
-              !date && "text-gray-500 dark:text-gray-400"
+              "w-full h-10 justify-start text-left font-normal bg-card border-input hover:bg-background",
+              !date && "text-muted-foreground"
             )}
           >
-            <CalendarIcon className="mr-2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+            <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
             {date?.from ? (
               date.to ? (
                 <>
@@ -87,20 +87,20 @@ export function DatePickerWithRange({
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-auto p-0 bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 shadow-lg rounded-lg"
+          className="w-auto p-0 bg-card border-border shadow-lg rounded-lg"
           align="center"
           sideOffset={4}
         >
-          <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 flex flex-col space-y-3">
+          <div className="p-3 border-b border-border bg-background flex flex-col space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              <h3 className="text-sm font-medium text-foreground">
                 Selecionar período
               </h3>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={handleClear}
-                className="h-7 px-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                className="h-7 px-2 text-muted-foreground hover:text-foreground"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -110,7 +110,7 @@ export function DatePickerWithRange({
                 variant="outline"
                 size="sm"
                 onClick={() => handleQuickSelection(0)}
-                className="text-xs h-7 px-3 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="text-xs h-7 px-3 border-input bg-card hover:bg-muted"
               >
                 Hoje
               </Button>
@@ -118,7 +118,7 @@ export function DatePickerWithRange({
                 variant="outline"
                 size="sm"
                 onClick={() => handleQuickSelection(7)}
-                className="text-xs h-7 px-3 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="text-xs h-7 px-3 border-input bg-card hover:bg-muted"
               >
                 7 dias
               </Button>
@@ -126,7 +126,7 @@ export function DatePickerWithRange({
                 variant="outline"
                 size="sm"
                 onClick={() => handleQuickSelection(30)}
-                className="text-xs h-7 px-3 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="text-xs h-7 px-3 border-input bg-card hover:bg-muted"
               >
                 30 dias
               </Button>
@@ -134,7 +134,7 @@ export function DatePickerWithRange({
                 variant="outline"
                 size="sm"
                 onClick={() => handleQuickSelection(90)}
-                className="text-xs h-7 px-3 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="text-xs h-7 px-3 border-input bg-card hover:bg-muted"
               >
                 90 dias
               </Button>
@@ -150,12 +150,12 @@ export function DatePickerWithRange({
               onSelect={setInternalDate}
               numberOfMonths={isDesktop ? 2 : 1}
               locale={ptBR}
-              className="bg-white dark:bg-gray-800 p-3 max-w-full"
+              className="bg-card p-3 max-w-full"
               classNames={{
                 day_today:
                   "bg-blue-100 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100",
                 day_selected:
-                  "bg-blue-600 text-white hover:bg-blue-700 hover:text-white focus:bg-blue-700 focus:text-white dark:bg-blue-600 dark:text-white",
+                  "bg-blue-600 text-white hover:bg-blue-700 hover:text-white focus:bg-blue-700 focus:text-white dark:bg-blue-600",
                 day_range_middle:
                   "bg-blue-100 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100",
                 months: isDesktop ? "flex space-x-4" : "space-y-4",
@@ -163,14 +163,14 @@ export function DatePickerWithRange({
                 caption_label: "text-sm font-medium",
                 cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-blue-100 dark:[&:has([aria-selected])]:bg-blue-900/20",
                 nav_button:
-                  "h-7 w-7 bg-transparent p-0 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full",
+                  "h-7 w-7 bg-transparent p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full",
                 table: "w-full border-collapse space-y-1",
               }}
             />
           </div>
 
-          <div className="p-3 bg-gray-50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
-            <div className="text-xs text-gray-500 dark:text-gray-400">
+          <div className="p-3 bg-background border-t border-border flex justify-between items-center">
+            <div className="text-xs text-muted-foreground">
               {internalDate?.from && internalDate?.to && (
                 <>
                   {format(internalDate.from, "dd/MM/yy", { locale: ptBR })}{" "}

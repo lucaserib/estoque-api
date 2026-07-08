@@ -13,8 +13,8 @@ const Header = ({ name, title, subtitle, children }: HeaderProps) => {
   return (
     <div className="flex justify-between items-start mb-6">
       <div>
-        {displayTitle && <h1 className="text-2xl font-semibold text-gray-700">{displayTitle}</h1>}
-        {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+        {displayTitle && <h1 className="text-2xl font-semibold text-foreground">{displayTitle}</h1>}
+        {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
       </div>
       {children && <div className="flex gap-2">{children}</div>}
     </div>

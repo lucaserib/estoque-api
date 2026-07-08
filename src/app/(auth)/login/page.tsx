@@ -136,7 +136,7 @@ const LoginPage = () => {
 
       <div className="mt-6 flex flex-col items-center justify-between">
         <div className="text-sm">
-          <span className="text-gray-400">Não tem uma conta? </span>
+          <span className="text-muted-foreground">Não tem uma conta? </span>
           <Link
             href="/register"
             className="text-blue-400 hover:text-blue-300 font-medium"

@@ -40,7 +40,7 @@ const EANDisplay: React.FC<EANDisplayProps> = ({
   if (!ean) {
     return (
       <span
-        className={`text-gray-400 italic ${
+        className={`text-muted-foreground italic ${
           size === "sm" ? "text-xs" : size === "lg" ? "text-base" : "text-sm"
         } ${className}`}
       >
@@ -62,7 +62,7 @@ const EANDisplay: React.FC<EANDisplayProps> = ({
           <div
             className={`flex items-center gap-1 font-mono ${sizeClasses[size]} ${className}`}
           >
-            {showIcon && <Barcode className="h-3.5 w-3.5 text-gray-400" />}
+            {showIcon && <Barcode className="h-3.5 w-3.5 text-muted-foreground" />}
             <span>{ean}</span>
           </div>
         </TooltipTrigger>

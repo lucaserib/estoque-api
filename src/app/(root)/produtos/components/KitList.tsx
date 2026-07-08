@@ -107,7 +107,7 @@ export const KitList = ({
       <div className="flex justify-center items-center py-10">
         <div className="flex flex-col items-center">
           <Loader2 className="h-10 w-10 text-indigo-500 animate-spin mb-2" />
-          <p className="text-gray-500 dark:text-gray-400">Carregando kits...</p>
+          <p className="text-muted-foreground">Carregando kits...</p>
         </div>
       </div>
     );
@@ -117,22 +117,22 @@ export const KitList = ({
     <div>
       <div className="mb-6 relative">
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-          <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+          <Search className="w-4 h-4 text-muted-foreground" />
         </div>
         <Input
           type="text"
           placeholder="Buscar por nome ou SKU..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 w-full border-gray-300 dark:border-gray-600"
+          className="pl-10 w-full border-input"
         />
       </div>
 
-      <Card className="border-gray-200 dark:border-gray-700 shadow-sm">
+      <Card className="border-border shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+              <TableHeader className="bg-background">
                 <TableRow>
                   <TableHead className="font-medium">Nome</TableHead>
                   <TableHead className="font-medium">SKU</TableHead>
@@ -148,7 +148,7 @@ export const KitList = ({
                   currentKits.map((kit) => (
                     <TableRow
                       key={kit.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800/50 group"
+                      className="hover:bg-background group"
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center">
@@ -156,7 +156,7 @@ export const KitList = ({
                           {kit.nome}
                         </div>
                       </TableCell>
-                      <TableCell className="text-gray-600 dark:text-gray-300">
+                      <TableCell className="text-muted-foreground">
                         {kit.sku}
                       </TableCell>
                       <TableCell>
@@ -172,7 +172,7 @@ export const KitList = ({
                             {kit.componentes.length} itens
                           </Badge>
                         ) : (
-                          <span className="text-gray-400 text-sm italic">
+                          <span className="text-muted-foreground text-sm italic">
                             Sem componentes
                           </span>
                         )}
@@ -206,7 +206,7 @@ export const KitList = ({
                   <TableRow>
                     <TableCell
                       colSpan={5}
-                      className="text-center py-8 text-gray-500 dark:text-gray-400"
+                      className="text-center py-8 text-muted-foreground"
                     >
                       {searchTerm
                         ? "Nenhum kit encontrado com os critérios de busca."

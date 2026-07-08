@@ -56,7 +56,7 @@ const TopProdutosList = () => {
 
   const getBadgeColor = (index: number) => {
     if (index === 0) return "bg-amber-500";
-    if (index === 1) return "bg-gray-400";
+    if (index === 1) return "bg-muted-foreground/50";
     if (index === 2) return "bg-amber-700";
     return "bg-blue-500";
   };
@@ -75,7 +75,7 @@ const TopProdutosList = () => {
         {/* Filtros */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
           <div className="relative">
-            <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="date"
               value={startDate}
@@ -84,7 +84,7 @@ const TopProdutosList = () => {
             />
           </div>
           <div className="relative">
-            <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-gray-500" />
+            <Calendar className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="date"
               value={endDate}
@@ -103,16 +103,16 @@ const TopProdutosList = () => {
         {/* Skeleton Loader enquanto os dados carregam */}
         {isLoading ? (
           <div className="space-y-3">
-            <Skeleton className="h-16 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
-            <Skeleton className="h-16 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
-            <Skeleton className="h-16 w-full rounded-md bg-gray-200 dark:bg-gray-700" />
+            <Skeleton className="h-16 w-full rounded-md bg-muted" />
+            <Skeleton className="h-16 w-full rounded-md bg-muted" />
+            <Skeleton className="h-16 w-full rounded-md bg-muted" />
           </div>
         ) : data && data.length > 0 ? (
           <div className="space-y-3">
             {data.map((produto, index) => (
               <div
                 key={index}
-                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow"
+                className="flex items-center justify-between p-4 bg-background rounded-lg border border-border hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center gap-4">
                   <div
@@ -135,15 +135,15 @@ const TopProdutosList = () => {
                   <p className="text-lg font-bold text-indigo-600 dark:text-indigo-400">
                     {produto.quantidade}
                   </p>
-                  <p className="text-xs text-gray-500">unidades vendidas</p>
+                  <p className="text-xs text-muted-foreground">unidades vendidas</p>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-8 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <Package className="h-10 w-10 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-500">
+          <div className="text-center py-8 bg-background rounded-lg">
+            <Package className="h-10 w-10 text-muted-foreground mx-auto mb-2" />
+            <p className="text-muted-foreground">
               Nenhum dado de venda encontrado no período selecionado.
             </p>
           </div>

@@ -78,7 +78,7 @@ const PedidosConcluidos = () => {
     return (
       <div className="flex justify-center items-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-indigo-500"></div>
-        <p className="ml-2 text-gray-500 dark:text-gray-400">
+        <p className="ml-2 text-muted-foreground">
           Carregando pedidos concluídos...
         </p>
       </div>
@@ -99,11 +99,11 @@ const PedidosConcluidos = () => {
 
   if (!pedidos || pedidos.length === 0)
     return (
-      <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-8 rounded-xl text-center">
-        <h3 className="text-xl font-semibold mb-2 text-gray-700 dark:text-gray-300">
+      <div className="bg-background border border-border p-8 rounded-xl text-center">
+        <h3 className="text-xl font-semibold mb-2 text-foreground">
           Nenhum pedido concluído
         </h3>
-        <p className="text-gray-500 dark:text-gray-400 mb-4">
+        <p className="text-muted-foreground mb-4">
           Os pedidos confirmados aparecerão aqui.
         </p>
         <button
@@ -116,9 +116,9 @@ const PedidosConcluidos = () => {
     );
 
   return (
-    <div className="bg-white dark:bg-gray-900 shadow-xl rounded-xl p-6">
+    <div className="bg-card shadow-xl rounded-xl p-6">
       <div className="flex justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">
+        <h2 className="text-2xl font-bold text-foreground tracking-tight">
           Pedidos Concluídos ({filteredPedidos.length})
         </h2>
         <button
@@ -134,12 +134,12 @@ const PedidosConcluidos = () => {
         value={search}
         onChange={handleSearchChange}
         placeholder="Pesquisar por fornecedor, ID ou produto"
-        className="w-full p-3 mb-6 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+        className="w-full p-3 mb-6 bg-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
 
       {filteredPedidos.length === 0 ? (
-        <div className="bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 p-6 rounded-lg text-center">
-          <p className="text-gray-500 dark:text-gray-400">
+        <div className="bg-background border border-border p-6 rounded-lg text-center">
+          <p className="text-muted-foreground">
             Nenhum pedido encontrado com os critérios de pesquisa.
           </p>
         </div>
@@ -148,29 +148,29 @@ const PedidosConcluidos = () => {
           {filteredPedidos.map((pedido) => (
             <li
               key={pedido.id}
-              className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
+              className="p-4 bg-muted rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200"
             >
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <h3 className="text-lg font-semibold text-foreground">
                   Pedido #{pedido.id}
                 </h3>
                 {pedido.dataConclusao && (
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                  <span className="text-sm text-muted-foreground">
                     {format(new Date(pedido.dataConclusao), "dd/MM/yyyy", {
                       locale: ptBR,
                     })}
                   </span>
                 )}
               </div>
-              <p className="text-gray-700 dark:text-gray-300">
+              <p className="text-foreground">
                 <span className="font-medium">Fornecedor:</span>{" "}
                 {pedido.fornecedor.nome}
               </p>
-              <p className="text-gray-700 dark:text-gray-300">
+              <p className="text-foreground">
                 <span className="font-medium">Comentários:</span>{" "}
                 {pedido.comentarios || "Nenhum"}
               </p>
-              <p className="text-gray-700 dark:text-gray-300 mt-2">
+              <p className="text-foreground mt-2">
                 <span className="font-medium">Valor Total:</span>{" "}
                 {formatBRL(calcularValorTotalPedido(pedido))}
               </p>
@@ -178,7 +178,7 @@ const PedidosConcluidos = () => {
                 {pedido.produtos.map((produto) => (
                   <li
                     key={produto.produtoId}
-                    className="text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 p-2 rounded-md"
+                    className="text-sm text-muted-foreground bg-background p-2 rounded-md"
                   >
                     <span className="font-medium">{produto.produto?.sku}</span>{" "}
                     - {produto.produto?.nome}
@@ -204,8 +204,8 @@ const PedidosConcluidos = () => {
         </ul>
       )}
 
-      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+      <div className="mt-6 p-4 bg-background rounded-lg">
+        <h3 className="text-lg font-semibold text-foreground">
           Total Geral: {formatBRL(calcularValorTotal())}
         </h3>
       </div>

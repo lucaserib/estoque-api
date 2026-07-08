@@ -295,11 +295,11 @@ export function ProdutoFornecedorDialog({
         }
       }}
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <Link className="h-5 w-5 text-indigo-500" />
                 Fornecedores de {produto.nome}
               </DialogTitle>
@@ -308,7 +308,7 @@ export function ProdutoFornecedorDialog({
                 size="icon"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -330,16 +330,16 @@ export function ProdutoFornecedorDialog({
                   <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
                 </div>
               ) : fornecedoresVinculados.length === 0 ? (
-                <div className="bg-gray-50 dark:bg-gray-800/50 p-6 rounded-lg border border-gray-200 dark:border-gray-700 text-center">
-                  <Truck className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                  <p className="text-gray-500 dark:text-gray-400">
+                <div className="bg-background p-6 rounded-lg border border-border text-center">
+                  <Truck className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">
                     Nenhum fornecedor vinculado a este produto.
                   </p>
                 </div>
               ) : (
-                <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                <div className="border border-border rounded-lg overflow-hidden">
                   <Table>
-                    <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableHeader className="bg-background">
                       <TableRow>
                         <TableHead className="font-medium">
                           Fornecedor
@@ -420,7 +420,7 @@ export function ProdutoFornecedorDialog({
                                     size="sm"
                                     onClick={() => setEditingId(null)}
                                     disabled={isSubmitting}
-                                    className="h-8 w-8 p-0 text-gray-600 hover:text-gray-800 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-700"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-background"
                                   >
                                     <X className="h-4 w-4" />
                                   </Button>
@@ -466,7 +466,7 @@ export function ProdutoFornecedorDialog({
               </Alert>
             )}
 
-            <div className="bg-gray-50 dark:bg-gray-800/20 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="bg-background p-4 rounded-lg border border-border">
               <h3 className="text-md font-semibold mb-4 flex items-center gap-2">
                 <Plus className="h-4 w-4 text-indigo-500" />
                 Vincular Novo Fornecedor

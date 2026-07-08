@@ -52,11 +52,11 @@ const SidebarLink = ({
           }
         `}
       >
-        <Icon className="w-6 h-6 !text-gray-700" />
+        <Icon className="w-6 h-6 !text-foreground" />
         <span
           className={`${
             isCollapsed ? "hidden" : "block"
-          } font-medium text-gray-700`}
+          } font-medium text-foreground`}
         >
           {label}
         </span>
@@ -95,10 +95,10 @@ const SidebarDropdown = ({
         `}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Icon className="w-6 h-6 !text-gray-700" />
+        <Icon className="w-6 h-6 !text-foreground" />
         {!isCollapsed && (
           <>
-            <span className="font-medium text-gray-700">{label}</span>
+            <span className="font-medium text-foreground">{label}</span>
             {isOpen ? (
               <ChevronUp className="ml-auto" />
             ) : (
@@ -131,8 +131,8 @@ const SidebarSubLink = ({
           isActive ? "bg-blue-100 text-blue-600 border-r-2 border-blue-500" : ""
         }`}
       >
-        <Icon className="w-4 h-4 text-gray-600" />
-        <span className="text-sm font-medium text-gray-600">{label}</span>
+        <Icon className="w-4 h-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-muted-foreground">{label}</span>
       </div>
     </Link>
   );
@@ -142,7 +142,7 @@ const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar } = useLayout();
   const sidebarClassNames = `fixed flex flex-col ${
     isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
-  } bg-white transition-all duration-300 overflow-hidden h-full shadow-md z-40`;
+  } bg-card transition-all duration-300 overflow-hidden h-full shadow-md z-40`;
 
   return (
     <div className={sidebarClassNames}>
@@ -169,7 +169,7 @@ const Sidebar = () => {
           />
         </div>
         <button
-          className="md:hidden px-3 py-3 bg-gray-100 rounded-full hover:bg-blue-100"
+          className="md:hidden px-3 py-3 bg-muted rounded-full hover:bg-blue-100"
           onClick={toggleSidebar}
         >
           <Menu className="w-4 h-4" />
@@ -266,7 +266,7 @@ const Sidebar = () => {
       {/* Footer */}
       {!isSidebarCollapsed && (
         <div className="mb-10 px-8">
-          <p className="text-xs text-gray-500 text-center">
+          <p className="text-xs text-muted-foreground text-center">
             &copy; 2024 PStock
           </p>
         </div>

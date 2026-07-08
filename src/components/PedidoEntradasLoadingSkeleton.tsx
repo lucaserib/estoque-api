@@ -11,7 +11,7 @@ import {
 
 export function PedidoEntradasLoadingSkeleton() {
   return (
-    <Card className="w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm">
+    <Card className="w-full h-full bg-card rounded-lg shadow-sm">
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-semibold flex items-center justify-between">
           <Skeleton className="h-6 w-36" />

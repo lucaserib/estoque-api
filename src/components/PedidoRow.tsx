@@ -67,7 +67,7 @@ export function PedidoRow({
       { locale: ptBR }
     )
   ) : (
-    <span className="text-gray-500 dark:text-gray-400 text-sm italic">
+    <span className="text-muted-foreground text-sm italic">
       Não definida
     </span>
   );
@@ -92,10 +92,10 @@ export function PedidoRow({
     <TableRow
       className={`
         group transition-all duration-150 
-        ${isHovered ? "bg-gray-50 dark:bg-gray-800/70" : ""}
+        ${isHovered ? "bg-background" : ""}
         ${isSelected ? "bg-indigo-50 dark:bg-indigo-900/20" : ""}
-        hover:bg-gray-50 dark:hover:bg-gray-800/70
-        border-b border-gray-100 dark:border-gray-800
+        hover:bg-background
+        border-b border-border
       `}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -107,7 +107,7 @@ export function PedidoRow({
             type="checkbox"
             checked={isSelected}
             onChange={onToggleSelect}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
+            className="h-4 w-4 rounded border-input text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
           />
         </TableCell>
       )}
@@ -128,7 +128,7 @@ export function PedidoRow({
 
       <TableCell>
         <div className="flex items-center gap-2">
-          <Truck className="w-4 h-4 text-gray-400" />
+          <Truck className="w-4 h-4 text-muted-foreground" />
           <span
             className="truncate max-w-[180px]"
             title={pedido.fornecedor.nome}
@@ -139,7 +139,7 @@ export function PedidoRow({
       </TableCell>
 
       <TableCell className="text-center">
-        <Badge variant="outline" className="bg-gray-50 dark:bg-gray-800">
+        <Badge variant="outline" className="bg-background">
           <Package className="w-3 h-3 mr-1" />
           {pedido.produtos && Array.isArray(pedido.produtos)
             ? pedido.produtos.length
@@ -155,7 +155,7 @@ export function PedidoRow({
 
       <TableCell>
         <div className="flex items-center gap-1">
-          <Calendar className="w-4 h-4 text-gray-400" />
+          <Calendar className="w-4 h-4 text-muted-foreground" />
           {formattedDate}
         </div>
       </TableCell>

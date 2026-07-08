@@ -219,11 +219,11 @@ export function PedidoConfirmDialog({
         }
       }}
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-3">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                 Confirmar Recebimento - Pedido #{pedido.id}
               </DialogTitle>
@@ -233,7 +233,7 @@ export function PedidoConfirmDialog({
                 size="icon"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -303,8 +303,8 @@ export function PedidoConfirmDialog({
             {/* Seleção de armazém e comentários */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300  items-center gap-1">
-                  <Warehouse className="h-4 w-4 text-gray-500" />
+                <label className="block text-sm font-medium text-foreground  items-center gap-1">
+                  <Warehouse className="h-4 w-4 text-muted-foreground" />
                   Armazém de Destino <span className="text-red-500">*</span>
                 </label>
                 <Select onValueChange={setArmazemId} value={armazemId}>
@@ -330,7 +330,7 @@ export function PedidoConfirmDialog({
               </div>
 
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label className="block text-sm font-medium text-foreground">
                   Comentários (opcional)
                 </label>
                 <Textarea
@@ -348,7 +348,7 @@ export function PedidoConfirmDialog({
               /* Tabela de produtos - Modo Manual */
               <div>
                 <div className="flex items-center justify-between mb-3 mt-6">
-                  <h3 className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <h3 className="font-medium text-foreground flex items-center gap-2">
                     <Package className="h-4 w-4 text-indigo-500" />
                     Produtos Recebidos
                   </h3>
@@ -363,9 +363,9 @@ export function PedidoConfirmDialog({
                   )}
                 </div>
 
-                <div className="overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
+                <div className="overflow-hidden rounded-md border border-border">
                   <Table>
-                    <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableHeader className="bg-background">
                       <TableRow>
                         <TableHead className="font-medium">Produto</TableHead>
                         <TableHead className="font-medium text-center w-24">
@@ -398,23 +398,23 @@ export function PedidoConfirmDialog({
                         return (
                           <TableRow
                             key={produto.produtoId}
-                            className="hover:bg-gray-50 dark:hover:bg-gray-800/70 group"
+                            className="hover:bg-background group"
                           >
                             <TableCell>
                               <div
-                                className="font-medium text-gray-800 dark:text-gray-200 truncate max-w-[180px]"
+                                className="font-medium text-foreground truncate max-w-[180px]"
                                 title={produto.produto?.nome}
                               >
                                 {produto.produto?.nome ||
                                   "Produto não encontrado"}
                               </div>
-                              <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                              <div className="text-xs text-muted-foreground flex items-center gap-2">
                                 <span>
                                   SKU: {produto.produto?.sku || "N/A"}
                                 </span>
                                 {produto.produto &&
                                 getCodigoEAN(produto.produto) ? (
-                                  <span className="flex items-center gap-1 text-gray-600 dark:text-gray-300">
+                                  <span className="flex items-center gap-1 text-muted-foreground">
                                     <Barcode className="h-3 w-3" />
                                     {getCodigoEAN(produto.produto)}
                                   </span>
@@ -425,7 +425,7 @@ export function PedidoConfirmDialog({
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="text-center font-medium text-gray-500 dark:text-gray-400">
+                            <TableCell className="text-center font-medium text-muted-foreground">
                               {originalProduto.quantidade}
                             </TableCell>
                             <TableCell>
@@ -503,7 +503,7 @@ export function PedidoConfirmDialog({
                                 disabled={isSubmitting}
                               />
                             </TableCell>
-                            <TableCell className="text-right text-gray-600 dark:text-gray-300 font-medium">
+                            <TableCell className="text-right text-muted-foreground font-medium">
                               {produto.multiplicador}x
                             </TableCell>
                             <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
@@ -513,10 +513,10 @@ export function PedidoConfirmDialog({
                         );
                       })}
 
-                      <TableRow className="border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/80">
+                      <TableRow className="border-t-2 border-border bg-background">
                         <TableCell
                           colSpan={5}
-                          className="text-right text-gray-700 dark:text-gray-300 font-semibold"
+                          className="text-right text-foreground font-semibold"
                         >
                           Total do Pedido:
                         </TableCell>
@@ -537,7 +537,7 @@ export function PedidoConfirmDialog({
               />
             )}
           </div>
-          <DialogFooter className="sticky bottom-0 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl flex justify-between w-full">
+          <DialogFooter className="sticky bottom-0 backdrop-blur-md bg-card/90 border-t border-border p-4 rounded-b-xl flex justify-between w-full">
             <Button
               variant="outline"
               onClick={onClose}

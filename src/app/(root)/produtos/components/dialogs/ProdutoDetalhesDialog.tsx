@@ -86,11 +86,11 @@ export function ProdutoDetalhesDialog({
         }
       }}
     >
-      <DialogContent className="max-w-lg max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-lg max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <Info className="h-5 w-5 text-indigo-500" />
                 Detalhes do Produto
               </DialogTitle>
@@ -98,7 +98,7 @@ export function ProdutoDetalhesDialog({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -108,13 +108,13 @@ export function ProdutoDetalhesDialog({
 
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2 space-y-6">
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <div className="bg-background p-4 rounded-lg border border-border">
               <div className="grid grid-cols-1 gap-4">
                 <div className="flex flex-col">
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="text-sm text-muted-foreground">
                     Nome:
                   </span>
-                  <span className="text-xl font-medium text-gray-900 dark:text-gray-100">
+                  <span className="text-xl font-medium text-foreground">
                     {produto.nome}
                   </span>
                 </div>
@@ -126,12 +126,12 @@ export function ProdutoDetalhesDialog({
                   </div>
                   <div className="flex justify-between items-start">
                     <div className="flex flex-col">
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="text-sm text-muted-foreground">
                         SKU:
                       </span>
                       <div className="flex items-center">
-                        <Barcode className="h-4 w-4 text-gray-400 mr-1" />
-                        <span className="text-base font-medium text-gray-900 dark:text-gray-100">
+                        <Barcode className="h-4 w-4 text-muted-foreground mr-1" />
+                        <span className="text-base font-medium text-foreground">
                           {produto.sku}
                         </span>
                       </div>
@@ -149,7 +149,7 @@ export function ProdutoDetalhesDialog({
                 </h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">
+                    <span className="text-muted-foreground">
                       Estoque Total:
                     </span>
                     <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
@@ -167,12 +167,12 @@ export function ProdutoDetalhesDialog({
                       {produto.estoques.map((estoque, index) => (
                         <div
                           key={index}
-                          className="flex justify-between items-center text-sm bg-white/50 dark:bg-gray-800/50 p-1.5 rounded"
+                          className="flex justify-between items-center text-sm bg-card/50 p-1.5 rounded"
                         >
                           <span>{estoque.armazem?.nome || "Armazém"}</span>
                           <Badge
                             variant="outline"
-                            className="bg-white dark:bg-gray-700"
+                            className="bg-card"
                           >
                             {estoque.quantidade} un.
                           </Badge>
@@ -180,7 +180,7 @@ export function ProdutoDetalhesDialog({
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                    <p className="text-sm text-muted-foreground italic">
                       Produto sem estoque cadastrado
                     </p>
                   )}
@@ -194,7 +194,7 @@ export function ProdutoDetalhesDialog({
                 </h3>
                 <div className="space-y-2">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">
+                    <span className="text-muted-foreground">
                       Custo Médio:
                     </span>
                     <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -205,7 +205,7 @@ export function ProdutoDetalhesDialog({
                     </Badge>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-300">
+                    <span className="text-muted-foreground">
                       Valor em Estoque:
                     </span>
                     <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">
@@ -234,21 +234,21 @@ export function ProdutoDetalhesDialog({
               {loadingML ? (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-5 w-5 animate-spin text-yellow-500" />
-                  <span className="ml-2 text-sm text-gray-500">Carregando...</span>
+                  <span className="ml-2 text-sm text-muted-foreground">Carregando...</span>
                 </div>
               ) : mlProducts.length > 0 ? (
                 <div className="space-y-2">
                   {mlProducts.map((mlProduct) => (
                     <div
                       key={mlProduct.mlItemId}
-                      className="bg-white/50 dark:bg-gray-800/50 p-3 rounded border border-yellow-200 dark:border-yellow-700"
+                      className="bg-card/50 p-3 rounded border border-yellow-200 dark:border-yellow-700"
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-800 dark:text-gray-200 line-clamp-2">
+                          <p className="text-sm font-medium text-foreground line-clamp-2">
                             {mlProduct.mlTitle}
                           </p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          <p className="text-xs text-muted-foreground mt-1">
                             {mlProduct.mlItemId}
                           </p>
                         </div>
@@ -293,7 +293,7 @@ export function ProdutoDetalhesDialog({
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                <p className="text-sm text-muted-foreground italic">
                   Produto não vinculado ao Mercado Livre
                 </p>
               )}
@@ -307,20 +307,20 @@ export function ProdutoDetalhesDialog({
                 </h3>
                 {produto.componentes && produto.componentes.length > 0 ? (
                   <div className="space-y-2 mt-2">
-                    <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <div className="text-sm font-medium text-foreground">
                       Componentes:
                     </div>
                     <div className="max-h-40 overflow-y-auto space-y-1">
                       {produto.componentes.map((componente, index) => (
                         <div
                           key={index}
-                          className="flex justify-between bg-white/50 dark:bg-gray-800/50 p-2 rounded text-sm"
+                          className="flex justify-between bg-card/50 p-2 rounded text-sm"
                         >
                           <div className="flex flex-col">
                             <span className="font-medium">
                               {componente.produto?.nome}
                             </span>
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                            <span className="text-xs text-muted-foreground">
                               SKU: {componente.produto?.sku}
                             </span>
                           </div>
@@ -332,7 +332,7 @@ export function ProdutoDetalhesDialog({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 italic">
+                  <p className="text-sm text-muted-foreground italic">
                     Este kit não possui componentes cadastrados
                   </p>
                 )}

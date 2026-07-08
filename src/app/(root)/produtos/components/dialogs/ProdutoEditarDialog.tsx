@@ -116,11 +116,11 @@ export function ProdutoEditarDialog({
         }
       }}
     >
-      <DialogContent className="max-w-md max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-md max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <Edit className="h-5 w-5 text-indigo-500" />
                 Editar Produto
               </DialogTitle>
@@ -129,7 +129,7 @@ export function ProdutoEditarDialog({
                 size="icon"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -181,12 +181,12 @@ export function ProdutoEditarDialog({
           </div>
         </div>
 
-        <DialogFooter className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl flex justify-between w-full">
+        <DialogFooter className="sticky bottom-0 bg-card/90 border-t border-border p-4 rounded-b-xl flex justify-between w-full">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={isSubmitting}
-            className="gap-2 border-gray-200 dark:border-gray-700"
+            className="gap-2 border-border"
           >
             <X className="h-4 w-4" />
             Cancelar

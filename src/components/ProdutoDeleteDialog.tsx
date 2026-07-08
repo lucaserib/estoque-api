@@ -49,7 +49,7 @@ export function ProdutoDeleteDialog({
 
   return (
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent className="max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 shadow-lg">
+      <AlertDialogContent className="max-w-md bg-card border border-border shadow-lg">
         <AlertDialogHeader>
           <div className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-5 w-5" />
@@ -101,7 +101,7 @@ export function ProdutoDeleteDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel
-            className="border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+            className="border-input hover:bg-muted"
             disabled={isSubmitting}
           >
             Cancelar

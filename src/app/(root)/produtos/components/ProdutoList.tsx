@@ -257,11 +257,11 @@ const ProdutoList = ({
 
   return (
     <div>
-      <Card className="border-gray-200 dark:border-gray-700 shadow-sm">
+      <Card className="border-border shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+              <TableHeader className="bg-background">
                 <TableRow>
                   <TableHead className="font-medium">Nome</TableHead>
                   <TableHead className="font-medium">SKU</TableHead>
@@ -296,7 +296,7 @@ const ProdutoList = ({
                   <TableRow>
                     <TableCell
                       colSpan={7}
-                      className="text-center py-8 text-gray-500 dark:text-gray-400"
+                      className="text-center py-8 text-muted-foreground"
                     >
                       {filterOptions.searchTerm
                         ? "Nenhum produto encontrado com os critérios de busca."

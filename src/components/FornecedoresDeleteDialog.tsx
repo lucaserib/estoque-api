@@ -101,7 +101,7 @@ export function FornecedorDeleteDialog({
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel
-            className="border-gray-300 dark:border-gray-600"
+            className="border-input"
             disabled={isSubmitting}
           >
             Cancelar

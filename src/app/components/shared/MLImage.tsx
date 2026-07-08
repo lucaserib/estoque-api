@@ -47,7 +47,7 @@ const MLImage = ({ src, alt, width, height, className = "" }: MLImageProps) => {
   if (imageError || !src) {
     return (
       <div
-        className={`bg-gray-200 rounded flex items-center justify-center text-xs text-gray-500 ${className}`}
+        className={`bg-muted rounded flex items-center justify-center text-xs text-muted-foreground ${className}`}
         style={{ width, height }}
       >
         ML

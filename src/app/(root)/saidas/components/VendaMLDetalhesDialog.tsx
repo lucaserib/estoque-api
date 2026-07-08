@@ -96,7 +96,7 @@ export function VendaMLDetalhesDialog({
       statusConfig[status as keyof typeof statusConfig] || {
         label: status,
         color:
-          "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300",
+          "bg-muted text-foreground",
       }
     );
   };
@@ -107,11 +107,11 @@ export function VendaMLDetalhesDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-4xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <ShoppingBag className="h-5 w-5 text-green-500" />
                 Detalhes da Venda - Mercado Livre
               </DialogTitle>
@@ -119,7 +119,7 @@ export function VendaMLDetalhesDialog({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -133,21 +133,21 @@ export function VendaMLDetalhesDialog({
             <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Hash className="h-4 w-4" />
                     Número do Pedido
                   </div>
-                  <div className="font-mono font-semibold text-gray-900 dark:text-gray-100">
+                  <div className="font-mono font-semibold text-foreground">
                     {venda.orderId}
                   </div>
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Calendar className="h-4 w-4" />
                     Data da Venda
                   </div>
-                  <div className="font-semibold text-gray-900 dark:text-gray-100">
+                  <div className="font-semibold text-foreground">
                     {format(
                       new Date(venda.date_created),
                       "dd 'de' MMMM 'de' yyyy 'às' HH:mm",
@@ -159,7 +159,7 @@ export function VendaMLDetalhesDialog({
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Package className="h-4 w-4" />
                     Status
                   </div>
@@ -167,7 +167,7 @@ export function VendaMLDetalhesDialog({
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <DollarSign className="h-4 w-4" />
                     Valor Total
                   </div>
@@ -179,35 +179,35 @@ export function VendaMLDetalhesDialog({
             </div>
 
             {/* Informações do Comprador */}
-            <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+            <div className="bg-background p-4 rounded-lg border border-border">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                 <User className="h-5 w-5 text-indigo-500" />
                 Comprador
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     Usuário
                   </div>
-                  <div className="font-medium text-gray-900 dark:text-gray-100">
+                  <div className="font-medium text-foreground">
                     {venda.buyer.nickname}
                   </div>
                 </div>
                 {(venda.buyer.first_name || venda.buyer.last_name) && (
                   <div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                    <div className="text-sm text-muted-foreground">
                       Nome
                     </div>
-                    <div className="font-medium text-gray-900 dark:text-gray-100">
+                    <div className="font-medium text-foreground">
                       {venda.buyer.first_name} {venda.buyer.last_name}
                     </div>
                   </div>
                 )}
                 <div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     ID do Comprador
                   </div>
-                  <div className="font-mono text-sm text-gray-900 dark:text-gray-100">
+                  <div className="font-mono text-sm text-foreground">
                     {venda.buyer.id}
                   </div>
                 </div>
@@ -216,28 +216,28 @@ export function VendaMLDetalhesDialog({
 
             {/* Informações de Envio */}
             {venda.shipping && (
-              <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+              <div className="bg-background p-4 rounded-lg border border-border">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Truck className="h-5 w-5 text-blue-500" />
                   Envio
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {venda.shipping.status && (
                     <div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-muted-foreground">
                         Status do Envio
                       </div>
-                      <div className="font-medium text-gray-900 dark:text-gray-100 capitalize">
+                      <div className="font-medium text-foreground capitalize">
                         {venda.shipping.status.replace(/_/g, " ")}
                       </div>
                     </div>
                   )}
                   {venda.shipping.tracking_number && (
                     <div>
-                      <div className="text-sm text-gray-600 dark:text-gray-400">
+                      <div className="text-sm text-muted-foreground">
                         Rastreamento
                       </div>
-                      <div className="font-mono text-sm text-gray-900 dark:text-gray-100">
+                      <div className="font-mono text-sm text-foreground">
                         {venda.shipping.tracking_number}
                       </div>
                     </div>
@@ -248,8 +248,8 @@ export function VendaMLDetalhesDialog({
 
             {/* Informações de Pagamento */}
             {venda.payments && venda.payments.length > 0 && (
-              <div className="bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+              <div className="bg-background p-4 rounded-lg border border-border">
+                <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-purple-500" />
                   Pagamento
                 </h3>
@@ -259,7 +259,7 @@ export function VendaMLDetalhesDialog({
                       key={index}
                       className="flex items-center justify-between"
                     >
-                      <div className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                      <div className="text-sm text-muted-foreground capitalize">
                         {payment.payment_type?.replace(/_/g, " ") || "N/A"}
                       </div>
                       <Badge
@@ -279,14 +279,14 @@ export function VendaMLDetalhesDialog({
 
             {/* Lista de Produtos */}
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+              <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Package className="h-5 w-5 text-indigo-500" />
                 Produtos ({totalItems} {totalItems === 1 ? "item" : "itens"})
               </h3>
 
               <div className="border rounded-lg overflow-hidden">
                 <Table>
-                  <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                  <TableHeader className="bg-background">
                     <TableRow>
                       <TableHead className="font-medium">Produto</TableHead>
                       <TableHead className="font-medium text-center">
@@ -307,7 +307,7 @@ export function VendaMLDetalhesDialog({
                     {venda.items.map((item) => (
                       <TableRow
                         key={item.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                        className="hover:bg-background"
                       >
                         <TableCell>
                           <div className="flex items-start gap-3">
@@ -317,16 +317,16 @@ export function VendaMLDetalhesDialog({
                                 alt={item.title}
                                 width={48}
                                 height={48}
-                                className="w-12 h-12 object-cover rounded border border-gray-200 dark:border-gray-700"
+                                className="w-12 h-12 object-cover rounded border border-border"
                               />
                             )}
                             <div>
-                              <div className="font-medium text-gray-900 dark:text-gray-100">
+                              <div className="font-medium text-foreground">
                                 {item.title}
                               </div>
                               {item.nomeProdutoLocal &&
                                 item.nomeProdutoLocal !== item.title && (
-                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                  <div className="text-xs text-muted-foreground">
                                     Local: {item.nomeProdutoLocal}
                                   </div>
                                 )}
@@ -342,7 +342,7 @@ export function VendaMLDetalhesDialog({
                               {item.sku}
                             </Badge>
                           ) : (
-                            <span className="text-xs text-gray-400">
+                            <span className="text-xs text-muted-foreground">
                               Não vinculado
                             </span>
                           )}
@@ -352,10 +352,10 @@ export function VendaMLDetalhesDialog({
                             {item.quantity}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right text-gray-900 dark:text-gray-100">
+                        <TableCell className="text-right text-foreground">
                           {formatCurrency(item.unit_price, venda.currency_id)}
                         </TableCell>
-                        <TableCell className="text-right font-semibold text-gray-900 dark:text-gray-100">
+                        <TableCell className="text-right font-semibold text-foreground">
                           {formatCurrency(item.total_price, venda.currency_id)}
                         </TableCell>
                       </TableRow>
@@ -368,7 +368,7 @@ export function VendaMLDetalhesDialog({
             {/* Resumo Financeiro */}
             <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
               <div className="flex justify-between items-center">
-                <div className="text-gray-600 dark:text-gray-400 font-medium">
+                <div className="text-muted-foreground font-medium">
                   Valor Total da Venda
                 </div>
                 <div className="text-2xl font-bold text-green-600 dark:text-green-400">
@@ -377,7 +377,7 @@ export function VendaMLDetalhesDialog({
               </div>
               {venda.paid_amount !== venda.total_amount && (
                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-green-200 dark:border-green-800">
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     Valor Pago
                   </div>
                   <div className="text-lg font-semibold text-green-600 dark:text-green-400">

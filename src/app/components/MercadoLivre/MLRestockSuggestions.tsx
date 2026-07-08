@@ -109,12 +109,12 @@ export default function MLRestockSuggestions({
                       {/* Ações sugeridas */}
                       {suggestion.actions && suggestion.actions.length > 0 && (
                         <div className="mt-2">
-                          <p className="font-medium text-xs text-gray-700">
+                          <p className="font-medium text-xs text-foreground">
                             Ações:
                           </p>
                           <ul className="list-disc list-inside text-xs space-y-1">
                             {suggestion.actions.map((action, idx) => (
-                              <li key={idx} className="text-gray-600">
+                              <li key={idx} className="text-muted-foreground">
                                 {action}
                               </li>
                             ))}

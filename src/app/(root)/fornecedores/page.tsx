@@ -260,9 +260,9 @@ const FornecedoresPage = () => {
               placeholder="Buscar fornecedor..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <Search className="absolute left-3 top-2.5 text-gray-400 h-5 w-5" />
+            <Search className="absolute left-3 top-2.5 text-muted-foreground h-5 w-5" />
           </div>
 
           <div className="flex items-center gap-2">
@@ -292,7 +292,7 @@ const FornecedoresPage = () => {
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center p-6 text-gray-500">
+          <div className="flex items-center justify-center p-6 text-muted-foreground">
             <LucideLoader2 className="h-6 w-6 animate-spin text-primary " />
             <span className="ml-2 text-muted-foreground">
               Carregando fornecedores...
@@ -303,14 +303,14 @@ const FornecedoresPage = () => {
             <p className="text-red-600 dark:text-red-400">{error}</p>
           </div>
         ) : fornecedores?.length === 0 ? (
-          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg shadow-sm p-8 text-center">
-            <div className="mx-auto w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4">
-              <Building className="h-8 w-8 text-gray-400" />
+          <div className="bg-background rounded-lg shadow-sm p-8 text-center">
+            <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+              <Building className="h-8 w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
+            <h3 className="text-lg font-medium text-foreground mb-2">
               Nenhum fornecedor cadastrado
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-6">
+            <p className="text-muted-foreground mb-6">
               Comece adicionando seu primeiro fornecedor ao sistema.
             </p>
             <button
@@ -324,8 +324,8 @@ const FornecedoresPage = () => {
         ) : (
           <div className="space-y-4">
             {/* Cabeçalho com checkbox "Selecionar todos" */}
-            <div className="flex items-center gap-3 mb-2 px-4 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+            <div className="flex items-center gap-3 mb-2 px-4 py-2 bg-background rounded-lg border border-border">
+              <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <input
                   type="checkbox"
                   checked={
@@ -334,12 +334,12 @@ const FornecedoresPage = () => {
                     filteredFornecedores.length > 0
                   }
                   onChange={toggleSelectAllFornecedores}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 rounded border-input text-indigo-600 focus:ring-indigo-500"
                 />
                 <span>Selecionar todos</span>
               </div>
 
-              <div className="flex-1 text-right text-sm text-gray-500">
+              <div className="flex-1 text-right text-sm text-muted-foreground">
                 {filteredFornecedores.length} fornecedor
                 {filteredFornecedores.length !== 1 ? "es" : ""} encontrado
                 {filteredFornecedores.length !== 1 ? "s" : ""}
@@ -369,7 +369,7 @@ const FornecedoresPage = () => {
               {filteredFornecedores.map((fornecedor) => (
                 <div
                   key={fornecedor.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden hover:shadow-md transition-shadow group"
+                  className="bg-card rounded-lg border border-border shadow-sm overflow-hidden hover:shadow-md transition-shadow group"
                 >
                   <div className="flex items-start p-4 relative">
                     <div className="flex-1">
@@ -382,34 +382,34 @@ const FornecedoresPage = () => {
                           onChange={() =>
                             toggleFornecedorSelection(String(fornecedor.id))
                           }
-                          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          className="h-4 w-4 rounded border-input text-indigo-600 focus:ring-indigo-500"
                         />
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        <h3 className="text-lg font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                           {fornecedor.nome}
                         </h3>
                       </div>
                       <div className="mt-2 space-y-1.5 pl-6">
                         {fornecedor.cnpj && (
-                          <p className="text-sm flex items-center text-gray-600 dark:text-gray-300">
-                            <CreditCard className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                          <p className="text-sm flex items-center text-muted-foreground">
+                            <CreditCard className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                             CNPJ: {fornecedor.cnpj}
                           </p>
                         )}
                         {fornecedor.inscricaoEstadual && (
-                          <p className="text-sm flex items-center text-gray-600 dark:text-gray-300">
-                            <Building className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                          <p className="text-sm flex items-center text-muted-foreground">
+                            <Building className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                             Inscrição Estadual: {fornecedor.inscricaoEstadual}
                           </p>
                         )}
                         {fornecedor.contato && (
-                          <p className="text-sm flex items-center text-gray-600 dark:text-gray-300">
-                            <Phone className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                          <p className="text-sm flex items-center text-muted-foreground">
+                            <Phone className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                             Contato: {fornecedor.contato}
                           </p>
                         )}
                         {fornecedor.endereco && (
-                          <p className="text-sm flex items-center text-gray-600 dark:text-gray-300">
-                            <MapPin className="h-3.5 w-3.5 mr-2 text-gray-400" />
+                          <p className="text-sm flex items-center text-muted-foreground">
+                            <MapPin className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
                             Endereço: {fornecedor.endereco}
                           </p>
                         )}
@@ -453,28 +453,28 @@ const FornecedoresPage = () => {
         <div className="fixed inset-0 z-50 overflow-y-auto">
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75 backdrop-blur-sm transition-opacity"
+              className="fixed inset-0 bg-muted-foreground bg-opacity-75 dark:bg-opacity-75 backdrop-blur-sm transition-opacity"
               onClick={() => setIsModalOpen(false)}
             ></div>
 
-            <div className="inline-block align-bottom bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+            <div className="inline-block align-bottom bg-card rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
               <div className="absolute top-0 right-0 pt-4 pr-4">
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="bg-white dark:bg-gray-800 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none"
+                  className="bg-card rounded-md text-muted-foreground hover:text-muted-foreground focus:outline-none"
                 >
                   <X size={24} />
                 </button>
               </div>
 
               <div className="px-6 pt-6 pb-8">
-                <h3 className="text-lg font-semibold leading-6 text-gray-900 dark:text-white mb-6">
+                <h3 className="text-lg font-semibold leading-6 text-foreground mb-6">
                   Cadastrar Novo Fornecedor
                 </h3>
 
                 <form onSubmit={handleAddFornecedor} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-foreground">
                       Nome
                     </label>
                     <input
@@ -482,51 +482,51 @@ const FornecedoresPage = () => {
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
                       required
-                      className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-foreground">
                       Inscrição Estadual
                     </label>
                     <input
                       type="text"
                       value={inscricaoEstadual}
                       onChange={(e) => setInscricaoEstadual(e.target.value)}
-                      className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-foreground">
                       CNPJ
                     </label>
                     <input
                       type="text"
                       value={cnpj}
                       onChange={(e) => setCnpj(e.target.value)}
-                      className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-foreground">
                       Contato
                     </label>
                     <input
                       type="text"
                       value={contato}
                       onChange={(e) => setContato(e.target.value)}
-                      className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <label className="block text-sm font-medium text-foreground">
                       Endereço
                     </label>
                     <input
                       type="text"
                       value={endereco}
                       onChange={(e) => setEndereco(e.target.value)}
-                      className="w-full p-2 mt-1 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
@@ -546,7 +546,7 @@ const FornecedoresPage = () => {
                     <button
                       type="button"
                       onClick={() => setIsModalOpen(false)}
-                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
+                      className="px-4 py-2 border border-input rounded-md text-foreground bg-card hover:bg-background"
                     >
                       Cancelar
                     </button>

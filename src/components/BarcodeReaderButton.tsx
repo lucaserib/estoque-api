@@ -64,8 +64,8 @@ const BarcodeReaderButton = ({
       </Button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-md bg-white dark:bg-gray-900 p-0">
-          <DialogHeader className="p-4 border-b border-gray-200 dark:border-gray-700">
+        <DialogContent className="max-w-md bg-card p-0">
+          <DialogHeader className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
                 <ScanLine className="h-5 w-5 text-indigo-500" />
@@ -87,10 +87,10 @@ const BarcodeReaderButton = ({
               <div className="flex flex-col items-center justify-center py-8 space-y-4">
                 <CheckCircle2 className="h-16 w-16 text-green-500 animate-pulse" />
                 <div className="text-center">
-                  <p className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                  <p className="text-lg font-medium text-foreground">
                     Código lido com sucesso!
                   </p>
-                  <p className="text-gray-500 dark:text-gray-400 font-mono">
+                  <p className="text-muted-foreground font-mono">
                     {lastScannedCode}
                   </p>
                 </div>
@@ -105,7 +105,7 @@ const BarcodeReaderButton = ({
             )}
           </div>
 
-          <DialogFooter className="border-t border-gray-200 dark:border-gray-700 p-4">
+          <DialogFooter className="border-t border-border p-4">
             <Button
               variant="outline"
               onClick={() => setIsOpen(false)}

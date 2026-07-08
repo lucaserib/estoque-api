@@ -40,31 +40,31 @@ const ExibirFornecedores = () => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto mt-10 p-8 bg-white dark:bg-gray-900 rounded-lg shadow-lg">
-      <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100 text-center">
+    <div className="max-w-5xl mx-auto mt-10 p-8 bg-card rounded-lg shadow-lg">
+      <h1 className="text-3xl font-bold mb-6 text-foreground text-center">
         Fornecedores
       </h1>
       <ul className="space-y-4">
         {fornecedores.map((fornecedor) => (
           <li
             key={fornecedor.id}
-            className="flex justify-between items-center p-4 bg-gray-100 dark:bg-gray-800 rounded-md shadow-sm"
+            className="flex justify-between items-center p-4 bg-muted rounded-md shadow-sm"
           >
             <div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+              <h2 className="text-lg font-semibold text-foreground">
                 {fornecedor.nome}
               </h2>
-              <p className="text-gray-700 dark:text-gray-400">
+              <p className="text-foreground">
                 CNPJ: {fornecedor.cnpj || "Não informado"}
               </p>
-              <p className="text-gray-700 dark:text-gray-400">
+              <p className="text-foreground">
                 Inscrição Estadual:{" "}
                 {fornecedor.inscricaoEstadual || "Não informado"}
               </p>
-              <p className="text-gray-700 dark:text-gray-400">
+              <p className="text-foreground">
                 Contato: {fornecedor.contato || "Não informado"}
               </p>
-              <p className="text-gray-700 dark:text-gray-400">
+              <p className="text-foreground">
                 Endereço: {fornecedor.endereco || "Não informado"}
               </p>
             </div>

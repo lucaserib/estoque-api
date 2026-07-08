@@ -206,7 +206,7 @@ const EntradasChart = () => {
 
             <div className="h-52 flex items-center justify-center overflow-hidden">
               {data.length === 0 ? (
-                <p className="text-gray-500 text-center">
+                <p className="text-muted-foreground text-center">
                   Nenhum dado disponível para o período selecionado
                 </p>
               ) : (
@@ -252,7 +252,7 @@ const EntradasChart = () => {
               )}
             </div>
 
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="bg-background p-4 rounded-lg">
               <div className="flex items-center">
                 {tendenciaPositiva !== null &&
                   (tendenciaPositiva ? (
@@ -260,7 +260,7 @@ const EntradasChart = () => {
                   ) : (
                     <TrendingDown className="h-5 w-5 text-orange-500 mr-2" />
                   ))}
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-foreground">
                   {tendenciaPositiva !== null
                     ? tendenciaPositiva
                       ? "Tendência de aumento nas entradas"
@@ -269,7 +269,7 @@ const EntradasChart = () => {
                 </p>
               </div>
               {periodoMaisEntrada && (
-                <p className="text-sm mt-2 text-gray-700">
+                <p className="text-sm mt-2 text-foreground">
                   Maior volume de entrada:{" "}
                   <span className="font-medium">
                     {periodoMaisEntrada.periodo}

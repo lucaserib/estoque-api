@@ -342,11 +342,11 @@ export function NovaSaidaDialog({
         }
       }}
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl backdrop-blur-md">
-        <div className="sticky top-0 z-10 backdrop-blur-md bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl backdrop-blur-md">
+        <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <Package className="h-5 w-5 text-indigo-500" />
                 Registrar Nova Saída
               </DialogTitle>
@@ -376,7 +376,7 @@ export function NovaSaidaDialog({
                   size="icon"
                   onClick={onClose}
                   disabled={isSubmitting}
-                  className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                  className="h-8 w-8 rounded-full border border-border"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -406,7 +406,7 @@ export function NovaSaidaDialog({
             <div>
               <Label
                 htmlFor="armazem"
-                className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-2"
+                className="text-base font-medium text-foreground mb-1 flex items-center gap-2"
               >
                 <Warehouse className="h-4 w-4 text-indigo-500" />
                 Armazém
@@ -416,12 +416,12 @@ export function NovaSaidaDialog({
                 onValueChange={(value) => setArmazemId(value)}
                 disabled={isSubmitting}
               >
-                <SelectTrigger className="w-full h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+                <SelectTrigger className="w-full h-10 bg-card border-input">
                   <SelectValue placeholder="Selecione um armazém" />
                 </SelectTrigger>
                 <SelectContent>
                   {armazens.length === 0 ? (
-                    <div className="p-2 text-center text-gray-500 dark:text-gray-400">
+                    <div className="p-2 text-center text-muted-foreground">
                       Nenhum armazém encontrado
                     </div>
                   ) : (
@@ -458,7 +458,7 @@ export function NovaSaidaDialog({
                   <div className="md:col-span-4">
                     <Label
                       htmlFor="produto"
-                      className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      className="text-base font-medium text-foreground mb-1"
                     >
                       Produto ou Kit (SKU ou Nome)
                     </Label>
@@ -468,7 +468,7 @@ export function NovaSaidaDialog({
                           variant="outline"
                           role="combobox"
                           disabled={!armazemId || isSubmitting}
-                          className={`w-full justify-between h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 ${
+                          className={`w-full justify-between h-10 bg-card border-input ${
                             !armazemId ? "opacity-50" : ""
                           }`}
                         >
@@ -506,7 +506,7 @@ export function NovaSaidaDialog({
                                 >
                                   <div className="flex flex-col">
                                     <span>{produto.nome}</span>
-                                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    <span className="text-xs text-muted-foreground">
                                       SKU: {produto.sku}
                                     </span>
                                   </div>
@@ -523,7 +523,7 @@ export function NovaSaidaDialog({
                   <div className="md:col-span-2">
                     <Label
                       htmlFor="quantidade"
-                      className="text-base font-medium text-gray-700 dark:text-gray-300 mb-1"
+                      className="text-base font-medium text-foreground mb-1"
                     >
                       Quantidade
                     </Label>
@@ -534,7 +534,7 @@ export function NovaSaidaDialog({
                       value={quantidade}
                       onChange={(e) => setQuantidade(Number(e.target.value))}
                       disabled={!armazemId || isSubmitting}
-                      className="h-10 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600"
+                      className="h-10 bg-card border-input"
                     />
                   </div>
                 </div>
@@ -557,14 +557,14 @@ export function NovaSaidaDialog({
             {/* List of added products */}
             {!modoBarcodeScanner && saidaProdutos.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
                   <Package className="h-5 w-5 text-indigo-500" />
                   Itens na Saída
                 </h3>
 
                 <div className="border rounded-lg overflow-hidden">
                   <Table>
-                    <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                    <TableHeader className="bg-background">
                       <TableRow>
                         <TableHead className="font-medium">Produto</TableHead>
                         <TableHead className="font-medium text-center">
@@ -582,13 +582,13 @@ export function NovaSaidaDialog({
                       {saidaProdutos.map((item) => (
                         <TableRow
                           key={item.sku}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                          className="hover:bg-background"
                         >
                           <TableCell>
-                            <div className="font-medium text-gray-900 dark:text-gray-100">
+                            <div className="font-medium text-foreground">
                               {item.nome || "Produto"}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <div className="text-xs text-muted-foreground">
                               SKU: {item.sku}
                             </div>
                           </TableCell>
@@ -635,14 +635,14 @@ export function NovaSaidaDialog({
             )}
           </div>
 
-          <DialogFooter className="sticky bottom-0 bg-white/90 dark:bg-gray-900/90 border-t border-gray-200 dark:border-gray-800 p-4 rounded-b-xl">
+          <DialogFooter className="sticky bottom-0 bg-card/90 border-t border-border p-4 rounded-b-xl">
             <div className="flex justify-between w-full">
               <Button
                 type="button"
                 variant="outline"
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="border-gray-300 dark:border-gray-600"
+                className="border-input"
               >
                 Cancelar
               </Button>

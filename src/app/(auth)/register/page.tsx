@@ -153,7 +153,7 @@ export default function Register() {
 
       <div className="mt-6 flex flex-col items-center justify-between">
         <div className="text-sm">
-          <span className="text-gray-400">Já tem uma conta? </span>
+          <span className="text-muted-foreground">Já tem uma conta? </span>
           <Link
             href="/login"
             className="text-blue-400 hover:text-blue-300 font-medium"

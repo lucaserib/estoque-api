@@ -105,7 +105,7 @@ export default function ProdutosCanceladosSection({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">
+                    <code className="text-xs bg-muted px-2 py-1 rounded">
                       {product.sku}
                     </code>
                   </TableCell>

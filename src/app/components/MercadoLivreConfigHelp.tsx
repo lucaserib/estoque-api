@@ -55,10 +55,10 @@ const MercadoLivreConfigHelp = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3">
-                <h3 className="font-semibold text-gray-800">
+                <h3 className="font-semibold text-foreground">
                   1. Criar Aplicação
                 </h3>
-                <ul className="text-sm space-y-1 text-gray-600">
+                <ul className="text-sm space-y-1 text-muted-foreground">
                   <li>• Acesse developers.mercadolivre.com.br</li>
                   <li>• Crie uma nova aplicação</li>
                   <li>• Configure a URL de callback</li>
@@ -78,11 +78,11 @@ const MercadoLivreConfigHelp = () => {
               </div>
 
               <div className="space-y-3">
-                <h3 className="font-semibold text-gray-800">
+                <h3 className="font-semibold text-foreground">
                   2. Configurar Variávei
                 </h3>
-                <div className="bg-gray-100 p-3 rounded-md text-sm font-mono">
-                  <div className="text-gray-600">
+                <div className="bg-muted p-3 rounded-md text-sm font-mono">
+                  <div className="text-muted-foreground">
                     ML_CLIENT_ID=seu_app_id
                     <br />
                     ML_CLIENT_SECRET=sua_secret_key
@@ -90,7 +90,7 @@ const MercadoLivreConfigHelp = () => {
                     ML_REDIRECT_URI=https://seu-dominio.com/configuracoes
                   </div>
                 </div>
-                <div className="text-xs text-gray-600 space-y-1">
+                <div className="text-xs text-muted-foreground space-y-1">
                   <p>
                     <strong>Importante-</strong>
                   </p>

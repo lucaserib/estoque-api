@@ -49,13 +49,13 @@ const FornecedorForm = ({ onAddFornecedor }: FornecedorFormProps) => {
   };
 
   return (
-    <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
-      <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-gray-100">
+    <div className="p-6 bg-card rounded-lg shadow-md">
+      <h2 className="text-2xl font-bold mb-6 text-foreground">
         Cadastrar Fornecedor
       </h2>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-foreground">
             Nome
           </label>
           <input
@@ -63,51 +63,51 @@ const FornecedorForm = ({ onAddFornecedor }: FornecedorFormProps) => {
             value={nome}
             onChange={(e) => setNome(e.target.value)}
             required
-            className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-foreground">
             Inscrição Estadual
           </label>
           <input
             type="text"
             value={inscricaoEstadual}
             onChange={(e) => setInscricaoEstadual(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-foreground">
             CNPJ
           </label>
           <input
             type="text"
             value={cnpj}
             onChange={(e) => setCnpj(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-foreground">
             Contato
           </label>
           <input
             type="text"
             value={contato}
             onChange={(e) => setContato(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label className="block text-sm font-medium text-foreground">
             Endereço
           </label>
           <input
             type="text"
             value={endereco}
             onChange={(e) => setEndereco(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full p-2 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
         <button

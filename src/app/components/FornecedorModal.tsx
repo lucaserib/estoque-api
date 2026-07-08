@@ -196,8 +196,8 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-2xl w-full">
-        <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-gray-100">
+      <div className="bg-card rounded-lg shadow-lg p-6 max-w-2xl w-full">
+        <h2 className="text-xl font-bold mb-4 text-foreground">
           Fornecedores vinculados ao produto {produto.nome}
         </h2>
 
@@ -206,7 +206,7 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
             fornecedoresVinculados.map((fornecedor) => (
               <div
                 key={fornecedor.id}
-                className="flex justify-between items-center p-3 bg-gray-100 dark:bg-gray-700 rounded-md"
+                className="flex justify-between items-center p-3 bg-muted rounded-md"
               >
                 {editingId === fornecedor.id ? (
                   <div className="flex flex-col space-y-2">
@@ -215,29 +215,29 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
                       placeholder="Preço"
                       value={preco}
                       onChange={(e) => setPreco(e.target.value)}
-                      className="p-2 border border-gray-300 rounded-md bg-gray-50 dark:bg-gray-700"
+                      className="p-2 border border-input rounded-md bg-background"
                     />
                     <input
                       type="text"
                       placeholder="Multiplicador"
                       value={multiplicador}
                       onChange={(e) => setMultiplicador(e.target.value)}
-                      className="p-2 border border-gray-300 rounded-md bg-gray-50 dark:bg-gray-700"
+                      className="p-2 border border-input rounded-md bg-background"
                     />
                     <input
                       type="text"
                       placeholder="Código NF"
                       value={codigoNF}
                       onChange={(e) => setCodigoNF(e.target.value)}
-                      className="p-2 border border-gray-300 rounded-md bg-gray-50 dark:bg-gray-700"
+                      className="p-2 border border-input rounded-md bg-background"
                     />
                   </div>
                 ) : (
                   <div>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                    <p className="text-sm font-semibold text-foreground">
                       {fornecedor?.fornecedor?.nome ?? "Nome não disponível"}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       Preço:{" "}
                       {new Intl.NumberFormat("pt-BR", {
                         style: "currency",
@@ -248,7 +248,7 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
                         "Multiplicador não disponível"}
                     </p>
 
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                    <p className="text-xs text-muted-foreground">
                       Código NF: {fornecedor.codigoNF}
                     </p>
                   </div>
@@ -280,21 +280,21 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
               </div>
             ))
           ) : (
-            <p className="text-sm text-gray-600 dark:text-gray-300">
+            <p className="text-sm text-muted-foreground">
               Nenhum fornecedor vinculado a este produto
             </p>
           )}
         </div>
 
         <div className="mt-4 space-y-4">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+          <h3 className="text-lg font-semibold text-foreground">
             Vincular novo fornecedor
           </h3>
 
           <select
             value={fornecedorId || ""}
             onChange={(e) => setFornecedorId(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 dark:bg-gray-700"
+            className="w-full p-2 border border-input rounded-md bg-background"
           >
             <option value="">Selecione um fornecedor</option>
             {fornecedores.map((fornecedor) => (
@@ -309,21 +309,21 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
             placeholder="Preço"
             value={preco}
             onChange={(e) => setPreco(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 dark:bg-gray-700"
+            className="w-full p-2 border border-input rounded-md bg-background"
           />
           <input
             type="text"
             placeholder="Multiplicador"
             value={multiplicador}
             onChange={(e) => setMultiplicador(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 dark:bg-gray-700"
+            className="w-full p-2 border border-input rounded-md bg-background"
           />
           <input
             type="text"
             placeholder="Código NF"
             value={codigoNF}
             onChange={(e) => setCodigoNF(e.target.value)}
-            className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 dark:bg-gray-700"
+            className="w-full p-2 border border-input rounded-md bg-background"
           />
 
           {message && (
@@ -344,7 +344,7 @@ const FornecedorModal = ({ produto, onClose }: FornecedorModalProps) => {
           </button>
           <button
             onClick={onClose}
-            className="bg-gray-300 text-gray-700 px-4 py-2 rounded"
+            className="bg-muted text-foreground px-4 py-2 rounded"
           >
             Fechar
           </button>

@@ -91,16 +91,16 @@ export function PedidoDetalhesDialog({
       }}
     >
       <DialogContent
-        className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-white/95 dark:bg-gray-900/95 border border-gray-200 dark:border-gray-700 shadow-xl rounded-xl"
+        className="max-w-3xl max-h-[90vh] p-0 gap-0 bg-card/95 border border-border shadow-xl rounded-xl"
         onEscapeKeyDown={onClose}
         onInteractOutside={onClose}
         onPointerDownOutside={onClose}
         aria-describedby="dialog-description"
       >
-        <div className="sticky top-0 z-10 bg-white/90 dark:bg-gray-900/90 border-b border-gray-200 dark:border-gray-800 rounded-t-xl">
+        <div className="sticky top-0 z-10 bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
-              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50">
                   <span className="text-indigo-600 dark:text-indigo-400 text-sm">
                     #
@@ -135,7 +135,7 @@ export function PedidoDetalhesDialog({
                   variant="ghost"
                   size="icon"
                   onClick={onClose}
-                  className="h-8 w-8 rounded-full border border-gray-200 dark:border-gray-700"
+                  className="h-8 w-8 rounded-full border border-border"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -165,25 +165,25 @@ export function PedidoDetalhesDialog({
             </div>
 
             {/* Informações gerais */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-lg border border-gray-100 dark:border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-background p-4 rounded-lg border border-border">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Truck className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <Truck className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">
                     Fornecedor:
                   </span>
-                  <span className="text-gray-900 dark:text-gray-100">
+                  <span className="text-foreground">
                     {pedido.fornecedor.nome}
                   </span>
                 </div>
 
                 {pedido.dataPrevista && (
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-gray-400" />
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-foreground">
                       Data prevista:
                     </span>
-                    <span className="text-gray-900 dark:text-gray-100">
+                    <span className="text-foreground">
                       {format(new Date(pedido.dataPrevista), "dd/MM/yyyy", {
                         locale: ptBR,
                       })}
@@ -194,10 +194,10 @@ export function PedidoDetalhesDialog({
                 {pedido.dataConclusao && (
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    <span className="font-medium text-gray-700 dark:text-gray-300">
+                    <span className="font-medium text-foreground">
                       Data de conclusão:
                     </span>
-                    <span className="text-gray-900 dark:text-gray-100">
+                    <span className="text-foreground">
                       {format(new Date(pedido.dataConclusao), "dd/MM/yyyy", {
                         locale: ptBR,
                       })}
@@ -208,18 +208,18 @@ export function PedidoDetalhesDialog({
 
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <Package className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">
                     Produtos:
                   </span>
-                  <span className="text-gray-900 dark:text-gray-100">
+                  <span className="text-foreground">
                     {pedido.produtos.length} itens
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-gray-400" />
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium text-foreground">
                     Valor total:
                   </span>
                   <span className="text-green-600 dark:text-green-400 font-medium">
@@ -228,13 +228,13 @@ export function PedidoDetalhesDialog({
                 </div>
 
                 <div className="flex items-start gap-2">
-                  <MessageSquare className="h-4 w-4 text-gray-400 mt-0.5" />
-                  <span className="font-medium text-gray-700 dark:text-gray-300">
+                  <MessageSquare className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <span className="font-medium text-foreground">
                     Comentários:
                   </span>
-                  <span className="text-gray-900 dark:text-gray-100">
+                  <span className="text-foreground">
                     {pedido.comentarios || (
-                      <span className="text-gray-400 italic">
+                      <span className="text-muted-foreground italic">
                         Nenhum comentário
                       </span>
                     )}
@@ -245,28 +245,28 @@ export function PedidoDetalhesDialog({
 
             {/* Tabela de produtos */}
             <div className="mb-4">
-              <h3 className="font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+              <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4 text-indigo-500" />
                 Lista de Produtos
               </h3>
 
-              <div className="overflow-hidden rounded-md border border-gray-200 dark:border-gray-700">
+              <div className="overflow-hidden rounded-md border border-border">
                 <Table>
-                  <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                  <TableHeader className="bg-background">
                     <TableRow>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400">
+                      <TableHead className="font-medium text-muted-foreground">
                         Produto
                       </TableHead>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400 text-right">
+                      <TableHead className="font-medium text-muted-foreground text-right">
                         Qtd
                       </TableHead>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400 text-right">
+                      <TableHead className="font-medium text-muted-foreground text-right">
                         Custo Unit.
                       </TableHead>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400 text-right">
+                      <TableHead className="font-medium text-muted-foreground text-right">
                         Mult.
                       </TableHead>
-                      <TableHead className="font-medium text-gray-500 dark:text-gray-400 text-right">
+                      <TableHead className="font-medium text-muted-foreground text-right">
                         Subtotal
                       </TableHead>
                     </TableRow>
@@ -283,24 +283,24 @@ export function PedidoDetalhesDialog({
                       return (
                         <TableRow
                           key={produto.produtoId}
-                          className=" dark:hover:bg-gray-800/50 "
+                          className=" "
                         >
                           <TableCell>
-                            <div className="font-medium text-gray-800 dark:text-gray-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                            <div className="font-medium text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                               {produto.produto?.nome ||
                                 "Produto não encontrado"}
                             </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                            <div className="text-xs text-muted-foreground">
                               SKU: {produto.produto?.sku || "N/A"}
                             </div>
                           </TableCell>
                           <TableCell className="text-right font-medium">
                             {produto.quantidade}
                           </TableCell>
-                          <TableCell className="text-right text-gray-600 dark:text-gray-300">
+                          <TableCell className="text-right text-muted-foreground">
                             {formatBRL(produto.custo)}
                           </TableCell>
-                          <TableCell className="text-right text-gray-600 dark:text-gray-300">
+                          <TableCell className="text-right text-muted-foreground">
                             {multiplicador}x
                           </TableCell>
                           <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
@@ -311,10 +311,10 @@ export function PedidoDetalhesDialog({
                     })}
 
                     {/* Linha do total */}
-                    <TableRow className="bg-gray-50 dark:bg-gray-800/80 font-medium">
+                    <TableRow className="bg-background font-medium">
                       <TableCell
                         colSpan={4}
-                        className="text-right text-gray-700 dark:text-gray-300"
+                        className="text-right text-foreground"
                       >
                         Total do Pedido:
                       </TableCell>

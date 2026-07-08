@@ -407,11 +407,11 @@ const EstoquePage = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+      <div className="bg-card rounded-lg shadow-sm border border-border p-4 md:p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <Header name="Gestão de Estoque" />
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-muted-foreground mt-1">
               Gerencie seu estoque por armazém e monitore níveis de produtos
             </p>
           </div>
@@ -461,11 +461,11 @@ const EstoquePage = () => {
       ) : armazens.length === 0 ? (
         <Card className="border-dashed border-2">
           <CardContent className="flex flex-col items-center justify-center py-10">
-            <Warehouse className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-xl font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <Warehouse className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-medium text-foreground mb-2">
               Nenhum armazém cadastrado
             </h3>
-            <p className="text-gray-500 dark:text-gray-400 text-center max-w-md mb-6">
+            <p className="text-muted-foreground text-center max-w-md mb-6">
               Crie seu primeiro armazém para começar a gerenciar seu estoque
             </p>
             <Button
@@ -489,12 +489,12 @@ const EstoquePage = () => {
                 onValueChange={setActiveWarehouse}
                 className="w-full"
               >
-                <TabsList className="mb-4 w-full h-auto flex flex-wrap gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-md">
+                <TabsList className="mb-4 w-full h-auto flex flex-wrap gap-1 bg-muted p-1 rounded-md">
                   {armazens.map((armazem) => (
                     <TabsTrigger
                       key={armazem.id}
                       value={armazem.id}
-                      className="flex-shrink-0 data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 px-4 py-2 group"
+                      className="flex-shrink-0 data-[state=active]:bg-card px-4 py-2 group"
                     >
                       <Warehouse className="w-4 h-4 mr-2" />
                       {armazem.nome}
@@ -512,12 +512,12 @@ const EstoquePage = () => {
                 </TabsList>
 
                 <div className="relative mb-4">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Buscar produto por nome ou SKU..."
-                    className="pl-9 bg-white dark:bg-gray-800"
+                    className="pl-9 bg-card"
                   />
                 </div>
 
@@ -527,8 +527,8 @@ const EstoquePage = () => {
                     value={armazem.id}
                     className="mt-0"
                   >
-                    <Card className="border border-gray-200 dark:border-gray-700 shadow-sm">
-                      <CardHeader className="bg-gray-50 dark:bg-gray-800/50 pb-2 flex flex-row justify-between items-center">
+                    <Card className="border border-border shadow-sm">
+                      <CardHeader className="bg-background pb-2 flex flex-row justify-between items-center">
                         <CardTitle className="text-lg font-semibold flex items-center gap-2">
                           <Warehouse className="h-5 w-5 text-indigo-500" />
                           Estoque: {armazem.nome}
@@ -560,7 +560,7 @@ const EstoquePage = () => {
                           </div>
                         ) : (
                           <Table>
-                            <TableHeader className="bg-gray-50 dark:bg-gray-800/50">
+                            <TableHeader className="bg-background">
                               <TableRow>
                                 <TableHead className="font-medium">
                                   Produto
@@ -592,12 +592,12 @@ const EstoquePage = () => {
                                   return (
                                     <TableRow
                                       key={item.produto.id}
-                                      className="group hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                                      className="group hover:bg-background"
                                     >
                                       <TableCell className="font-medium">
                                         {item.produto.nome}
                                       </TableCell>
-                                      <TableCell className="text-gray-600 dark:text-gray-300">
+                                      <TableCell className="text-muted-foreground">
                                         {item.produto.sku}
                                       </TableCell>
                                       <TableCell className="text-center">
@@ -671,7 +671,7 @@ const EstoquePage = () => {
                                 <TableRow>
                                   <TableCell
                                     colSpan={6}
-                                    className="text-center py-8 text-gray-500 dark:text-gray-400"
+                                    className="text-center py-8 text-muted-foreground"
                                   >
                                     {searchTerm
                                       ? "Nenhum produto encontrado com os critérios de busca."
@@ -693,15 +693,15 @@ const EstoquePage = () => {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <DialogContent className="sm:max-w-md bg-card border border-border">
           <DialogHeader>
             <DialogTitle>Atualizar Estoque de Segurança</DialogTitle>
           </DialogHeader>
           {produtoEmEdicao && (
             <div className="space-y-4 py-2">
-              <div className="bg-gray-50 dark:bg-gray-800/50 p-3 rounded-md mb-2">
+              <div className="bg-background p-3 rounded-md mb-2">
                 <h3 className="font-medium">{produtoEmEdicao.produto.nome}</h3>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   SKU: {produtoEmEdicao.produto.sku}
                 </p>
               </div>
@@ -720,7 +720,7 @@ const EstoquePage = () => {
                   min={0}
                   disabled={true}
                 />
-                <p className="text-xs text-gray-500 text-amber-600">
+                <p className="text-xs text-muted-foreground text-amber-600">
                   A edição direta de quantidade no estoque está temporariamente
                   desabilitada.
                 </p>
@@ -839,7 +839,7 @@ const EstoquePage = () => {
                     </Tabs>
                   </div>
 
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     Nível mínimo recomendado antes de reposição
                   </p>
                 </div>
@@ -871,7 +871,7 @@ const EstoquePage = () => {
       </Dialog>
 
       <Dialog open={isNewWarehouseOpen} onOpenChange={setIsNewWarehouseOpen}>
-        <DialogContent className="sm:max-w-md bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+        <DialogContent className="sm:max-w-md bg-card border border-border">
           <DialogHeader>
             <DialogTitle>Novo Armazém</DialogTitle>
           </DialogHeader>
