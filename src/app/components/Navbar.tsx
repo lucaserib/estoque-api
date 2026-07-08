@@ -6,7 +6,7 @@ import {
   Moon,
   Sun,
   Settings,
-  BellIcon,
+  Search,
   LogOut,
   ChevronDown,
 } from "lucide-react";
@@ -34,7 +34,7 @@ const Navbar = () => {
       {/*Left Side */}
       <div className="flex justify-between items-center gap-5">
         <button
-          className="px-3 py-3 bg-muted rounded-full hover:bg-blue-100"
+          className="px-3 py-3 bg-muted rounded-full hover:bg-accent"
           onClick={toggleSidebar}
         >
           <Menu className="w-4 h-4" />
@@ -44,10 +44,10 @@ const Navbar = () => {
           <input
             type="search"
             placeholder="Buscar produtos, pedidos…"
-            className="pl-10 pr-4 py-2 w-50 md:w-60 border-2 border-input bg-card rounded-lg focus:outline-none focus:border-blue-500"
+            className="pl-10 pr-4 py-2 w-50 md:w-60 border border-input bg-card rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring"
           />
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <BellIcon className="text-muted-foreground " size={20} />
+            <Search className="text-muted-foreground" size={18} />
           </div>
         </div>
       </div>
@@ -67,7 +67,7 @@ const Navbar = () => {
           </div>
           <div className="relative">
             <Bell className="cursor-pointer text-muted-foreground" size={24} />
-            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-[0.4rem] py-1 text-xs font-semibold leading-none text-red-100 bg-red-400 rounded-full">
+            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-[0.4rem] py-1 text-xs font-semibold leading-none text-destructive-foreground bg-destructive rounded-full">
               3
             </span>
           </div>

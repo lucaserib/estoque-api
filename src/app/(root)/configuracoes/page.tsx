@@ -530,7 +530,7 @@ export default function MercadoLivreConfigPage() {
           // Verificar se não é muito antigo (max 2 minutos)
           if (Date.now() - data.timestamp < 120000) {
             console.log("❌ Processando erro salvo:", data.error);
-            toast.error(`❌ Erro ao conectar conta: ${data.error}`);
+            toast.error(`Erro ao conectar conta: ${data.error}`);
             localStorage.removeItem("mlAuthError");
           }
         } catch (e) {
@@ -758,7 +758,7 @@ export default function MercadoLivreConfigPage() {
       setShowSyncDialog(true);
       
       // Toast inicial
-      toast.info("🔄 Iniciando sincronização com Mercado Livre...", {
+      toast.info("Iniciando sincronização com o Mercado Livre…", {
         duration: 2000
       });
 
@@ -791,7 +791,7 @@ export default function MercadoLivreConfigPage() {
           loadAnalytics(accountId)
         ]);
       } else {
-        toast.error(`❌ Sincronização com erros: ${result.errors.join(', ')}`);
+        toast.error(`Sincronização concluída com erros: ${result.errors.join(', ')}`);
       }
     } catch (error) {
       console.error("Erro na sincronização:", error);

@@ -7,14 +7,12 @@ import {
   Clipboard,
   Truck,
   Warehouse,
-  Box,
   Menu,
   ChevronDown,
   ChevronUp,
   ClipboardPaste,
   Settings,
   ArrowLeftRight,
-  ShoppingCart,
   TrendingDown,
   BarChart3,
 } from "lucide-react";
@@ -22,8 +20,7 @@ import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLayout } from "../../context/LayoutContext";
-import Image from "next/image";
-import vendexyLogo from "@/assets/vendexy.png";
+import { Logo } from "@/components/brand/Logo";
 
 interface SidebarLinkProps {
   href: string;
@@ -31,6 +28,7 @@ interface SidebarLinkProps {
   label: string;
   isCollapsed: boolean;
 }
+
 const SidebarLink = ({
   href,
   icon: Icon,
@@ -44,26 +42,26 @@ const SidebarLink = ({
   return (
     <Link href={href}>
       <div
-        className={`cursor-pointer flex items-center ${
-          isCollapsed ? "justify-center py-4" : "justify-start px-8 py-4"
-        }
-          hover:text-blue-500 hover:bg-blue-100 gap-3 transition-colors ${
-            isActive ? "bg-blue-200 text-white" : ""
-          }
-        `}
+        className={`relative cursor-pointer flex items-center ${
+          isCollapsed ? "justify-center py-3" : "justify-start px-6 py-3"
+        } gap-3 transition-colors ${
+          isActive
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+        }`}
       >
-        <Icon className="w-6 h-6 !text-foreground" />
-        <span
-          className={`${
-            isCollapsed ? "hidden" : "block"
-          } font-medium text-foreground`}
-        >
+        {isActive && (
+          <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r bg-primary" />
+        )}
+        <Icon className={`w-5 h-5 ${isActive ? "text-primary" : ""}`} />
+        <span className={`${isCollapsed ? "hidden" : "block"} font-medium`}>
           {label}
         </span>
       </div>
     </Link>
   );
 };
+
 const SidebarDropdown = ({
   href,
   icon: Icon,
@@ -84,25 +82,25 @@ const SidebarDropdown = ({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="">
+    <div>
       <div
-        className={`cursor-pointer flex items-center ${
-          isCollapsed ? "justify-center py-4" : "justify-start px-8 py-4"
-        }
-          hover:text-blue-500 hover:bg-blue-100 gap-3 transition-colors ${
-            isActive ? "bg-blue-200 text-white" : ""
-          }
-        `}
+        className={`relative cursor-pointer flex items-center ${
+          isCollapsed ? "justify-center py-3" : "justify-start px-6 py-3"
+        } gap-3 transition-colors ${
+          isActive
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+        }`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Icon className="w-6 h-6 !text-foreground" />
+        <Icon className="w-5 h-5" />
         {!isCollapsed && (
           <>
-            <span className="font-medium text-foreground">{label}</span>
+            <span className="font-medium">{label}</span>
             {isOpen ? (
-              <ChevronUp className="ml-auto" />
+              <ChevronUp className="ml-auto w-4 h-4" />
             ) : (
-              <ChevronDown className="ml-auto" />
+              <ChevronDown className="ml-auto w-4 h-4" />
             )}
           </>
         )}
@@ -127,14 +125,34 @@ const SidebarSubLink = ({
   return (
     <Link href={href}>
       <div
-        className={`cursor-pointer flex items-center pl-12 pr-8 py-3 hover:text-blue-500 hover:bg-blue-50 gap-3 transition-colors ${
-          isActive ? "bg-blue-100 text-blue-600 border-r-2 border-blue-500" : ""
+        className={`relative cursor-pointer flex items-center pl-12 pr-6 py-2.5 gap-3 transition-colors ${
+          isActive
+            ? "bg-primary/10 text-primary"
+            : "text-muted-foreground hover:text-foreground hover:bg-muted"
         }`}
       >
-        <Icon className="w-4 h-4 text-muted-foreground" />
-        <span className="text-sm font-medium text-muted-foreground">{label}</span>
+        {isActive && (
+          <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r bg-primary" />
+        )}
+        <Icon className="w-4 h-4" />
+        <span className="text-sm font-medium">{label}</span>
       </div>
     </Link>
+  );
+};
+
+const SectionLabel = ({
+  children,
+  isCollapsed,
+}: {
+  children: React.ReactNode;
+  isCollapsed: boolean;
+}) => {
+  if (isCollapsed) return null;
+  return (
+    <p className="px-6 pt-5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+      {children}
+    </p>
   );
 };
 
@@ -142,42 +160,29 @@ const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar } = useLayout();
   const sidebarClassNames = `fixed flex flex-col ${
     isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
-  } bg-card transition-all duration-300 overflow-hidden h-full shadow-md z-40`;
+  } bg-card border-r border-border transition-all duration-300 overflow-hidden h-full z-40`;
 
   return (
     <div className={sidebarClassNames}>
       {/* TOP LOGO */}
       <div
-        className={`flex gap-3 justify-between md:justify-normal items-center pt-8 ${
-          isSidebarCollapsed ? "px-5 " : "px-8"
+        className={`flex gap-3 justify-between md:justify-normal items-center pt-6 pb-2 ${
+          isSidebarCollapsed ? "px-4" : "px-6"
         }`}
       >
-        <div>
-          <Image
-            src={vendexyLogo}
-            alt="Logo"
-            width={120}
-            height={120}
-            className="rounded-full"
-            priority
-            style={{
-              width: "auto",
-              height: "auto",
-              maxWidth: "120px",
-              maxHeight: "120px",
-            }}
-          />
-        </div>
+        <Link href="/dashboard" aria-label="Estoca — início">
+          <Logo size="md" iconOnly={isSidebarCollapsed} />
+        </Link>
         <button
-          className="md:hidden px-3 py-3 bg-muted rounded-full hover:bg-blue-100"
+          className="md:hidden px-3 py-3 bg-muted rounded-full hover:bg-accent"
           onClick={toggleSidebar}
         >
           <Menu className="w-4 h-4" />
         </button>
       </div>
-      {/* Links */}
 
-      <div className="flex-grow mt-8">
+      {/* Links */}
+      <div className="flex-grow mt-4">
         <SidebarLink
           href="/"
           icon={Layout}
@@ -196,14 +201,12 @@ const Sidebar = () => {
           label="Fornecedor"
           icon={Truck}
         />
-
         <SidebarLink
           icon={Package}
           label="Produtos"
           isCollapsed={isSidebarCollapsed}
           href="/produtos"
         />
-
         <SidebarLink
           icon={TrendingDown}
           label="Reposição"
@@ -235,6 +238,8 @@ const Sidebar = () => {
           href="/saidas"
         />
 
+        {/* Canais de venda — preparado para futuros marketplaces */}
+        <SectionLabel isCollapsed={isSidebarCollapsed}>Canais</SectionLabel>
         <SidebarDropdown
           icon={MercadoLivreIcon}
           label="Mercado Livre"
@@ -265,9 +270,9 @@ const Sidebar = () => {
 
       {/* Footer */}
       {!isSidebarCollapsed && (
-        <div className="mb-10 px-8">
+        <div className="mb-8 px-6">
           <p className="text-xs text-muted-foreground text-center">
-            &copy; 2024 PStock
+            &copy; {new Date().getFullYear()} Estoca
           </p>
         </div>
       )}
