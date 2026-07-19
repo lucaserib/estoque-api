@@ -195,6 +195,80 @@ Zero ocorrências de "Vendexy"/"PStock"/"Reponha" no código (marca é "Estoca")
 
 ---
 
+# CICLO 2 — Diagnóstico de 19/07/2026 (pós-execução das Fases 1–6)
+
+> Fases 1–6 verificadas em produção: rebrand Estoca no ar, rotas ML unificadas, dark mode com tokens, ticket médio corrigido. Novo diagnóstico feito testando a conta Leap Store em produção. Executar as fases abaixo na ordem.
+
+## FASE 7 — Bling: sincronização confiável de ponta a ponta
+
+### Diagnóstico (confirmado em produção, 19/07)
+- `POST /api/bling/produtos/importar` retorna **404 `{"error":"Conta Bling não encontrada ou inativa"}`**.
+- Causa: a conta Bling do usuário no banco está com `isActive: false` e `expiresAt: 2025-10-12` (token antigo; o fix da Fase 2 passou a marcar contas com `invalid_grant` como inativas — correto). Porém:
+  1. `GET /api/bling/auth?action=accounts` retorna a conta **sem filtrar/expor `isActive`** → a tela `/produtos/importar` mostra "Conectar Bling ✓ Concluído" (verde) mesmo com a conta morta.
+  2. O usuário não tem nenhum caminho de **reconexão** — clica em "Iniciar Importação" e recebe erro genérico.
+
+### Correções
+1. **Status real da conexão**: em `/produtos/importar` (e onde mais exibir status Bling), considerar conectado somente `isActive === true`. Se existir conta inativa: card âmbar "Conexão com o Bling expirou" + botão **Reconectar** (mesmo fluxo de `action=connect`). O callback (já corrigido) fará upsert dos tokens novos na conta existente.
+2. **`action=accounts`**: incluir `isActive`/`expiresAt` no retorno (sem tokens!) e/ou aceitar `?onlyActive=true`.
+3. **Refresh proativo**: renovar o access token quando faltar <10 min para expirar (access token do Bling dura ~6h; refresh token expira se não usado). Adicionar **Vercel Cron diário** (`/api/cron/bling-refresh`) que renova os tokens de todas as contas ativas — evita o refresh token morrer por inatividade, que foi exatamente o que aconteceu.
+4. **Importação robusta** em `/api/bling/produtos/importar`:
+   - Paginação completa da API v3 (`/produtos?pagina=N&limite=100`) até esgotar — hoje importa só a primeira página?  Verificar.
+   - Respeitar rate limit do Bling (3 req/s; HTTP 429 → backoff exponencial + retry).
+   - Idempotência por SKU/código (upsert, não duplicar).
+   - Retornar resumo `{ criados, atualizados, ignorados, erros[] }` e exibir na UI (hoje o card só fica verde/vermelho).
+5. **"Atualizar Estoque Bling"** (`/api/produtos/estoque-bling`): mesmas garantias (token válido → refresh → se `invalid_grant`, marcar inativa e responder `BLING_RECONNECT_REQUIRED` para o front mostrar o CTA de reconexão).
+6. **Sincronização recorrente (opcional pós-MVP)**: cron de 6/6h atualizando estoque Bling → sistema para contas ativas.
+
+### Ação manual do dono (não é código)
+Após o deploy desta fase: acessar `/produtos/importar` → clicar **Reconectar Bling** → autorizar. A conta será reativada com tokens novos.
+
+### Critério de aceite
+Com conta reconectada: importação completa multi-página funciona e mostra resumo; "Atualizar Estoque Bling" atualiza sem erro; derrubando o token manualmente no banco, a UI mostra o CTA de reconexão (nunca JSON de erro); cron de refresh registrado em `vercel.json`.
+
+---
+
+## FASE 8 — Dashboard de Vendas ML: estatísticas úteis e corretas
+
+### Diagnóstico (19/07)
+A tela `/mercado-livre/vendas` melhorou visualmente, mas: (a) "Indicadores de Performance" mostra **"Itens por Pedido" duplicado** (1º e 4º indicador) e traz métricas obscuras ("Top Produto 44%", "Consistência de Preços 70%") sem explicação nem ação; (b) as visões **"Tendências" e "Comparar" renderizam vazio** (só KPIs, nada abaixo); (c) o gráfico Evolução mistura 3 séries em 2 eixos sem hierarquia; (d) o Top 5 é uma **pizza com valores soltos e sem nome de produto**; (e) na visão "Relatórios", o card "Relatório Mensal" tem **datepicker sobreposto ao texto** (layout quebrado); (f) KPIs não comparam com o período anterior — número solto não diz se está bom ou ruim; (g) no painel `/mercado-livre`, "Receita Semanal 1.710,76" está **sem o prefixo R$**; (h) o **Dashboard Home continua todo zerado** para seller ML (só olha estoque local).
+
+### Correções
+1. **Indicadores**: remover o duplicado; substituir o bloco por 4 indicadores acionáveis: **Δ Receita vs período anterior (%)** · **Δ Itens vendidos (%)** · **Taxa de cancelamento** (pedidos cancelados/total) · **SKUs sem venda no período** (link para lista). Cada um com tooltip explicando o cálculo.
+2. **KPI cards**: adicionar comparação com o período anterior em todos (`+12,4% vs 30d anteriores`, seta ▲▼ colorida). Criar helper único `formatBRL()` (`Intl.NumberFormat('pt-BR',{style:'currency'})`) e usar em TODOS os valores (corrige o "1.710,76" sem R$).
+3. **Evolução de Vendas**: simplificar — área de **Receita** como série principal + linha de média móvel 7d; alternância por tabs "Receita | Itens | Pedidos" (uma série por vez, eixo único); tooltip com os 3 valores do dia.
+4. **Top produtos**: substituir a pizza por **barras horizontais** com nome do produto (truncado, tooltip completo), valor e % de participação; acrescentar visão "por lucro" quando houver custo médio cadastrado.
+5. **Visões vazias**: implementar de verdade ou cortar do dropdown. Recomendação MVP: manter **Visão Geral, Produtos, Relatórios** e remover "Tendências", "Comparar", "Pedidos Cancelados", "Produtos Cancelados" até existirem (cancelamentos viram o indicador da correção 1).
+6. **Relatórios**: corrigir sobreposição do datepicker no card "Relatório Mensal"; conferir exportação CSV.
+7. **Métricas novas de alto valor pro seller** (nesta ordem):
+   - **Receita líquida estimada**: receita − tarifa ML por venda (o dado `sale_fee`/listing type vem da API de orders/items) − frete pago pelo seller. É a métrica que nenhum concorrente barato entrega bem.
+   - **Lucro estimado por produto**: (preço líquido − custo médio) × vendas, na tabela da visão Produtos.
+   - **Heatmap dia da semana × faixa de hora** com nº de vendas (ajuda a programar promoções/anúncios).
+   - **Projeção do mês**: receita atual ÷ dias decorridos × dias do mês, com banda simples.
+8. **Dashboard Home unificado**: se o usuário tem conta ML ativa, o Home mostra: linha 1 — Vendas hoje (ML), Receita 30d (ML), A repor (crítico), Valor de estoque local; linha 2 — gráfico de receita 30d + lista "Top reposição urgente". Remover o card de filtros gigante duplicado ("Limpar filtros" aparece 2× e a busca interna duplica a do header).
+
+### Critério de aceite
+Nenhuma visão do dropdown renderiza vazio; nenhum valor monetário sem `R$`/formatação pt-BR; todo KPI tem comparação com período anterior; indicadores sem duplicatas e com tooltip; Home de um usuário com conta ML mostra dados ML sem precisar navegar.
+
+---
+
+## FASE 9 — Redesign visual dos dashboards (moderno e direto)
+
+> Referência visual: abrir `mockup-dashboard-vendas.html` (na pasta do projeto Cowork "Projeto de estoque") — aprovado como direção. Aplicar o mesmo padrão nas telas `/mercado-livre/vendas`, `/mercado-livre` e `/dashboard`.
+
+1. **KPI cards neutros** (fundo `bg-card`, borda `border`): sem os fundos pastel coloridos atuais (verde/azul/roxo/laranja). Hierarquia: label 13px `muted-foreground` → valor 30px `tabular-nums` → delta 13px colorido (▲ `success` / ▼ `destructive`). Ícone pequeno (18px, `muted-foreground`) no canto superior direito — não um blob colorido.
+2. **Grid e ritmo**: container max-w de 1280px; grid de 12 colunas com `gap-4` (16px); seções separadas por 32px; nada de cards com larguras aleatórias.
+3. **Gráficos (Recharts)**: grid horizontal tracejado `border` (sem vertical); eixos sem linha, labels 12px `muted-foreground`; série principal `--primary` com `fillOpacity` 0.08 (área); tooltip com fundo `card`, borda, sombra sm; sem legendas coloridas quando há 1 série.
+4. **Tabela de produtos (visão Produtos)**: manter — é a melhor tela do app. Ajustes: barra de participação inline usando `--primary`; badges "Top/Alta" com os estilos pill padrão; coluna de lucro estimado (Fase 8.7).
+5. **Filtros da página**: barra única compacta (período · visão · atualizar · exportar) alinhada à direita do PageHeader — remover o card gigante de filtros do Home.
+6. **Skeletons**: todo bloco que carrega dados exibe skeleton (shimmer) — nunca página em branco nem spinner de tela cheia; usar `Suspense`/estados por card.
+7. **Responsivo**: KPIs 4→2→1 colunas; sidebar colapsável já existe — validar em 375px.
+8. **Microinterações**: hover de card com `shadow-sm→md` e `transition`; números animam contagem na primeira carga (framer-motion `useSpring` ou CSS) — sutil, 300ms.
+
+### Critério de aceite
+As 3 telas seguem o mockup (espaçamento, cards neutros, charts limpos); zero fundos pastel; skeletons em todas as cargas; Lighthouse ≥ 90 em performance/acessibilidade nessas rotas.
+
+---
+
 ## Variáveis de ambiente (produção — já configuradas, conferir após mudanças)
 `DATABASE_URL`, `NEXTAUTH_SECRET`, `GOOGLE_CLIENT_ID/SECRET`, `ML_CLIENT_ID`, `ML_CLIENT_SECRET`, `ML_REDIRECT_URI` (= `https://<dominio>/configuracoes`), `BLING_CLIENT_ID`, `BLING_CLIENT_SECRET`, `BLING_REDIRECT_URI` (= `https://<dominio>/api/bling/auth/callback`). Redirect URIs devem bater exatamente com o cadastrado nos apps do ML e do Bling. Vercel só aplica env novas em novo deploy.
 

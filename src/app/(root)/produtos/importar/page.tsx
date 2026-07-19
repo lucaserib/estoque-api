@@ -1,10 +1,27 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Link2, CheckCircle2, AlertCircle, Loader2, Package, Store } from "lucide-react";
+import {
+  ArrowLeft,
+  Download,
+  Link2,
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  Loader2,
+  Package,
+  Store,
+  RefreshCw,
+} from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import Header from "@/app/components/Header";
@@ -19,22 +36,39 @@ interface ImportStep {
   icon: React.ReactNode;
 }
 
+interface BlingAccountStatus {
+  id: string;
+  isActive: boolean;
+}
+
+interface ImportResumo {
+  criados: number;
+  atualizados: number;
+  ignorados: number;
+  erros: string[];
+}
+
 export default function ImportarProdutosPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
-  const [blingConnected, setBlingConnected] = useState(false);
+  const [blingAccount, setBlingAccount] = useState<BlingAccountStatus | null>(
+    null
+  );
   const [mlConnected, setMlConnected] = useState(false);
-  const [blingAccount, setBlingAccount] = useState<{ id: string } | null>(null);
   const [mlAccount, setMlAccount] = useState<{ id: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+  const [importResumo, setImportResumo] = useState<ImportResumo | null>(null);
   const [matchingResults, setMatchingResults] = useState<{
     summary: {
       byType: { ean: number; sku: number; fuzzy: number };
       byStatus: { matched: number; pendingReview: number };
     };
   } | null>(null);
+
+  const blingConnected = blingAccount?.isActive === true;
+  const blingExpired = blingAccount !== null && !blingAccount.isActive;
 
   const [steps, setSteps] = useState<ImportStep[]>([
     {
@@ -56,7 +90,7 @@ export default function ImportarProdutosPage() {
       title: "Sincronizar ML",
       description: "Buscar anúncios do Mercado Livre",
       status: "pending",
-      icon: <Store className="h-5 w-5 text-yellow-500" />,
+      icon: <Store className="h-5 w-5 text-warning" />,
     },
     {
       id: "match",
@@ -67,35 +101,36 @@ export default function ImportarProdutosPage() {
     },
   ]);
 
-  useEffect(() => {
-    if (status === "authenticated") {
-      checkConnections();
-    }
-    // checkConnections is a stable component-scope loader; run only when auth status changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  const updateStepStatus = (stepId: string, status: ImportStep["status"]) => {
+    setSteps((prev) =>
+      prev.map((step) => (step.id === stepId ? { ...step, status } : step))
+    );
+  };
 
-  const checkConnections = async () => {
+  const checkConnections = useCallback(async () => {
     setLoading(true);
     try {
-      // Verificar Bling
       const blingRes = await fetch("/api/bling/auth?action=accounts");
       if (blingRes.ok) {
-        const blingAccounts = await blingRes.json();
-        if (blingAccounts.length > 0) {
-          setBlingConnected(true);
-          setBlingAccount(blingAccounts[0]);
+        const blingAccounts: BlingAccountStatus[] = await blingRes.json();
+        const active = blingAccounts.find((acc) => acc.isActive);
+        const first = blingAccounts[0] ?? null;
+        setBlingAccount(active ?? first);
+        if (active) {
           updateStepStatus("bling", "completed");
+        } else if (first) {
+          updateStepStatus("bling", "error");
         }
       }
 
-      // Verificar ML
       const mlRes = await fetch("/api/mercadolivre/auth?action=accounts");
       if (mlRes.ok) {
         const mlAccounts = await mlRes.json();
         const activeML = Array.isArray(mlAccounts)
           ? mlAccounts.find((acc: { isActive: boolean }) => acc.isActive)
-          : mlAccounts.accounts?.find((acc: { isActive: boolean }) => acc.isActive);
+          : mlAccounts.accounts?.find(
+              (acc: { isActive: boolean }) => acc.isActive
+            );
 
         if (activeML) {
           setMlConnected(true);
@@ -108,13 +143,13 @@ export default function ImportarProdutosPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const updateStepStatus = (stepId: string, status: ImportStep["status"]) => {
-    setSteps((prev) =>
-      prev.map((step) => (step.id === stepId ? { ...step, status } : step))
-    );
-  };
+  useEffect(() => {
+    if (status === "authenticated") {
+      checkConnections();
+    }
+  }, [status, checkConnections]);
 
   const connectBling = async () => {
     try {
@@ -130,12 +165,13 @@ export default function ImportarProdutosPage() {
   };
 
   const importFromBling = async () => {
-    if (!blingAccount) {
+    if (!blingAccount || !blingConnected) {
       toast.error("Conecte o Bling primeiro");
       return;
     }
 
     setImporting(true);
+    setImportResumo(null);
     updateStepStatus("import", "in_progress");
 
     try {
@@ -149,25 +185,27 @@ export default function ImportarProdutosPage() {
         const errorData = await response.json().catch(() => null);
         if (errorData?.code === "BLING_RECONNECT_REQUIRED") {
           updateStepStatus("import", "error");
-          toast.error("Sua conexão com o Bling expirou", {
-            description: "Reconecte sua conta para continuar a importação.",
-            action: { label: "Reconectar", onClick: () => connectBling() },
-          });
+          setBlingAccount((prev) =>
+            prev ? { ...prev, isActive: false } : prev
+          );
+          updateStepStatus("bling", "error");
           return;
         }
         throw new Error(errorData?.error || "Erro na importação");
       }
 
-      const result = await response.json();
+      const result: ImportResumo = await response.json();
+      setImportResumo(result);
 
       updateStepStatus("import", "completed");
-      toast.success(`${result.summary.new} produtos importados!`);
+      toast.success(
+        `Importação concluída: ${result.criados} criados, ${result.atualizados} atualizados`
+      );
 
-      // Próximo passo automático: Sync ML
       if (mlConnected) {
         await syncMercadoLivre();
       }
-    } catch (error) {
+    } catch {
       updateStepStatus("import", "error");
       toast.error("Erro ao importar produtos do Bling");
     } finally {
@@ -200,9 +238,8 @@ export default function ImportarProdutosPage() {
       updateStepStatus("ml", "completed");
       toast.success(`${result.syncedCount} anúncios sincronizados!`);
 
-      // Próximo passo automático: Matching
       await executeMatching();
-    } catch (error) {
+    } catch {
       updateStepStatus("ml", "error");
       toast.error("Erro ao sincronizar Mercado Livre");
     }
@@ -219,7 +256,7 @@ export default function ImportarProdutosPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           mlAccountId: mlAccount.id,
-          autoApply: true, // Aplicar matches automáticos
+          autoApply: true,
         }),
       });
 
@@ -236,14 +273,10 @@ export default function ImportarProdutosPage() {
           `${result.summary.byStatus.pendingReview} produtos precisam de revisão manual`
         );
       }
-    } catch (error) {
+    } catch {
       updateStepStatus("match", "error");
       toast.error("Erro ao fazer matching");
     }
-  };
-
-  const startFullImport = async () => {
-    await importFromBling();
   };
 
   if (status === "loading" || loading) {
@@ -275,7 +308,27 @@ export default function ImportarProdutosPage() {
         </Button>
       </Header>
 
-      {/* Progress Card */}
+      {blingExpired && (
+        <Card className="border-warning bg-warning/10">
+          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+              <div>
+                <p className="font-semibold">Conexão com o Bling expirou</p>
+                <p className="text-sm text-muted-foreground">
+                  Reconecte sua conta para voltar a importar produtos e
+                  sincronizar estoque.
+                </p>
+              </div>
+            </div>
+            <Button onClick={connectBling}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reconectar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle>Progresso da Importação</CardTitle>
@@ -288,20 +341,19 @@ export default function ImportarProdutosPage() {
         </CardContent>
       </Card>
 
-      {/* Steps */}
       <div className="grid gap-4">
-        {steps.map((step, index) => (
+        {steps.map((step) => (
           <Card
             key={step.id}
-            className={`${
+            className={
               step.status === "completed"
-                ? "border-green-500"
+                ? "border-success"
                 : step.status === "in_progress"
-                ? "border-blue-500"
+                ? "border-info"
                 : step.status === "error"
-                ? "border-red-500"
+                ? "border-destructive"
                 : ""
-            }`}
+            }
           >
             <CardHeader>
               <div className="flex items-center justify-between">
@@ -309,11 +361,11 @@ export default function ImportarProdutosPage() {
                   <div
                     className={`p-2 rounded-lg ${
                       step.status === "completed"
-                        ? "bg-green-100 text-green-600"
+                        ? "bg-success/15 text-success"
                         : step.status === "in_progress"
-                        ? "bg-blue-100 text-blue-600"
+                        ? "bg-info/15 text-info"
                         : step.status === "error"
-                        ? "bg-red-100 text-red-600"
+                        ? "bg-destructive/15 text-destructive"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
@@ -326,49 +378,94 @@ export default function ImportarProdutosPage() {
                 </div>
                 <div>
                   {step.status === "completed" && (
-                    <Badge className="bg-green-100 text-green-700">
+                    <Badge className="bg-success/15 text-success">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       Concluído
                     </Badge>
                   )}
                   {step.status === "in_progress" && (
-                    <Badge className="bg-blue-100 text-blue-700">
+                    <Badge className="bg-info/15 text-info">
                       <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                       Em andamento
                     </Badge>
                   )}
                   {step.status === "error" && (
-                    <Badge className="bg-red-100 text-red-700">
+                    <Badge className="bg-destructive/15 text-destructive">
                       <AlertCircle className="h-3 w-3 mr-1" />
-                      Erro
+                      {step.id === "bling" ? "Expirado" : "Erro"}
                     </Badge>
                   )}
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              {step.id === "bling" && !blingConnected && (
+              {step.id === "bling" && !blingConnected && !blingExpired && (
                 <Button onClick={connectBling}>
                   <Store className="h-4 w-4 mr-2" />
                   Conectar Bling
                 </Button>
               )}
-              {step.id === "import" && blingConnected && step.status === "pending" && (
-                <Button onClick={startFullImport} disabled={importing}>
-                  {importing ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="h-4 w-4 mr-2" />
-                  )}
-                  Iniciar Importação
-                </Button>
-              )}
+              {step.id === "import" &&
+                blingConnected &&
+                step.status === "pending" && (
+                  <Button onClick={importFromBling} disabled={importing}>
+                    {importing ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4 mr-2" />
+                    )}
+                    Iniciar Importação
+                  </Button>
+                )}
             </CardContent>
           </Card>
         ))}
       </div>
 
-      {/* Results Summary */}
+      {importResumo && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Resumo da Importação</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-4">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-success">
+                  {importResumo.criados}
+                </div>
+                <div className="text-sm text-muted-foreground">Criados</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-info">
+                  {importResumo.atualizados}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Atualizados
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-muted-foreground">
+                  {importResumo.ignorados}
+                </div>
+                <div className="text-sm text-muted-foreground">Ignorados</div>
+              </div>
+            </div>
+            {importResumo.erros.length > 0 && (
+              <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+                <p className="text-sm font-medium text-destructive mb-1">
+                  {importResumo.erros.length} erros na importação
+                </p>
+                <ul className="text-xs text-muted-foreground space-y-0.5 max-h-32 overflow-y-auto">
+                  {importResumo.erros.slice(0, 20).map((erro) => (
+                    <li key={erro}>{erro}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {matchingResults && (
         <Card>
           <CardHeader>
@@ -377,22 +474,24 @@ export default function ImportarProdutosPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">
+                <div className="text-3xl font-bold text-success">
                   {matchingResults.summary.byType.ean}
                 </div>
                 <div className="text-sm text-muted-foreground">Por EAN</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-blue-600">
+                <div className="text-3xl font-bold text-info">
                   {matchingResults.summary.byType.sku}
                 </div>
                 <div className="text-sm text-muted-foreground">Por SKU</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-600">
+                <div className="text-3xl font-bold text-warning">
                   {matchingResults.summary.byType.fuzzy}
                 </div>
-                <div className="text-sm text-muted-foreground">Por Similaridade</div>
+                <div className="text-sm text-muted-foreground">
+                  Por Similaridade
+                </div>
               </div>
             </div>
 
@@ -403,8 +502,8 @@ export default function ImportarProdutosPage() {
                 onClick={() => router.push("/produtos")}
               >
                 <Package className="h-4 w-4 mr-2" />
-                Revisar {matchingResults.summary.byStatus.pendingReview} Produtos
-                Pendentes
+                Revisar {matchingResults.summary.byStatus.pendingReview}{" "}
+                Produtos Pendentes
               </Button>
             )}
           </CardContent>

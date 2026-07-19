@@ -1,43 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
-import { BlingService } from "@/services/blingService";
+import { BlingService, BlingReconnectError } from "@/services/blingService";
+import { blingErrorResponse } from "@/lib/blingApi";
 import { getProductCost } from "@/helpers/productCostHelper";
 
-/**
- * POST /api/bling/produtos/importar
- * Importa produtos do Bling para o sistema local
- */
+const importarSchema = z.object({
+  accountId: z.string().min(1, "ID da conta Bling não fornecido"),
+});
+
+export interface ImportacaoBlingResumo {
+  criados: number;
+  atualizados: number;
+  ignorados: number;
+  erros: string[];
+}
+
 export async function POST(request: NextRequest) {
+  let syncHistoryId: string | null = null;
+
   try {
     const user = await verifyUser(request);
-    const body = await request.json();
-    const { accountId } = body;
+    const parsed = importarSchema.safeParse(await request.json());
 
-    if (!accountId) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "ID da conta Bling não fornecido" },
+        { error: parsed.error.issues[0].message },
         { status: 400 }
       );
     }
 
-    // Verificar se a conta pertence ao usuário
+    const { accountId } = parsed.data;
+
     const account = await prisma.blingAccount.findFirst({
       where: {
         id: accountId,
         userId: user.id,
-        isActive: true,
       },
     });
 
     if (!account) {
       return NextResponse.json(
-        { error: "Conta Bling não encontrada ou inativa" },
+        { error: "Conta Bling não encontrada" },
         { status: 404 }
       );
     }
 
-    // Criar registro de sincronização
+    if (!account.isActive) {
+      throw new BlingReconnectError();
+    }
+
     const syncHistory = await prisma.blingSyncHistory.create({
       data: {
         blingAccountId: accountId,
@@ -45,177 +58,107 @@ export async function POST(request: NextRequest) {
         status: "processing",
       },
     });
+    syncHistoryId = syncHistory.id;
 
     const startTime = Date.now();
+    const accessToken = await BlingService.getValidToken(accountId);
+    const blingProducts = await BlingService.getAllProducts(accessToken);
 
-    try {
-      // Obter token válido
-      const accessToken = await BlingService.getValidToken(accountId);
+    const resumo: ImportacaoBlingResumo = {
+      criados: 0,
+      atualizados: 0,
+      ignorados: 0,
+      erros: [],
+    };
 
-      // Buscar produtos do Bling
-      console.log("[BLING] Buscando produtos...");
-      const blingProducts = await BlingService.getAllProducts(accessToken);
+    for (const blingProduct of blingProducts) {
+      const sku = BlingService.extractSKU(blingProduct);
 
-      console.log(`[BLING] ${blingProducts.length} produtos encontrados`);
-
-      let newItems = 0;
-      let updatedItems = 0;
-      let errorItems = 0;
-      const errors: string[] = [];
-
-      // Processar cada produto
-      for (const blingProduct of blingProducts) {
-        try {
-          const sku = BlingService.extractSKU(blingProduct);
-          const ean = BlingService.extractEAN(blingProduct);
-
-          // DEBUG: Log do primeiro produto para ver estrutura completa
-          if (newItems === 0 && updatedItems === 0) {
-            console.log("[BLING] 🔍 DEBUG - Estrutura do primeiro produto:");
-            console.log(JSON.stringify(blingProduct, null, 2));
-            console.log(`[BLING] 🔍 SKU extraído: ${sku}`);
-            console.log(`[BLING] 🔍 EAN extraído: ${ean}`);
-            console.log(`[BLING] 🔍 gtin: ${blingProduct.gtin}`);
-            console.log(`[BLING] 🔍 gtinEmbalagem: ${blingProduct.gtinEmbalagem}`);
-          }
-
-          // Verificar se produto já existe
-          const existingProduct = await prisma.produto.findFirst({
-            where: {
-              sku,
-              userId: user.id,
-            },
-          });
-
-          if (existingProduct) {
-            // Buscar custo correto (Bling ou última compra)
-            const custoMedio = await getProductCost(
-              blingProduct.precoCusto,
-              sku,
-              user.id
-            );
-
-            // Atualizar produto existente
-            await prisma.produto.update({
-              where: { id: existingProduct.id },
-              data: {
-                nome: blingProduct.nome,
-                ean: ean ? BigInt(ean) : null,
-                custoMedio, // Atualizar custo médio
-              },
-            });
-
-            updatedItems++;
-            console.log(
-              `[BLING] ✅ Produto ${sku} atualizado (custo: R$ ${(custoMedio / 100).toFixed(2)})`
-            );
-          } else {
-            // Buscar custo correto (Bling ou última compra)
-            const custoMedio = await getProductCost(
-              blingProduct.precoCusto,
-              sku,
-              user.id
-            );
-
-            // Criar novo produto
-            await prisma.produto.create({
-              data: {
-                nome: blingProduct.nome,
-                sku,
-                ean: ean ? BigInt(ean) : null,
-                isKit: false,
-                userId: user.id,
-                custoMedio,
-              },
-            });
-
-            newItems++;
-            console.log(
-              `[BLING] ✅ Produto ${sku} criado (custo: R$ ${(custoMedio / 100).toFixed(2)})`
-            );
-          }
-        } catch (productError) {
-          errorItems++;
-          const errorMsg = `Erro no produto ${blingProduct.codigo}: ${
-            productError instanceof Error
-              ? productError.message
-              : "Erro desconhecido"
-          }`;
-          errors.push(errorMsg);
-          console.error(`[BLING] ❌ ${errorMsg}`);
-        }
+      if (!sku) {
+        resumo.ignorados++;
+        continue;
       }
 
-      const duration = Math.round((Date.now() - startTime) / 1000);
+      try {
+        const ean = BlingService.extractEAN(blingProduct);
+        const custoMedio = await getProductCost(
+          blingProduct.precoCusto,
+          sku,
+          user.id
+        );
 
-      // Atualizar histórico de sincronização
-      await prisma.blingSyncHistory.update({
-        where: { id: syncHistory.id },
-        data: {
-          status: errorItems > 0 ? "partial" : "success",
-          totalItems: blingProducts.length,
-          syncedItems: newItems + updatedItems,
-          newItems,
-          updatedItems,
-          errorItems,
-          errors: errors.length > 0 ? errors : [],
-          completedAt: new Date(),
-          duration,
-        },
-      });
+        const existingProduct = await prisma.produto.findFirst({
+          where: { sku, userId: user.id },
+        });
 
-      return NextResponse.json({
-        success: true,
-        summary: {
-          total: blingProducts.length,
-          new: newItems,
-          updated: updatedItems,
-          errors: errorItems,
-          duration,
-        },
-        errors: errors.length > 0 ? errors : undefined,
-      });
-    } catch (syncError) {
-      // Atualizar histórico com erro
-      await prisma.blingSyncHistory.update({
-        where: { id: syncHistory.id },
-        data: {
-          status: "error",
-          errors: [
-            syncError instanceof Error
-              ? syncError.message
-              : "Erro desconhecido",
-          ],
-          completedAt: new Date(),
-        },
-      });
-
-      throw syncError;
-    }
-  } catch (error) {
-    console.error("Erro ao importar produtos do Bling:", error);
-
-    if (
-      error instanceof Error &&
-      error.message === "BLING_RECONNECT_REQUIRED"
-    ) {
-      return NextResponse.json(
-        {
-          error: "Sua conexão com o Bling expirou. Reconecte para continuar.",
-          code: "BLING_RECONNECT_REQUIRED",
-        },
-        { status: 401 }
-      );
+        if (existingProduct) {
+          await prisma.produto.update({
+            where: { id: existingProduct.id },
+            data: {
+              nome: blingProduct.nome,
+              ean: ean ? BigInt(ean) : null,
+              custoMedio,
+            },
+          });
+          resumo.atualizados++;
+        } else {
+          await prisma.produto.create({
+            data: {
+              nome: blingProduct.nome,
+              sku,
+              ean: ean ? BigInt(ean) : null,
+              isKit: false,
+              userId: user.id,
+              custoMedio,
+            },
+          });
+          resumo.criados++;
+        }
+      } catch (productError) {
+        resumo.erros.push(
+          `Produto ${sku}: ${
+            productError instanceof Error
+              ? productError.message
+              : "erro desconhecido"
+          }`
+        );
+      }
     }
 
-    return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erro ao importar produtos do Bling",
+    const duration = Math.round((Date.now() - startTime) / 1000);
+
+    await prisma.blingSyncHistory.update({
+      where: { id: syncHistory.id },
+      data: {
+        status: resumo.erros.length > 0 ? "partial" : "success",
+        totalItems: blingProducts.length,
+        syncedItems: resumo.criados + resumo.atualizados,
+        newItems: resumo.criados,
+        updatedItems: resumo.atualizados,
+        errorItems: resumo.erros.length,
+        errors: resumo.erros,
+        completedAt: new Date(),
+        duration,
       },
-      { status: 500 }
-    );
+    });
+
+    return NextResponse.json({ success: true, ...resumo, duration });
+  } catch (error) {
+    if (syncHistoryId) {
+      await prisma.blingSyncHistory
+        .update({
+          where: { id: syncHistoryId },
+          data: {
+            status: "error",
+            errors: [
+              error instanceof Error ? error.message : "Erro desconhecido",
+            ],
+            completedAt: new Date(),
+          },
+        })
+        .catch(() => undefined);
+    }
+
+    return blingErrorResponse(error);
   }
 }

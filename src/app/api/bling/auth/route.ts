@@ -3,50 +3,48 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { BlingService } from "@/services/blingService";
 
-/**
- * GET /api/bling/auth
- * Retorna contas Bling do usuário ou inicia fluxo OAuth
- */
+export interface BlingAccountSummary {
+  id: string;
+  isActive: boolean;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
 
-    // Ação: Listar contas
     if (action === "accounts") {
       const user = await verifyUser(request);
 
       const accounts = await prisma.blingAccount.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          isActive: true,
+          expiresAt: true,
+          createdAt: true,
+        },
       });
 
       return NextResponse.json(accounts);
     }
 
-    // Ação: Iniciar OAuth
     if (action === "connect") {
       const user = await verifyUser(request);
 
-      // Gerar state único para segurança
-      // Separador "_" pois o user.id é um UUID que contém "-"
-      const state = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-
-      // Salvar state temporário (opcional, para validação)
-      // Você pode salvar em Redis ou sessão se quiser validar depois
+      const state = `${user.id}_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(7)}`;
 
       const authUrl = BlingService.getAuthorizationUrl(state);
 
-      return NextResponse.json({
-        authUrl,
-        state
-      });
+      return NextResponse.json({ authUrl, state });
     }
 
-    return NextResponse.json(
-      { error: "Ação inválida" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "Ação inválida" }, { status: 400 });
   } catch (error) {
     console.error("Erro na autenticação Bling:", error);
     return NextResponse.json(
@@ -56,10 +54,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * DELETE /api/bling/auth?accountId=xxx
- * Desconecta uma conta Bling
- */
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -73,7 +67,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.blingAccount.findFirst({
       where: {
         id: accountId,
@@ -88,14 +81,13 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Deletar conta
     await prisma.blingAccount.delete({
       where: { id: accountId },
     });
 
     return NextResponse.json({
       success: true,
-      message: "Conta Bling desconectada com sucesso"
+      message: "Conta Bling desconectada com sucesso",
     });
   } catch (error) {
     console.error("Erro ao desconectar conta Bling:", error);

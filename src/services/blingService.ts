@@ -1,13 +1,11 @@
 import { prisma } from "@/lib/prisma";
 
-// ==================== TYPES ====================
-
 export interface BlingProduct {
   id: number;
   nome: string;
-  codigo: string; // SKU
-  preco: number; // Preço de venda
-  precoCusto?: number; // Custo do produto (valor de compra)
+  codigo: string;
+  preco: number;
+  precoCusto?: number;
   tipo: string;
   situacao: string;
   formato: string;
@@ -20,8 +18,8 @@ export interface BlingProduct {
     saldoFisicoTotal?: number;
     saldoVirtualTotal?: number;
   };
-  gtin?: string; // EAN principal
-  gtinEmbalagem?: string; // EAN embalagem
+  gtin?: string;
+  gtinEmbalagem?: string;
   actionEstoque?: string;
   dimensoes?: {
     largura: number;
@@ -33,18 +31,12 @@ export interface BlingProduct {
 
 export interface BlingProductsResponse {
   data: BlingProduct[];
-  metadata?: {
-    totalItems: number;
-    totalPages: number;
-    currentPage: number;
-    itemsPerPage: number;
-  };
 }
 
 export interface BlingAuthTokens {
   access_token: string;
   refresh_token: string;
-  expires_in: number; // segundos
+  expires_in: number;
   token_type: string;
   scope: string;
 }
@@ -54,12 +46,12 @@ export interface BlingStockDeposit {
   nome: string;
   saldo: number;
   saldoVirtual: number;
-  desconsiderar: string; // "S" ou "N"
+  desconsiderar: string;
 }
 
 export interface BlingStockItem {
   id: number;
-  codigo: string; // SKU
+  codigo: string;
   nome: string;
   estoqueAtual?: number;
   saldoFisicoTotal: number;
@@ -71,20 +63,25 @@ export interface BlingStockResponse {
   data: BlingStockItem[];
 }
 
-// ==================== BLING SERVICE ====================
+export class BlingReconnectError extends Error {
+  readonly code = "BLING_RECONNECT_REQUIRED";
+
+  constructor() {
+    super("Sua conexão com o Bling expirou. Reconecte para continuar.");
+    this.name = "BlingReconnectError";
+  }
+}
+
+const TOKEN_RENEWAL_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT_DELAY_MS = 350;
+const MAX_RETRIES_429 = 4;
 
 export class BlingService {
   private static readonly BASE_URL = "https://www.bling.com.br/Api/v3";
   private static readonly AUTH_URL = "https://www.bling.com.br/Api/v3/oauth";
   private static readonly CLIENT_ID = process.env.BLING_CLIENT_ID!;
   private static readonly CLIENT_SECRET = process.env.BLING_CLIENT_SECRET!;
-  private static readonly REDIRECT_URI = process.env.BLING_REDIRECT_URI!;
 
-  // ==================== AUTH METHODS ====================
-
-  /**
-   * Gera URL de autorização OAuth do Bling
-   */
   static getAuthorizationUrl(state: string): string {
     const params = new URLSearchParams({
       response_type: "code",
@@ -95,23 +92,19 @@ export class BlingService {
     return `${this.AUTH_URL}/authorize?${params.toString()}`;
   }
 
-  /**
-   * Troca código de autorização por tokens de acesso
-   */
-  static async exchangeCodeForTokens(
-    code: string
-  ): Promise<BlingAuthTokens> {
-    // Bling requer Basic Auth (client_id:client_secret em base64)
-    const credentials = Buffer.from(
-      `${this.CLIENT_ID}:${this.CLIENT_SECRET}`
-    ).toString("base64");
+  private static basicCredentials(): string {
+    return Buffer.from(`${this.CLIENT_ID}:${this.CLIENT_SECRET}`).toString(
+      "base64"
+    );
+  }
 
+  static async exchangeCodeForTokens(code: string): Promise<BlingAuthTokens> {
     const response = await fetch(`${this.AUTH_URL}/token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
-        Authorization: `Basic ${credentials}`,
+        Authorization: `Basic ${this.basicCredentials()}`,
       },
       body: new URLSearchParams({
         grant_type: "authorization_code",
@@ -127,23 +120,15 @@ export class BlingService {
     return response.json();
   }
 
-  /**
-   * Renova access token usando refresh token
-   */
   static async refreshAccessToken(
     refreshToken: string
   ): Promise<BlingAuthTokens> {
-    // Bling requer Basic Auth (client_id:client_secret em base64)
-    const credentials = Buffer.from(
-      `${this.CLIENT_ID}:${this.CLIENT_SECRET}`
-    ).toString("base64");
-
     const response = await fetch(`${this.AUTH_URL}/token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Accept: "application/json",
-        Authorization: `Basic ${credentials}`,
+        Authorization: `Basic ${this.basicCredentials()}`,
       },
       body: new URLSearchParams({
         grant_type: "refresh_token",
@@ -153,9 +138,8 @@ export class BlingService {
 
     if (!response.ok) {
       const error = await response.text();
-      // Refresh token inválido/revogado: exige reconexão do usuário
       if (error.includes("invalid_grant")) {
-        throw new Error("BLING_RECONNECT_REQUIRED");
+        throw new BlingReconnectError();
       }
       throw new Error(`Erro ao renovar token do Bling: ${error}`);
     }
@@ -163,11 +147,39 @@ export class BlingService {
     return response.json();
   }
 
-  /**
-   * Obtém token válido (renova se necessário).
-   * Lança "BLING_RECONNECT_REQUIRED" se o refresh token for inválido —
-   * nesse caso a conta é marcada como inativa e o usuário precisa reconectar.
-   */
+  static async refreshAccountTokens(accountId: string): Promise<void> {
+    const account = await prisma.blingAccount.findUnique({
+      where: { id: accountId },
+    });
+
+    if (!account) {
+      throw new Error("Conta Bling não encontrada");
+    }
+
+    let tokens: BlingAuthTokens;
+    try {
+      tokens = await this.refreshAccessToken(account.refreshToken);
+    } catch (error) {
+      if (error instanceof BlingReconnectError) {
+        await prisma.blingAccount.update({
+          where: { id: accountId },
+          data: { isActive: false },
+        });
+      }
+      throw error;
+    }
+
+    await prisma.blingAccount.update({
+      where: { id: accountId },
+      data: {
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+        isActive: true,
+      },
+    });
+  }
+
   static async getValidToken(accountId: string): Promise<string> {
     const account = await prisma.blingAccount.findUnique({
       where: { id: accountId },
@@ -177,54 +189,56 @@ export class BlingService {
       throw new Error("Conta Bling não encontrada");
     }
 
-    const now = new Date();
-    const expiresAt = new Date(account.expiresAt);
+    if (!account.isActive) {
+      throw new BlingReconnectError();
+    }
 
-    // Se token expira em menos de 5 minutos, renovar
-    if (expiresAt.getTime() - now.getTime() < 5 * 60 * 1000) {
-      console.log("[BLING] Token expirando, renovando...");
+    const msUntilExpiry =
+      new Date(account.expiresAt).getTime() - Date.now();
 
-      let tokens: BlingAuthTokens;
-      try {
-        tokens = await this.refreshAccessToken(account.refreshToken);
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message === "BLING_RECONNECT_REQUIRED"
-        ) {
-          console.error(
-            `[BLING] Refresh token inválido para conta ${accountId} — marcando como inativa`
-          );
-          await prisma.blingAccount.update({
-            where: { id: accountId },
-            data: { isActive: false },
-          });
-        }
-        throw error;
-      }
-
-      // Atualizar tokens no banco
-      await prisma.blingAccount.update({
+    if (msUntilExpiry < TOKEN_RENEWAL_WINDOW_MS) {
+      await this.refreshAccountTokens(accountId);
+      const refreshed = await prisma.blingAccount.findUnique({
         where: { id: accountId },
-        data: {
-          accessToken: tokens.access_token,
-          refreshToken: tokens.refresh_token,
-          expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
-          isActive: true,
-        },
       });
-
-      return tokens.access_token;
+      if (!refreshed) {
+        throw new Error("Conta Bling não encontrada");
+      }
+      return refreshed.accessToken;
     }
 
     return account.accessToken;
   }
 
-  // ==================== PRODUTOS ====================
+  private static async sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
-  /**
-   * Lista produtos do Bling com paginação
-   */
+  private static async apiFetch(
+    path: string,
+    accessToken: string,
+    init?: RequestInit
+  ): Promise<Response> {
+    let attempt = 0;
+    for (;;) {
+      const response = await fetch(`${this.BASE_URL}${path}`, {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          Accept: "application/json",
+          ...(init?.headers || {}),
+        },
+      });
+
+      if (response.status !== 429 || attempt >= MAX_RETRIES_429) {
+        return response;
+      }
+
+      attempt++;
+      await this.sleep(1000 * 2 ** attempt);
+    }
+  }
+
   static async getProducts(
     accessToken: string,
     page: number = 1,
@@ -233,20 +247,13 @@ export class BlingService {
     const params = new URLSearchParams({
       pagina: page.toString(),
       limite: limit.toString(),
-      criterio: "1", // 1 = ID, 2 = Nome
-      tipo: "P", // P = Produto, S = Serviço
+      criterio: "1",
+      tipo: "P",
     });
 
-    console.log(`[BLING] Buscando produtos - Página ${page}, Limite ${limit}`);
-
-    const response = await fetch(
-      `${this.BASE_URL}/produtos?${params.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      }
+    const response = await this.apiFetch(
+      `/produtos?${params.toString()}`,
+      accessToken
     );
 
     if (!response.ok) {
@@ -255,32 +262,17 @@ export class BlingService {
     }
 
     const data = await response.json();
-
-    // A API do Bling retorna { data: [...] }
-    return {
-      data: data.data || [],
-      metadata: {
-        totalItems: data.data?.length || 0,
-        totalPages: 1,
-        currentPage: page,
-        itemsPerPage: limit,
-      },
-    };
+    return { data: data.data || [] };
   }
 
-  /**
-   * Busca produto específico por ID
-   */
   static async getProductById(
     productId: number,
     accessToken: string
   ): Promise<BlingProduct> {
-    const response = await fetch(`${this.BASE_URL}/produtos/${productId}`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    });
+    const response = await this.apiFetch(
+      `/produtos/${productId}`,
+      accessToken
+    );
 
     if (!response.ok) {
       const error = await response.text();
@@ -291,40 +283,35 @@ export class BlingService {
     return data.data;
   }
 
-  /**
-   * Busca todos os produtos (com paginação automática)
-   */
   static async getAllProducts(accessToken: string): Promise<BlingProduct[]> {
+    const pageSize = 100;
     const allProducts: BlingProduct[] = [];
     let currentPage = 1;
-    let hasMore = true;
 
-    while (hasMore) {
-      const response = await this.getProducts(accessToken, currentPage, 100);
+    for (;;) {
+      const response = await this.getProducts(
+        accessToken,
+        currentPage,
+        pageSize
+      );
 
-      if (response.data && response.data.length > 0) {
-        allProducts.push(...response.data);
-        currentPage++;
-
-        if (response.data.length < 100) {
-          hasMore = false;
-        }
-      } else {
-        hasMore = false;
+      if (!response.data || response.data.length === 0) {
+        break;
       }
 
-      // Delay para não sobrecarregar API
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      allProducts.push(...response.data);
+
+      if (response.data.length < pageSize) {
+        break;
+      }
+
+      currentPage++;
+      await this.sleep(RATE_LIMIT_DELAY_MS);
     }
 
-    console.log(`[BLING] ${allProducts.length} produtos encontrados`);
     return allProducts;
   }
 
-  /**
-   * Busca saldo de estoque de produtos específicos
-   * Endpoint: GET /estoques/saldos
-   */
   static async getProductsStock(
     accessToken: string,
     productIds?: number[],
@@ -336,25 +323,15 @@ export class BlingService {
       limite: limit.toString(),
     });
 
-    // Adicionar IDs dos produtos se fornecidos
     if (productIds && productIds.length > 0) {
       productIds.forEach((id) => {
         params.append("idsProdutos[]", id.toString());
       });
     }
 
-    console.log(
-      `[BLING] Buscando estoque - Página ${page}, ${productIds?.length || "todos"} produtos`
-    );
-
-    const response = await fetch(
-      `${this.BASE_URL}/estoques/saldos?${params.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          Accept: "application/json",
-        },
-      }
+    const response = await this.apiFetch(
+      `/estoques/saldos?${params.toString()}`,
+      accessToken
     );
 
     if (!response.ok) {
@@ -363,31 +340,22 @@ export class BlingService {
     }
 
     const data = await response.json();
-
-    return {
-      data: data.data || [],
-    };
+    return { data: data.data || [] };
   }
 
-  /**
-   * Atualiza estoque de um produto no Bling
-   */
   static async updateProductStock(
     productId: number,
     quantity: number,
     accessToken: string
   ): Promise<void> {
-    const response = await fetch(
-      `${this.BASE_URL}/produtos/${productId}/estoques`,
+    const response = await this.apiFetch(
+      `/produtos/${productId}/estoques`,
+      accessToken,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          operacao: "B", // B = Balanço (ajuste direto)
+          operacao: "B",
           quantidade: quantity,
           preco: 0,
         }),
@@ -402,33 +370,15 @@ export class BlingService {
     }
   }
 
-  // ==================== HELPERS ====================
-
-  /**
-   * Extrai EAN do produto Bling (gtin ou gtinEmbalagem)
-   */
   static extractEAN(product: BlingProduct): string | null {
     return product.gtin || product.gtinEmbalagem || null;
   }
 
-  /**
-   * Extrai SKU do produto Bling
-   */
   static extractSKU(product: BlingProduct): string {
     return product.codigo;
   }
 
-  /**
-   * Verifica se produto está ativo no Bling
-   */
   static isProductActive(product: BlingProduct): boolean {
-    return product.situacao === "A"; // A = Ativo, I = Inativo
-  }
-
-  /**
-   * Formata preço do Bling (já vem em centavos)
-   */
-  static formatPrice(price: number): number {
-    return Math.round(price * 100); // Converter para centavos se necessário
+    return product.situacao === "A";
   }
 }

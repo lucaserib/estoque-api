@@ -1,48 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
-import { BlingService } from "@/services/blingService";
+import { BlingService, BlingReconnectError } from "@/services/blingService";
+import { blingErrorResponse } from "@/lib/blingApi";
 import { getProductCost } from "@/helpers/productCostHelper";
 
-/**
- * POST /api/produtos/estoque-bling
- * Sincroniza estoque local com dados do Bling
- *
- * Fluxo:
- * 1. Busca conta Bling ativa do usuário
- * 2. Obtém estoque de todos os produtos do Bling
- * 3. Atualiza estoque local dos produtos vinculados por SKU
- * 4. Retorna resumo da sincronização
- */
+interface SyncDetail {
+  sku: string;
+  nome: string;
+  estoqueAnterior: number;
+  estoqueNovo: number;
+  status: "updated" | "not_found" | "error";
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
-    console.log("[BLING_SYNC] Iniciando sincronização de estoque");
-
-    // 1. Buscar conta Bling ativa do usuário
     const blingAccount = await prisma.blingAccount.findFirst({
-      where: {
-        userId: user.id,
-        isActive: true,
-      },
+      where: { userId: user.id },
+      orderBy: { createdAt: "desc" },
     });
 
     if (!blingAccount) {
       return NextResponse.json(
-        { error: "Conta Bling não encontrada. Configure a integração primeiro." },
+        {
+          error:
+            "Conta Bling não encontrada. Configure a integração primeiro.",
+        },
         { status: 404 }
       );
     }
 
-    // 2. Obter token válido (renova automaticamente se necessário)
+    if (!blingAccount.isActive) {
+      throw new BlingReconnectError();
+    }
+
     const accessToken = await BlingService.getValidToken(blingAccount.id);
 
-    // 3. Buscar todos os produtos do usuário no sistema local
     const localProducts = await prisma.produto.findMany({
       where: {
         userId: user.id,
-        isKit: false, // Kits não têm estoque direto
+        isKit: false,
       },
       select: {
         id: true,
@@ -60,57 +59,37 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Nenhum produto para sincronizar",
-        stats: {
-          total: 0,
-          updated: 0,
-          notFound: 0,
-          errors: 0,
-        },
+        stats: { total: 0, updated: 0, notFound: 0, errors: 0 },
       });
     }
 
-    console.log(`[BLING_SYNC] ${localProducts.length} produtos locais para verificar`);
-
-    // 4. Buscar estoque do Bling usando getAllProducts (já inclui estoque)
-    // Isso é mais eficiente que buscar estoque separadamente
     const blingProducts = await BlingService.getAllProducts(accessToken);
 
-    console.log(`[BLING_SYNC] ${blingProducts.length} produtos encontrados no Bling`);
-
-    // 5. Criar mapa SKU -> dados do Bling (estoque + custo) para busca rápida
     const blingDataMap = new Map<
       string,
       { estoque: number; precoCusto: number | undefined }
     >();
 
     blingProducts.forEach((blingProduct) => {
-      const sku = blingProduct.codigo;
-      const estoque = blingProduct.estoque?.saldoFisicoTotal || 0;
-      blingDataMap.set(sku, {
-        estoque: Math.round(estoque),
+      blingDataMap.set(blingProduct.codigo, {
+        estoque: Math.round(blingProduct.estoque?.saldoFisicoTotal || 0),
         precoCusto: blingProduct.precoCusto,
       });
     });
 
-    // 6. Buscar armazém padrão para sincronização
     let defaultWarehouse = await prisma.armazem.findFirst({
       where: {
         userId: user.id,
-        nome: {
-          contains: "Principal",
-          mode: "insensitive",
-        },
+        nome: { contains: "Principal", mode: "insensitive" },
       },
     });
 
-    // Se não encontrar "Principal", pegar o primeiro armazém
     if (!defaultWarehouse) {
       defaultWarehouse = await prisma.armazem.findFirst({
         where: { userId: user.id },
       });
     }
 
-    // Se não existir nenhum armazém, criar um
     if (!defaultWarehouse) {
       defaultWarehouse = await prisma.armazem.create({
         data: {
@@ -118,22 +97,14 @@ export async function POST(request: NextRequest) {
           userId: user.id,
         },
       });
-      console.log("[BLING_SYNC] Armazém padrão criado");
     }
 
-    // 7. Sincronizar estoque produto por produto
     const stats = {
       total: localProducts.length,
       updated: 0,
       notFound: 0,
       errors: 0,
-      details: [] as Array<{
-        sku: string;
-        nome: string;
-        estoqueAnterior: number;
-        estoqueNovo: number;
-        status: "updated" | "not_found" | "error";
-      }>,
+      details: [] as SyncDetail[],
     };
 
     for (const localProduct of localProducts) {
@@ -141,7 +112,6 @@ export async function POST(request: NextRequest) {
         const blingData = blingDataMap.get(localProduct.sku);
 
         if (blingData === undefined) {
-          // Produto não encontrado no Bling
           stats.notFound++;
           stats.details.push({
             sku: localProduct.sku,
@@ -153,28 +123,22 @@ export async function POST(request: NextRequest) {
             estoqueNovo: 0,
             status: "not_found",
           });
-          console.log(
-            `[BLING_SYNC] ⚠️  Produto ${localProduct.sku} não encontrado no Bling`
-          );
           continue;
         }
 
         const { estoque: blingStock, precoCusto } = blingData;
 
-        // Buscar custo correto (Bling ou última compra)
         const custoMedio = await getProductCost(
           precoCusto,
           localProduct.sku,
           user.id
         );
 
-        // Atualizar produto com custo médio
         await prisma.produto.update({
           where: { id: localProduct.id },
           data: { custoMedio },
         });
 
-        // Buscar ou criar registro de estoque no armazém padrão
         const estoqueAnterior =
           localProduct.estoques.find(
             (e) => e.armazemId === defaultWarehouse!.id
@@ -187,9 +151,7 @@ export async function POST(request: NextRequest) {
               armazemId: defaultWarehouse.id,
             },
           },
-          update: {
-            quantidade: blingStock,
-          },
+          update: { quantidade: blingStock },
           create: {
             produtoId: localProduct.id,
             armazemId: defaultWarehouse.id,
@@ -205,10 +167,6 @@ export async function POST(request: NextRequest) {
           estoqueNovo: blingStock,
           status: "updated",
         });
-
-        console.log(
-          `[BLING_SYNC] ✅ ${localProduct.sku}: ${estoqueAnterior} → ${blingStock} | Custo: R$ ${(custoMedio / 100).toFixed(2)}`
-        );
       } catch (error) {
         stats.errors++;
         stats.details.push({
@@ -218,17 +176,12 @@ export async function POST(request: NextRequest) {
           estoqueNovo: 0,
           status: "error",
         });
-        console.error(`[BLING_SYNC] ❌ Erro ao atualizar ${localProduct.sku}:`, error);
+        console.error(
+          `[BLING_SYNC] Erro ao atualizar ${localProduct.sku}:`,
+          error
+        );
       }
-
-      // Rate limiting: aguardar 100ms entre atualizações
-      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-
-    console.log("[BLING_SYNC] Sincronização concluída");
-    console.log(`[BLING_SYNC] Atualizados: ${stats.updated}/${stats.total}`);
-    console.log(`[BLING_SYNC] Não encontrados: ${stats.notFound}`);
-    console.log(`[BLING_SYNC] Erros: ${stats.errors}`);
 
     return NextResponse.json({
       success: true,
@@ -246,27 +199,6 @@ export async function POST(request: NextRequest) {
       details: stats.details,
     });
   } catch (error) {
-    console.error("[BLING_SYNC] Erro ao sincronizar estoque:", error);
-
-    if (
-      error instanceof Error &&
-      error.message === "BLING_RECONNECT_REQUIRED"
-    ) {
-      return NextResponse.json(
-        {
-          error: "Sua conexão com o Bling expirou. Reconecte para continuar.",
-          code: "BLING_RECONNECT_REQUIRED",
-        },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        error: "Erro ao sincronizar estoque do Bling",
-        message: error instanceof Error ? error.message : "Erro desconhecido",
-      },
-      { status: 500 }
-    );
+    return blingErrorResponse(error);
   }
 }
