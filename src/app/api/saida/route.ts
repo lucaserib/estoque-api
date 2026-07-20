@@ -1,10 +1,36 @@
-// src/app/api/saida/route.ts
 import { verifyUser } from "@/helpers/verifyUser";
 import { PrismaClient, Produto } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
+import { NotificationService } from "@/services/notificationService";
 
 const prisma = new PrismaClient();
+
+async function notificarEstoquesCriticos(
+  userId: string,
+  armazemId: string
+): Promise<void> {
+  const criticos = await prisma.estoque.findMany({
+    where: {
+      armazemId,
+      estoqueSeguranca: { not: null, gt: 0 },
+      produto: { userId },
+    },
+    include: { produto: { select: { id: true, nome: true } } },
+  });
+
+  const atingiramMinimo = criticos.filter(
+    (estoque) => estoque.quantidade <= (estoque.estoqueSeguranca ?? 0)
+  );
+
+  for (const estoque of atingiramMinimo) {
+    await NotificationService.notifyEstoqueCritico(
+      userId,
+      estoque.produto.nome,
+      estoque.produto.id
+    );
+  }
+}
 
 interface SaidaProduto {
   produtoId: string;
@@ -212,7 +238,10 @@ export async function POST(request: NextRequest) {
       return saidaCompleta;
     });
 
-    // Retornar o resultado completo
+    await notificarEstoquesCriticos(user.id, armazemId).catch((error) =>
+      console.error("Erro ao verificar estoques críticos:", error)
+    );
+
     return NextResponse.json(serializeWithEAN(result), { status: 201 });
   } catch (error) {
     console.error("Erro ao registrar saída:", error);

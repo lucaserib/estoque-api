@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { NotificationService } from "@/services/notificationService";
 
 export interface BlingProduct {
   id: number;
@@ -165,6 +166,7 @@ export class BlingService {
           where: { id: accountId },
           data: { isActive: false },
         });
+        await NotificationService.notifyBlingExpired(account.userId);
       }
       throw error;
     }

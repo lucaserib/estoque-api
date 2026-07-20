@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { NotificationService } from "@/services/notificationService";
 
 /**
  * GET /api/mercadolivre/sync?accountId=xxx           -> produtos sincronizados da conta
@@ -60,8 +61,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  let notifyUserId: string | null = null;
   try {
     const user = await verifyUser(request);
+    notifyUserId = user.id;
     const body = await request.json();
     const { accountId, syncType = "full" } = body;
 
@@ -416,6 +419,12 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error("Erro na sincronização:", error);
+    if (notifyUserId) {
+      await NotificationService.notifySyncError(
+        notifyUserId,
+        error instanceof Error ? error.message : "Erro na sincronização"
+      );
+    }
     return NextResponse.json(
       {
         success: false,

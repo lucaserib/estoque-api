@@ -26,6 +26,7 @@ model User {
   MercadoLivreAccount      MercadoLivreAccount[]
   StockReplenishmentConfig StockReplenishmentConfig[]
   transferencias           TransferenciaEstoque[]
+  notifications            Notification[]
 }
 
 model MercadoLivreAccount {
@@ -353,4 +354,27 @@ model StockReplenishmentConfig {
 
   @@unique([userId, produtoId])
   @@map("stock_replenishment_config")
+}
+
+enum NotificationType {
+  ESTOQUE_CRITICO
+  SYNC_ERRO
+  BLING_EXPIRADO
+  ML_EXPIRADO
+  PEDIDO_CONCLUIDO
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
 }

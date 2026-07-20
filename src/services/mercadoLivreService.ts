@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { NotificationService } from "@/services/notificationService";
 import { JsonValue } from "@prisma/client/runtime/library";
 import {
   MLAuthResponse,
@@ -1343,11 +1344,12 @@ export class MercadoLivreService {
         error
       );
 
-      // Se não conseguir renovar, marca conta como inativa
-      await prisma.mercadoLivreAccount.update({
+      const deactivated = await prisma.mercadoLivreAccount.update({
         where: { id: accountId },
         data: { isActive: false },
+        select: { userId: true },
       });
+      await NotificationService.notifyMLExpired(deactivated.userId);
 
       throw new Error(
         "Token expirado e não foi possível renovar. Reconecte a conta do Mercado Livre."

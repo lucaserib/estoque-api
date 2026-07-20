@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "../../../../lib/prisma";
 import { Prisma, PedidoCompra } from "@prisma/client";
 import { serializeWithEAN } from "@/utils/api";
+import { NotificationService } from "@/services/notificationService";
 
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
@@ -463,6 +464,11 @@ export async function PUT(request: NextRequest) {
         fornecedor: true,
       },
     });
+
+    await NotificationService.notifyPedidoConcluido(
+      user.id,
+      pedidoAtualizado.fornecedor?.nome ?? "sem fornecedor"
+    );
 
     return NextResponse.json({
       message: "Pedido confirmado e estoque atualizado com sucesso",

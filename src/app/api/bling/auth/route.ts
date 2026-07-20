@@ -8,6 +8,7 @@ export interface BlingAccountSummary {
   isActive: boolean;
   expiresAt: string;
   createdAt: string;
+  lastSyncAt: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -26,10 +27,21 @@ export async function GET(request: NextRequest) {
           isActive: true,
           expiresAt: true,
           createdAt: true,
+          syncHistories: {
+            orderBy: { startedAt: "desc" },
+            take: 1,
+            select: { completedAt: true, startedAt: true },
+          },
         },
       });
 
-      return NextResponse.json(accounts);
+      const summaries = accounts.map(({ syncHistories, ...account }) => ({
+        ...account,
+        lastSyncAt:
+          syncHistories[0]?.completedAt ?? syncHistories[0]?.startedAt ?? null,
+      }));
+
+      return NextResponse.json(summaries);
     }
 
     if (action === "connect") {

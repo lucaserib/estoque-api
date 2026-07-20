@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Bell,
   Menu,
   Moon,
   Sun,
@@ -11,17 +10,14 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { useLayout } from "../context/LayoutContext";
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import Image from "next/image";
 import { useRef, useState } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
+import NotificationsBell from "./NotificationsBell";
 
 const Navbar = () => {
-  const { isSidebarCollapsed, isDarkMode, toggleSidebar, toggleDarkMode } =
-    useLayout();
+  const { isDarkMode, toggleSidebar, toggleDarkMode } = useLayout();
 
   const { data: session, status } = useSession();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -31,7 +27,6 @@ const Navbar = () => {
 
   return (
     <div className="flex justify-between items-center w-full mb-7">
-      {/*Left Side */}
       <div className="flex justify-between items-center gap-5">
         <button
           className="px-3 py-3 bg-muted rounded-full hover:bg-accent"
@@ -52,38 +47,33 @@ const Navbar = () => {
         </div>
       </div>
 
-      {/* {RIGHT SIDE} */}
-
       <div className="flex justify-between items-center gap-5">
         <div className="hidden md:flex justify-between items-center gap-5">
           <div>
-            <button onClick={toggleDarkMode}>
+            <button onClick={toggleDarkMode} aria-label="Alternar tema">
               {isDarkMode ? (
-                <Sun className="cursor-pointer text-muted-foreground" size={24} />
+                <Sun
+                  className="cursor-pointer text-muted-foreground"
+                  size={24}
+                />
               ) : (
-                <Moon className="cursor-pointer text-muted-foreground" size={24} />
+                <Moon
+                  className="cursor-pointer text-muted-foreground"
+                  size={24}
+                />
               )}
             </button>
           </div>
-          <div className="relative">
-            <Bell className="cursor-pointer text-muted-foreground" size={24} />
-            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center px-[0.4rem] py-1 text-xs font-semibold leading-none text-destructive-foreground bg-destructive rounded-full">
-              3
-            </span>
-          </div>
+
+          <NotificationsBell />
 
           <hr className="w-0 h-7 border border-solid border-l border-input mx-3" />
 
-          {/* Área do usuário com dropdown */}
           <div className="relative" ref={dropdownRef}>
             <div
               className="flex items-center gap-3 cursor-pointer hover:bg-muted px-3 py-1 rounded-lg"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
-              <div className="w-9 h-9 relative rounded-full overflow-hidden">
-                {/* ... conteúdo da imagem do usuário ... */}
-              </div>
-
               <div className="flex items-center gap-1">
                 {status === "loading" ? (
                   <div className="h-4 bg-muted rounded w-24 animate-pulse"></div>
@@ -100,10 +90,8 @@ const Navbar = () => {
               </div>
             </div>
 
-            {/* Dropdown de Logout com seta */}
             {isDropdownOpen && (
               <div className="absolute right-0 mt-2 w-48 bg-card rounded-lg shadow-xl border z-50">
-                {/* Seta do dropdown */}
                 <div className="absolute -top-2 right-3 w-4 h-4 bg-card border-t border-l rotate-45"></div>
 
                 <button
@@ -118,8 +106,11 @@ const Navbar = () => {
           </div>
         </div>
 
-        <Link href="/settings">
-          <Settings className="cursor-pointer text-muted-foreground" size={24} />
+        <Link href="/configuracoes-gerais" aria-label="Configurações">
+          <Settings
+            className="cursor-pointer text-muted-foreground"
+            size={24}
+          />
         </Link>
       </div>
     </div>
