@@ -8,6 +8,13 @@ export function formatBRL(cents: number): string {
   });
 }
 
+export function formatBRLReais(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 export function formatPercent(value: number, decimals: number = 1): string {
   return `${value.toLocaleString("pt-BR", {
     minimumFractionDigits: decimals,

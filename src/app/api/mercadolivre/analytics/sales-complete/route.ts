@@ -13,7 +13,10 @@ interface SalesProduct {
   totalRevenue: number;
   averagePrice: number;
   lastSaleDate: string;
-  salesCount: number; // número de pedidos diferentes
+  salesCount: number;
+  saleFees: number;
+  custoMedio?: number | null;
+  estimatedProfit?: number | null;
 }
 
 interface CancelledOrder {
@@ -50,7 +53,8 @@ interface SalesAnalytics {
     totalShippingRevenue: number; // Total só do frete
     averageTicket: number;
     averageItemsPerOrder: number;
-    conversionRate?: number;
+    totalSaleFees: number;
+    netRevenue: number;
   };
   trends: {
     dailyRevenue: Array<{
@@ -65,6 +69,12 @@ interface SalesAnalytics {
       count: number;
       revenue: number;
     }>;
+    salesByDayBlock: Array<{
+      day: number;
+      block: number;
+      count: number;
+    }>;
+    soldItemIds: string[];
   };
   cancelled: {
     totalCancelledOrders: number;
@@ -73,6 +83,10 @@ interface SalesAnalytics {
     cancellationRate: number;
     orders: CancelledOrder[];
     topCancelledProducts: CancelledProduct[]; // Produtos com mais cancelamentos
+  };
+  skusWithoutSales?: {
+    count: number;
+    items: Array<{ mlItemId: string; title: string }>;
   };
   comparison?: {
     previousPeriod: {
@@ -154,7 +168,7 @@ export async function GET(request: NextRequest) {
         : actualPeriod.toString();
       
       const cacheKey = createCacheKey(
-        "sales-complete",
+        "sales-complete-v2",
         accountId,
         cacheKeySuffix
       );
@@ -262,9 +276,11 @@ export async function GET(request: NextRequest) {
             number,
             { count: number; revenue: number }
           >();
+          const dayBlockData = new Map<string, number>();
 
-          let totalRevenue = 0; // Total com frete
-          let totalProductRevenue = 0; // Total só produtos
+          let totalRevenue = 0;
+          let totalProductRevenue = 0;
+          let totalSaleFees = 0;
           let totalItems = 0;
           const totalOrders = periodOrders.length;
 
@@ -277,19 +293,21 @@ export async function GET(request: NextRequest) {
             let orderProductRevenue = 0;
             let orderItems = 0;
 
-            order.order_items.forEach((item: { unit_price: number; quantity: number; item: { id: string; title: string; seller_sku?: string } }) => {
+            order.order_items.forEach((item: { unit_price: number; quantity: number; sale_fee?: number; item: { id: string; title: string; seller_sku?: string } }) => {
               const itemRevenue = item.unit_price * item.quantity;
               const itemCount = item.quantity;
+              const itemFees = (item.sale_fee || 0) * item.quantity;
 
               orderProductRevenue += itemRevenue;
+              totalSaleFees += itemFees;
               totalItems += itemCount;
               orderItems += itemCount;
 
-              // Dados por produto
               const existing = productSales.get(item.item.id);
               if (existing) {
                 existing.totalSales += itemCount;
                 existing.totalRevenue += itemRevenue;
+                existing.saleFees += itemFees;
                 existing.salesCount += 1;
                 existing.averagePrice =
                   existing.totalRevenue / existing.totalSales;
@@ -306,6 +324,7 @@ export async function GET(request: NextRequest) {
                   averagePrice: item.unit_price,
                   lastSaleDate: orderDate.toISOString(),
                   salesCount: 1,
+                  saleFees: itemFees,
                 });
               }
             });
@@ -332,7 +351,14 @@ export async function GET(request: NextRequest) {
               });
             }
 
-            // Dados por hora (usar total com frete)
+            const dayOfWeek = orderDate.getDay();
+            const block = Math.floor(hour / 4);
+            const dayBlockKey = `${dayOfWeek}-${block}`;
+            dayBlockData.set(
+              dayBlockKey,
+              (dayBlockData.get(dayBlockKey) || 0) + 1
+            );
+
             const hourlyExisting = hourlyData.get(hour);
             if (hourlyExisting) {
               hourlyExisting.count += 1;
@@ -363,7 +389,13 @@ export async function GET(request: NextRequest) {
             .sort((a, b) => b.totalRevenue - a.totalRevenue)
             .slice(0, 20);
 
-          // Dados por hora ordenados
+          const salesByDayBlock = Array.from(dayBlockData.entries()).map(
+            ([key, count]) => {
+              const [day, block] = key.split("-").map(Number);
+              return { day, block, count };
+            }
+          );
+
           const salesByHour = Array.from(hourlyData.entries())
             .map(([hour, data]) => ({
               hour,
@@ -478,11 +510,15 @@ export async function GET(request: NextRequest) {
               averageTicket: totalOrders > 0 ? totalRevenue / totalOrders : 0,
               averageItemsPerOrder:
                 totalOrders > 0 ? totalItems / totalOrders : 0,
+              totalSaleFees,
+              netRevenue: totalProductRevenue - totalSaleFees,
             },
             trends: {
               dailyRevenue,
               topProducts,
               salesByHour,
+              salesByDayBlock,
+              soldItemIds: Array.from(productSales.keys()),
             },
             cancelled: {
               totalCancelledOrders: cancelledOrders.length,
@@ -680,6 +716,60 @@ export async function GET(request: NextRequest) {
           },
         };
       }
+
+      const soldIds = new Set(analytics.trends.soldItemIds);
+
+      const [vinculados, semVenda] = await Promise.all([
+        prisma.produtoMercadoLivre.findMany({
+          where: {
+            mercadoLivreAccountId: accountId,
+            mlItemId: { in: analytics.trends.topProducts.map((p) => p.mlItemId) },
+          },
+          select: {
+            mlItemId: true,
+            produto: { select: { custoMedio: true } },
+          },
+        }),
+        prisma.produtoMercadoLivre.findMany({
+          where: {
+            mercadoLivreAccountId: accountId,
+            mlStatus: "active",
+          },
+          select: { mlItemId: true, mlTitle: true },
+        }),
+      ]);
+
+      const custoPorItem = new Map(
+        vinculados.map((v) => [v.mlItemId, v.produto?.custoMedio ?? null])
+      );
+
+      analytics.trends.topProducts = analytics.trends.topProducts.map(
+        (product) => {
+          const custoMedio = custoPorItem.get(product.mlItemId) ?? null;
+          const custoEmReais =
+            custoMedio !== null ? custoMedio / 100 : null;
+          return {
+            ...product,
+            custoMedio: custoEmReais,
+            estimatedProfit:
+              custoEmReais !== null && custoEmReais > 0
+                ? product.totalRevenue -
+                  product.saleFees -
+                  custoEmReais * product.totalSales
+                : null,
+          };
+        }
+      );
+
+      const naoVendidos = semVenda.filter(
+        (item) => !soldIds.has(item.mlItemId)
+      );
+      analytics.skusWithoutSales = {
+        count: naoVendidos.length,
+        items: naoVendidos
+          .slice(0, 50)
+          .map((item) => ({ mlItemId: item.mlItemId, title: item.mlTitle })),
+      };
 
       return NextResponse.json({
         success: true,

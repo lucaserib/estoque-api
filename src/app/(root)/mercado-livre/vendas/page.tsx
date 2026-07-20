@@ -1,14 +1,20 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import { VendasCanceladasSection } from "./components/VendasCanceladasSection";
-import ProdutosCanceladosSection from "./components/ProdutosCanceladosSection";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar } from "@/components/ui/calendar";
 import {
   Select,
   SelectContent,
@@ -24,428 +30,294 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Calendar as CalendarIcon } from "lucide-react";
-import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-  ComposedChart,
-  Area,
-  AreaChart,
-} from "recharts";
 import {
   DollarSign,
   ShoppingCart,
-  TrendingUp,
-  TrendingDown,
   Package,
-  Users,
-  BarChart3,
   RefreshCw,
-  Clock,
-  ExternalLink,
   Loader2,
   Target,
-  Activity,
-  Zap,
-  Star,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  AlertTriangle,
-  Info,
+  Users,
+  Wallet,
+  CalendarClock,
+  XCircle,
+  PackageX,
   Download,
-  GitCompare,
+  ExternalLink,
   FileText,
-  Eye,
-  Filter,
+  Calendar as CalendarIcon,
 } from "lucide-react";
-import { toast } from "sonner";
 import Header from "@/app/components/Header";
-import Link from "next/link";
-import { formatarReal, exibirValorEmReais } from "@/utils/currency";
-import type { MLAccount, SalesAnalytics } from "@/types/ml-analytics";
+import KpiCard from "@/components/dashboard/KpiCard";
+import EvolutionChart from "./components/EvolutionChart";
+import TopProductsChart from "./components/TopProductsChart";
+import SalesHeatmap from "./components/SalesHeatmap";
+import {
+  formatBRLReais,
+  formatNumberBR,
+  formatPercent,
+} from "@/lib/format";
+import type { MLAccount } from "@/types/ml-analytics";
 
-const COLORS = [
-  "#0088FE",
-  "#00C49F",
-  "#FFBB28",
-  "#FF8042",
-  "#8884D8",
-  "#82ca9d",
-  "#ffc658",
+interface TopProduct {
+  mlItemId: string;
+  productName: string;
+  sku: string;
+  totalSales: number;
+  totalRevenue: number;
+  averagePrice: number;
+  salesCount: number;
+  saleFees: number;
+  custoMedio?: number | null;
+  estimatedProfit?: number | null;
+}
+
+interface SalesAnalyticsData {
+  period: { startDate: string; endDate: string; days: number };
+  summary: {
+    totalOrders: number;
+    totalItems: number;
+    totalRevenue: number;
+    totalProductRevenue: number;
+    totalShippingRevenue: number;
+    averageTicket: number;
+    averageItemsPerOrder: number;
+    totalSaleFees: number;
+    netRevenue: number;
+  };
+  trends: {
+    dailyRevenue: Array<{
+      date: string;
+      revenue: number;
+      orders: number;
+      items: number;
+    }>;
+    topProducts: TopProduct[];
+    salesByDayBlock: Array<{ day: number; block: number; count: number }>;
+  };
+  cancelled: {
+    totalCancelledOrders: number;
+    cancellationRate: number;
+  };
+  skusWithoutSales?: {
+    count: number;
+    items: Array<{ mlItemId: string; title: string }>;
+  };
+  comparison?: {
+    previousPeriod: {
+      totalRevenue: number;
+      totalOrders: number;
+      totalItems: number;
+      averageTicket: number;
+    };
+    growth: {
+      revenueGrowth: number;
+      ordersGrowth: number;
+      itemsGrowth: number;
+      ticketGrowth: number;
+    };
+  };
+}
+
+type ViewMode = "overview" | "products" | "reports";
+
+const PERIOD_OPTIONS = [
+  { value: "7", label: "7 dias" },
+  { value: "15", label: "15 dias" },
+  { value: "30", label: "30 dias" },
+  { value: "60", label: "60 dias" },
+  { value: "90", label: "90 dias" },
 ];
 
-interface SalesDataComplete extends SalesAnalytics {
-  insights?: string[];
-  performanceIndicators?: {
-    averageItemsPerOrder: number;
-    dailyAverageRevenue: number;
-    topProductContribution: number;
-    priceVariationCoeff: number;
-  };
-}
+const calcularProjecaoDoMes = (
+  dailyRevenue: Array<{ date: string; revenue: number }>
+): number | null => {
+  const now = new Date();
+  const monthPrefix = `${now.getFullYear()}-${String(
+    now.getMonth() + 1
+  ).padStart(2, "0")}`;
+  const monthDays = dailyRevenue.filter((day) =>
+    day.date.startsWith(monthPrefix)
+  );
+  if (monthDays.length === 0) return null;
 
-interface PeriodComparison {
-  current: SalesDataComplete;
-  previous: SalesDataComplete;
-  growth: {
-    revenueGrowth: number;
-    ordersGrowth: number;
-    itemsGrowth: number;
-    ticketGrowth: number;
-  };
-}
+  const accumulated = monthDays.reduce((sum, day) => sum + day.revenue, 0);
+  const daysElapsed = now.getDate();
+  const daysInMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0
+  ).getDate();
+
+  return (accumulated / daysElapsed) * daysInMonth;
+};
+
+const KpiSkeletonRow = () => (
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    {Array.from({ length: 4 }).map((_, index) => (
+      <Skeleton key={index} className="h-[118px] rounded-xl" />
+    ))}
+  </div>
+);
 
 export default function MercadoLivreVendasPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const [loading, setLoading] = useState(true);
   const [accounts, setAccounts] = useState<MLAccount[]>([]);
-  const [salesData, setSalesData] = useState<SalesDataComplete | null>(null);
-  const [comparisonData, setComparisonData] = useState<PeriodComparison | null>(
-    null
-  );
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [salesData, setSalesData] = useState<SalesAnalyticsData | null>(null);
   const [selectedPeriod, setSelectedPeriod] = useState("30");
   const [customDateRange, setCustomDateRange] = useState<{
-    start: Date | null;
-    end: Date | null;
-  }>({ start: null, end: null });
+    from?: Date;
+    to?: Date;
+  }>({});
   const [loadingSales, setLoadingSales] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [viewMode, setViewMode] = useState<
-    | "overview"
-    | "products"
-    | "trends"
-    | "compare"
-    | "reports"
-    | "cancelled"
-    | "produtos_cancelados"
-  >("overview");
-  const [showComparison, setShowComparison] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("overview");
 
   useEffect(() => {
-    if (status === "authenticated") {
-      loadAccounts();
-    }
+    if (status !== "authenticated") return;
+
+    const loadAccounts = async () => {
+      try {
+        const response = await fetch("/api/mercadolivre/auth?action=accounts");
+        if (!response.ok) throw new Error("Erro ao carregar contas");
+
+        const accountsData = await response.json();
+        const accountsList: MLAccount[] = Array.isArray(accountsData)
+          ? accountsData
+          : accountsData.accounts || [];
+
+        setAccounts(accountsList);
+
+        const activeAccount = accountsList.find((acc) => acc.isActive);
+        if (activeAccount) {
+          setSelectedAccount(activeAccount.id);
+        }
+      } catch {
+        toast.error("Erro ao carregar contas do Mercado Livre");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAccounts();
   }, [status]);
 
-  useEffect(() => {
-    if (selectedAccount) {
-      loadSalesData();
-      if (autoRefreshEnabled) {
-        const interval = setInterval(() => {
-          loadSalesData();
-        }, 120000);
-        return () => clearInterval(interval);
-      }
-    }
-    // Refetch quando os filtros mudam; loadSalesData é recriado a cada render
-    // e já reflete estes estados, então incluí-lo causaria refetch em loop.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    selectedAccount,
-    selectedPeriod,
-    autoRefreshEnabled,
-    showComparison,
-    customDateRange,
-  ]);
-
-  const loadAccounts = async () => {
-    try {
-      const response = await fetch("/api/mercadolivre/auth?action=accounts");
-      if (!response.ok) throw new Error("Erro ao carregar contas");
-
-      const accountsData = await response.json();
-      const accountsList = Array.isArray(accountsData)
-        ? accountsData
-        : accountsData.accounts || [];
-
-      const formattedAccounts = accountsList.map(
-        (acc: {
-          id: string;
-          nickname: string;
-          siteId: string;
-          isActive: boolean;
-        }) => ({
-          id: acc.id,
-          nickname: acc.nickname,
-          siteId: acc.siteId,
-          isActive: acc.isActive,
-        })
-      );
-
-      setAccounts(formattedAccounts);
-
-      const activeAccount = formattedAccounts.find(
-        (acc: MLAccount) => acc.isActive
-      );
-      if (activeAccount) {
-        setSelectedAccount(activeAccount.id);
-      }
-    } catch (error) {
-      console.error("Erro:", error);
-      toast.error("Erro ao carregar contas do Mercado Livre");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadSalesData = async () => {
+  const loadSalesData = useCallback(async () => {
     if (!selectedAccount) return;
 
     setLoadingSales(true);
     try {
-      let url = `/api/mercadolivre/analytics/sales-complete?accountId=${selectedAccount}&period=${selectedPeriod}`;
+      let url = `/api/mercadolivre/analytics/sales-complete?accountId=${selectedAccount}&period=${selectedPeriod}&comparison=true`;
 
-      if (showComparison) {
-        url += `&comparison=true`;
+      if (customDateRange.from && customDateRange.to) {
+        url += `&startDate=${customDateRange.from.toISOString()}&endDate=${customDateRange.to.toISOString()}`;
       }
 
-      // Se há data customizada, usar ela
-      if (customDateRange.start && customDateRange.end) {
-        url += `&startDate=${customDateRange.start.toISOString()}&endDate=${customDateRange.end.toISOString()}`;
-        console.log("[VENDAS] Usando datas customizadas:", {
-          start: customDateRange.start.toISOString(),
-          end: customDateRange.end.toISOString(),
-        });
-      }
-
-      console.log("[VENDAS] URL da requisição:", url);
       const response = await fetch(url);
-
       if (!response.ok) {
         throw new Error("Erro ao carregar dados de vendas");
       }
 
-      const data = await response.json();
-
-      // Processar dados com a nova estrutura da API
-      const processedData: SalesDataComplete = {
-        period: data.data.period,
-        summary: {
-          totalSales: data.data.summary.totalItems || 0,
-          totalRevenue: data.data.summary.totalRevenue || 0,
-          // ✅ CORREÇÃO: Ticket médio já calculado corretamente na API
-          averageTicket: data.data.summary.averageTicket || 0,
-          revenueGrowth: data.data.comparison?.growth?.revenueGrowth || 0,
-          totalOrders: data.data.summary.totalOrders || 0,
-        },
-        topSellingProducts: (data.data.trends.topProducts || [])
-          .slice(0, 20)
-          .map(
-            (product: {
-              mlItemId: string;
-              productName: string;
-              totalSales: number;
-              totalRevenue: number;
-              salesCount: number;
-              averagePrice: number;
-              originalPrice?: number;
-              priceVariationPercentage?: number;
-            }) => ({
-              itemId: product.mlItemId,
-              title: product.productName,
-              quantity: product.totalSales,
-              revenue: product.totalRevenue,
-              orders: product.salesCount,
-              averagePrice: product.averagePrice,
-              originalPrice: product.originalPrice || product.averagePrice,
-              discountPercentage: product.priceVariationPercentage || 0,
-            })
-          ),
-        salesChart: (data.data.trends.dailyRevenue || []).map(
-          (day: {
-            date: string;
-            revenue: number;
-            orders: number;
-            items: number;
-          }) => ({
-            date: day.date,
-            items: day.items || 0,
-            revenue: day.revenue || 0,
-            orders: day.orders || 0,
-          })
-        ),
-        categoryBreakdown: [],
-        recentOrders: [],
-        insights: data.insights || [],
-        performanceIndicators: {
-          averageItemsPerOrder: data.data.summary.averageItemsPerOrder || 0,
-          dailyAverageRevenue:
-            data.data.period.days > 0
-              ? data.data.summary.totalRevenue / data.data.period.days
-              : 0,
-          topProductContribution:
-            data.data.trends.topProducts &&
-            data.data.trends.topProducts.length > 0 &&
-            data.data.summary.totalRevenue > 0
-              ? (data.data.trends.topProducts[0].totalRevenue /
-                  data.data.summary.totalRevenue) *
-                100
-              : 0,
-          priceVariationCoeff: calculatePriceVariation(
-            data.data.trends.topProducts || []
-          ),
-        },
-      };
-
-      setSalesData(processedData);
-      setLastUpdate(new Date());
-
-      // Processar dados de comparação se estiverem disponíveis
-      if (data.data?.comparison) {
-        const processedPreviousData: SalesDataComplete = {
-          period: {
-            from: "",
-            to: "",
-            days: data.data.period.days,
-          },
-          summary: {
-            totalSales: data.data.comparison.previousPeriod.totalItems || 0,
-            totalRevenue: data.data.comparison.previousPeriod.totalRevenue || 0,
-            averageTicket:
-              data.data.comparison.previousPeriod.averageTicket || 0,
-            revenueGrowth: 0,
-            totalOrders: data.data.comparison.previousPeriod.totalOrders || 0,
-          },
-          topSellingProducts: [],
-          salesChart: [],
-          categoryBreakdown: [],
-          recentOrders: [],
-        };
-
-        setComparisonData({
-          current: processedData,
-          previous: processedPreviousData,
-          growth: data.data.comparison.growth,
-        });
-      } else {
-        // Limpar dados de comparação se não foi solicitada
-        setComparisonData(null);
-      }
-    } catch (error) {
-      console.error("Erro ao carregar dados de vendas:", error);
+      const payload = await response.json();
+      setSalesData(payload.data as SalesAnalyticsData);
+    } catch {
       toast.error("Erro ao carregar dados de vendas");
     } finally {
       setLoadingSales(false);
     }
-  };
+  }, [selectedAccount, selectedPeriod, customDateRange]);
 
-  const calculatePriceVariation = (products: { averagePrice?: number }[]) => {
-    if (products.length === 0) return 0;
-    const prices = products
-      .map((p) => p.averagePrice || 0)
-      .filter((p) => p > 0);
-    if (prices.length === 0) return 0;
-    const mean = prices.reduce((a, b) => a + b, 0) / prices.length;
-    const variance =
-      prices.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / prices.length;
-    return (Math.sqrt(variance) / mean) * 100;
-  };
+  useEffect(() => {
+    loadSalesData();
+  }, [loadSalesData]);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-    });
-  };
-
-  const getTrendIcon = (value: number) => {
-    if (value > 0) return <ArrowUpRight className="h-4 w-4 text-green-500" />;
-    if (value < 0) return <ArrowDownRight className="h-4 w-4 text-red-500" />;
-    return <Minus className="h-4 w-4 text-muted-foreground" />;
-  };
-
-  const getTrendColor = (value: number) => {
-    if (value > 0) return "text-green-600";
-    if (value < 0) return "text-red-600";
-    return "text-muted-foreground";
-  };
-
-  const getPerformanceColor = (percentage: number) => {
-    if (percentage >= 80) return "text-green-600";
-    if (percentage >= 60) return "text-yellow-600";
-    return "text-red-600";
-  };
+  const projecaoDoMes = useMemo(
+    () =>
+      salesData ? calcularProjecaoDoMes(salesData.trends.dailyRevenue) : null,
+    [salesData]
+  );
 
   const exportToCSV = () => {
     if (!salesData) return;
 
-    const csvData = [
-      ["Produto", "Vendas", "Receita", "Pedidos", "Preço Médio"],
-      ...salesData.topSellingProducts.map((product) => [
-        product.title,
-        product.quantity.toString(),
-        product.revenue.toString(),
-        product.orders.toString(),
-        product.averagePrice.toString(),
+    const escapeCell = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const csvRows = [
+      [
+        "Produto",
+        "SKU",
+        "Unidades",
+        "Receita",
+        "Pedidos",
+        "Preço Médio",
+        "Tarifas ML",
+        "Lucro Estimado",
+      ],
+      ...salesData.trends.topProducts.map((product) => [
+        escapeCell(product.productName),
+        escapeCell(product.sku),
+        product.totalSales.toString(),
+        product.totalRevenue.toFixed(2),
+        product.salesCount.toString(),
+        product.averagePrice.toFixed(2),
+        product.saleFees.toFixed(2),
+        product.estimatedProfit !== null &&
+        product.estimatedProfit !== undefined
+          ? product.estimatedProfit.toFixed(2)
+          : "",
       ]),
     ];
 
-    const csvContent = csvData.map((row) => row.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv" });
+    const csvContent = "﻿" + csvRows.map((row) => row.join(";")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `vendas-ml-${selectedPeriod}dias-${
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `vendas-ml-${selectedPeriod}dias-${
       new Date().toISOString().split("T")[0]
     }.csv`;
-    a.click();
+    anchor.click();
     window.URL.revokeObjectURL(url);
+    toast.success("Relatório CSV exportado");
   };
 
   if (status === "loading" || loading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto max-w-7xl p-6 space-y-6">
         <Header
-          title="Análise de Vendas - Mercado Livre"
-          subtitle="Relatórios completos e insights avançados"
+          title="Análise de Vendas"
+          subtitle="Mercado Livre — relatórios e indicadores"
         />
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
+        <KpiSkeletonRow />
+        <Skeleton className="h-[340px] rounded-xl" />
       </div>
     );
   }
 
   if (accounts.length === 0) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto max-w-7xl p-6">
         <Header
-          title="Análise de Vendas - Mercado Livre"
-          subtitle="Relatórios completos e insights avançados"
+          title="Análise de Vendas"
+          subtitle="Mercado Livre — relatórios e indicadores"
         />
-        <Card>
-          <CardContent className="p-6 text-center">
+        <Card className="rounded-xl">
+          <CardContent className="p-10 text-center">
             <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">
               Nenhuma conta conectada
             </h3>
             <p className="text-muted-foreground mb-4">
-              Conecte sua conta do Mercado Livre para acessar relatórios
-              avançados de vendas.
+              Conecte sua conta do Mercado Livre para acessar os relatórios de
+              vendas.
             </p>
-            <Link href="/mercado-livre">
+            <Link href="/configuracoes">
               <Button>Conectar Mercado Livre</Button>
             </Link>
           </CardContent>
@@ -455,1039 +327,470 @@ export default function MercadoLivreVendasPage() {
   }
 
   const currentAccount = accounts.find((acc) => acc.id === selectedAccount);
+  const growth = salesData?.comparison?.growth;
+  const periodLabel = customDateRange.from
+    ? "período anterior equivalente"
+    : `${selectedPeriod}d anteriores`;
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto max-w-7xl p-6 space-y-6">
       <Header
-        title="Análise de Vendas - Mercado Livre"
-        subtitle={`Relatórios completos e insights avançados${
-          currentAccount ? ` - ${currentAccount.nickname}` : ""
+        title="Análise de Vendas"
+        subtitle={`Mercado Livre${
+          currentAccount ? ` — ${currentAccount.nickname}` : ""
         }`}
-      />
-
-      {/* Controles Avançados */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 rounded-lg border border-blue-200">
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Select
-                value={selectedPeriod}
-                onValueChange={(value) => {
-                  setSelectedPeriod(value);
-                  setCustomDateRange({ start: null, end: null }); // Limpar datas customizadas
-                }}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="7">7 dias</SelectItem>
-                  <SelectItem value="15">15 dias</SelectItem>
-                  <SelectItem value="30">30 dias</SelectItem>
-                  <SelectItem value="60">60 dias</SelectItem>
-                  <SelectItem value="90">90 dias</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <span className="text-muted-foreground">ou</span>
-
-              <div className="flex items-center gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[140px] justify-start text-left font-normal",
-                        !customDateRange.start && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customDateRange.start ? (
-                        format(customDateRange.start, "dd/MM/yyyy")
-                      ) : (
-                        <span>Data inicial</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={customDateRange.start || undefined}
-                      onSelect={(date) =>
-                        setCustomDateRange({
-                          ...customDateRange,
-                          start: date || null,
-                        })
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-
-                <span className="text-muted-foreground">até</span>
-
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[140px] justify-start text-left font-normal",
-                        !customDateRange.end && "text-muted-foreground"
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {customDateRange.end ? (
-                        format(customDateRange.end, "dd/MM/yyyy")
-                      ) : (
-                        <span>Data final</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <Calendar
-                      mode="single"
-                      selected={customDateRange.end || undefined}
-                      onSelect={(date) =>
-                        setCustomDateRange({
-                          ...customDateRange,
-                          end: date || null,
-                        })
-                      }
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-
-            <Select
-              value={viewMode}
-              onValueChange={(value: string) =>
-                setViewMode(value as typeof viewMode)
-              }
-            >
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="overview">Visão Geral</SelectItem>
-                <SelectItem value="products">Produtos</SelectItem>
-                <SelectItem value="trends">Tendências</SelectItem>
-                <SelectItem value="compare">Comparar</SelectItem>
-                <SelectItem value="cancelled">Pedidos Cancelados</SelectItem>
-                <SelectItem value="produtos_cancelados">
-                  Produtos Cancelados
+      >
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Select
+            value={selectedPeriod}
+            onValueChange={(value) => {
+              setSelectedPeriod(value);
+              setCustomDateRange({});
+            }}
+          >
+            <SelectTrigger className="w-28 h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
                 </SelectItem>
-                <SelectItem value="reports">Relatórios</SelectItem>
-              </SelectContent>
-            </Select>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={loadSalesData}
-              disabled={loadingSales}
-              className="bg-card/50"
-            >
-              <RefreshCw
-                className={`h-4 w-4 mr-2 ${loadingSales ? "animate-spin" : ""}`}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "h-9",
+                  !customDateRange.from && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                {customDateRange.from && customDateRange.to
+                  ? `${format(customDateRange.from, "dd/MM")} – ${format(
+                      customDateRange.to,
+                      "dd/MM"
+                    )}`
+                  : "Personalizado"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="range"
+                selected={
+                  customDateRange.from
+                    ? { from: customDateRange.from, to: customDateRange.to }
+                    : undefined
+                }
+                onSelect={(range) =>
+                  setCustomDateRange({
+                    from: range?.from,
+                    to: range?.to,
+                  })
+                }
+                numberOfMonths={2}
               />
-              Atualizar
-            </Button>
+            </PopoverContent>
+          </Popover>
 
-            <Button
-              variant={showComparison ? "default" : "outline"}
-              size="sm"
-              onClick={() => setShowComparison(!showComparison)}
-              className={showComparison ? "" : "bg-card/50"}
-            >
-              <GitCompare className="h-4 w-4 mr-2" />
-              Comparar
-            </Button>
+          <Select
+            value={viewMode}
+            onValueChange={(value) => setViewMode(value as ViewMode)}
+          >
+            <SelectTrigger className="w-36 h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="overview">Visão Geral</SelectItem>
+              <SelectItem value="products">Produtos</SelectItem>
+              <SelectItem value="reports">Relatórios</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={exportToCSV}
-              disabled={!salesData}
-              className="bg-card/50"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Exportar
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={loadSalesData}
+            disabled={loadingSales}
+          >
+            <RefreshCw
+              className={cn("h-4 w-4", loadingSales && "animate-spin")}
+            />
+          </Button>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  autoRefreshEnabled
-                    ? "bg-green-500 animate-pulse"
-                    : "bg-muted-foreground/50"
-                }`}
-              />
-              <span className="text-sm text-muted-foreground">
-                {autoRefreshEnabled
-                  ? "Dados em tempo real"
-                  : "Atualização manual"}
-              </span>
-            </div>
-
-            {lastUpdate && (
-              <div className="text-sm text-muted-foreground">
-                Última atualização: {lastUpdate.toLocaleTimeString()}
-              </div>
-            )}
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={exportToCSV}
+            disabled={!salesData}
+          >
+            <Download className="h-4 w-4" />
+          </Button>
         </div>
+      </Header>
 
-        {/* Insights Rápidos */}
-        {salesData && salesData.insights && salesData.insights.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {salesData.insights.slice(0, 3).map((insight, index) => (
-              <Alert key={index} className="border-blue-200 bg-blue-50/50">
-                <Info className="h-4 w-4 text-blue-600" />
-                <AlertDescription className="text-blue-800">
-                  {insight}
-                </AlertDescription>
-              </Alert>
-            ))}
-          </div>
-        )}
-      </div>
+      {loadingSales && !salesData && (
+        <>
+          <KpiSkeletonRow />
+          <KpiSkeletonRow />
+          <Skeleton className="h-[340px] rounded-xl" />
+        </>
+      )}
 
-      {/* KPIs Principais com Comparação */}
       {salesData && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="border-green-200 bg-green-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                      Itens Vendidos
-                    </p>
-                    <p className="text-2xl font-bold text-green-600">
-                      {salesData.summary.totalSales.toLocaleString("pt-BR")}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {(
-                          salesData.summary.totalSales /
-                          parseInt(selectedPeriod)
-                        ).toFixed(1)}{" "}
-                        por dia
-                      </span>
-                      {showComparison && comparisonData && (
-                        <div className="flex items-center gap-1 ml-2">
-                          {getTrendIcon(comparisonData.growth.itemsGrowth)}
-                          <span
-                            className={`text-xs font-medium ${getTrendColor(
-                              comparisonData.growth.itemsGrowth
-                            )}`}
-                          >
-                            {comparisonData.growth.itemsGrowth > 0 ? "+" : ""}
-                            {comparisonData.growth.itemsGrowth.toFixed(1)}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <ShoppingCart className="h-8 w-8 text-green-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-blue-200 bg-blue-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                      Receita Total (Produtos + Frete)
-                    </p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {formatarReal(salesData.summary.totalRevenue)}
-                    </p>
-                    <div className="flex flex-col mt-1">
-                      {salesData.summary.totalProductRevenue !== undefined && (
-                        <span className="text-xs text-muted-foreground">
-                          Produtos:{" "}
-                          {formatarReal(salesData.summary.totalProductRevenue)}
-                        </span>
-                      )}
-                      {salesData.summary.totalShippingRevenue !== undefined && (
-                        <span className="text-xs text-muted-foreground">
-                          Frete:{" "}
-                          {formatarReal(salesData.summary.totalShippingRevenue)}
-                        </span>
-                      )}
-                    </div>
-                    {showComparison && comparisonData && (
-                      <div className="flex items-center gap-1 mt-1">
-                        {getTrendIcon(comparisonData.growth.revenueGrowth)}
-                        <span
-                          className={`text-xs font-medium ${getTrendColor(
-                            comparisonData.growth.revenueGrowth
-                          )}`}
-                        >
-                          {comparisonData.growth.revenueGrowth > 0 ? "+" : ""}
-                          {comparisonData.growth.revenueGrowth.toFixed(1)}%
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <DollarSign className="h-8 w-8 text-blue-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-purple-200 bg-purple-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">
-                      Ticket Médio
-                    </p>
-                    <p className="text-2xl font-bold text-purple-600">
-                      {formatarReal(salesData.summary.averageTicket)}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        Por item vendido
-                      </span>
-                      {showComparison && comparisonData && (
-                        <div className="flex items-center gap-1 ml-2">
-                          {getTrendIcon(comparisonData.growth.ticketGrowth)}
-                          <span
-                            className={`text-xs font-medium ${getTrendColor(
-                              comparisonData.growth.ticketGrowth
-                            )}`}
-                          >
-                            {comparisonData.growth.ticketGrowth > 0 ? "+" : ""}
-                            {comparisonData.growth.ticketGrowth.toFixed(1)}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <Target className="h-8 w-8 text-purple-600" />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-orange-200 bg-orange-50/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm text-muted-foreground">Pedidos</p>
-                    <p className="text-2xl font-bold text-orange-600">
-                      {salesData.summary.totalOrders.toLocaleString("pt-BR")}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <span className="text-xs text-muted-foreground">
-                        {salesData.performanceIndicators?.averageItemsPerOrder.toFixed(
-                          1
-                        )}{" "}
-                        itens/pedido
-                      </span>
-                      {showComparison && comparisonData && (
-                        <div className="flex items-center gap-1 ml-2">
-                          {getTrendIcon(comparisonData.growth.ordersGrowth)}
-                          <span
-                            className={`text-xs font-medium ${getTrendColor(
-                              comparisonData.growth.ordersGrowth
-                            )}`}
-                          >
-                            {comparisonData.growth.ordersGrowth > 0 ? "+" : ""}
-                            {comparisonData.growth.ordersGrowth.toFixed(1)}%
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <Users className="h-8 w-8 text-orange-600" />
-                </div>
-              </CardContent>
-            </Card>
+            <KpiCard
+              label="Receita Total"
+              value={formatBRLReais(salesData.summary.totalRevenue)}
+              icon={DollarSign}
+              delta={growth?.revenueGrowth}
+              deltaLabel={`vs ${periodLabel}`}
+              tooltip="Soma de produtos e frete dos pedidos pagos no período."
+            />
+            <KpiCard
+              label="Receita Líquida Estimada"
+              value={formatBRLReais(salesData.summary.netRevenue)}
+              icon={Wallet}
+              subtitle={`Tarifas ML: ${formatBRLReais(
+                salesData.summary.totalSaleFees
+              )}`}
+              tooltip="Receita de produtos menos as tarifas de venda do Mercado Livre (sale_fee). Não inclui custos de frete pagos pelo seller."
+            />
+            <KpiCard
+              label="Itens Vendidos"
+              value={formatNumberBR(salesData.summary.totalItems)}
+              icon={ShoppingCart}
+              delta={growth?.itemsGrowth}
+              deltaLabel={`vs ${periodLabel}`}
+              tooltip="Unidades vendidas em pedidos válidos do período."
+            />
+            <KpiCard
+              label="Pedidos"
+              value={formatNumberBR(salesData.summary.totalOrders)}
+              icon={Users}
+              delta={growth?.ordersGrowth}
+              deltaLabel={`vs ${periodLabel}`}
+              subtitle={`${salesData.summary.averageItemsPerOrder.toFixed(
+                1
+              )} itens/pedido`}
+              tooltip="Pedidos pagos, enviados ou entregues no período."
+            />
           </div>
 
-          {/* Indicadores de Performance */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
-                Indicadores de Performance
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {(
-                      salesData.performanceIndicators?.averageItemsPerOrder ||
-                      0
-                    ).toFixed(1)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Itens por Pedido
-                  </div>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <KpiCard
+              label="Ticket Médio"
+              value={formatBRLReais(salesData.summary.averageTicket)}
+              icon={Target}
+              delta={growth?.ticketGrowth}
+              deltaLabel={`vs ${periodLabel}`}
+              tooltip="Receita total dividida pelo número de pedidos."
+            />
+            <KpiCard
+              label="Projeção do Mês"
+              value={
+                projecaoDoMes !== null ? formatBRLReais(projecaoDoMes) : "—"
+              }
+              icon={CalendarClock}
+              tooltip="Receita acumulada no mês corrente dividida pelos dias decorridos e multiplicada pelos dias do mês. Requer vendas do mês dentro do período selecionado."
+            />
+            <KpiCard
+              label="Taxa de Cancelamento"
+              value={formatPercent(salesData.cancelled.cancellationRate)}
+              icon={XCircle}
+              subtitle={`${formatNumberBR(
+                salesData.cancelled.totalCancelledOrders
+              )} pedidos cancelados`}
+              tooltip="Pedidos cancelados divididos pelo total de pedidos (válidos + cancelados) do período."
+            />
+            <KpiCard
+              label="SKUs sem Venda"
+              value={formatNumberBR(salesData.skusWithoutSales?.count ?? 0)}
+              icon={PackageX}
+              subtitle="Ver lista na visão Produtos"
+              tooltip="Anúncios ativos no Mercado Livre sem nenhuma venda no período selecionado."
+            />
+          </div>
 
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">
-                    {(
-                      salesData.performanceIndicators?.topProductContribution ||
-                      0
-                    ).toFixed(1)}
-                    %
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Top Produto (Receita)
-                  </div>
-                  <Progress
-                    value={
-                      salesData.performanceIndicators?.topProductContribution ||
-                      0
-                    }
-                    className="h-2 mt-2"
-                  />
-                </div>
-
-                <div className="text-center">
-                  <div
-                    className={`text-2xl font-bold ${getPerformanceColor(
-                      100 -
-                        (salesData.performanceIndicators?.priceVariationCoeff ||
-                          0)
-                    )}`}
-                  >
-                    {(
-                      100 -
-                      (salesData.performanceIndicators?.priceVariationCoeff ||
-                        0)
-                    ).toFixed(0)}
-                    %
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Consistência de Preços
-                  </div>
-                  <Progress
-                    value={Math.max(
-                      0,
-                      100 -
-                        (salesData.performanceIndicators?.priceVariationCoeff ||
-                          0)
-                    )}
-                    className="h-2 mt-2"
-                  />
-                </div>
-
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">
-                    {(
-                      salesData.performanceIndicators?.averageItemsPerOrder || 0
-                    ).toFixed(1)}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Itens por Pedido
-                  </div>
-                  <Progress
-                    value={Math.min(
-                      (salesData.performanceIndicators?.averageItemsPerOrder ||
-                        0) * 20,
-                      100
-                    )}
-                    className="h-2 mt-2"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Conteúdo baseado no modo de visualização */}
           {viewMode === "overview" && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Gráfico de Evolução */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5" />
-                    Evolução de Vendas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <ComposedChart data={salesData.salesChart}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tickFormatter={formatDate} />
-                      <YAxis yAxisId="left" />
-                      <YAxis yAxisId="right" orientation="right" />
-                      <Tooltip
-                        labelFormatter={(value) => formatDate(value as string)}
-                        formatter={(value: number, name: string) => [
-                          name === "revenue" ? formatarReal(value) : value,
-                          name === "items"
-                            ? "Itens Vendidos"
-                            : name === "revenue"
-                            ? "Receita Total (com frete)"
-                            : "Pedidos",
-                        ]}
-                      />
-                      <Legend />
-                      <Bar
-                        yAxisId="left"
-                        dataKey="items"
-                        fill="#10b981"
-                        name="Itens"
-                        opacity={0.8}
-                      />
-                      <Line
-                        yAxisId="right"
-                        type="monotone"
-                        dataKey="revenue"
-                        stroke="#3b82f6"
-                        strokeWidth={3}
-                        name="Receita Total (com frete)"
-                      />
-                      <Line
-                        yAxisId="left"
-                        type="monotone"
-                        dataKey="orders"
-                        stroke="#f59e0b"
-                        strokeWidth={2}
-                        name="Pedidos"
-                      />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-
-              {/* Composição da Receita - Produtos vs Frete */}
-              {salesData.summary.totalProductRevenue !== undefined &&
-                salesData.summary.totalShippingRevenue !== undefined && (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-green-500" />
-                        Composição da Receita
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Gráfico de Pizza */}
-                        <ResponsiveContainer width="100%" height={250}>
-                          <PieChart>
-                            <Pie
-                              data={[
-                                {
-                                  name: "Produtos",
-                                  value: salesData.summary.totalProductRevenue,
-                                },
-                                {
-                                  name: "Frete",
-                                  value: salesData.summary.totalShippingRevenue,
-                                },
-                              ]}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={({ name, percent }) =>
-                                `${name}: ${(percent * 100).toFixed(1)}%`
-                              }
-                              outerRadius={80}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              <Cell fill="#10b981" />
-                              <Cell fill="#f59e0b" />
-                            </Pie>
-                            <Tooltip
-                              formatter={(value) =>
-                                formatarReal(value as number)
-                              }
-                            />
-                          </PieChart>
-                        </ResponsiveContainer>
-
-                        {/* Detalhes */}
-                        <div className="flex flex-col justify-center gap-4">
-                          <div className="flex items-center justify-between p-3 bg-green-50 dark:bg-green-950/20 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 bg-green-500 rounded-full" />
-                              <span className="font-medium">Produtos</span>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-lg">
-                                {formatarReal(
-                                  salesData.summary.totalProductRevenue
-                                )}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {(
-                                  (salesData.summary.totalProductRevenue /
-                                    salesData.summary.totalRevenue) *
-                                  100
-                                ).toFixed(1)}
-                                % do total
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <div className="w-3 h-3 bg-orange-500 rounded-full" />
-                              <span className="font-medium">Frete</span>
-                            </div>
-                            <div className="text-right">
-                              <p className="font-bold text-lg">
-                                {formatarReal(
-                                  salesData.summary.totalShippingRevenue
-                                )}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {(
-                                  (salesData.summary.totalShippingRevenue /
-                                    salesData.summary.totalRevenue) *
-                                  100
-                                ).toFixed(1)}
-                                % do total
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="pt-3 border-t">
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold">Total</span>
-                              <span className="font-bold text-xl">
-                                {formatarReal(salesData.summary.totalRevenue)}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-              {/* Top 5 Produtos - Gráfico */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Star className="h-5 w-5" />
-                    Top 5 Produtos por Receita
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={salesData.topSellingProducts
-                          .slice(0, 5)
-                          .map((product) => ({
-                            name:
-                              product.title.length > 30
-                                ? product.title.substring(0, 30) + "..."
-                                : product.title,
-                            value: product.revenue,
-                          }))}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ value }) => formatarReal(value)}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {salesData.topSellingProducts
-                          .slice(0, 5)
-                          .map((_, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={COLORS[index % COLORS.length]}
-                            />
-                          ))}
-                      </Pie>
-                      <Tooltip
-                        formatter={(value) => formatarReal(value as number)}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </CardContent>
-              </Card>
-            </div>
+            <>
+              <EvolutionChart data={salesData.trends.dailyRevenue} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <TopProductsChart
+                  products={salesData.trends.topProducts.map((product) => ({
+                    itemId: product.mlItemId,
+                    title: product.productName,
+                    revenue: product.totalRevenue,
+                    quantity: product.totalSales,
+                  }))}
+                  totalRevenue={salesData.summary.totalProductRevenue}
+                />
+                <SalesHeatmap data={salesData.trends.salesByDayBlock} />
+              </div>
+            </>
           )}
 
           {viewMode === "products" && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Análise Detalhada de Produtos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Produto</TableHead>
-                      <TableHead className="text-center">Vendas</TableHead>
-                      <TableHead className="text-center">Receita</TableHead>
-                      <TableHead className="text-center">Pedidos</TableHead>
-                      <TableHead className="text-center">Preço Médio</TableHead>
-                      <TableHead className="text-center">
-                        Participação
-                      </TableHead>
-                      <TableHead className="text-center">Performance</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {salesData.topSellingProducts.map((product, index) => {
-                      const participation =
-                        salesData.summary.totalRevenue > 0
-                          ? (product.revenue / salesData.summary.totalRevenue) *
-                            100
-                          : 0;
-                      const itemsPerOrder =
-                        product.orders > 0
-                          ? product.quantity / product.orders
-                          : 0;
-
-                      return (
-                        <TableRow key={product.itemId}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge
-                                variant={index < 3 ? "default" : "secondary"}
-                              >
-                                #{index + 1}
-                              </Badge>
-                              <div>
-                                <p className="font-medium truncate max-w-xs">
-                                  {product.title}
-                                </p>
-                                <Link
-                                  href={`https://mercadolivre.com.br/p/${product.itemId}`}
-                                  target="_blank"
-                                  className="text-xs text-blue-600 hover:underline flex items-center gap-1"
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                  Ver no ML
-                                </Link>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="font-semibold">
-                              {product.quantity}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {salesData.summary.totalSales > 0
-                                ? (
-                                    (product.quantity /
-                                      salesData.summary.totalSales) *
-                                    100
-                                  ).toFixed(1)
-                                : 0}
-                              %
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="font-semibold text-green-600">
-                              {formatarReal(product.revenue)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {participation.toFixed(1)}%
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div>{product.orders}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {itemsPerOrder.toFixed(1)} itens/pedido
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="font-medium">
-                              {formatarReal(product.averagePrice)}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Progress value={participation} className="h-2" />
-                            <div className="text-xs text-muted-foreground mt-1">
-                              {participation.toFixed(1)}%
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {index < 3 && (
-                              <Badge variant="default" className="bg-green-500">
-                                <Star className="h-3 w-3 mr-1" />
-                                Top
-                              </Badge>
-                            )}
-                            {participation > 5 && (
-                              <Badge
-                                variant="secondary"
-                                className="bg-blue-500 text-white"
-                              >
-                                <Zap className="h-3 w-3 mr-1" />
-                                Alta
-                              </Badge>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          )}
-
-          {viewMode === "compare" && comparisonData && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <GitCompare className="h-5 w-5" />
-                    Comparação de Períodos
+            <>
+              <Card className="rounded-xl">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                    Produtos Vendidos no Período
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-lg font-semibold">Vendas</div>
-                      <div className="text-2xl font-bold text-green-600">
-                        {comparisonData.current.summary.totalSales}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        vs {comparisonData.previous.summary.totalSales}
-                      </div>
-                      <div
-                        className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(
-                          comparisonData.growth.itemsGrowth
-                        )}`}
-                      >
-                        {getTrendIcon(comparisonData.growth.itemsGrowth)}
-                        <span className="font-medium">
-                          {comparisonData.growth.itemsGrowth > 0 ? "+" : ""}
-                          {comparisonData.growth.itemsGrowth.toFixed(1)}%
-                        </span>
-                      </div>
+                  {salesData.trends.topProducts.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-muted-foreground">
+                      Nenhuma venda no período selecionado
                     </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Produto</TableHead>
+                            <TableHead className="text-right">
+                              Unidades
+                            </TableHead>
+                            <TableHead className="text-right">
+                              Receita
+                            </TableHead>
+                            <TableHead className="text-right">
+                              Preço Médio
+                            </TableHead>
+                            <TableHead className="text-right">
+                              Lucro Estimado
+                            </TableHead>
+                            <TableHead className="w-40">
+                              Participação
+                            </TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {salesData.trends.topProducts.map(
+                            (product, index) => {
+                              const participation =
+                                salesData.summary.totalProductRevenue > 0
+                                  ? (product.totalRevenue /
+                                      salesData.summary.totalProductRevenue) *
+                                    100
+                                  : 0;
 
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-lg font-semibold">Receita</div>
-                      <div className="text-2xl font-bold text-blue-600">
-                        {formatarReal(
-                          comparisonData.current.summary.totalRevenue
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        vs{" "}
-                        {formatarReal(
-                          comparisonData.previous.summary.totalRevenue
-                        )}
-                      </div>
-                      <div
-                        className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(
-                          comparisonData.growth.revenueGrowth
-                        )}`}
-                      >
-                        {getTrendIcon(comparisonData.growth.revenueGrowth)}
-                        <span className="font-medium">
-                          {comparisonData.growth.revenueGrowth > 0 ? "+" : ""}
-                          {comparisonData.growth.revenueGrowth.toFixed(1)}%
-                        </span>
-                      </div>
+                              return (
+                                <TableRow key={product.mlItemId}>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      <Badge
+                                        variant={
+                                          index < 3 ? "default" : "secondary"
+                                        }
+                                        className="rounded-full"
+                                      >
+                                        #{index + 1}
+                                      </Badge>
+                                      <div className="min-w-0">
+                                        <p className="font-medium truncate max-w-xs">
+                                          {product.productName}
+                                        </p>
+                                        <a
+                                          href={`https://mercadolivre.com.br/p/${product.mlItemId}`}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          className="text-xs text-info hover:underline flex items-center gap-1"
+                                        >
+                                          <ExternalLink className="h-3 w-3" />
+                                          Ver no ML
+                                        </a>
+                                      </div>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums">
+                                    {formatNumberBR(product.totalSales)}
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums font-medium">
+                                    {formatBRLReais(product.totalRevenue)}
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums">
+                                    {formatBRLReais(product.averagePrice)}
+                                  </TableCell>
+                                  <TableCell className="text-right tabular-nums">
+                                    {product.estimatedProfit !== null &&
+                                    product.estimatedProfit !== undefined ? (
+                                      <span
+                                        className={
+                                          product.estimatedProfit >= 0
+                                            ? "text-success font-medium"
+                                            : "text-destructive font-medium"
+                                        }
+                                      >
+                                        {formatBRLReais(
+                                          product.estimatedProfit
+                                        )}
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">
+                                        sem custo
+                                      </span>
+                                    )}
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-2">
+                                      <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+                                        <div
+                                          className="h-full rounded-full bg-primary"
+                                          style={{
+                                            width: `${Math.min(
+                                              participation,
+                                              100
+                                            )}%`,
+                                          }}
+                                        />
+                                      </div>
+                                      <span className="text-xs text-muted-foreground tabular-nums w-12 text-right">
+                                        {formatPercent(participation)}
+                                      </span>
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            }
+                          )}
+                        </TableBody>
+                      </Table>
                     </div>
-
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-lg font-semibold">Pedidos</div>
-                      <div className="text-2xl font-bold text-orange-600">
-                        {comparisonData.current.summary.totalOrders}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        vs {comparisonData.previous.summary.totalOrders}
-                      </div>
-                      <div
-                        className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(
-                          comparisonData.growth.ordersGrowth
-                        )}`}
-                      >
-                        {getTrendIcon(comparisonData.growth.ordersGrowth)}
-                        <span className="font-medium">
-                          {comparisonData.growth.ordersGrowth > 0 ? "+" : ""}
-                          {comparisonData.growth.ordersGrowth.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-lg font-semibold">Ticket Médio</div>
-                      <div className="text-2xl font-bold text-purple-600">
-                        {formatarReal(
-                          comparisonData.current.summary.averageTicket
-                        )}
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        vs{" "}
-                        {formatarReal(
-                          comparisonData.previous.summary.averageTicket
-                        )}
-                      </div>
-                      <div
-                        className={`flex items-center justify-center gap-1 mt-2 ${getTrendColor(
-                          comparisonData.growth.ticketGrowth
-                        )}`}
-                      >
-                        {getTrendIcon(comparisonData.growth.ticketGrowth)}
-                        <span className="font-medium">
-                          {comparisonData.growth.ticketGrowth > 0 ? "+" : ""}
-                          {comparisonData.growth.ticketGrowth.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
-            </div>
-          )}
 
-          {viewMode === "cancelled" && salesData?.cancelled && (
-            <VendasCanceladasSection data={salesData.cancelled} />
+              {salesData.skusWithoutSales &&
+                salesData.skusWithoutSales.count > 0 && (
+                  <Card className="rounded-xl">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <PackageX className="h-4 w-4 text-muted-foreground" />
+                        SKUs sem Venda no Período (
+                        {formatNumberBR(salesData.skusWithoutSales.count)})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                        {salesData.skusWithoutSales.items.map((item) => (
+                          <li
+                            key={item.mlItemId}
+                            className="text-sm text-muted-foreground truncate"
+                          >
+                            {item.title}
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                )}
+            </>
           )}
-
-          {viewMode === "produtos_cancelados" &&
-            salesData?.cancelled?.topCancelledProducts && (
-              <ProdutosCanceladosSection
-                products={salesData.cancelled.topCancelledProducts}
-              />
-            )}
 
           {viewMode === "reports" && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    Relatórios Executivos
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div
-                      className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer"
-                      onClick={exportToCSV}
-                    >
-                      <div className="flex items-center gap-3">
-                        <Download className="h-8 w-8 text-blue-600" />
-                        <div>
-                          <div className="font-semibold">Exportar CSV</div>
-                          <div className="text-sm text-muted-foreground">
-                            Dados detalhados dos produtos
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <BarChart3 className="h-8 w-8 text-green-600" />
-                        <div>
-                          <div className="font-semibold">
-                            Relatório de Performance
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            Análise completa de KPIs
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-8 w-8 text-purple-600" />
-                        <div>
-                          <div className="font-semibold">Relatório Mensal</div>
-                          <div className="text-sm text-muted-foreground">
-                            Resumo consolidado
-                          </div>
-                        </div>
-                      </div>
+            <Card className="rounded-xl">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Relatórios
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <button
+                  onClick={exportToCSV}
+                  className="w-full sm:w-auto flex items-center gap-3 p-4 border rounded-xl hover:shadow-md transition-shadow duration-200 text-left"
+                >
+                  <Download className="h-8 w-8 text-primary" />
+                  <div>
+                    <div className="font-semibold">Exportar CSV</div>
+                    <div className="text-sm text-muted-foreground">
+                      Produtos vendidos, receita, tarifas e lucro estimado
                     </div>
                   </div>
+                </button>
 
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                    <h4 className="font-semibold text-blue-900 mb-2">
-                      Resumo do Período
-                    </h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <div className="font-medium">Métricas Principais:</div>
-                        <ul className="mt-1 space-y-1 text-muted-foreground">
-                          <li>
-                            • Total de itens vendidos:{" "}
-                            {salesData.summary.totalSales.toLocaleString(
-                              "pt-BR"
-                            )}
-                          </li>
-                          <li>
-                            • Receita total:{" "}
-                            {formatarReal(salesData.summary.totalRevenue)}
-                          </li>
-                          <li>
-                            • Total de pedidos:{" "}
-                            {salesData.summary.totalOrders.toLocaleString(
-                              "pt-BR"
-                            )}
-                          </li>
-                          <li>
-                            • Ticket médio:{" "}
-                            {formatarReal(salesData.summary.averageTicket)}
-                          </li>
-                        </ul>
-                      </div>
-                      <div>
-                        <div className="font-medium">Performance:</div>
-                        <ul className="mt-1 space-y-1 text-muted-foreground">
-                          <li>
-                            • Itens por pedido:{" "}
-                            {(
-                              salesData.performanceIndicators
-                                ?.averageItemsPerOrder || 0
-                            ).toFixed(1)}
-                          </li>
-                          <li>
-                            • Receita diária:{" "}
-                            {formatarReal(
-                              salesData.performanceIndicators
-                                ?.dailyAverageRevenue || 0
-                            )}
-                          </li>
-                          <li>
-                            • Produtos únicos:{" "}
-                            {salesData.topSellingProducts.length}
-                          </li>
-                        </ul>
-                      </div>
-                    </div>
+                <div className="rounded-xl border p-4">
+                  <h4 className="font-semibold mb-3">Resumo do Período</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <ul className="space-y-1.5 text-muted-foreground">
+                      <li>
+                        Itens vendidos:{" "}
+                        <span className="text-foreground font-medium tabular-nums">
+                          {formatNumberBR(salesData.summary.totalItems)}
+                        </span>
+                      </li>
+                      <li>
+                        Receita total:{" "}
+                        <span className="text-foreground font-medium tabular-nums">
+                          {formatBRLReais(salesData.summary.totalRevenue)}
+                        </span>
+                      </li>
+                      <li>
+                        Receita líquida estimada:{" "}
+                        <span className="text-foreground font-medium tabular-nums">
+                          {formatBRLReais(salesData.summary.netRevenue)}
+                        </span>
+                      </li>
+                      <li>
+                        Pedidos:{" "}
+                        <span className="text-foreground font-medium tabular-nums">
+                          {formatNumberBR(salesData.summary.totalOrders)}
+                        </span>
+                      </li>
+                    </ul>
+                    <ul className="space-y-1.5 text-muted-foreground">
+                      <li>
+                        Ticket médio:{" "}
+                        <span className="text-foreground font-medium tabular-nums">
+                          {formatBRLReais(salesData.summary.averageTicket)}
+                        </span>
+                      </li>
+                      <li>
+                        Itens por pedido:{" "}
+                        <span className="text-foreground font-medium tabular-nums">
+                          {salesData.summary.averageItemsPerOrder.toFixed(1)}
+                        </span>
+                      </li>
+                      <li>
+                        Taxa de cancelamento:{" "}
+                        <span className="text-foreground font-medium tabular-nums">
+                          {formatPercent(
+                            salesData.cancelled.cancellationRate
+                          )}
+                        </span>
+                      </li>
+                      <li>
+                        Produtos com venda:{" "}
+                        <span className="text-foreground font-medium tabular-nums">
+                          {formatNumberBR(
+                            salesData.trends.topProducts.length
+                          )}
+                        </span>
+                      </li>
+                    </ul>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </>
       )}
 
-      {/* Loading State */}
-      {loadingSales && !salesData && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              Carregando análise completa de vendas...
-            </p>
-          </CardContent>
-        </Card>
+      {loadingSales && salesData && (
+        <div className="fixed bottom-6 right-6 rounded-full bg-card border shadow-md p-2.5">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
       )}
     </div>
   );

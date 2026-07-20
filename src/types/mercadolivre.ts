@@ -481,6 +481,7 @@ export interface MLOrder {
     quantity: number;
     unit_price: number;
     full_unit_price?: number;
+    sale_fee?: number;
   }>;
   buyer: Record<string, unknown>;
   seller: Record<string, unknown>;

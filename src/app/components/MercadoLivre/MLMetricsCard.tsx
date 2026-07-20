@@ -3,20 +3,21 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { exibirValorEmReais } from "@/utils/currency";
+import { formatBRL, formatBRLReais, formatNumberBR } from "@/lib/format";
 import { LucideIcon } from "lucide-react";
+
+export type MetricFormat = "number" | "brl-reais" | "brl-centavos" | "text";
 
 interface MLMetricsCardProps {
   title: string;
   value: string | number;
+  format?: MetricFormat;
   subtitle?: string;
   icon: LucideIcon;
-  color: "green" | "blue" | "orange" | "red" | "purple";
   badge?: {
     text: string;
     variant?: "default" | "destructive" | "secondary" | "outline";
   };
-  trend?: "up" | "down" | "neutral";
   progress?: {
     value: number;
     label: string;
@@ -24,133 +25,96 @@ interface MLMetricsCardProps {
   details?: Array<{
     label: string;
     value: string | number;
-    color?: string;
-    isValue?: boolean; // ✅ NOVO: Para indicar que é um valor monetário
+    format?: MetricFormat;
   }>;
 }
+
+const formatMetric = (
+  value: string | number,
+  format: MetricFormat
+): string => {
+  if (typeof value !== "number") return value;
+  switch (format) {
+    case "brl-reais":
+      return formatBRLReais(value);
+    case "brl-centavos":
+      return formatBRL(value);
+    case "number":
+      return formatNumberBR(value);
+    default:
+      return String(value);
+  }
+};
 
 export default function MLMetricsCard({
   title,
   value,
+  format = "number",
   subtitle,
   icon: Icon,
-  color,
   badge,
-  trend,
   progress,
   details,
 }: MLMetricsCardProps) {
-  const getColorClasses = (color: string) => {
-    const colorMap = {
-      green: {
-        text: "text-green-600",
-        bg: "bg-green-50",
-        icon: "text-green-600",
-      },
-      blue: {
-        text: "text-blue-600",
-        bg: "bg-blue-50",
-        icon: "text-blue-600",
-      },
-      orange: {
-        text: "text-orange-600",
-        bg: "bg-orange-50",
-        icon: "text-orange-600",
-      },
-      red: {
-        text: "text-red-600",
-        bg: "bg-red-50",
-        icon: "text-red-600",
-      },
-      purple: {
-        text: "text-purple-600",
-        bg: "bg-purple-50",
-        icon: "text-purple-600",
-      },
-    };
-    return colorMap[color as keyof typeof colorMap] || colorMap.blue;
-  };
-
-  const colors = getColorClasses(color);
-
-  const formatValue = (val: string | number) => {
-    if (typeof val === "number") {
-      // Se parece com um valor monetário em centavos
-      if (val > 10000 && val % 100 === 0) {
-        return exibirValorEmReais(val);
-      }
-      return val.toLocaleString("pt-BR");
-    }
-    return val;
-  };
-
   return (
-    <Card className="transition-all duration-200 hover:shadow-md">
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            {/* Título e Badge */}
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-sm text-muted-foreground">{title}</p>
-              {badge && (
-                <Badge variant={badge.variant || "default"} className="text-xs">
-                  {badge.text}
-                </Badge>
-              )}
-            </div>
-
-            {/* Valor Principal */}
-            <p className={`text-2xl font-bold ${colors.text}`}>
-              {formatValue(value)}
+    <Card className="rounded-xl transition-shadow duration-200 hover:shadow-md">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-[13px] text-muted-foreground truncate">
+              {title}
             </p>
-
-            {/* Subtítulo */}
-            {subtitle && (
-              <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-            )}
-
-            {/* Progresso */}
-            {progress && (
-              <div className="mt-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs text-muted-foreground">
-                    {progress.label}
-                  </span>
-                  <span className="text-xs font-medium">
-                    {progress.value}%
-                  </span>
-                </div>
-                <Progress value={progress.value} className="h-2" />
-              </div>
-            )}
-
-            {/* Detalhes */}
-            {details && details.length > 0 && (
-              <div className="mt-2 space-y-1">
-                {details.map((detail, index) => (
-                  <div key={index} className="flex justify-between text-xs">
-                    <span className={detail.color || "text-muted-foreground"}>
-                      {detail.label}
-                    </span>
-                    <span className="font-medium">
-                      {detail.isValue && typeof detail.value === 'number'
-                        ? exibirValorEmReais(detail.value)
-                        : formatValue(detail.value)
-                      }
-                    </span>
-                  </div>
-                ))}
-              </div>
+            {badge && (
+              <Badge
+                variant={badge.variant || "default"}
+                className="text-xs rounded-full"
+              >
+                {badge.text}
+              </Badge>
             )}
           </div>
-
-          {/* Ícone */}
-          <div className="flex items-center ml-4">
-            <div className={`p-2 rounded-lg ${colors.bg}`}>
-              <Icon className={`h-6 w-6 ${colors.icon}`} />
-            </div>
-          </div>
+          <Icon className="h-[18px] w-[18px] text-muted-foreground shrink-0" />
         </div>
+
+        <p className="text-3xl font-bold tabular-nums mt-2 leading-tight">
+          {formatMetric(value, format)}
+        </p>
+
+        {subtitle && (
+          <p className="text-[13px] text-muted-foreground mt-1.5">
+            {subtitle}
+          </p>
+        )}
+
+        {progress && (
+          <div className="mt-3">
+            <div className="flex justify-between items-center mb-1">
+              <span className="text-xs text-muted-foreground">
+                {progress.label}
+              </span>
+              <span className="text-xs font-medium tabular-nums">
+                {progress.value}%
+              </span>
+            </div>
+            <Progress value={progress.value} className="h-1.5" />
+          </div>
+        )}
+
+        {details && details.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {details.map((detail) => (
+              <div
+                key={detail.label}
+                className="flex justify-between text-xs"
+              >
+                <span className="text-muted-foreground">{detail.label}</span>
+                <span className="font-medium tabular-nums">
+                  {formatMetric(detail.value, detail.format ?? "number")}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

@@ -9,11 +9,10 @@ import {
   BarChart3,
   AlertCircle,
   Star,
-  TrendingUp,
 } from "lucide-react";
 import MLMetricsCard from "./MLMetricsCard";
 import { DashboardMetrics } from "@/types/ml-analytics";
-import { exibirValorEmReais } from "@/utils/currency";
+import { formatBRL } from "@/lib/format";
 
 interface MLDashboardMetricsProps {
   metrics: DashboardMetrics;
@@ -23,24 +22,21 @@ export default function MLDashboardMetrics({
   metrics,
 }: MLDashboardMetricsProps) {
   return (
-    <div className="space-y-6">
-      {/* Row 1: Vendas e Performance */}
+    <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MLMetricsCard
           title="Vendas Hoje"
           value={metrics.todaySales}
           subtitle={`${metrics.weekSales} na semana`}
           icon={ShoppingCart}
-          color="green"
         />
 
         <MLMetricsCard
           title="Receita Semanal"
           value={metrics.totalRevenue}
-          subtitle={`Ticket médio: ${exibirValorEmReais(metrics.averageTicket)}`}
+          format="brl-reais"
+          subtitle={`Ticket médio: ${formatBRL(metrics.averageTicket)}`}
           icon={DollarSign}
-          color="blue"
-          trend={metrics.salesGrowth === "positive" ? "up" : "neutral"}
         />
 
         <MLMetricsCard
@@ -48,7 +44,6 @@ export default function MLDashboardMetrics({
           value={metrics.pendingOrders}
           subtitle={metrics.pendingOrders > 0 ? "Requer atenção" : undefined}
           icon={Clock}
-          color={metrics.pendingOrders > 0 ? "orange" : "green"}
         />
 
         <MLMetricsCard
@@ -56,11 +51,9 @@ export default function MLDashboardMetrics({
           value={metrics.activeProducts}
           subtitle={`de ${metrics.totalProducts} total`}
           icon={Package}
-          color="green"
         />
       </div>
 
-      {/* Row 2: Estoque e Alertas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MLMetricsCard
           title="Estoque Baixo"
@@ -69,7 +62,6 @@ export default function MLDashboardMetrics({
             metrics.lowStockProducts > 0 ? "Precisa reposição" : undefined
           }
           icon={AlertTriangle}
-          color={metrics.lowStockProducts > 0 ? "red" : "green"}
         />
 
         <MLMetricsCard
@@ -81,7 +73,6 @@ export default function MLDashboardMetrics({
               : undefined
           }
           icon={BarChart3}
-          color={metrics.needsRestockProducts > 0 ? "purple" : "green"}
         />
 
         <MLMetricsCard
@@ -91,42 +82,25 @@ export default function MLDashboardMetrics({
             metrics.pausedProducts > 0 ? "Reativar para vender" : undefined
           }
           icon={AlertCircle}
-          color={metrics.pausedProducts > 0 ? "orange" : "green"}
         />
 
         <MLMetricsCard
           title="Saúde dos Produtos"
           value={`${metrics.productHealth.healthPercentage}%`}
+          format="text"
           subtitle={`${metrics.productHealth.healthy} de ${metrics.productHealth.total} saudáveis`}
           icon={Star}
-          color="blue"
           progress={{
             value: metrics.productHealth.healthPercentage,
             label: "Produtos saudáveis",
           }}
           details={[
-            {
-              label: "✓ Ativos",
-              value: metrics.activeProducts,
-              color: "text-green-600",
-            },
+            { label: "Ativos", value: metrics.activeProducts },
             ...(metrics.pausedProducts > 0
-              ? [
-                  {
-                    label: "⏸ Pausados",
-                    value: metrics.pausedProducts,
-                    color: "text-orange-600",
-                  },
-                ]
+              ? [{ label: "Pausados", value: metrics.pausedProducts }]
               : []),
             ...(metrics.lowStockProducts > 0
-              ? [
-                  {
-                    label: "⚠ Estoque baixo",
-                    value: metrics.lowStockProducts,
-                    color: "text-red-600",
-                  },
-                ]
+              ? [{ label: "Estoque baixo", value: metrics.lowStockProducts }]
               : []),
           ]}
         />
