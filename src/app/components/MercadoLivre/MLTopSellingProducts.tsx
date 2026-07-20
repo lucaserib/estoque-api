@@ -70,7 +70,7 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
                 </div>
                 
                 <div className="text-right ml-4">
-                  <p className="font-semibold text-green-600 text-lg">
+                  <p className="font-semibold text-success text-lg">
                     {exibirValorEmReais(product.revenue)}
                   </p>
                   <p className="text-xs text-muted-foreground">receita</p>
@@ -84,26 +84,26 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
           <div className="mt-4 pt-4 border-t bg-muted/30 rounded-lg p-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-2xl font-bold text-info">
                   {salesData.summary.totalSales}
                 </p>
                 <p className="text-xs text-muted-foreground">Total vendas</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-green-600">
+                <p className="text-2xl font-bold text-success">
                   {exibirValorEmReais(salesData.summary.totalRevenue)}
                 </p>
                 <p className="text-xs text-muted-foreground">Receita total</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-2xl font-bold text-foreground">
                   {exibirValorEmReais(salesData.summary.averageTicket)}
                 </p>
                 <p className="text-xs text-muted-foreground">Ticket médio</p>
               </div>
               {salesData.summary.totalOrders && (
                 <div>
-                  <p className="text-2xl font-bold text-orange-600">
+                  <p className="text-2xl font-bold text-warning">
                     {salesData.summary.totalOrders}
                   </p>
                   <p className="text-xs text-muted-foreground">Pedidos</p>

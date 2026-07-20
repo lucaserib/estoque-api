@@ -38,8 +38,6 @@ const calcularCustoMedioPonderado = async (
 
     const custoMedioAtual = produto?.custoMedio || 0;
 
-    // Se não há estoque anterior ou o custo médio atual é zero,
-    // significa que é a primeira compra do produto
     if (quantidadeAtual === 0 || custoMedioAtual === 0) {
       console.log(
         "Primeira compra do produto - definindo custo médio como:",
@@ -166,14 +164,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
-    // Obter parâmetros de consulta
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status");
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const fornecedorId = searchParams.get("fornecedorId");
 
-    // Construir a consulta base com todos os relacionamentos necessários
     const baseQuery: Prisma.PedidoCompraFindManyArgs = {
       where: {
         userId: session.user.id,
@@ -193,7 +189,6 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    // Filtros de data exigem lógica específica baseada no status
     if (startDate || endDate) {
       type DateFilter = {
         dataConclusao?: {
@@ -208,18 +203,15 @@ export async function GET(request: NextRequest) {
 
       const dateFilter: DateFilter = {};
 
-      // Se temos data de início
       if (startDate) {
         const parsedStartDate = new Date(startDate);
 
-        // Se temos status 'confirmado', filtramos por dataConclusao
         if (status === "confirmado") {
           dateFilter.dataConclusao = {
             ...dateFilter.dataConclusao,
             gte: parsedStartDate,
           };
         }
-        // Para outros status, filtramos por dataPrevista
         else {
           dateFilter.dataPrevista = {
             ...dateFilter.dataPrevista,
@@ -228,21 +220,17 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Se temos data de fim
       if (endDate) {
         const parsedEndDate = new Date(endDate);
 
-        // Ajustar para fim do dia
         parsedEndDate.setHours(23, 59, 59, 999);
 
-        // Se temos status 'confirmado', filtramos por dataConclusao
         if (status === "confirmado") {
           dateFilter.dataConclusao = {
             ...dateFilter.dataConclusao,
             lte: parsedEndDate,
           };
         }
-        // Para outros status, filtramos por dataPrevista
         else {
           dateFilter.dataPrevista = {
             ...dateFilter.dataPrevista,
@@ -251,7 +239,6 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // Adicionar filtro de data à consulta
       baseQuery.where = {
         ...baseQuery.where,
         ...dateFilter,
@@ -260,7 +247,6 @@ export async function GET(request: NextRequest) {
 
     const pedidos = await prisma.pedidoCompra.findMany(baseQuery);
 
-    // Tipo para o pedido conforme retornado pelo Prisma
     type PedidoCompra = (typeof pedidos)[0] & {
       produtos?: {
         id: string;
@@ -271,9 +257,7 @@ export async function GET(request: NextRequest) {
       }[];
     };
 
-    // Verificar se os pedidos têm produtos
     const pedidosWithProducts = pedidos.map((pedido) => {
-      // Estender o pedido com a propriedade produtos esperada
       const pedidoWithProdutos = pedido as PedidoCompra;
 
       if (

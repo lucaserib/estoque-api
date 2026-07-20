@@ -121,7 +121,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -140,7 +139,6 @@ export async function GET(request: NextRequest) {
     try {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
 
-      // Definir datas do período (usar datas customizadas se fornecidas)
       let startDate: Date;
       let endDate: Date;
       let actualPeriod: number;
@@ -149,20 +147,16 @@ export async function GET(request: NextRequest) {
         startDate = new Date(customStartDate);
         endDate = new Date(customEndDate);
         
-        // Normalizar datas
         startDate.setHours(0, 0, 0, 0);
         endDate.setHours(23, 59, 59, 999);
         
-        // Calcular período em dias
         actualPeriod = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       } else {
-        // Usar período padrão
         endDate = new Date();
         startDate = new Date(endDate.getTime() - period * 24 * 60 * 60 * 1000);
         actualPeriod = period;
       }
 
-      // Buscar dados com cache (incluir datas customizadas na chave se houver)
       const cacheKeySuffix = customStartDate && customEndDate 
         ? `${customStartDate}-${customEndDate}`
         : actualPeriod.toString();
@@ -180,13 +174,11 @@ export async function GET(request: NextRequest) {
             `[SALES_COMPLETE] Buscando vendas de ${startDate.toISOString()} até ${endDate.toISOString()} (${actualPeriod} dias${customStartDate ? ' - DATAS CUSTOMIZADAS' : ''})`
           );
 
-          // Buscar pedidos do período - começar com mais pedidos
           const allOrders: MLOrder[] = [];
           let offset = 0;
           const limit = 50;
           let hasMore = true;
 
-          // Buscar até 500 pedidos para análise completa
           while (hasMore && offset < 500) {
             try {
               const ordersResponse = await MercadoLivreService.getUserOrders(
@@ -219,8 +211,6 @@ export async function GET(request: NextRequest) {
             `[SALES_COMPLETE] Total de pedidos obtidos: ${allOrders.length}`
           );
 
-          // Filtrar pedidos do período e com status válido
-          // Incluímos apenas vendas confirmadas e pagas, excluindo cancelamentos, devoluções e status inválidos
           const validStatuses = [
             "paid",           // Pago
             "delivered",      // Entregue
@@ -229,7 +219,6 @@ export async function GET(request: NextRequest) {
             "handling",       // Em preparação
           ];
           
-          // Status que devem ser EXCLUÍDOS (vendas que não devem contar como receita)
           const excludedStatuses = [
             "cancelled",       // Cancelado
             "invalid",         // Inválido
@@ -249,7 +238,6 @@ export async function GET(request: NextRequest) {
             );
           });
 
-          // Filtrar pedidos cancelados/devolvidos do período (todos os status excluídos)
           const cancelledOrders = allOrders.filter((order) => {
             const orderDate = new Date(order.date_created);
             return (
@@ -266,7 +254,6 @@ export async function GET(request: NextRequest) {
             `[SALES_COMPLETE] Pedidos cancelados no período: ${cancelledOrders.length}`
           );
 
-          // Processar vendas
           const productSales = new Map<string, SalesProduct>();
           const dailyData = new Map<
             string,
@@ -289,7 +276,6 @@ export async function GET(request: NextRequest) {
             const dayKey = orderDate.toISOString().split("T")[0];
             const hour = orderDate.getHours();
 
-            // Calcular receita de produtos do pedido
             let orderProductRevenue = 0;
             let orderItems = 0;
 
@@ -329,15 +315,12 @@ export async function GET(request: NextRequest) {
               }
             });
 
-            // Calcular valor total do pedido e frete
             const orderTotalAmount = order.total_amount || 0;
             const orderShippingCost = orderTotalAmount - orderProductRevenue;
             
-            // Acumular totais
             totalRevenue += orderTotalAmount;
             totalProductRevenue += orderProductRevenue;
 
-            // Dados diários (usar total com frete)
             const existing = dailyData.get(dayKey);
             if (existing) {
               existing.revenue += orderTotalAmount;
@@ -371,10 +354,8 @@ export async function GET(request: NextRequest) {
             }
           });
 
-          // Calcular frete total
           const totalShippingRevenue = totalRevenue - totalProductRevenue;
 
-          // Preparar dados diários ordenados
           const dailyRevenue = Array.from(dailyData.entries())
             .map(([date, data]) => ({
               date,
@@ -384,7 +365,6 @@ export async function GET(request: NextRequest) {
             }))
             .sort((a, b) => a.date.localeCompare(b.date));
 
-          // Top produtos ordenados por receita
           const topProducts = Array.from(productSales.values())
             .sort((a, b) => b.totalRevenue - a.totalRevenue)
             .slice(0, 20);
@@ -404,7 +384,6 @@ export async function GET(request: NextRequest) {
             }))
             .sort((a, b) => a.hour - b.hour);
 
-          // Processar pedidos cancelados/devolvidos (receita perdida)
           let totalCancelledRevenue = 0;
           let totalCancelledItems = 0;
           const cancelledOrdersData: CancelledOrder[] = [];
@@ -419,18 +398,15 @@ export async function GET(request: NextRequest) {
           }>();
 
           cancelledOrders.forEach((order) => {
-            // Usar o valor total do pedido (inclui frete)
             const orderRevenue = order.total_amount || 0;
             let orderItems = 0;
             const orderDate = new Date(order.date_created);
 
-            // Processar itens cancelados
             order.order_items.forEach((item: { unit_price: number; quantity: number; item: { id: string; title: string; seller_sku?: string } }) => {
               const itemQuantity = item.quantity;
               const itemRevenue = item.unit_price * item.quantity;
               orderItems += itemQuantity;
 
-              // Rastrear produtos cancelados
               const existing = cancelledProductsMap.get(item.item.id);
               if (existing) {
                 existing.totalCancelled += itemQuantity;
@@ -468,10 +444,8 @@ export async function GET(request: NextRequest) {
             });
           });
 
-          // Preparar lista de produtos cancelados com taxa de cancelamento
           const cancelledProductsList = Array.from(cancelledProductsMap.values())
             .map(product => {
-              // Buscar dados de vendas do produto para calcular taxa
               const salesData = productSales.get(product.mlItemId);
               const totalSold = salesData?.totalSales || 0;
               const totalWithCancelled = totalSold + product.totalCancelled;
@@ -487,7 +461,6 @@ export async function GET(request: NextRequest) {
             .sort((a, b) => b.totalCancelled - a.totalCancelled) // Ordenar por quantidade cancelada
             .slice(0, 20); // Top 20 produtos
 
-          // Calcular taxa de cancelamento
           const totalOrdersIncludingCancelled =
             periodOrders.length + cancelledOrders.length;
           const cancellationRate =
@@ -562,7 +535,6 @@ export async function GET(request: NextRequest) {
         "300" // Cache por 5 minutos
       );
 
-      // Buscar dados de comparação se solicitado
       if (includeComparison) {
         const prevStartDate = new Date(
           startDate.getTime() - actualPeriod * 24 * 60 * 60 * 1000
@@ -619,7 +591,6 @@ export async function GET(request: NextRequest) {
               }
             }
 
-            // Filtrar pedidos do período anterior (mesmos critérios)
             const validStatuses = [
               "paid",
               "delivered",
@@ -655,13 +626,11 @@ export async function GET(request: NextRequest) {
             prevPeriodOrders.forEach((order) => {
               let orderProductRevenue = 0;
               
-              // Contar itens e calcular receita de produtos
               order.order_items.forEach((item: { unit_price: number; quantity: number; item: { id: string; title: string; seller_sku?: string } }) => {
                 prevItems += item.quantity;
                 orderProductRevenue += item.unit_price * item.quantity;
               });
               
-              // Usar total_amount (inclui frete)
               const orderTotal = order.total_amount || 0;
               prevRevenue += orderTotal;
               prevProductRevenue += orderProductRevenue;
@@ -681,7 +650,6 @@ export async function GET(request: NextRequest) {
           "600" // Cache por 10 minutos
         );
 
-        // Calcular crescimento
         analytics.comparison = {
           previousPeriod: previousPeriodData,
           growth: {

@@ -26,9 +26,6 @@ export async function GET(request: NextRequest) {
           success: true,
         });
 
-        // Persistir o code_verifier em cookie httpOnly: em serverless o
-        // connect e o callback podem cair em instâncias diferentes e o
-        // cache em memória se perde entre elas
         response.cookies.set("ml_pkce_verifier", codeVerifier, {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
@@ -51,17 +48,14 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "accounts") {
-      // Listar contas conectadas com informações detalhadas
       const accounts = await MercadoLivreService.getUserAccounts(user.id);
       console.log(
         `[ML_AUTH] ${accounts.length} contas encontradas para usuário ${user.id}`
       );
 
-      // Para cada conta, buscar informações atualizadas do usuário
       const accountsWithDetails = await Promise.all(
         accounts.map(async (account) => {
           try {
-            // Buscar informações atualizadas do usuário ML
             const userInfo = await MercadoLivreService.getUserInfo(
               account.accessToken
             );
@@ -95,7 +89,6 @@ export async function GET(request: NextRequest) {
               `[ML_AUTH] Erro ao buscar detalhes da conta ${account.id}:`,
               error
             );
-            // Retornar conta sem detalhes em caso de erro
             return account;
           }
         })
@@ -136,7 +129,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se é um callback do ngrok (sem sessão) ou do localhost (com sessão)
     const host = request.headers.get("host") || "";
     const isFromNgrok = host.includes(".ngrok") || host.includes("ngrok");
 
@@ -145,13 +137,11 @@ export async function POST(request: NextRequest) {
     let userId: string;
 
     if (isFromNgrok) {
-      // Para callbacks do ngrok, usar o state como userId diretamente
       userId = state;
       console.log(
         `[ML_AUTH] Callback do ngrok, usando state como userId: ${userId}`
       );
 
-      // Verificar se o usuário existe no banco
       const user = await prisma.user.findUnique({
         where: { id: userId },
       });
@@ -164,11 +154,9 @@ export async function POST(request: NextRequest) {
         );
       }
     } else {
-      // Para callbacks do localhost, usar verificação normal
       const user = await verifyUser(request);
       userId = user.id;
 
-      // Verificar se o state corresponde ao usuário atual
       if (state !== userId) {
         console.error(
           `[ML_AUTH] State inválido. Esperado: ${userId}, Recebido: ${state}`
@@ -180,8 +168,6 @@ export async function POST(request: NextRequest) {
     console.log(`[ML_AUTH] Processando callback para usuário ${userId}`);
 
     try {
-      // Trocar código por tokens (verifier vem do cookie httpOnly definido
-      // no connect; fallback para o cache em memória em dev)
       const cookieVerifier = request.cookies.get("ml_pkce_verifier")?.value;
       console.log(
         `[ML_AUTH] Trocando código por tokens... (verifier via cookie: ${
@@ -194,13 +180,11 @@ export async function POST(request: NextRequest) {
         cookieVerifier
       );
 
-      // Obter informações do usuário ML
       console.log("[ML_AUTH] Obtendo informações do usuário ML...");
       const userInfo = await MercadoLivreService.getUserInfo(
         authResponse.access_token
       );
 
-      // Salvar conta no banco
       console.log(
         `[ML_AUTH] Salvando conta ML no banco. Nickname: ${userInfo.nickname}, Site: ${userInfo.site_id}`
       );
@@ -219,13 +203,11 @@ export async function POST(request: NextRequest) {
           siteId: account.siteId,
         },
       });
-      // Verifier é de uso único — limpar o cookie após a troca
       successResponse.cookies.delete("ml_pkce_verifier");
       return successResponse;
     } catch (mlError) {
       console.error("[ML_AUTH] Erro específico do ML:", mlError);
 
-      // Tratar erros específicos da API do ML
       if (mlError instanceof Error) {
         if (mlError.message.includes("invalid_grant")) {
           return NextResponse.json(
@@ -278,7 +260,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Desconectar conta
     await MercadoLivreService.disconnectAccount(accountId, user.id);
 
     return NextResponse.json({ success: true });

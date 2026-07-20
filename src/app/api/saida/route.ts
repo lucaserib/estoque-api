@@ -64,7 +64,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se o armazém existe e pertence ao usuário
     const armazem = await prisma.armazem.findUnique({
       where: { id: armazemId, userId: user.id },
     });
@@ -76,9 +75,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Usar uma transação para garantir que todas as operações sejam realizadas ou nenhuma
     const result = await prisma.$transaction(async (tx) => {
-      // Criar o registro de saída principal
       const saida = await tx.saida.create({
         data: {
           userId: user.id,
@@ -89,11 +86,9 @@ export async function POST(request: NextRequest) {
 
       console.log(`Saída criada com ID: ${saida.id}`);
 
-      // Processar cada produto/kit na saída
       for (const produto of produtos) {
         const { produtoId, quantidade, isKit } = produto;
 
-        // Verificar se o produto/kit existe e pertence ao usuário
         const produtoInfo = (await tx.produto.findFirst({
           where: {
             id: produtoId,
@@ -126,7 +121,6 @@ export async function POST(request: NextRequest) {
           `Processando ${isKit ? "kit" : "produto"}: ${produtoInfo.nome}`
         );
 
-        // Registrar o detalhe da saída
         await tx.detalhesSaida.create({
           data: {
             saidaId: saida.id,
@@ -136,12 +130,10 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Se for um kit, processa a saída dos componentes
         if (isKit && produtoInfo.componentes) {
           for (const componente of produtoInfo.componentes) {
             const quantidadeComponente = componente.quantidade * quantidade;
 
-            // Verificar estoque do componente
             const estoqueComponente = await tx.estoque.findFirst({
               where: {
                 produtoId: componente.produtoId,
@@ -161,7 +153,6 @@ export async function POST(request: NextRequest) {
               );
             }
 
-            // Atualizar o estoque do componente
             await tx.estoque.update({
               where: {
                 produtoId_armazemId: {
@@ -181,7 +172,6 @@ export async function POST(request: NextRequest) {
             );
           }
         } else if (!isKit) {
-          // Produto simples - verificar e atualizar estoque
           const estoqueProduto = await tx.estoque.findFirst({
             where: {
               produtoId: produtoId,
@@ -201,7 +191,6 @@ export async function POST(request: NextRequest) {
             );
           }
 
-          // Atualizar o estoque do produto
           await tx.estoque.update({
             where: {
               produtoId_armazemId: {
@@ -222,7 +211,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Buscar a saída completa com todos os detalhes
       const saidaCompleta = await tx.saida.findUnique({
         where: { id: saida.id },
         include: {
@@ -246,7 +234,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Erro ao registrar saída:", error);
 
-    // Extrair a mensagem de erro
     const errorMessage =
       error instanceof Error
         ? error.message
@@ -256,7 +243,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - Buscar saídas
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);

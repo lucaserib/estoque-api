@@ -4,10 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { NotificationService } from "@/services/notificationService";
 
-/**
- * GET /api/mercadolivre/sync?accountId=xxx           -> produtos sincronizados da conta
- * GET /api/mercadolivre/sync?accountId=xxx&action=history -> histórico de sincronizações
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -22,7 +18,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: { id: accountId, userId: user.id },
     });
@@ -34,7 +29,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Histórico de sincronizações
     if (action === "history") {
       const history = await prisma.mercadoLivreSyncHistory.findMany({
         where: { mercadoLivreAccountId: accountId },
@@ -44,7 +38,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(history);
     }
 
-    // Produtos sincronizados da conta
     const produtos = await prisma.produtoMercadoLivre.findMany({
       where: { mercadoLivreAccountId: accountId },
       include: { produto: true },
@@ -75,7 +68,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -91,14 +83,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Iniciar sincronização
     const startTime = Date.now();
 
     try {
-      // Obter token válido
       const accessToken = await MercadoLivreService.getValidToken(accountId);
 
-      // Buscar produtos do ML
       console.log(`[SYNC] Iniciando sincronização para conta ${accountId}`);
       const itemsResponse = await MercadoLivreService.getUserItems(accessToken);
 
@@ -111,11 +100,9 @@ export async function POST(request: NextRequest) {
         `[SYNC] ${itemsResponse.results.length} produtos encontrados no ML`
       );
 
-      // ✅ NOVO: Processar produtos em paralelo para melhor performance
       const BATCH_SIZE = 8; // Processar 8 produtos por vez
       const productBatches: string[][] = [];
 
-      // Dividir produtos em lotes
       for (let i = 0; i < itemsResponse.results.length; i += BATCH_SIZE) {
         productBatches.push(itemsResponse.results.slice(i, i + BATCH_SIZE));
       }
@@ -124,7 +111,6 @@ export async function POST(request: NextRequest) {
         `[SYNC] Processando ${itemsResponse.results.length} produtos em ${productBatches.length} lotes de ${BATCH_SIZE}`
       );
 
-      // Processar cada lote em paralelo
       for (
         let batchIndex = 0;
         batchIndex < productBatches.length;
@@ -137,7 +123,6 @@ export async function POST(request: NextRequest) {
           } com ${batch.length} produtos`
         );
 
-        // Processar produtos do lote em paralelo
         const batchResults = await Promise.allSettled(
           batch.map(async (itemId) => {
             try {
@@ -146,7 +131,6 @@ export async function POST(request: NextRequest) {
                 accessToken
               );
 
-              // Verificar se já existe
               const existingProduct =
                 await prisma.produtoMercadoLivre.findFirst({
                   where: {
@@ -155,7 +139,6 @@ export async function POST(request: NextRequest) {
                   },
                 });
 
-              // ✅ IMPLEMENTAÇÃO MELHORADA: Buscar preços promocionais via API /prices
               let currentPrice = Math.round(item.price * 100);
               let originalPrice = item.original_price
                 ? Math.round(item.original_price * 100)
@@ -166,7 +149,6 @@ export async function POST(request: NextRequest) {
               let hasPromotion = false;
               let promotionDiscount = 0;
 
-              // ✅ CORREÇÃO CRÍTICA: Buscar preços detalhados se não encontrou promoção
               if (!originalPrice || originalPrice <= currentPrice) {
                 try {
                   console.log(
@@ -183,7 +165,6 @@ export async function POST(request: NextRequest) {
                   if (pricesResponse.ok) {
                     const pricesData = await pricesResponse.json();
 
-                    // Buscar preço padrão
                     const standardPrice = pricesData.prices?.find(
                       (p: {
                         type?: string;
@@ -197,7 +178,6 @@ export async function POST(request: NextRequest) {
                         )
                     );
 
-                    // Buscar preço promocional
                     const promotionPrice = pricesData.prices?.find(
                       (p: {
                         type?: string;
@@ -212,7 +192,6 @@ export async function POST(request: NextRequest) {
                     );
 
                     if (promotionPrice && promotionPrice.regular_amount) {
-                      // Encontrou promoção ativa!
                       currentPrice = Math.round(promotionPrice.amount * 100);
                       originalPrice = Math.round(
                         promotionPrice.regular_amount * 100
@@ -252,7 +231,6 @@ export async function POST(request: NextRequest) {
                 );
               }
 
-              // Calcular desconto se há promoção
               if (
                 hasPromotion &&
                 originalPrice &&
@@ -299,19 +277,16 @@ export async function POST(request: NextRequest) {
               };
 
               if (existingProduct) {
-                // Atualizar produto existente
                 await prisma.produtoMercadoLivre.update({
                   where: { id: existingProduct.id },
                   data: productData,
                 });
                 return { type: "updated", itemId };
               } else {
-                // Tentar extrair SKU real do produto ML
                 const realSku = MercadoLivreService.extractRealSku(item);
                 let localProductId: string | null = null;
 
                 if (realSku) {
-                  // Buscar produto local por SKU real
                   const localProduct = await prisma.produto.findFirst({
                     where: {
                       sku: realSku,
@@ -335,7 +310,6 @@ export async function POST(request: NextRequest) {
                   );
                 }
 
-                // Criar produto ML (com ou sem vínculo ao produto local)
                 await prisma.produtoMercadoLivre.create({
                   data: {
                     ...productData,
@@ -359,7 +333,6 @@ export async function POST(request: NextRequest) {
           })
         );
 
-        // Processar resultados do lote
         batchResults.forEach((result) => {
           if (result.status === "fulfilled") {
             const value = result.value;
@@ -396,7 +369,6 @@ export async function POST(request: NextRequest) {
           }
         });
 
-        // Pequena pausa entre lotes para não sobrecarregar a API
         if (batchIndex < productBatches.length - 1) {
           await new Promise((resolve) => setTimeout(resolve, 200));
         }

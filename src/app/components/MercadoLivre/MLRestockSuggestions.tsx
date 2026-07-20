@@ -20,7 +20,7 @@ export default function MLRestockSuggestions({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-green-500" />
+            <AlertCircle className="h-5 w-5 text-success" />
             Estoque Saudável
           </CardTitle>
         </CardHeader>
@@ -39,7 +39,7 @@ export default function MLRestockSuggestions({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-orange-500" />
+          <AlertTriangle className="h-5 w-5 text-warning" />
           Sugestões de Reposição
           <Badge variant="destructive" className="ml-2">
             {restockData.summary.needsAttention}
@@ -70,8 +70,8 @@ export default function MLRestockSuggestions({
                 key={suggestion.sku}
                 className={`p-3 rounded-lg border transition-colors hover:bg-muted/50 ${
                   suggestion.priority === "critical"
-                    ? "border-red-200 bg-red-50"
-                    : "border-orange-200 bg-orange-50"
+                    ? "border-destructive/40 bg-destructive/10"
+                    : "border-warning/40 bg-warning/10"
                 }`}
               >
                 <div className="flex items-start justify-between">
@@ -99,7 +99,7 @@ export default function MLRestockSuggestions({
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {suggestion.reasons.map((reason, idx) => (
-                          <span key={idx} className="text-blue-600">
+                          <span key={idx} className="text-info">
                             {reason}
                             {idx < suggestion.reasons.length - 1 && " • "}
                           </span>
@@ -125,14 +125,14 @@ export default function MLRestockSuggestions({
                   </div>
 
                   <div className="text-right ml-4">
-                    <p className="font-semibold text-sm text-purple-600">
+                    <p className="font-semibold text-sm text-foreground">
                       Sugestão: {suggestion.suggestedRestock}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       Velocidade: {suggestion.salesVelocity.toFixed(1)}/dia
                     </p>
                     {suggestion.daysUntilStockout < 30 && (
-                      <p className="text-xs text-red-600 font-medium">
+                      <p className="text-xs text-destructive font-medium">
                         Esgota em {suggestion.daysUntilStockout} dias
                       </p>
                     )}
@@ -147,19 +147,19 @@ export default function MLRestockSuggestions({
           <div className="mt-4 pt-4 border-t bg-muted/30 rounded-lg p-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
-                <p className="text-lg font-bold text-red-600">
+                <p className="text-lg font-bold text-destructive">
                   {restockData.summary.critical || 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Críticos</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-orange-600">
+                <p className="text-lg font-bold text-warning">
                   {restockData.summary.high || 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Alta prioridade</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-yellow-600">
+                <p className="text-lg font-bold text-warning">
                   {restockData.summary.medium || 0}
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -167,7 +167,7 @@ export default function MLRestockSuggestions({
                 </p>
               </div>
               <div>
-                <p className="text-lg font-bold text-purple-600">
+                <p className="text-lg font-bold text-foreground">
                   {restockData.summary.totalPotentialRevenue
                     ? `R$ ${(
                         restockData.summary.totalPotentialRevenue / 100

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -64,29 +65,21 @@ export default function MercadoLivrePage() {
     }
   }, [status]);
 
-  // ✅ CORREÇÃO: Effect otimizado para configurar auto-refresh
   useEffect(() => {
     if (selectedAccount) {
       loadAllData();
     }
-    // loadAllData é recriada a cada render; incluí-la dispararia refetch em loop.
-    // Intenção: recarregar dados apenas quando a conta selecionada muda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAccount]);
 
-  // ✅ CORREÇÃO: Effect separado para auto-refresh
   useEffect(() => {
     setupAutoRefresh();
 
-    // Cleanup na desmontagem ou mudança de estado
     return () => {
       if (pollingInterval) {
         clearInterval(pollingInterval);
       }
     };
-    // setupAutoRefresh/pollingInterval são omitidos de propósito: setupAutoRefresh
-    // chama setPollingInterval e depende de pollingInterval, então incluí-los aqui
-    // criaria um loop infinito de setup/clear. Reconfigura só ao mudar auto-refresh/conta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefreshEnabled, selectedAccount]); // ✅ DEPENDÊNCIAS CORRETAS
 
@@ -97,9 +90,7 @@ export default function MercadoLivrePage() {
     setLastUpdate(new Date());
   };
 
-  // ✅ CORREÇÃO: Sistema de polling mais inteligente e eficiente
   const setupAutoRefresh = useCallback(() => {
-    // Limpar interval anterior
     if (pollingInterval) {
       clearInterval(pollingInterval);
       setPollingInterval(null);
@@ -118,15 +109,11 @@ export default function MercadoLivrePage() {
             "[AUTO_REFRESH] Erro na atualização automática:",
             error
           );
-          // Em caso de erro, continuar o polling mas com menos frequência
         }
       }, 120000); // ✅ OTIMIZAÇÃO: Refresh a cada 2 minutos (menos agressivo)
 
       setPollingInterval(interval);
     }
-    // loadAllData é recriada a cada render; incluí-la anularia a memoização.
-    // selectedAccount já é dependência, então o callback recaptura a loadAllData
-    // correta sempre que a conta muda.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRefreshEnabled, selectedAccount, pollingInterval]);
 
@@ -151,12 +138,10 @@ export default function MercadoLivrePage() {
 
       const accountsData = await response.json();
 
-      // Fix: The API returns accounts directly, not wrapped in accounts property
       const accountsList = Array.isArray(accountsData)
         ? accountsData
         : accountsData.accounts || [];
 
-      // Extract basic account info from the detailed response
       const formattedAccounts = accountsList.map(
         (acc: {
           id: string;
@@ -173,7 +158,6 @@ export default function MercadoLivrePage() {
 
       setAccounts(formattedAccounts);
 
-      // Select first active account
       const activeAccount = formattedAccounts.find(
         (acc: MLAccount) => acc.isActive
       );
@@ -210,7 +194,6 @@ export default function MercadoLivrePage() {
 
     setLoadingSales(true);
     try {
-      // Tentar primeiro a API detalhada, fallback para a simples
       let response = await fetch(
         `/api/mercadolivre/analytics/sales-detailed?accountId=${selectedAccount}&period=30`
       );
@@ -229,7 +212,6 @@ export default function MercadoLivrePage() {
 
       const data = await response.json();
 
-      // Adaptar dados se vieram da API detalhada
       if (data.topProducts) {
         setSalesData({
           period: data.period,
@@ -322,7 +304,6 @@ export default function MercadoLivrePage() {
           result.syncedCount || 0
         } produtos atualizados`
       );
-      // Atualizar dados imediatamente após sync
       await loadAllData();
     } catch (error) {
       console.error("Erro:", error);
@@ -364,7 +345,6 @@ export default function MercadoLivrePage() {
         toast.error("Erro na sincronização automática");
       }
 
-      // Atualizar dados imediatamente após sync automático
       await loadAllData();
     } catch (error) {
       console.error("Erro:", error);
@@ -391,10 +371,16 @@ export default function MercadoLivrePage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto max-w-7xl p-6 space-y-6">
         <Header title="Mercado Livre" subtitle="Gestão integrada de vendas" />
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <Skeleton key={index} className="h-[118px] rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Skeleton className="h-[320px] rounded-xl" />
+          <Skeleton className="h-[320px] rounded-xl" />
         </div>
       </div>
     );
@@ -402,7 +388,7 @@ export default function MercadoLivrePage() {
 
   if (accounts.length === 0) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="container mx-auto max-w-7xl p-6">
         <Header title="Mercado Livre" subtitle="Gestão integrada de vendas" />
         <Card>
           <CardContent className="p-8 text-center">
@@ -427,60 +413,43 @@ export default function MercadoLivrePage() {
   const currentAccount = accounts.find((acc) => acc.id === selectedAccount);
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto max-w-7xl p-6 space-y-6">
       <Header
         title="Mercado Livre"
         subtitle={`Gestão integrada de vendas${
-          currentAccount ? ` - ${currentAccount.nickname}` : ""
+          currentAccount ? ` — ${currentAccount.nickname}` : ""
+        }${
+          lastUpdate
+            ? ` · atualizado às ${lastUpdate.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`
+            : ""
         }`}
-      />
-
-      {/* Controles de Atualização e Status */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 bg-muted/50 rounded-lg">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => loadAllData()}
-              disabled={loading}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
-              />
-              Atualizar
-            </Button>
-
-            <Button
-              variant={autoRefreshEnabled ? "default" : "outline"}
-              size="sm"
-              onClick={toggleAutoRefresh}
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              {autoRefreshEnabled ? "Auto On" : "Auto Off"}
-            </Button>
-          </div>
-
-          {lastUpdate && (
-            <div className="text-sm text-muted-foreground">
-              Última atualização: {lastUpdate.toLocaleTimeString()}
-            </div>
-          )}
-        </div>
-
+      >
         <div className="flex items-center gap-2">
-          <div
-            className={`h-2 w-2 rounded-full ${
-              autoRefreshEnabled ? "bg-green-500" : "bg-muted-foreground/50"
-            }`}
-          />
-          <span className="text-sm text-muted-foreground">
-            {autoRefreshEnabled ? "Dados em tempo real" : "Atualização manual"}
-          </span>
-        </div>
-      </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9"
+            onClick={() => loadAllData()}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+          </Button>
 
-      {/* Warning se houver problemas */}
+          <Button
+            variant={autoRefreshEnabled ? "default" : "outline"}
+            size="sm"
+            className="h-9"
+            onClick={toggleAutoRefresh}
+          >
+            <Clock className="h-4 w-4 mr-2" />
+            {autoRefreshEnabled ? "Auto ativado" : "Auto desativado"}
+          </Button>
+        </div>
+      </Header>
+
       {metrics?.warning && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
@@ -490,21 +459,14 @@ export default function MercadoLivrePage() {
         </Alert>
       )}
 
-      {/* ✅ NOVO: Componente de Métricas Refatorado */}
       {metrics && <MLDashboardMetrics metrics={metrics} />}
 
-      {/* ✅ NOVO: Grid de Componentes Principais */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Produtos Mais Vendidos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {salesData && <MLTopSellingProducts salesData={salesData} />}
 
-        {/* Sugestões de Reposição */}
         {restockData && <MLRestockSuggestions restockData={restockData} />}
       </div>
 
-
-
-      {/* Ações Rápidas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -575,7 +537,6 @@ export default function MercadoLivrePage() {
         </CardContent>
       </Card>
 
-      {/* Status da Sincronização */}
       {metrics?.lastSync && (
         <Alert>
           <CheckCircle className="h-4 w-4" />
@@ -586,7 +547,6 @@ export default function MercadoLivrePage() {
         </Alert>
       )}
 
-      {/* Alerta se precisa sincronizar */}
       {metrics?.needsSync && (
         <Alert>
           <AlertTriangle className="h-4 w-4" />
@@ -597,7 +557,6 @@ export default function MercadoLivrePage() {
         </Alert>
       )}
 
-      {/* Sincronização Automática */}
       {selectedAccount && (
         <Card>
           <CardHeader>
