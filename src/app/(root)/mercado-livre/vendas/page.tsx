@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
-  Package,
   RefreshCw,
   Loader2,
   Download,
@@ -43,6 +42,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { HeroMetric } from "@/components/ui/hero-metric";
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
 import { SectionCard } from "@/components/ui/section-card";
+import { CubeMark } from "@/components/brand/Logo";
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import EvolutionChart, {
   EvolutionChartTabs,
@@ -313,7 +313,7 @@ export default function MercadoLivreVendasPage() {
         />
         <Card className="mt-8 rounded-xl">
           <CardContent className="p-10 text-center">
-            <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <CubeMark className="h-12 w-12 mx-auto mb-4 opacity-30" />
             <h3 className="text-lg font-semibold mb-2">
               Nenhuma conta conectada
             </h3>

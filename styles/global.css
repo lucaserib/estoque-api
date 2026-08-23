@@ -16,7 +16,7 @@
     --popover-foreground: 210 15% 12%;
     --border: 210 16% 88%;
     --input: 210 16% 88%;
-    --primary: 100 80% 33%;
+    --primary: 100 80% 26%;
     --primary-foreground: 0 0% 100%;
     --secondary: 210 20% 94%;
     --secondary-foreground: 210 15% 12%;
@@ -24,15 +24,15 @@
     --muted-foreground: 210 8% 45%;
     --accent: 100 60% 94%;
     --accent-foreground: 103 80% 22%;
-    --success: 100 80% 33%;
+    --success: 100 80% 26%;
     --success-foreground: 0 0% 100%;
-    --warning: 35 92% 42%;
+    --warning: 35 92% 31%;
     --warning-foreground: 0 0% 100%;
     --destructive: 4 74% 48%;
     --destructive-foreground: 0 0% 100%;
     --info: 205 70% 42%;
     --info-foreground: 0 0% 100%;
-    --ring: 100 80% 33%;
+    --ring: 100 80% 26%;
     --radius: 0.375rem;
     --chart-1: 100 77% 40%;
     --chart-2: 205 60% 50%;

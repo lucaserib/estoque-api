@@ -14,11 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowRight, Boxes, Store } from "lucide-react";
+import { ArrowRight, Boxes } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { HeroMetric } from "@/components/ui/hero-metric";
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
 import { SectionCard } from "@/components/ui/section-card";
+import { CubeMark } from "@/components/brand/Logo";
 import KpiCard from "@/components/dashboard/KpiCard";
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import EvolutionChart, {
@@ -184,7 +185,7 @@ export default function DashboardPage() {
 
         <Card className="rounded-xl">
           <CardContent className="p-10 text-center">
-            <Store className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <CubeMark className="h-12 w-12 mx-auto mb-4 opacity-30" />
             <h3 className="text-lg font-semibold mb-2">
               Conecte o Mercado Livre
             </h3>

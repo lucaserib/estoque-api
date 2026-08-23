@@ -69,7 +69,7 @@ const ChartTooltip = ({ active, label, payload }: ChartTooltipProps) => {
   const point = payload[0].payload;
 
   return (
-    <div className="rounded-lg border bg-card px-3 py-2 shadow-md text-xs space-y-1">
+    <div className="rounded-md border bg-card px-3 py-2 shadow-md text-xs space-y-1">
       <p className="font-medium">{formatDay(label ?? "")}</p>
       <p className="text-muted-foreground">
         Receita:{" "}
@@ -158,15 +158,15 @@ const EvolutionChart = ({ data, bare = false, metric: controlledMetric }: Evolut
             <Area
               type="monotone"
               dataKey={metric}
-              stroke="hsl(var(--primary))"
+              stroke="hsl(var(--chart-1))"
               strokeWidth={2}
-              fill="hsl(var(--primary))"
+              fill="hsl(var(--chart-1))"
               fillOpacity={0.1}
             />
             <Line
               type="monotone"
               dataKey="movingAverage"
-              stroke="hsl(var(--primary))"
+              stroke="hsl(var(--chart-1))"
               strokeWidth={1.5}
               strokeDasharray="5 4"
               strokeOpacity={0.6}
