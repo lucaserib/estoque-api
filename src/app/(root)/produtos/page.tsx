@@ -18,6 +18,7 @@ import {
   LucideLoaderCircle,
   Link2,
   Settings,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -36,6 +37,11 @@ interface ProdutoToDelete {
   };
 }
 
+interface BlingAccountStatus {
+  id: string;
+  isActive: boolean;
+}
+
 const ProdutosPage = () => {
   const [activeTab, setActiveTab] = useState<"produtos" | "kits">("produtos");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -52,6 +58,27 @@ const ProdutosPage = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [updatingVendas, setUpdatingVendas] = useState(false);
   const [updatingBlingStock, setUpdatingBlingStock] = useState(false);
+  const [blingAccount, setBlingAccount] = useState<BlingAccountStatus | null>(
+    null
+  );
+  const blingExpired = blingAccount !== null && !blingAccount.isActive;
+
+  useEffect(() => {
+    const loadBlingStatus = async () => {
+      try {
+        const response = await fetch("/api/bling/auth?action=accounts");
+        if (!response.ok) return;
+
+        const accounts: BlingAccountStatus[] = await response.json();
+        const active = accounts.find((acc) => acc.isActive);
+        setBlingAccount(active ?? accounts[0] ?? null);
+      } catch (error) {
+        console.error("Erro ao verificar status do Bling:", error);
+      }
+    };
+
+    loadBlingStatus();
+  }, []);
 
   // Initialize produtos when data is loaded or refetched
   // This updates produtos when initialProdutos changes (e.g., after refetch)
@@ -158,6 +185,7 @@ const ProdutosPage = () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
         if (errorData?.code === "BLING_RECONNECT_REQUIRED") {
+          setBlingAccount((prev) => (prev ? { ...prev, isActive: false } : prev));
           toast.error("Sua conexão com o Bling expirou", {
             description: "Reconecte sua conta para atualizar o estoque.",
             action: { label: "Reconectar", onClick: () => reconectarBling() },
@@ -311,21 +339,39 @@ const ProdutosPage = () => {
               <Button variant="outline" className="gap-2 relative">
                 <Link2 className="h-4 w-4" />
                 Vincular Pendentes
-                <span className="ml-1 bg-orange-500 text-white text-xs rounded-full px-2 py-0.5">
+                <span className="ml-1 bg-warning text-warning-foreground text-xs rounded-full px-2 py-0.5">
                   {pendingCount}
                 </span>
               </Button>
             </Link>
           )}
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
+          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
             <PlusCircle className="h-4 w-4" />
             Novo Produto/Kit
           </Button>
         </div>
       </div>
+
+      {blingExpired && (
+        <Card className="mb-6 border-warning bg-warning/10">
+          <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+              <div>
+                <p className="font-semibold">Conexão com o Bling expirou</p>
+                <p className="text-sm text-muted-foreground">
+                  Reconecte sua conta para voltar a importar produtos e
+                  sincronizar estoque.
+                </p>
+              </div>
+            </div>
+            <Button onClick={reconectarBling}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Reconectar
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="mb-6 border border-border shadow-sm">
         <CardContent className="p-0">
