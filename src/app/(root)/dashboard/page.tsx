@@ -203,9 +203,9 @@ export default function DashboardPage() {
               Conecte sua conta para acompanhar vendas, receita e sugestões de
               reposição direto no painel.
             </p>
-            <Link href="/configuracoes">
+            <Link href="/onboarding">
               <Button>
-                Conectar Mercado Livre
+                Começar configuração
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </Link>
