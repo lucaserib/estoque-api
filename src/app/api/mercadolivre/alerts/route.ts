@@ -529,7 +529,7 @@ export async function POST(request: NextRequest) {
 
     // ✅ INVALIDAR CACHE DE ALERTAS
     const { mlCache } = await import("@/lib/cache");
-    mlCache.invalidatePattern(`alerts:${accountId}:.*`);
+    await mlCache.invalidatePattern(`alerts:${accountId}:`);
 
     return NextResponse.json(result);
   } catch (error) {

@@ -371,7 +371,7 @@ async function collectApiMetrics(
  */
 async function collectCacheMetrics(userId: string) {
   try {
-    const cacheStats = getUserCacheStats(userId);
+    const cacheStats = await getUserCacheStats(userId);
     const { mlCache } = await import("@/lib/cache");
     const globalStats = mlCache.getStats();
 

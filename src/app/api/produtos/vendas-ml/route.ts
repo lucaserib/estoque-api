@@ -2,12 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
-import { MLOrder } from "@/types/mercadolivre";
+import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
 
-/**
- * GET /api/produtos/vendas-ml
- * Calcula vendas dos últimos 90 dias por produto do Mercado Livre
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -37,17 +33,6 @@ export async function GET(request: NextRequest) {
       (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
     );
 
-    console.log(
-      `[VENDAS_ML] Buscando vendas de ${startDate.toLocaleDateString(
-        "pt-BR"
-      )} até ${endDate.toLocaleDateString("pt-BR")} (${diasPeriodo} dias)`
-    );
-
-    // Buscar pedidos do ML
-    const allOrders: MLOrder[] = [];
-    let offset = 0;
-    const maxPages = 20;
-
     const validStatuses = [
       "paid",
       "delivered",
@@ -57,45 +42,17 @@ export async function GET(request: NextRequest) {
       "confirmed",
     ];
 
-    for (let page = 0; page < maxPages; page++) {
-      try {
-        const orders = await MercadoLivreService.getUserOrders(accessToken, {
-          seller: mlAccount.mlUserId,
-          offset,
-          limit: 50,
-          sort: "date_desc",
-        });
+    const fetchedOrders = await fetchAllOrdersOrThrow({
+      accessToken,
+      sellerId: mlAccount.mlUserId,
+    });
 
-        if (!orders.results || orders.results.length === 0) {
-          break;
-        }
-
-        const validOrders = orders.results.filter(
-          (order: MLOrder) =>
-            validStatuses.includes(order.status) &&
-            new Date(order.date_created) >= startDate &&
-            new Date(order.date_created) <= endDate
-        );
-
-        allOrders.push(...validOrders);
-        offset += 50;
-
-        // Se a data do último pedido é anterior ao período, parar
-        const lastOrder = orders.results[orders.results.length - 1];
-        if (
-          lastOrder &&
-          new Date(lastOrder.date_created) < startDate
-        ) {
-          console.log(
-            `[VENDAS_ML] Último pedido fora do período, finalizando busca`
-          );
-          break;
-        }
-      } catch (pageError) {
-        console.error(`[VENDAS_ML] Erro na página ${page + 1}:`, pageError);
-        break;
-      }
-    }
+    const allOrders = fetchedOrders.filter(
+      (order) =>
+        validStatuses.includes(order.status) &&
+        new Date(order.date_created) >= startDate &&
+        new Date(order.date_created) <= endDate
+    );
 
     console.log(`[VENDAS_ML] Total de pedidos encontrados: ${allOrders.length}`);
 
@@ -235,14 +192,20 @@ export async function GET(request: NextRequest) {
       estoqueFullPorProduto,
     });
   } catch (error) {
+    if (error instanceof PartialOrdersError) {
+      return NextResponse.json(
+        {
+          code: error.code,
+          error:
+            "Não foi possível carregar todos os pedidos do Mercado Livre. Tente novamente em instantes.",
+        },
+        { status: 503 }
+      );
+    }
+
     console.error("Erro ao buscar vendas ML:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erro ao buscar vendas do Mercado Livre",
-      },
+      { error: "Erro ao buscar vendas do Mercado Livre" },
       { status: 500 }
     );
   }

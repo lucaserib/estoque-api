@@ -92,6 +92,12 @@ const ProdutosPage = () => {
     try {
       // 1. Chamar API para atualizar vendas e estoque no banco de dados
       const response = await fetch("/api/produtos/vendas-ml");
+      if (response.status === 503) {
+        toast.error(
+          "Não foi possível carregar todos os pedidos do Mercado Livre. Tente novamente em instantes."
+        );
+        return;
+      }
       if (!response.ok) {
         throw new Error("Erro ao atualizar dados");
       }

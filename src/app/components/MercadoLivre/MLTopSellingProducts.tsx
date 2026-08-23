@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp } from "lucide-react";
-import { exibirValorEmReais } from "@/utils/currency";
+import { formatBRLReais } from "@/lib/format";
 import { SalesAnalytics } from "@/types/ml-analytics";
 
 interface MLTopSellingProductsProps {
@@ -49,11 +49,10 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
                         <span>{product.orders} pedidos</span>
                       )}
                       {product.averagePrice && (
-                        <span>Preço médio: {exibirValorEmReais(product.averagePrice)}</span>
+                        <span>Preço médio: {formatBRLReais(product.averagePrice)}</span>
                       )}
                     </div>
                     
-                    {/* Mostrar informações de desconto se disponível */}
                     {product.discountPercentage && product.discountPercentage > 0 && (
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="destructive" className="text-xs">
@@ -61,7 +60,7 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
                         </Badge>
                         {product.originalPrice && (
                           <span className="text-xs text-muted-foreground line-through">
-                            {exibirValorEmReais(product.originalPrice)}
+                            {formatBRLReais(product.originalPrice)}
                           </span>
                         )}
                       </div>
@@ -71,7 +70,7 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
                 
                 <div className="text-right ml-4">
                   <p className="font-semibold text-success text-lg">
-                    {exibirValorEmReais(product.revenue)}
+                    {formatBRLReais(product.revenue)}
                   </p>
                   <p className="text-xs text-muted-foreground">receita</p>
                 </div>
@@ -79,7 +78,6 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
             ))}
         </div>
         
-        {/* Resumo */}
         {salesData.summary && (
           <div className="mt-4 pt-4 border-t bg-muted/30 rounded-lg p-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
@@ -91,13 +89,13 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
               </div>
               <div>
                 <p className="text-2xl font-bold text-success">
-                  {exibirValorEmReais(salesData.summary.totalRevenue)}
+                  {formatBRLReais(salesData.summary.totalRevenue)}
                 </p>
                 <p className="text-xs text-muted-foreground">Receita total</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-foreground">
-                  {exibirValorEmReais(salesData.summary.averageTicket)}
+                  {formatBRLReais(salesData.summary.averageTicket)}
                 </p>
                 <p className="text-xs text-muted-foreground">Ticket médio</p>
               </div>

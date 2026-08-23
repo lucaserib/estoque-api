@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import Header from "@/app/components/Header";
 import KpiCard from "@/components/dashboard/KpiCard";
+import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import EvolutionChart, {
   DailySalesPoint,
 } from "@/app/(root)/mercado-livre/vendas/components/EvolutionChart";
@@ -90,6 +91,7 @@ export default function DashboardPage() {
   const [homeData, setHomeData] = useState<HomeData | null>(null);
   const [loadingData, setLoadingData] = useState(false);
   const [stockValue, setStockValue] = useState<number | null>(null);
+  const [salesDataPartial, setSalesDataPartial] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -139,17 +141,28 @@ export default function DashboardPage() {
       ]);
 
       const metrics = metricsRes.ok ? await metricsRes.json() : null;
-      const sales = salesRes.ok ? await salesRes.json() : null;
       const restock = restockRes.ok ? await restockRes.json() : null;
 
-      setHomeData({
+      if (salesRes.status === 503) {
+        const body = await salesRes.json().catch(() => null);
+        setSalesDataPartial(body?.code === "ML_DADOS_PARCIAIS");
+      } else {
+        setSalesDataPartial(false);
+      }
+
+      const sales = salesRes.ok ? await salesRes.json() : null;
+
+      setHomeData((previous) => ({
         todaySales: metrics?.todaySales ?? 0,
-        periodRevenue: sales?.data?.summary?.totalRevenue ?? 0,
-        revenueGrowth: sales?.data?.comparison?.growth?.revenueGrowth ?? null,
-        dailyRevenue: sales?.data?.trends?.dailyRevenue ?? [],
+        periodRevenue: sales?.data?.summary?.totalRevenue ?? previous?.periodRevenue ?? 0,
+        revenueGrowth:
+          sales?.data?.comparison?.growth?.revenueGrowth ??
+          previous?.revenueGrowth ??
+          null,
+        dailyRevenue: sales?.data?.trends?.dailyRevenue ?? previous?.dailyRevenue ?? [],
         restockCount: restock?.summary?.needsAttention ?? 0,
         restockTop: (restock?.suggestions ?? []).slice(0, 5),
-      });
+      }));
     } catch (error) {
       console.error("Erro ao carregar dados do dashboard:", error);
     } finally {
@@ -245,6 +258,13 @@ export default function DashboardPage() {
       ) : (
         homeData && (
           <>
+            {salesDataPartial && (
+              <PartialDataAlert
+                onRetry={loadHomeData}
+                retrying={loadingData}
+              />
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <KpiCard
                 label="Vendas Hoje"

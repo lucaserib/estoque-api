@@ -33,14 +33,80 @@ import MercadoLivreAutoSync from "@/app/components/MercadoLivreAutoSync";
 import MLDashboardMetrics from "@/app/components/MercadoLivre/MLDashboardMetrics";
 import MLTopSellingProducts from "@/app/components/MercadoLivre/MLTopSellingProducts";
 import MLRestockSuggestions from "@/app/components/MercadoLivre/MLRestockSuggestions";
+import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import Link from "next/link";
-import { exibirValorEmReais } from "@/utils/currency";
 import type {
   MLAccount,
   DashboardMetrics,
   SalesAnalytics,
   RestockAnalytics,
 } from "@/types/ml-analytics";
+
+interface SalesCompleteResponse {
+  success: boolean;
+  data: {
+    period: { startDate: string; endDate: string; days: number };
+    summary: {
+      totalOrders: number;
+      totalItems: number;
+      totalRevenue: number;
+      averageTicket: number;
+    };
+    trends: {
+      dailyRevenue: Array<{
+        date: string;
+        revenue: number;
+        orders: number;
+        items: number;
+      }>;
+      topProducts: Array<{
+        mlItemId: string;
+        productName: string;
+        totalSales: number;
+        totalRevenue: number;
+        averagePrice: number;
+        salesCount: number;
+      }>;
+    };
+  };
+}
+
+function mapSalesCompleteToAnalytics(
+  payload: SalesCompleteResponse
+): SalesAnalytics {
+  const { data } = payload;
+
+  return {
+    period: {
+      from: data.period.startDate,
+      to: data.period.endDate,
+      days: data.period.days,
+    },
+    summary: {
+      totalSales: data.summary.totalItems,
+      totalRevenue: data.summary.totalRevenue,
+      averageTicket: data.summary.averageTicket,
+      revenueGrowth: 0,
+      totalOrders: data.summary.totalOrders,
+    },
+    topSellingProducts: data.trends.topProducts.slice(0, 5).map((product) => ({
+      itemId: product.mlItemId,
+      title: product.productName,
+      quantity: product.totalSales,
+      revenue: product.totalRevenue,
+      orders: product.salesCount,
+      averagePrice: product.averagePrice,
+    })),
+    salesChart: data.trends.dailyRevenue.map((day) => ({
+      date: day.date,
+      sales: day.items,
+      revenue: day.revenue,
+      orders: day.orders,
+    })),
+    categoryBreakdown: [],
+    recentOrders: [],
+  };
+}
 
 export default function MercadoLivrePage() {
   const { data: session, status } = useSession();
@@ -52,6 +118,7 @@ export default function MercadoLivrePage() {
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [loadingSales, setLoadingSales] = useState(false);
+  const [salesDataPartial, setSalesDataPartial] = useState(false);
   const [loadingRestock, setLoadingRestock] = useState(false);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
@@ -194,15 +261,14 @@ export default function MercadoLivrePage() {
 
     setLoadingSales(true);
     try {
-      let response = await fetch(
-        `/api/mercadolivre/analytics/sales-detailed?accountId=${selectedAccount}&period=30`
+      const response = await fetch(
+        `/api/mercadolivre/analytics/sales-complete?accountId=${selectedAccount}&period=30`
       );
 
-      if (!response.ok) {
-        console.warn("API detalhada indisponível, usando API simples");
-        response = await fetch(
-          `/api/mercadolivre/analytics/sales?accountId=${selectedAccount}&period=30`
-        );
+      if (response.status === 503) {
+        const body = await response.json().catch(() => null);
+        setSalesDataPartial(body?.code === "ML_DADOS_PARCIAIS");
+        return;
       }
 
       if (!response.ok) {
@@ -210,48 +276,9 @@ export default function MercadoLivrePage() {
         return;
       }
 
-      const data = await response.json();
-
-      if (data.topProducts) {
-        setSalesData({
-          period: data.period,
-          summary: {
-            totalSales: data.summary.totalItemsSold,
-            totalRevenue: data.summary.totalRevenue,
-            averageTicket: data.summary.averageOrderValue,
-            revenueGrowth: 0, // Não calculado na API detalhada
-            totalOrders: data.summary.relevantOrders || 0,
-          },
-          topSellingProducts: data.topProducts
-            .slice(0, 5)
-            .map(
-              (product: {
-                itemId: string;
-                title: string;
-                totalQuantitySold: number;
-                totalRevenue: number;
-                totalOrders: number;
-                averagePrice: number;
-                originalPrice: number;
-                discountPercentage: number;
-              }) => ({
-                itemId: product.itemId,
-                title: product.title,
-                quantity: product.totalQuantitySold,
-                revenue: product.totalRevenue,
-                orders: product.totalOrders,
-                averagePrice: product.averagePrice,
-                originalPrice: product.originalPrice,
-                discountPercentage: product.discountPercentage,
-              })
-            ),
-          salesChart: data.salesChart,
-          categoryBreakdown: [],
-          recentOrders: [],
-        });
-      } else {
-        setSalesData(data);
-      }
+      const payload: SalesCompleteResponse = await response.json();
+      setSalesDataPartial(false);
+      setSalesData(mapSalesCompleteToAnalytics(payload));
     } catch (error) {
       console.error("Erro ao carregar dados de vendas:", error);
     } finally {
@@ -460,6 +487,10 @@ export default function MercadoLivrePage() {
       )}
 
       {metrics && <MLDashboardMetrics metrics={metrics} />}
+
+      {salesDataPartial && (
+        <PartialDataAlert onRetry={loadSalesData} retrying={loadingSales} />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {salesData && <MLTopSellingProducts salesData={salesData} />}

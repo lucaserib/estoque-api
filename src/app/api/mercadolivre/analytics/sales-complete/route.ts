@@ -3,6 +3,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { withCache, createCacheKey } from "@/lib/cache";
+import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
 import type { MLOrder } from "@/types/mercadolivre";
 
 interface SalesProduct {
@@ -35,7 +36,7 @@ interface CancelledProduct {
   totalCancelled: number;
   totalCancelledRevenue: number;
   cancellationCount: number;
-  cancellationRate: number; // % de cancelamento em relação ao total vendido
+  cancellationRate: number;
   lastCancellationDate: string;
 }
 
@@ -48,9 +49,9 @@ interface SalesAnalytics {
   summary: {
     totalOrders: number;
     totalItems: number;
-    totalRevenue: number; // Total incluindo frete
-    totalProductRevenue: number; // Total só dos produtos
-    totalShippingRevenue: number; // Total só do frete
+    totalRevenue: number;
+    totalProductRevenue: number;
+    totalShippingRevenue: number;
     averageTicket: number;
     averageItemsPerOrder: number;
     totalSaleFees: number;
@@ -82,7 +83,7 @@ interface SalesAnalytics {
     totalCancelledRevenue: number;
     cancellationRate: number;
     orders: CancelledOrder[];
-    topCancelledProducts: CancelledProduct[]; // Produtos com mais cancelamentos
+    topCancelledProducts: CancelledProduct[];
   };
   skusWithoutSales?: {
     count: number;
@@ -174,58 +175,30 @@ export async function GET(request: NextRequest) {
             `[SALES_COMPLETE] Buscando vendas de ${startDate.toISOString()} até ${endDate.toISOString()} (${actualPeriod} dias${customStartDate ? ' - DATAS CUSTOMIZADAS' : ''})`
           );
 
-          const allOrders: MLOrder[] = [];
-          let offset = 0;
-          const limit = 50;
-          let hasMore = true;
-
-          while (hasMore && offset < 500) {
-            try {
-              const ordersResponse = await MercadoLivreService.getUserOrders(
-                accessToken,
-                {
-                  seller: account.mlUserId,
-                  offset,
-                  limit,
-                  sort: "date_desc",
-                }
-              );
-
-              if (ordersResponse.results && ordersResponse.results.length > 0) {
-                allOrders.push(...ordersResponse.results);
-                offset += limit;
-                hasMore = ordersResponse.results.length === limit;
-              } else {
-                hasMore = false;
-              }
-            } catch (error) {
-              console.warn(
-                `[SALES_COMPLETE] Erro ao buscar pedidos offset ${offset}:`,
-                error
-              );
-              hasMore = false;
-            }
-          }
+          const allOrders: MLOrder[] = await fetchAllOrdersOrThrow({
+            accessToken,
+            sellerId: account.mlUserId,
+          });
 
           console.log(
             `[SALES_COMPLETE] Total de pedidos obtidos: ${allOrders.length}`
           );
 
           const validStatuses = [
-            "paid",           // Pago
-            "delivered",      // Entregue
-            "ready_to_ship",  // Pronto para envio
-            "shipped",        // Enviado
-            "handling",       // Em preparação
+            "paid",
+            "delivered",
+            "ready_to_ship",
+            "shipped",
+            "handling",
           ];
           
           const excludedStatuses = [
-            "cancelled",       // Cancelado
-            "invalid",         // Inválido
-            "refunded",        // Reembolsado
-            "payment_rejected", // Pagamento rejeitado
-            "pending",         // Pendente (não confirmado)
-            "returned",        // Devolvido
+            "cancelled",
+            "invalid",
+            "refunded",
+            "payment_rejected",
+            "pending",
+            "returned",
           ];
           
           const periodOrders = allOrders.filter((order) => {
@@ -440,7 +413,7 @@ export async function GET(request: NextRequest) {
               cancellation_reason:
                 (order.status_detail as { description?: string })?.description ||
                 (order.status_detail as string) ||
-                order.status, // Incluir o status se não tiver detalhe
+                order.status,
             });
           });
 
@@ -451,15 +424,15 @@ export async function GET(request: NextRequest) {
               const totalWithCancelled = totalSold + product.totalCancelled;
               const cancellationRate = totalWithCancelled > 0
                 ? (product.totalCancelled / totalWithCancelled) * 100
-                : 100; // Se só tem cancelamentos, 100%
+                : 100;
 
               return {
                 ...product,
                 cancellationRate,
               };
             })
-            .sort((a, b) => b.totalCancelled - a.totalCancelled) // Ordenar por quantidade cancelada
-            .slice(0, 20); // Top 20 produtos
+            .sort((a, b) => b.totalCancelled - a.totalCancelled)
+            .slice(0, 20);
 
           const totalOrdersIncludingCancelled =
             periodOrders.length + cancelledOrders.length;
@@ -477,9 +450,9 @@ export async function GET(request: NextRequest) {
             summary: {
               totalOrders,
               totalItems,
-              totalRevenue, // Total incluindo frete
-              totalProductRevenue, // Total só produtos
-              totalShippingRevenue, // Total só frete
+              totalRevenue,
+              totalProductRevenue,
+              totalShippingRevenue,
               averageTicket: totalOrders > 0 ? totalRevenue / totalOrders : 0,
               averageItemsPerOrder:
                 totalOrders > 0 ? totalItems / totalOrders : 0,
@@ -498,8 +471,8 @@ export async function GET(request: NextRequest) {
               totalCancelledItems,
               totalCancelledRevenue,
               cancellationRate,
-              orders: cancelledOrdersData.slice(0, 50), // Limitar a 50 pedidos cancelados mais recentes
-              topCancelledProducts: cancelledProductsList, // Top 20 produtos com mais cancelamentos
+              orders: cancelledOrdersData.slice(0, 50),
+              topCancelledProducts: cancelledProductsList,
             },
           };
 
@@ -532,7 +505,7 @@ export async function GET(request: NextRequest) {
 
           return analytics;
         },
-        "300" // Cache por 5 minutos
+        "sales"
       );
 
       if (includeComparison) {
@@ -554,42 +527,10 @@ export async function GET(request: NextRequest) {
               `[SALES_COMPLETE] Buscando dados do período anterior: ${prevStartDate.toISOString()} até ${prevEndDate.toISOString()}`
             );
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any -- lista bruta de pedidos do ML
-            let allPrevOrders: any[] = [];
-            let offset = 0;
-            const limit = 50;
-            let hasMore = true;
-
-            while (hasMore && offset < 300) {
-              try {
-                const ordersResponse = await MercadoLivreService.getUserOrders(
-                  accessToken,
-                  {
-                    seller: account.mlUserId,
-                    offset,
-                    limit,
-                    sort: "date_desc",
-                  }
-                );
-
-                if (
-                  ordersResponse.results &&
-                  ordersResponse.results.length > 0
-                ) {
-                  allPrevOrders = allPrevOrders.concat(ordersResponse.results);
-                  offset += limit;
-                  hasMore = ordersResponse.results.length === limit;
-                } else {
-                  hasMore = false;
-                }
-              } catch (error) {
-                console.warn(
-                  `[SALES_COMPLETE] Erro ao buscar pedidos anteriores offset ${offset}:`,
-                  error
-                );
-                hasMore = false;
-              }
-            }
+            const allPrevOrders: MLOrder[] = await fetchAllOrdersOrThrow({
+              accessToken,
+              sellerId: account.mlUserId,
+            });
 
             const validStatuses = [
               "paid",
@@ -618,8 +559,8 @@ export async function GET(request: NextRequest) {
               );
             });
 
-            let prevRevenue = 0; // Total com frete
-            let prevProductRevenue = 0; // Total só produtos
+            let prevRevenue = 0;
+            let prevProductRevenue = 0;
             let prevItems = 0;
             const prevOrders = prevPeriodOrders.length;
 
@@ -647,7 +588,7 @@ export async function GET(request: NextRequest) {
               averageTicket: prevOrders > 0 ? prevRevenue / prevOrders : 0,
             };
           },
-          "600" // Cache por 10 minutos
+          "sales"
         );
 
         analytics.comparison = {
@@ -745,24 +686,36 @@ export async function GET(request: NextRequest) {
         timestamp: new Date().toISOString(),
       });
     } catch (mlError) {
+      if (mlError instanceof PartialOrdersError) {
+        throw mlError;
+      }
+
       console.error("[SALES_COMPLETE] Erro ao conectar com ML:", mlError);
       return NextResponse.json(
         {
           success: false,
           error: "Erro ao conectar com Mercado Livre",
-          details:
-            mlError instanceof Error ? mlError.message : "Erro desconhecido",
         },
         { status: 502 }
       );
     }
   } catch (error) {
-    console.error("[SALES_COMPLETE] Erro na API:", error);
+    if (error instanceof PartialOrdersError) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: error.code,
+          error:
+            "Não foi possível carregar todos os pedidos do Mercado Livre. Tente novamente em instantes.",
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       {
         success: false,
         error: "Erro interno do servidor",
-        details: error instanceof Error ? error.message : "Erro desconhecido",
       },
       { status: 500 }
     );

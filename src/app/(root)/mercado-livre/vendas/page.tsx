@@ -55,6 +55,7 @@ import {
 } from "lucide-react";
 import Header from "@/app/components/Header";
 import KpiCard from "@/components/dashboard/KpiCard";
+import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import EvolutionChart from "./components/EvolutionChart";
 import TopProductsChart from "./components/TopProductsChart";
 import SalesHeatmap from "./components/SalesHeatmap";
@@ -179,6 +180,7 @@ export default function MercadoLivreVendasPage() {
   }>({});
   const [loadingSales, setLoadingSales] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("overview");
+  const [salesDataPartial, setSalesDataPartial] = useState(false);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -221,11 +223,21 @@ export default function MercadoLivreVendasPage() {
       }
 
       const response = await fetch(url);
+
+      if (response.status === 503) {
+        const body = await response.json().catch(() => null);
+        if (body?.code === "ML_DADOS_PARCIAIS") {
+          setSalesDataPartial(true);
+          return;
+        }
+      }
+
       if (!response.ok) {
         throw new Error("Erro ao carregar dados de vendas");
       }
 
       const payload = await response.json();
+      setSalesDataPartial(false);
       setSalesData(payload.data as SalesAnalyticsData);
     } catch {
       toast.error("Erro ao carregar dados de vendas");
@@ -435,6 +447,10 @@ export default function MercadoLivreVendasPage() {
           </Button>
         </div>
       </Header>
+
+      {salesDataPartial && (
+        <PartialDataAlert onRetry={loadSalesData} retrying={loadingSales} />
+      )}
 
       {loadingSales && !salesData && (
         <>

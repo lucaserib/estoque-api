@@ -1556,7 +1556,7 @@ export class MercadoLivreService {
 
         // ✅ MELHORADO: Usar sistema de cache inteligente
         const { mlCache } = await import("@/lib/cache");
-        mlCache.invalidatePattern(`ml:${accountId}:sales`);
+        await mlCache.invalidatePattern(`ml:${accountId}:sales`);
 
         // ✅ NOVO: Atualizar quantidade vendida e disparar notificações
         for (const item of order.order_items) {
@@ -1774,8 +1774,8 @@ export class MercadoLivreService {
 
       // Invalidar cache quando há mudanças de pagamento
       const { mlCache } = await import("@/lib/cache");
-      mlCache.delete(`orders:${accountId}:recent`);
-      mlCache.delete(`metrics:${accountId}:dashboard`);
+      await mlCache.delete(`orders:${accountId}:recent`);
+      await mlCache.delete(`metrics:${accountId}:dashboard`);
 
       console.log(
         `[WEBHOOK_PAYMENT] Cache invalidado por mudança de pagamento`

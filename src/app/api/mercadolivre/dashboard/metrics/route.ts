@@ -174,7 +174,7 @@ export async function GET(request: NextRequest) {
           accountId,
           "fallback"
         );
-        const cachedSalesData = mlCache.get<{
+        const cachedSalesData = await mlCache.get<{
           todaySales: number;
           weekSales: number;
           totalRevenue: number;
@@ -239,7 +239,7 @@ export async function GET(request: NextRequest) {
           accountId,
           "fallback"
         );
-        mlCache.set(
+        await mlCache.set(
           fallbackCacheKey,
           {
             todaySales,

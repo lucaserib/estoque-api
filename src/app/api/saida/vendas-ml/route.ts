@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
 
 export async function GET(request: NextRequest) {
   try {
@@ -74,55 +75,10 @@ export async function GET(request: NextRequest) {
       "returned",
     ];
 
-    // Buscar pedidos do Mercado Livre
-    const allOrders = [];
-    let currentOffset = 0;
-    const maxPages = 20; // Limite de segurança
-
-    console.log(`[VENDAS_ML_SAIDA] Iniciando busca de pedidos...`);
-
-    for (let page = 0; page < maxPages; page++) {
-      try {
-        const orders = await MercadoLivreService.getUserOrders(accessToken, {
-          seller: mlAccount.mlUserId,
-          offset: currentOffset,
-          limit: 50,
-          sort: "date_desc",
-        });
-
-        if (!orders.results || orders.results.length === 0) {
-          console.log(
-            `[VENDAS_ML_SAIDA] Nenhum resultado na página ${
-              page + 1
-            }, finalizando`
-          );
-          break;
-        }
-
-        console.log(
-          `[VENDAS_ML_SAIDA] Página ${page + 1}: ${
-            orders.results.length
-          } pedidos encontrados`
-        );
-
-        // IMPORTANTE: Não filtrar por status aqui, vamos filtrar depois junto com o período
-        allOrders.push(...orders.results);
-        currentOffset += 50;
-
-        if (orders.results.length < 50) {
-          console.log(
-            `[VENDAS_ML_SAIDA] Última página alcançada (${orders.results.length} < 50)`
-          );
-          break;
-        }
-
-        // Delay para evitar rate limit
-        await new Promise((resolve) => setTimeout(resolve, 100));
-      } catch (error) {
-        console.error(`[VENDAS_ML_SAIDA] Erro na página ${page + 1}:`, error);
-        break;
-      }
-    }
+    const allOrders = await fetchAllOrdersOrThrow({
+      accessToken,
+      sellerId: mlAccount.mlUserId,
+    });
 
     console.log(
       `[VENDAS_ML_SAIDA] Total de pedidos carregados: ${allOrders.length}`
@@ -332,12 +288,26 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof PartialOrdersError) {
+      return NextResponse.json(
+        {
+          code: error.code,
+          error:
+            "Não foi possível carregar todos os pedidos do Mercado Livre. Tente novamente em instantes.",
+          vendas: [],
+          total: 0,
+          totalItems: 0,
+          totalRevenue: 0,
+        },
+        { status: 503 }
+      );
+    }
+
     console.error("[VENDAS_ML_SAIDA] Erro ao buscar vendas:", error);
 
     return NextResponse.json(
       {
         error: "Erro ao buscar vendas do Mercado Livre",
-        details: error instanceof Error ? error.message : "Erro desconhecido",
         vendas: [],
         total: 0,
         totalItems: 0,
