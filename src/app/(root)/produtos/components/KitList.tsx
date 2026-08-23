@@ -6,14 +6,14 @@ import { Produto } from "../types";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
+import { SectionCard } from "@/components/ui/section-card";
 import { Badge } from "@/components/ui/badge";
 import { KitDetalhesDialog } from "./dialogs/KitDetalhesDialog";
 import { ProdutoPagination } from "./ProdutoPagination";
@@ -106,7 +106,7 @@ export const KitList = ({
     return (
       <div className="flex justify-center items-center py-10">
         <div className="flex flex-col items-center">
-          <Loader2 className="h-10 w-10 text-indigo-500 animate-spin mb-2" />
+          <Loader2 className="h-10 w-10 text-primary animate-spin mb-2" />
           <p className="text-muted-foreground">Carregando kits...</p>
         </div>
       </div>
@@ -128,97 +128,88 @@ export const KitList = ({
         />
       </div>
 
-      <Card className="border-border shadow-sm">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-background">
-                <TableRow>
-                  <TableHead className="font-medium">Nome</TableHead>
-                  <TableHead className="font-medium">SKU</TableHead>
-                  <TableHead className="font-medium">EAN</TableHead>
-                  <TableHead className="font-medium">Componentes</TableHead>
-                  <TableHead className="font-medium text-right">
-                    Ações
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentKits.length > 0 ? (
-                  currentKits.map((kit) => (
-                    <TableRow
-                      key={kit.id}
-                      className="hover:bg-background group"
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center">
-                          <Box className="h-4 w-4 text-indigo-500 mr-2" />
-                          {kit.nome}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {kit.sku}
-                      </TableCell>
-                      <TableCell>
-                        <EANDisplay produto={kit} />
-                      </TableCell>
-                      <TableCell>
-                        {kit.componentes ? (
-                          <Badge
-                            variant="outline"
-                            className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
-                          >
-                            <Package className="h-3 w-3 mr-1" />
-                            {kit.componentes.length} itens
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm italic">
-                            Sem componentes
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedKit(kit);
-                              setShowDetailsModal(true);
-                            }}
-                            className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                          >
-                            <FaEye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteClick(kit.id)}
-                            className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                          >
-                            <FaTrash className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      {searchTerm
-                        ? "Nenhum kit encontrado com os critérios de busca."
-                        : "Nenhum kit cadastrado. Adicione seu primeiro kit usando o botão 'Novo Produto/Kit'."}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <SectionCard contentClassName="p-0">
+        <DataTable>
+          <DataTableHeader>
+            <DataTableRow className="hover:bg-transparent">
+              <DataTableHead className="pl-4">Kit</DataTableHead>
+              <DataTableHead>EAN</DataTableHead>
+              <DataTableHead>Componentes</DataTableHead>
+              <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
+            </DataTableRow>
+          </DataTableHeader>
+          <DataTableBody>
+            {currentKits.length > 0 ? (
+              currentKits.map((kit) => (
+                <DataTableRow key={kit.id} className="group">
+                  <DataTableCell emphasis className="pl-4">
+                    <div className="flex items-center gap-2">
+                      <Box className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <div className="min-w-0">
+                        <p className="truncate">{kit.nome}</p>
+                        <p className="text-xs font-normal text-muted-foreground">
+                          {kit.sku}
+                        </p>
+                      </div>
+                    </div>
+                  </DataTableCell>
+                  <DataTableCell>
+                    <EANDisplay produto={kit} />
+                  </DataTableCell>
+                  <DataTableCell>
+                    {kit.componentes ? (
+                      <Badge variant="outline" className="text-muted-foreground">
+                        <Package className="h-3 w-3 mr-1" />
+                        {kit.componentes.length} itens
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground text-sm italic">
+                        Sem componentes
+                      </span>
+                    )}
+                  </DataTableCell>
+                  <DataTableCell className="pr-4 text-right">
+                    <div className="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedKit(kit);
+                          setShowDetailsModal(true);
+                        }}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
+                        title="Ver detalhes do kit"
+                      >
+                        <FaEye className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleDeleteClick(kit.id)}
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Excluir kit"
+                      >
+                        <FaTrash className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </DataTableCell>
+                </DataTableRow>
+              ))
+            ) : (
+              <DataTableRow className="hover:bg-transparent">
+                <DataTableCell
+                  colSpan={4}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  {searchTerm
+                    ? "Nenhum kit encontrado com os critérios de busca."
+                    : "Nenhum kit cadastrado. Adicione seu primeiro kit usando o botão 'Novo Produto/Kit'."}
+                </DataTableCell>
+              </DataTableRow>
+            )}
+          </DataTableBody>
+        </DataTable>
+      </SectionCard>
 
       {/* Paginação */}
       {filteredKits.length > itemsPerPage && (

@@ -3,14 +3,14 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Produto } from "../types";
 import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
+import { SectionCard } from "@/components/ui/section-card";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -443,61 +443,54 @@ const ProdutoList = ({
         </Select>
       </div>
 
-      <Card className="border-border shadow-sm">
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-background">
-                <TableRow>
-                  <TableHead className="font-medium">Imagem</TableHead>
-                  <TableHead className="font-medium">Nome</TableHead>
-                  <TableHead className="font-medium">SKU</TableHead>
-                  <TableHead className="font-medium">Fornecedor</TableHead>
-                  <TableHead className="font-medium">Estoque Local</TableHead>
-                  <TableHead className="font-medium">Full</TableHead>
-                  <TableHead className="font-medium">Vendas ML</TableHead>
-                  <TableHead className="font-medium">Custo Médio</TableHead>
-                  <TableHead className="font-medium text-right">
-                    Ações
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentItems.length > 0 ? (
-                  currentItems.map((produto) => (
-                    <ProdutoTableRow
-                      key={produto.id}
-                      produto={produto}
-                      stockQuantity={stockData[produto.id]}
-                      stockMinimum={estoqueSegurancaData[produto.id]}
-                      isLoadingStock={stockData[produto.id] === undefined}
-                      replenishmentStatus={replenishmentStatus[produto.id]}
-                      armazens={armazens}
-                      onDelete={onDelete}
-                      onEdit={handleEdit}
-                      onViewSuppliers={handleViewSuppliers}
-                      onViewStock={fetchStockDetails}
-                      onViewReplenishment={handleViewReplenishment}
-                      onStockAdjusted={fetchStockTotals}
-                    />
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={9}
-                      className="text-center py-8 text-muted-foreground"
-                    >
-                      {filterOptions.searchTerm
-                        ? "Nenhum produto encontrado com os critérios de busca."
-                        : "Nenhum produto cadastrado. Adicione seu primeiro produto usando o botão 'Novo Produto'."}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      <SectionCard contentClassName="p-0">
+        <DataTable>
+          <DataTableHeader>
+            <DataTableRow className="hover:bg-transparent">
+              <DataTableHead className="pl-4">Imagem</DataTableHead>
+              <DataTableHead>Produto</DataTableHead>
+              <DataTableHead>Fornecedor</DataTableHead>
+              <DataTableHead>Estoque Local</DataTableHead>
+              <DataTableHead className="text-right">Full</DataTableHead>
+              <DataTableHead className="text-right">Vendas ML</DataTableHead>
+              <DataTableHead>Custo Médio</DataTableHead>
+              <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
+            </DataTableRow>
+          </DataTableHeader>
+          <DataTableBody>
+            {currentItems.length > 0 ? (
+              currentItems.map((produto) => (
+                <ProdutoTableRow
+                  key={produto.id}
+                  produto={produto}
+                  stockQuantity={stockData[produto.id]}
+                  stockMinimum={estoqueSegurancaData[produto.id]}
+                  isLoadingStock={stockData[produto.id] === undefined}
+                  replenishmentStatus={replenishmentStatus[produto.id]}
+                  armazens={armazens}
+                  onDelete={onDelete}
+                  onEdit={handleEdit}
+                  onViewSuppliers={handleViewSuppliers}
+                  onViewStock={fetchStockDetails}
+                  onViewReplenishment={handleViewReplenishment}
+                  onStockAdjusted={fetchStockTotals}
+                />
+              ))
+            ) : (
+              <DataTableRow className="hover:bg-transparent">
+                <DataTableCell
+                  colSpan={8}
+                  className="text-center py-8 text-muted-foreground"
+                >
+                  {filterOptions.searchTerm
+                    ? "Nenhum produto encontrado com os critérios de busca."
+                    : "Nenhum produto cadastrado. Adicione seu primeiro produto usando o botão 'Novo Produto'."}
+                </DataTableCell>
+              </DataTableRow>
+            )}
+          </DataTableBody>
+        </DataTable>
+      </SectionCard>
 
       {filteredProdutos.length > itemsPerPage && (
         <ProdutoPagination

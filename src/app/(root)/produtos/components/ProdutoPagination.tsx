@@ -105,9 +105,7 @@ export function ProdutoPagination({
                 size="sm"
                 onClick={() => onPageChange(page)}
                 className={`h-8 w-8 p-0 ${
-                  currentPage === page
-                    ? "bg-indigo-600 hover:bg-indigo-700 text-white"
-                    : "border-border"
+                  currentPage === page ? "" : "border-border"
                 }`}
               >
                 {page}

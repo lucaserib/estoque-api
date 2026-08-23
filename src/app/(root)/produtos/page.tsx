@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useFetch } from "@/app/hooks/useFetch";
-import Header from "@/app/components/Header";
 import ProdutoList from "./components/ProdutoList";
 import ProdutoFormModal from "./components/ProdutoFormModal";
 import { ProdutoDeleteDialog } from "@/components/ProdutoDeleteDialog";
@@ -24,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/ui/page-header";
 import { KitList } from "./components/KitList";
 
 interface ProdutoToDelete {
@@ -282,8 +282,8 @@ const ProdutosPage = () => {
 
   if (loading) {
     return (
-      <div className="container max-w-6xl mx-auto p-6">
-        <Header name="Gestão de Produtos" />
+      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+        <PageHeader title="Produtos" subtitle="Catálogo, estoque e fornecedores" />
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex items-center gap-2">
             <LucideLoaderCircle className="h-6 w-6 animate-spin text-primary" />
@@ -296,9 +296,9 @@ const ProdutosPage = () => {
 
   if (error) {
     return (
-      <div className="container max-w-6xl mx-auto p-6">
-        <Header name="Gestão de Produtos" />
-        <Alert variant="destructive" className="mt-6">
+      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+        <PageHeader title="Produtos" subtitle="Catálogo, estoque e fornecedores" />
+        <Alert variant="destructive">
           <AlertDescription className="flex justify-between items-center">
             <span>{error}</span>
             <Button onClick={refreshData} variant="outline" size="sm">
@@ -312,66 +312,69 @@ const ProdutosPage = () => {
   }
 
   return (
-    <div className="container max-w-6xl mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <Header name="Gestão de Produtos" />
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={atualizarEstoqueBling}
-            disabled={updatingBlingStock}
-            title="Sincronizar estoque local com Bling"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${updatingBlingStock ? "animate-spin" : ""}`}
-            />
-            {updatingBlingStock ? "Sincronizando..." : "Atualizar Estoque Bling"}
-          </Button>
-          <Button
-            variant="outline"
-            className="gap-2"
-            onClick={atualizarDadosML}
-            disabled={updatingVendas}
-            title="Atualizar vendas e estoque Full do Mercado Livre"
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${updatingVendas ? "animate-spin" : ""}`}
-            />
-            {updatingVendas ? "Atualizando..." : "Atualizar Dados ML"}
-          </Button>
-          <Link href="/produtos/importar">
-            <Button variant="outline" className="gap-2">
-              <Settings className="h-4 w-4" />
-              Integrações
+    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <PageHeader
+        title="Produtos"
+        subtitle="Catálogo, estoque e fornecedores"
+        actions={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={atualizarEstoqueBling}
+              disabled={updatingBlingStock}
+              title="Sincronizar estoque local com Bling"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${updatingBlingStock ? "animate-spin" : ""}`}
+              />
+              {updatingBlingStock ? "Sincronizando..." : "Atualizar Estoque Bling"}
             </Button>
-          </Link>
-          <Link href="/produtos/importar-estoque">
-            <Button variant="outline" className="gap-2">
-              <Box className="h-4 w-4" />
-              Importar Estoque
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={atualizarDadosML}
+              disabled={updatingVendas}
+              title="Atualizar vendas e estoque Full do Mercado Livre"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${updatingVendas ? "animate-spin" : ""}`}
+              />
+              {updatingVendas ? "Atualizando..." : "Atualizar Dados ML"}
             </Button>
-          </Link>
-          {pendingCount > 0 && (
-            <Link href="/produtos/vincular">
-              <Button variant="outline" className="gap-2 relative">
-                <Link2 className="h-4 w-4" />
-                Vincular Pendentes
-                <span className="ml-1 bg-warning text-warning-foreground text-xs rounded-full px-2 py-0.5">
-                  {pendingCount}
-                </span>
+            <Link href="/produtos/importar">
+              <Button variant="outline" className="gap-2">
+                <Settings className="h-4 w-4" />
+                Integrações
               </Button>
             </Link>
-          )}
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-            <PlusCircle className="h-4 w-4" />
-            Novo Produto/Kit
-          </Button>
-        </div>
-      </div>
+            <Link href="/produtos/importar-estoque">
+              <Button variant="outline" className="gap-2">
+                <Box className="h-4 w-4" />
+                Importar Estoque
+              </Button>
+            </Link>
+            {pendingCount > 0 && (
+              <Link href="/produtos/vincular">
+                <Button variant="outline" className="gap-2 relative">
+                  <Link2 className="h-4 w-4" />
+                  Vincular Pendentes
+                  <span className="ml-1 bg-warning text-warning-foreground text-xs rounded-full px-2 py-0.5">
+                    {pendingCount}
+                  </span>
+                </Button>
+              </Link>
+            )}
+            <Button onClick={() => setShowCreateModal(true)} className="gap-2">
+              <PlusCircle className="h-4 w-4" />
+              Novo Produto/Kit
+            </Button>
+          </div>
+        }
+      />
 
       {blingExpired && (
-        <Card className="mb-6 border-warning bg-warning/10">
+        <Card className="border-warning bg-warning/10">
           <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
@@ -391,70 +394,57 @@ const ProdutosPage = () => {
         </Card>
       )}
 
-      <Card className="mb-6 border border-border shadow-sm">
-        <CardContent className="p-0">
-          <Tabs
-            defaultValue="produtos"
-            value={activeTab}
-            onValueChange={(value) =>
-              setActiveTab(value as "produtos" | "kits")
-            }
-            className="w-full"
+      <Tabs
+        defaultValue="produtos"
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as "produtos" | "kits")}
+      >
+        <TabsList className="h-auto justify-start gap-6 rounded-none border-b border-border bg-transparent p-0">
+          <TabsTrigger
+            value="produtos"
+            className="gap-2 rounded-none border-b-2 border-transparent px-0 pb-3 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
           >
-            <TabsList className="w-full grid grid-cols-2 bg-muted rounded-t-lg h-12">
-              <TabsTrigger
-                value="produtos"
-                className="rounded-md data-[state=active]:bg-card flex items-center gap-2"
-              >
-                <Package className="h-4 w-4" />
-                Produtos
-                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">
-                  {regularProducts.length}
-                </span>
-              </TabsTrigger>
-              <TabsTrigger
-                value="kits"
-                className="rounded-md data-[state=active]:bg-card flex items-center gap-2"
-              >
-                <Box className="h-4 w-4" />
-                Kits
-                <span className="ml-1 text-xs bg-muted rounded-full px-2 py-0.5">
-                  {kits.length}
-                </span>
-              </TabsTrigger>
-            </TabsList>
-            <div className="p-6 min-h-[50vh]">
-              <TabsContent value="produtos" className="mt-0">
-                <ProdutoList
-                  produtos={regularProducts}
-                  onDelete={(id) =>
-                    setProdutoToDelete({
-                      id,
-                      nome:
-                        regularProducts.find((p) => p.id === id)?.nome || "",
-                    })
-                  }
-                  onEdit={handleEdit}
-                  refreshTrigger={refreshTrigger}
-                  onRefreshReplenishment={() => {}}
-                />
-              </TabsContent>
-              <TabsContent value="kits" className="mt-0">
-                <KitList
-                  kits={kits}
-                  onDelete={(id) =>
-                    setProdutoToDelete({
-                      id,
-                      nome: kits.find((p) => p.id === id)?.nome || "",
-                    })
-                  }
-                  refreshTrigger={refreshTrigger}
-                />
-              </TabsContent>
-            </div>
-          </Tabs>
-        </CardContent>
-      </Card>
+            <Package className="h-4 w-4" />
+            Produtos
+            <span className="text-xs">{regularProducts.length}</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="kits"
+            className="gap-2 rounded-none border-b-2 border-transparent px-0 pb-3 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
+          >
+            <Box className="h-4 w-4" />
+            Kits
+            <span className="text-xs">{kits.length}</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="produtos" className="mt-6">
+          <ProdutoList
+            produtos={regularProducts}
+            onDelete={(id) =>
+              setProdutoToDelete({
+                id,
+                nome: regularProducts.find((p) => p.id === id)?.nome || "",
+              })
+            }
+            onEdit={handleEdit}
+            refreshTrigger={refreshTrigger}
+            onRefreshReplenishment={() => {}}
+          />
+        </TabsContent>
+        <TabsContent value="kits" className="mt-6">
+          <KitList
+            kits={kits}
+            onDelete={(id) =>
+              setProdutoToDelete({
+                id,
+                nome: kits.find((p) => p.id === id)?.nome || "",
+              })
+            }
+            refreshTrigger={refreshTrigger}
+          />
+        </TabsContent>
+      </Tabs>
 
       {showCreateModal && (
         <ProdutoFormModal

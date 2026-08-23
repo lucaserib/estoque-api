@@ -12,7 +12,7 @@ const sizes = {
   lg: { icon: "h-10 w-10", text: "text-2xl" },
 };
 
-function CubeMark({ className }: { className?: string }) {
+export function CubeMark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 100 100" fill="none" className={className} aria-hidden="true">
       <path d="M50 6 L86 27 L50 48 L14 27 Z" fill="hsl(var(--primary))" />
