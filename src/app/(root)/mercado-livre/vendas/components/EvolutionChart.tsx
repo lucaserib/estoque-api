@@ -23,13 +23,32 @@ export interface DailySalesPoint {
   orders: number;
 }
 
-type Metric = "revenue" | "items" | "orders";
+export type EvolutionMetric = "revenue" | "items" | "orders";
 
-const METRIC_LABELS: Record<Metric, string> = {
+const METRIC_LABELS: Record<EvolutionMetric, string> = {
   revenue: "Receita",
   items: "Itens",
   orders: "Pedidos",
 };
+
+interface EvolutionChartTabsProps {
+  value: EvolutionMetric;
+  onChange: (metric: EvolutionMetric) => void;
+}
+
+export function EvolutionChartTabs({ value, onChange }: EvolutionChartTabsProps) {
+  return (
+    <Tabs value={value} onValueChange={(v) => onChange(v as EvolutionMetric)}>
+      <TabsList className="h-8">
+        {(Object.keys(METRIC_LABELS) as EvolutionMetric[]).map((key) => (
+          <TabsTrigger key={key} value={key} className="text-xs h-6 px-2.5">
+            {METRIC_LABELS[key]}
+          </TabsTrigger>
+        ))}
+      </TabsList>
+    </Tabs>
+  );
+}
 
 const MOVING_AVERAGE_WINDOW = 7;
 
@@ -74,8 +93,15 @@ const ChartTooltip = ({ active, label, payload }: ChartTooltipProps) => {
   );
 };
 
-const EvolutionChart = ({ data }: { data: DailySalesPoint[] }) => {
-  const [metric, setMetric] = useState<Metric>("revenue");
+interface EvolutionChartProps {
+  data: DailySalesPoint[];
+  bare?: boolean;
+  metric?: EvolutionMetric;
+}
+
+const EvolutionChart = ({ data, bare = false, metric: controlledMetric }: EvolutionChartProps) => {
+  const [internalMetric, setInternalMetric] = useState<EvolutionMetric>("revenue");
+  const metric = controlledMetric ?? internalMetric;
 
   const chartData = useMemo(() => {
     return data.map((point, index) => {
@@ -96,6 +122,69 @@ const EvolutionChart = ({ data }: { data: DailySalesPoint[] }) => {
         : `R$ ${formatNumberBR(Math.round(value))}`
       : formatNumberBR(value);
 
+  const chartBody = (
+    <>
+      {chartData.length === 0 ? (
+        <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">
+          Sem vendas no período selecionado
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={280}>
+          <AreaChart
+            data={chartData}
+            margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
+          >
+            <CartesianGrid
+              strokeDasharray="4 4"
+              vertical={false}
+              stroke="hsl(var(--border))"
+            />
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatDay}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+              minTickGap={24}
+            />
+            <YAxis
+              tickFormatter={formatAxisValue}
+              axisLine={false}
+              tickLine={false}
+              tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+              width={64}
+            />
+            <Tooltip content={<ChartTooltip />} />
+            <Area
+              type="monotone"
+              dataKey={metric}
+              stroke="hsl(var(--primary))"
+              strokeWidth={2}
+              fill="hsl(var(--primary))"
+              fillOpacity={0.1}
+            />
+            <Line
+              type="monotone"
+              dataKey="movingAverage"
+              stroke="hsl(var(--primary))"
+              strokeWidth={1.5}
+              strokeDasharray="5 4"
+              strokeOpacity={0.6}
+              dot={false}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      )}
+      <p className="text-[11px] text-muted-foreground mt-2">
+        Linha tracejada: média móvel de {MOVING_AVERAGE_WINDOW} dias
+      </p>
+    </>
+  );
+
+  if (bare) {
+    return chartBody;
+  }
+
   return (
     <Card className="rounded-xl">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -103,72 +192,9 @@ const EvolutionChart = ({ data }: { data: DailySalesPoint[] }) => {
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
           Evolução de Vendas
         </CardTitle>
-        <Tabs value={metric} onValueChange={(value) => setMetric(value as Metric)}>
-          <TabsList className="h-8">
-            {(Object.keys(METRIC_LABELS) as Metric[]).map((key) => (
-              <TabsTrigger key={key} value={key} className="text-xs h-6 px-2.5">
-                {METRIC_LABELS[key]}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
+        <EvolutionChartTabs value={metric} onChange={setInternalMetric} />
       </CardHeader>
-      <CardContent>
-        {chartData.length === 0 ? (
-          <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground">
-            Sem vendas no período selecionado
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart
-              data={chartData}
-              margin={{ top: 8, right: 8, left: 0, bottom: 0 }}
-            >
-              <CartesianGrid
-                strokeDasharray="4 4"
-                vertical={false}
-                stroke="hsl(var(--border))"
-              />
-              <XAxis
-                dataKey="date"
-                tickFormatter={formatDay}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                minTickGap={24}
-              />
-              <YAxis
-                tickFormatter={formatAxisValue}
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-                width={64}
-              />
-              <Tooltip content={<ChartTooltip />} />
-              <Area
-                type="monotone"
-                dataKey={metric}
-                stroke="hsl(var(--primary))"
-                strokeWidth={2}
-                fill="hsl(var(--primary))"
-                fillOpacity={0.12}
-              />
-              <Line
-                type="monotone"
-                dataKey="movingAverage"
-                stroke="hsl(var(--primary))"
-                strokeWidth={1.5}
-                strokeDasharray="5 4"
-                strokeOpacity={0.6}
-                dot={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-        <p className="text-[11px] text-muted-foreground mt-2">
-          Linha tracejada: média móvel de {MOVING_AVERAGE_WINDOW} dias
-        </p>
-      </CardContent>
+      <CardContent>{chartBody}</CardContent>
     </Card>
   );
 };

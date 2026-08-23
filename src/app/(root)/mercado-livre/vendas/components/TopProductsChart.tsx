@@ -20,14 +20,65 @@ export interface TopProductEntry {
 interface TopProductsChartProps {
   products: TopProductEntry[];
   totalRevenue: number;
+  bare?: boolean;
 }
 
 const TopProductsChart = ({
   products,
   totalRevenue,
+  bare = false,
 }: TopProductsChartProps) => {
   const top = products.slice(0, 5);
   const maxRevenue = top.length > 0 ? top[0].revenue : 0;
+
+  const body =
+    top.length === 0 ? (
+      <div className="h-[240px] flex items-center justify-center text-sm text-muted-foreground">
+        Sem vendas no período selecionado
+      </div>
+    ) : (
+      <TooltipProvider delayDuration={200}>
+        <div className="space-y-4">
+          {top.map((product) => {
+            const participation =
+              totalRevenue > 0 ? (product.revenue / totalRevenue) * 100 : 0;
+            const barWidth =
+              maxRevenue > 0 ? (product.revenue / maxRevenue) * 100 : 0;
+
+            return (
+              <div key={product.itemId}>
+                <div className="flex items-baseline justify-between gap-3 mb-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <p className="text-sm truncate cursor-default">
+                        {product.title}
+                      </p>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-72 text-xs">
+                      {product.title} · {product.quantity} un.
+                    </TooltipContent>
+                  </Tooltip>
+                  <p className="text-sm font-medium tabular-nums shrink-0">
+                    {formatBRLReais(product.revenue)}
+                    <span className="text-muted-foreground font-normal ml-1.5">
+                      {formatPercent(participation)}
+                    </span>
+                  </p>
+                </div>
+                <div className="h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-primary"
+                    style={{ width: `${barWidth}%` }}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </TooltipProvider>
+    );
+
+  if (bare) return body;
 
   return (
     <Card className="rounded-xl">
@@ -37,55 +88,7 @@ const TopProductsChart = ({
           Top 5 Produtos por Receita
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        {top.length === 0 ? (
-          <div className="h-[240px] flex items-center justify-center text-sm text-muted-foreground">
-            Sem vendas no período selecionado
-          </div>
-        ) : (
-          <TooltipProvider delayDuration={200}>
-            <div className="space-y-4">
-              {top.map((product) => {
-                const participation =
-                  totalRevenue > 0
-                    ? (product.revenue / totalRevenue) * 100
-                    : 0;
-                const barWidth =
-                  maxRevenue > 0 ? (product.revenue / maxRevenue) * 100 : 0;
-
-                return (
-                  <div key={product.itemId}>
-                    <div className="flex items-baseline justify-between gap-3 mb-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <p className="text-sm truncate cursor-default">
-                            {product.title}
-                          </p>
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-72 text-xs">
-                          {product.title} · {product.quantity} un.
-                        </TooltipContent>
-                      </Tooltip>
-                      <p className="text-sm font-medium tabular-nums shrink-0">
-                        {formatBRLReais(product.revenue)}
-                        <span className="text-muted-foreground font-normal ml-1.5">
-                          {formatPercent(participation)}
-                        </span>
-                      </p>
-                    </div>
-                    <div className="h-2 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary"
-                        style={{ width: `${barWidth}%` }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </TooltipProvider>
-        )}
-      </CardContent>
+      <CardContent>{body}</CardContent>
     </Card>
   );
 };

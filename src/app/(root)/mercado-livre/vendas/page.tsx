@@ -5,12 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,13 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   Popover,
   PopoverContent,
@@ -37,26 +32,22 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
-  DollarSign,
-  ShoppingCart,
   Package,
   RefreshCw,
   Loader2,
-  Target,
-  Users,
-  Wallet,
-  CalendarClock,
-  XCircle,
-  PackageX,
   Download,
   ExternalLink,
-  FileText,
   Calendar as CalendarIcon,
 } from "lucide-react";
-import Header from "@/app/components/Header";
-import KpiCard from "@/components/dashboard/KpiCard";
+import { PageHeader } from "@/components/ui/page-header";
+import { HeroMetric } from "@/components/ui/hero-metric";
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { SectionCard } from "@/components/ui/section-card";
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
-import EvolutionChart from "./components/EvolutionChart";
+import EvolutionChart, {
+  EvolutionChartTabs,
+  type EvolutionMetric,
+} from "./components/EvolutionChart";
 import TopProductsChart from "./components/TopProductsChart";
 import SalesHeatmap from "./components/SalesHeatmap";
 import {
@@ -159,12 +150,12 @@ const calcularProjecaoDoMes = (
   return (accumulated / daysElapsed) * daysInMonth;
 };
 
-const KpiSkeletonRow = () => (
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-    {Array.from({ length: 4 }).map((_, index) => (
-      <Skeleton key={index} className="h-[118px] rounded-xl" />
-    ))}
-  </div>
+const MetricsSkeleton = () => (
+  <>
+    <Skeleton className="h-[124px] rounded-md" />
+    <Skeleton className="h-16 rounded-md" />
+    <Skeleton className="h-12 rounded-md" />
+  </>
 );
 
 export default function MercadoLivreVendasPage() {
@@ -181,6 +172,7 @@ export default function MercadoLivreVendasPage() {
   const [loadingSales, setLoadingSales] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("overview");
   const [salesDataPartial, setSalesDataPartial] = useState(false);
+  const [evolutionMetric, setEvolutionMetric] = useState<EvolutionMetric>("revenue");
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -301,25 +293,25 @@ export default function MercadoLivreVendasPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="container mx-auto max-w-7xl p-6 space-y-6">
-        <Header
+      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+        <PageHeader
           title="Análise de Vendas"
           subtitle="Mercado Livre — relatórios e indicadores"
         />
-        <KpiSkeletonRow />
-        <Skeleton className="h-[340px] rounded-xl" />
+        <MetricsSkeleton />
+        <Skeleton className="h-[340px] rounded-md" />
       </div>
     );
   }
 
   if (accounts.length === 0) {
     return (
-      <div className="container mx-auto max-w-7xl p-6">
-        <Header
+      <div className="container mx-auto max-w-[1400px] p-6">
+        <PageHeader
           title="Análise de Vendas"
           subtitle="Mercado Livre — relatórios e indicadores"
         />
-        <Card className="rounded-xl">
+        <Card className="mt-8 rounded-xl">
           <CardContent className="p-10 text-center">
             <Package className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">
@@ -344,109 +336,152 @@ export default function MercadoLivreVendasPage() {
     ? "período anterior equivalente"
     : `${selectedPeriod}d anteriores`;
 
+  const primaryStatItems: StatStripItem[] = salesData
+    ? [
+        {
+          label: "Receita Líquida",
+          value: formatBRLReais(salesData.summary.netRevenue),
+        },
+        {
+          label: "Itens Vendidos",
+          value: formatNumberBR(salesData.summary.totalItems),
+          delta: growth?.itemsGrowth,
+        },
+        {
+          label: "Pedidos",
+          value: formatNumberBR(salesData.summary.totalOrders),
+          delta: growth?.ordersGrowth,
+        },
+        {
+          label: "Ticket Médio",
+          value: formatBRLReais(salesData.summary.averageTicket),
+          delta: growth?.ticketGrowth,
+        },
+      ]
+    : [];
+
+  const secondaryStatItems: StatStripItem[] = salesData
+    ? [
+        {
+          label: "Projeção do Mês",
+          value:
+            projecaoDoMes !== null ? formatBRLReais(projecaoDoMes) : "—",
+        },
+        {
+          label: "Taxa de Cancelamento",
+          value: formatPercent(salesData.cancelled.cancellationRate),
+        },
+        {
+          label: "SKUs sem Venda",
+          value: formatNumberBR(salesData.skusWithoutSales?.count ?? 0),
+        },
+      ]
+    : [];
+
   return (
-    <div className="container mx-auto max-w-7xl p-6 space-y-6">
-      <Header
+    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <PageHeader
         title="Análise de Vendas"
         subtitle={`Mercado Livre${
           currentAccount ? ` — ${currentAccount.nickname}` : ""
         }`}
-      >
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Select
-            value={selectedPeriod}
-            onValueChange={(value) => {
-              setSelectedPeriod(value);
-              setCustomDateRange({});
-            }}
-          >
-            <SelectTrigger className="w-28 h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PERIOD_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Select
+              value={selectedPeriod}
+              onValueChange={(value) => {
+                setSelectedPeriod(value);
+                setCustomDateRange({});
+              }}
+            >
+              <SelectTrigger className="w-28 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PERIOD_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn(
-                  "h-9",
-                  !customDateRange.from && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="h-4 w-4 mr-2" />
-                {customDateRange.from && customDateRange.to
-                  ? `${format(customDateRange.from, "dd/MM")} – ${format(
-                      customDateRange.to,
-                      "dd/MM"
-                    )}`
-                  : "Personalizado"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="range"
-                selected={
-                  customDateRange.from
-                    ? { from: customDateRange.from, to: customDateRange.to }
-                    : undefined
-                }
-                onSelect={(range) =>
-                  setCustomDateRange({
-                    from: range?.from,
-                    to: range?.to,
-                  })
-                }
-                numberOfMonths={2}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-9",
+                    !customDateRange.from && "text-muted-foreground"
+                  )}
+                >
+                  <CalendarIcon className="h-4 w-4 mr-2" />
+                  {customDateRange.from && customDateRange.to
+                    ? `${format(customDateRange.from, "dd/MM")} – ${format(
+                        customDateRange.to,
+                        "dd/MM"
+                      )}`
+                    : "Personalizado"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="end">
+                <Calendar
+                  mode="range"
+                  selected={
+                    customDateRange.from
+                      ? { from: customDateRange.from, to: customDateRange.to }
+                      : undefined
+                  }
+                  onSelect={(range) =>
+                    setCustomDateRange({
+                      from: range?.from,
+                      to: range?.to,
+                    })
+                  }
+                  numberOfMonths={2}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <Select
+              value={viewMode}
+              onValueChange={(value) => setViewMode(value as ViewMode)}
+            >
+              <SelectTrigger className="w-36 h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="overview">Visão Geral</SelectItem>
+                <SelectItem value="products">Produtos</SelectItem>
+                <SelectItem value="reports">Relatórios</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={loadSalesData}
+              disabled={loadingSales}
+            >
+              <RefreshCw
+                className={cn("h-4 w-4", loadingSales && "animate-spin")}
               />
-            </PopoverContent>
-          </Popover>
+            </Button>
 
-          <Select
-            value={viewMode}
-            onValueChange={(value) => setViewMode(value as ViewMode)}
-          >
-            <SelectTrigger className="w-36 h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="overview">Visão Geral</SelectItem>
-              <SelectItem value="products">Produtos</SelectItem>
-              <SelectItem value="reports">Relatórios</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            onClick={loadSalesData}
-            disabled={loadingSales}
-          >
-            <RefreshCw
-              className={cn("h-4 w-4", loadingSales && "animate-spin")}
-            />
-          </Button>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            onClick={exportToCSV}
-            disabled={!salesData}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
-        </div>
-      </Header>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={exportToCSV}
+              disabled={!salesData}
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+          </div>
+        }
+      />
 
       {salesDataPartial && (
         <PartialDataAlert onRetry={loadSalesData} retrying={loadingSales} />
@@ -454,278 +489,214 @@ export default function MercadoLivreVendasPage() {
 
       {loadingSales && !salesData && (
         <>
-          <KpiSkeletonRow />
-          <KpiSkeletonRow />
-          <Skeleton className="h-[340px] rounded-xl" />
+          <MetricsSkeleton />
+          <Skeleton className="h-[340px] rounded-md" />
         </>
       )}
 
       {salesData && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard
-              label="Receita Total"
-              value={formatBRLReais(salesData.summary.totalRevenue)}
-              icon={DollarSign}
-              delta={growth?.revenueGrowth}
-              deltaLabel={`vs ${periodLabel}`}
-              tooltip="Soma de produtos e frete dos pedidos pagos no período."
-            />
-            <KpiCard
-              label="Receita Líquida Estimada"
-              value={formatBRLReais(salesData.summary.netRevenue)}
-              icon={Wallet}
-              subtitle={`Tarifas ML: ${formatBRLReais(
-                salesData.summary.totalSaleFees
-              )}`}
-              tooltip="Receita de produtos menos as tarifas de venda do Mercado Livre (sale_fee). Não inclui custos de frete pagos pelo seller."
-            />
-            <KpiCard
-              label="Itens Vendidos"
-              value={formatNumberBR(salesData.summary.totalItems)}
-              icon={ShoppingCart}
-              delta={growth?.itemsGrowth}
-              deltaLabel={`vs ${periodLabel}`}
-              tooltip="Unidades vendidas em pedidos válidos do período."
-            />
-            <KpiCard
-              label="Pedidos"
-              value={formatNumberBR(salesData.summary.totalOrders)}
-              icon={Users}
-              delta={growth?.ordersGrowth}
-              deltaLabel={`vs ${periodLabel}`}
-              subtitle={`${salesData.summary.averageItemsPerOrder.toFixed(
-                1
-              )} itens/pedido`}
-              tooltip="Pedidos pagos, enviados ou entregues no período."
-            />
-          </div>
+          <HeroMetric
+            label="Receita Total"
+            value={formatBRLReais(salesData.summary.totalRevenue)}
+            delta={growth?.revenueGrowth}
+            deltaLabel={`vs ${periodLabel}`}
+            context="Soma de produtos e frete dos pedidos pagos no período."
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KpiCard
-              label="Ticket Médio"
-              value={formatBRLReais(salesData.summary.averageTicket)}
-              icon={Target}
-              delta={growth?.ticketGrowth}
-              deltaLabel={`vs ${periodLabel}`}
-              tooltip="Receita total dividida pelo número de pedidos."
-            />
-            <KpiCard
-              label="Projeção do Mês"
-              value={
-                projecaoDoMes !== null ? formatBRLReais(projecaoDoMes) : "—"
-              }
-              icon={CalendarClock}
-              tooltip="Receita acumulada no mês corrente dividida pelos dias decorridos e multiplicada pelos dias do mês. Requer vendas do mês dentro do período selecionado."
-            />
-            <KpiCard
-              label="Taxa de Cancelamento"
-              value={formatPercent(salesData.cancelled.cancellationRate)}
-              icon={XCircle}
-              subtitle={`${formatNumberBR(
-                salesData.cancelled.totalCancelledOrders
-              )} pedidos cancelados`}
-              tooltip="Pedidos cancelados divididos pelo total de pedidos (válidos + cancelados) do período."
-            />
-            <KpiCard
-              label="SKUs sem Venda"
-              value={formatNumberBR(salesData.skusWithoutSales?.count ?? 0)}
-              icon={PackageX}
-              subtitle="Ver lista na visão Produtos"
-              tooltip="Anúncios ativos no Mercado Livre sem nenhuma venda no período selecionado."
-            />
-          </div>
+          <StatStrip items={primaryStatItems} />
+
+          <StatStrip items={secondaryStatItems} size="sm" />
 
           {viewMode === "overview" && (
             <>
-              <EvolutionChart data={salesData.trends.dailyRevenue} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <TopProductsChart
-                  products={salesData.trends.topProducts.map((product) => ({
-                    itemId: product.mlItemId,
-                    title: product.productName,
-                    revenue: product.totalRevenue,
-                    quantity: product.totalSales,
-                  }))}
-                  totalRevenue={salesData.summary.totalProductRevenue}
+              <SectionCard
+                title="Evolução de Vendas"
+                actions={
+                  <EvolutionChartTabs
+                    value={evolutionMetric}
+                    onChange={setEvolutionMetric}
+                  />
+                }
+              >
+                <EvolutionChart
+                  data={salesData.trends.dailyRevenue}
+                  metric={evolutionMetric}
+                  bare
                 />
-                <SalesHeatmap data={salesData.trends.salesByDayBlock} />
+              </SectionCard>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <SectionCard title="Top 5 Produtos por Receita">
+                  <TopProductsChart
+                    products={salesData.trends.topProducts.map((product) => ({
+                      itemId: product.mlItemId,
+                      title: product.productName,
+                      revenue: product.totalRevenue,
+                      quantity: product.totalSales,
+                    }))}
+                    totalRevenue={salesData.summary.totalProductRevenue}
+                    bare
+                  />
+                </SectionCard>
+                <SectionCard title="Vendas por Dia e Horário">
+                  <SalesHeatmap data={salesData.trends.salesByDayBlock} bare />
+                </SectionCard>
               </div>
             </>
           )}
 
           {viewMode === "products" && (
             <>
-              <Card className="rounded-xl">
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    Produtos Vendidos no Período
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {salesData.trends.topProducts.length === 0 ? (
-                    <div className="py-10 text-center text-sm text-muted-foreground">
-                      Nenhuma venda no período selecionado
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Produto</TableHead>
-                            <TableHead className="text-right">
-                              Unidades
-                            </TableHead>
-                            <TableHead className="text-right">
-                              Receita
-                            </TableHead>
-                            <TableHead className="text-right">
-                              Preço Médio
-                            </TableHead>
-                            <TableHead className="text-right">
-                              Lucro Estimado
-                            </TableHead>
-                            <TableHead className="w-40">
-                              Participação
-                            </TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {salesData.trends.topProducts.map(
-                            (product, index) => {
-                              const participation =
-                                salesData.summary.totalProductRevenue > 0
-                                  ? (product.totalRevenue /
-                                      salesData.summary.totalProductRevenue) *
-                                    100
-                                  : 0;
+              <SectionCard
+                title="Produtos Vendidos no Período"
+                contentClassName={
+                  salesData.trends.topProducts.length === 0 ? undefined : "p-0"
+                }
+              >
+                {salesData.trends.topProducts.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-muted-foreground">
+                    Nenhuma venda no período selecionado
+                  </div>
+                ) : (
+                  <DataTable>
+                    <DataTableHeader>
+                      <DataTableRow className="hover:bg-transparent">
+                        <DataTableHead className="pl-5">Produto</DataTableHead>
+                        <DataTableHead className="text-right">
+                          Unidades
+                        </DataTableHead>
+                        <DataTableHead className="text-right">
+                          Receita
+                        </DataTableHead>
+                        <DataTableHead className="text-right">
+                          Preço Médio
+                        </DataTableHead>
+                        <DataTableHead className="text-right">
+                          Lucro Estimado
+                        </DataTableHead>
+                        <DataTableHead className="w-40 pr-5">
+                          Participação
+                        </DataTableHead>
+                      </DataTableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
+                      {salesData.trends.topProducts.map((product, index) => {
+                        const participation =
+                          salesData.summary.totalProductRevenue > 0
+                            ? (product.totalRevenue /
+                                salesData.summary.totalProductRevenue) *
+                              100
+                            : 0;
 
-                              return (
-                                <TableRow key={product.mlItemId}>
-                                  <TableCell>
-                                    <div className="flex items-center gap-2">
-                                      <Badge
-                                        variant={
-                                          index < 3 ? "default" : "secondary"
-                                        }
-                                        className="rounded-full"
-                                      >
-                                        #{index + 1}
-                                      </Badge>
-                                      <div className="min-w-0">
-                                        <p className="font-medium truncate max-w-xs">
-                                          {product.productName}
-                                        </p>
-                                        <a
-                                          href={`https://mercadolivre.com.br/p/${product.mlItemId}`}
-                                          target="_blank"
-                                          rel="noreferrer"
-                                          className="text-xs text-info hover:underline flex items-center gap-1"
-                                        >
-                                          <ExternalLink className="h-3 w-3" />
-                                          Ver no ML
-                                        </a>
-                                      </div>
-                                    </div>
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums">
-                                    {formatNumberBR(product.totalSales)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums font-medium">
-                                    {formatBRLReais(product.totalRevenue)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums">
-                                    {formatBRLReais(product.averagePrice)}
-                                  </TableCell>
-                                  <TableCell className="text-right tabular-nums">
-                                    {product.estimatedProfit !== null &&
-                                    product.estimatedProfit !== undefined ? (
-                                      <span
-                                        className={
-                                          product.estimatedProfit >= 0
-                                            ? "text-success font-medium"
-                                            : "text-destructive font-medium"
-                                        }
-                                      >
-                                        {formatBRLReais(
-                                          product.estimatedProfit
-                                        )}
-                                      </span>
-                                    ) : (
-                                      <span className="text-muted-foreground">
-                                        sem custo
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex items-center gap-2">
-                                      <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
-                                        <div
-                                          className="h-full rounded-full bg-primary"
-                                          style={{
-                                            width: `${Math.min(
-                                              participation,
-                                              100
-                                            )}%`,
-                                          }}
-                                        />
-                                      </div>
-                                      <span className="text-xs text-muted-foreground tabular-nums w-12 text-right">
-                                        {formatPercent(participation)}
-                                      </span>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            }
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                        return (
+                          <DataTableRow key={product.mlItemId}>
+                            <DataTableCell className="pl-5">
+                              <div className="flex items-center gap-2">
+                                <Badge
+                                  variant={
+                                    index < 3 ? "default" : "secondary"
+                                  }
+                                  className="rounded-full"
+                                >
+                                  #{index + 1}
+                                </Badge>
+                                <div className="min-w-0">
+                                  <p className="font-medium truncate max-w-xs">
+                                    {product.productName}
+                                  </p>
+                                  <a
+                                    href={`https://mercadolivre.com.br/p/${product.mlItemId}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-xs text-info hover:underline flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="h-3 w-3" />
+                                    Ver no ML
+                                  </a>
+                                </div>
+                              </div>
+                            </DataTableCell>
+                            <DataTableCell numeric>
+                              {formatNumberBR(product.totalSales)}
+                            </DataTableCell>
+                            <DataTableCell numeric emphasis>
+                              {formatBRLReais(product.totalRevenue)}
+                            </DataTableCell>
+                            <DataTableCell numeric>
+                              {formatBRLReais(product.averagePrice)}
+                            </DataTableCell>
+                            <DataTableCell numeric>
+                              {product.estimatedProfit !== null &&
+                              product.estimatedProfit !== undefined ? (
+                                <span
+                                  className={
+                                    product.estimatedProfit >= 0
+                                      ? "text-success font-medium"
+                                      : "text-destructive font-medium"
+                                  }
+                                >
+                                  {formatBRLReais(product.estimatedProfit)}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  sem custo
+                                </span>
+                              )}
+                            </DataTableCell>
+                            <DataTableCell className="pr-5">
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full bg-primary"
+                                    style={{
+                                      width: `${Math.min(
+                                        participation,
+                                        100
+                                      )}%`,
+                                    }}
+                                  />
+                                </div>
+                                <span className="text-xs text-muted-foreground tabular-nums w-12 text-right">
+                                  {formatPercent(participation)}
+                                </span>
+                              </div>
+                            </DataTableCell>
+                          </DataTableRow>
+                        );
+                      })}
+                    </DataTableBody>
+                  </DataTable>
+                )}
+              </SectionCard>
 
               {salesData.skusWithoutSales &&
                 salesData.skusWithoutSales.count > 0 && (
-                  <Card className="rounded-xl">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="flex items-center gap-2 text-base">
-                        <PackageX className="h-4 w-4 text-muted-foreground" />
-                        SKUs sem Venda no Período (
-                        {formatNumberBR(salesData.skusWithoutSales.count)})
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
-                        {salesData.skusWithoutSales.items.map((item) => (
-                          <li
-                            key={item.mlItemId}
-                            className="text-sm text-muted-foreground truncate"
-                          >
-                            {item.title}
-                          </li>
-                        ))}
-                      </ul>
-                    </CardContent>
-                  </Card>
+                  <SectionCard
+                    title={`SKUs sem Venda no Período (${formatNumberBR(
+                      salesData.skusWithoutSales.count
+                    )})`}
+                  >
+                    <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1.5">
+                      {salesData.skusWithoutSales.items.map((item) => (
+                        <li
+                          key={item.mlItemId}
+                          className="text-sm text-muted-foreground truncate"
+                        >
+                          {item.title}
+                        </li>
+                      ))}
+                    </ul>
+                  </SectionCard>
                 )}
             </>
           )}
 
           {viewMode === "reports" && (
-            <Card className="rounded-xl">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                  Relatórios
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
+            <SectionCard title="Relatórios">
+              <div className="space-y-6">
                 <button
                   onClick={exportToCSV}
-                  className="w-full sm:w-auto flex items-center gap-3 p-4 border rounded-xl hover:shadow-md transition-shadow duration-200 text-left"
+                  className="w-full sm:w-auto flex items-center gap-3 p-4 border border-metal rounded-md hover:bg-accent transition-colors duration-150 text-left"
                 >
                   <Download className="h-8 w-8 text-primary" />
                   <div>
@@ -736,8 +707,8 @@ export default function MercadoLivreVendasPage() {
                   </div>
                 </button>
 
-                <div className="rounded-xl border p-4">
-                  <h4 className="font-semibold mb-3">Resumo do Período</h4>
+                <div className="rounded-md border border-metal p-4">
+                  <h4 className="text-eyebrow mb-3">Resumo do Período</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <ul className="space-y-1.5 text-muted-foreground">
                       <li>
@@ -797,8 +768,8 @@ export default function MercadoLivreVendasPage() {
                     </ul>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </SectionCard>
           )}
         </>
       )}
