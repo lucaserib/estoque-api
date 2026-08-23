@@ -124,7 +124,7 @@ export default function OnboardingPage() {
     <div className="container mx-auto max-w-3xl p-6 space-y-6">
       <Header
         title="Comece por aqui"
-        subtitle="3 passos para deixar o Estoca pronto para uso"
+        subtitle="3 passos para deixar o Leap Store pronto para uso"
       />
 
       <div className="space-y-4">

@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useEffect, useState } from "react";
 
 interface LayoutContextProps {
   isSidebarCollapsed: boolean;
@@ -10,12 +10,23 @@ interface LayoutContextProps {
 
 const LayoutContext = createContext<LayoutContextProps | undefined>(undefined);
 
+const THEME_STORAGE_KEY = "leap-store-theme";
+
 export const LayoutProvider = ({ children }: { children: React.ReactNode }) => {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored) setIsDarkMode(stored === "dark");
+  }, []);
 
   const toggleSidebar = () => setIsSidebarCollapsed(!isSidebarCollapsed);
-  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
+  const toggleDarkMode = () => {
+    const next = !isDarkMode;
+    setIsDarkMode(next);
+    window.localStorage.setItem(THEME_STORAGE_KEY, next ? "dark" : "light");
+  };
 
   return (
     <LayoutContext.Provider

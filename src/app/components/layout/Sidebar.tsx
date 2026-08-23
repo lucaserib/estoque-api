@@ -170,8 +170,8 @@ const Sidebar = () => {
           isSidebarCollapsed ? "px-4" : "px-6"
         }`}
       >
-        <Link href="/dashboard" aria-label="Estoca — início">
-          <Logo size="md" iconOnly={isSidebarCollapsed} />
+        <Link href="/dashboard" aria-label="Leap Store — início">
+          <Logo size="md" variant={isSidebarCollapsed ? "mark" : "full"} />
         </Link>
         <button
           className="md:hidden px-3 py-3 bg-muted rounded-full hover:bg-accent"
@@ -272,7 +272,7 @@ const Sidebar = () => {
       {!isSidebarCollapsed && (
         <div className="mb-8 px-6">
           <p className="text-xs text-muted-foreground text-center">
-            &copy; {new Date().getFullYear()} Estoca
+            &copy; {new Date().getFullYear()} Leap Store
           </p>
         </div>
       )}

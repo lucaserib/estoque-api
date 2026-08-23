@@ -65,6 +65,9 @@ export default {
           "5": "hsl(var(--chart-5))",
         },
       },
+      borderColor: {
+        metal: "hsl(var(--metal-edge))",
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -72,7 +75,7 @@ export default {
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        display: ["var(--font-sora)", "var(--font-inter)", "sans-serif"],
+        display: ["var(--font-barlow-condensed)", "var(--font-inter)", "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
       },
     },
