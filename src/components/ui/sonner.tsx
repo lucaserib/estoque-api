@@ -29,18 +29,15 @@ const Toaster = ({ ...props }: ToasterProps) => {
           title: "font-medium text-sm text-foreground",
           description: "text-xs text-muted-foreground mt-1",
           actionButton:
-            "bg-indigo-500 text-white text-xs font-medium py-1 px-3 rounded-md",
+            "bg-primary text-primary-foreground text-xs font-medium py-1 px-3 rounded-md",
           cancelButton:
             "bg-muted text-foreground text-xs font-medium py-1 px-3 rounded-md",
           closeButton:
             "absolute top-2 right-2 opacity-70 hover:opacity-100 transition-opacity",
-          success:
-            "!bg-emerald-50 !border-emerald-200 dark:!bg-emerald-900/20 dark:!border-emerald-800/30",
-          error:
-            "!bg-red-50 !border-red-200 dark:!bg-red-900/20 dark:!border-red-800/30",
-          warning:
-            "!bg-amber-50 !border-amber-200 dark:!bg-amber-900/20 dark:!border-amber-800/30",
-          info: "!bg-blue-50 !border-blue-200 dark:!bg-blue-900/20 dark:!border-blue-800/30",
+          success: "!bg-success/10 !border-success/30",
+          error: "!bg-destructive/10 !border-destructive/30",
+          warning: "!bg-warning/10 !border-warning/30",
+          info: "!bg-info/10 !border-info/30",
         },
       }}
       {...props}

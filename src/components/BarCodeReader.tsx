@@ -502,7 +502,7 @@ const BarcodeReader = ({
     <div className={`w-full space-y-4 ${className}`}>
       {/* Video scanner (visible only when scanning) */}
       {isScanning && (
-        <div className="relative w-full max-w-md mx-auto aspect-[4/3] bg-gray-900 rounded-lg overflow-hidden">
+        <div className="relative w-full max-w-md mx-auto aspect-[4/3] bg-muted rounded-lg overflow-hidden">
           <video
             ref={videoRef}
             className="absolute inset-0 w-full h-full object-cover"
