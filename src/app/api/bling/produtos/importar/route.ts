@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { BlingService, BlingReconnectError } from "@/services/blingService";
 import { blingErrorResponse } from "@/lib/blingApi";
 import { getProductCost } from "@/helpers/productCostHelper";
+import { normalizeSku } from "@/lib/sku";
 
 const importarSchema = z.object({
   accountId: z.string().min(1, "ID da conta Bling não fornecido"),
@@ -72,12 +73,14 @@ export async function POST(request: NextRequest) {
     };
 
     for (const blingProduct of blingProducts) {
-      const sku = BlingService.extractSKU(blingProduct);
+      const skuBruto = BlingService.extractSKU(blingProduct);
 
-      if (!sku) {
+      if (!skuBruto) {
         resumo.ignorados++;
         continue;
       }
+
+      const sku = normalizeSku(skuBruto);
 
       try {
         const ean = BlingService.extractEAN(blingProduct);

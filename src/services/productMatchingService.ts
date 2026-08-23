@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import Fuse from "fuse.js";
+import { normalizeSku } from "@/lib/sku";
 
 // ==================== TYPES ====================
 
@@ -131,8 +132,9 @@ export class ProductMatchingService {
 
       // 2. MATCHING POR SKU (alta confiança)
       if (mlDetail.sellerSku) {
+        const normalizedSellerSku = normalizeSku(mlDetail.sellerSku);
         const localMatch = localProducts.find(
-          (local) => local.sku === mlDetail.sellerSku
+          (local) => normalizeSku(local.sku) === normalizedSellerSku
         );
 
         if (localMatch) {

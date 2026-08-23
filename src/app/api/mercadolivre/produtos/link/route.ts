@@ -116,6 +116,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    if (!localProduct.imagemUrl && mlItem.thumbnail) {
+      await prisma.produto.update({
+        where: { id: localProductId },
+        data: { imagemUrl: mlItem.thumbnail },
+      });
+    }
+
     // Sincronizar estoque do produto local para o ML
     try {
       const estoqueTotal = await prisma.estoque.aggregate({

@@ -116,6 +116,26 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
+      // Bling (imagens de produto)
+      {
+        protocol: "https",
+        hostname: "bling.com.br",
+        port: "",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "*.bling.com.br",
+        port: "",
+        pathname: "/**",
+      },
+      // Upload manual de imagem (Vercel Blob)
+      {
+        protocol: "https",
+        hostname: "*.public.blob.vercel-storage.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
   webpack(config) {

@@ -21,7 +21,6 @@ export async function GET(
       );
     }
 
-    // Buscar produto com estoques e vinculação ML
     const produto = await prisma.produto.findFirst({
       where: {
         id,
@@ -51,6 +50,37 @@ export async function GET(
             mlThumbnail: true,
           },
         },
+        fornecedores: {
+          include: {
+            fornecedor: {
+              select: { id: true, nome: true, cnpj: true, contato: true },
+            },
+          },
+          orderBy: { principal: "desc" },
+        },
+        pedidos: {
+          include: {
+            pedido: {
+              select: {
+                id: true,
+                status: true,
+                dataConclusao: true,
+                fornecedor: { select: { nome: true } },
+              },
+            },
+          },
+          orderBy: { id: "desc" },
+          take: 20,
+        },
+        detalhesSaida: {
+          include: {
+            saida: {
+              select: { id: true, data: true },
+            },
+          },
+          orderBy: { id: "desc" },
+          take: 20,
+        },
       },
     });
 
@@ -61,7 +91,6 @@ export async function GET(
       );
     }
 
-    // Converter BigInt para number para serialização JSON
     const produtoSerialized = {
       ...produto,
       custoMedio: Number(produto.custoMedio),
@@ -82,12 +111,7 @@ export async function GET(
   } catch (error) {
     console.error("Erro ao buscar produto:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erro ao buscar produto",
-      },
+      { error: "Erro ao buscar produto" },
       { status: 500 }
     );
   }

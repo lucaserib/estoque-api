@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Produto } from "../types";
 import {
   Table,
@@ -10,9 +10,18 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, Search } from "lucide-react";
 import { ProdutoEstoqueDialog } from "./dialogs/ProdutoEstoqueDialog";
 import { ProdutoPagination } from "./ProdutoPagination";
-import { ProdutoDetalhesDialog } from "./dialogs/ProdutoDetalhesDialog";
 import { ProdutoEditarDialog } from "./dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "./dialogs/ProdutoFornecedorDialog";
 import { ReposicaoModal } from "./ReposicaoModal";
@@ -48,9 +57,11 @@ const ProdutoList = ({
   const [filterOptions, setFilterOptions] = useState({
     searchTerm: "",
     stockFilter: "all" as "all" | "low" | "none" | "available",
+    fornecedorId: "all",
+    mlFilter: "all" as "all" | "linked" | "unlinked",
+    semCusto: false,
   });
   const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
@@ -189,11 +200,6 @@ const ProdutoList = ({
     }
   }, []);
 
-  const handleViewDetails = useCallback((produto: Produto) => {
-    setSelectedProduto(produto);
-    setShowDetailsModal(true);
-  }, []);
-
   const handleEdit = useCallback((produto: Produto) => {
     setSelectedProduto(produto);
     setShowEditModal(true);
@@ -208,6 +214,27 @@ const ProdutoList = ({
     setSelectedProduto(produto);
     setShowReposicaoModal(true);
   }, []);
+
+  const fornecedoresDisponiveis = useMemo(() => {
+    const mapa = new Map<string, string>();
+    produtos.forEach((produto) => {
+      if (produto.fornecedorPrincipal) {
+        mapa.set(
+          produto.fornecedorPrincipal.id,
+          produto.fornecedorPrincipal.nome
+        );
+      }
+    });
+    return Array.from(mapa.entries()).map(([id, nome]) => ({ id, nome }));
+  }, [produtos]);
+
+  const produtosSemCustoOuFornecedor = useMemo(
+    () =>
+      produtos.filter(
+        (produto) => !produto.custoMedio || !produto.fornecedorPrincipal
+      ),
+    [produtos]
+  );
 
   const filteredProdutos = produtos.filter((produto) => {
     const matchesSearch =
@@ -228,16 +255,37 @@ const ProdutoList = ({
       const estoque = stockData[produto.id] || 0;
       const estoqueMinimo = estoqueSegurancaData[produto.id] || 0;
 
-      switch (filterOptions.stockFilter) {
-        case "low":
-          return estoque <= estoqueMinimo && estoque > 0;
-        case "none":
-          return estoque === 0;
-        case "available":
-          return estoque > 0;
-        default:
-          return true;
-      }
+      const matchesStock = (() => {
+        switch (filterOptions.stockFilter) {
+          case "low":
+            return estoque <= estoqueMinimo && estoque > 0;
+          case "none":
+            return estoque === 0;
+          case "available":
+            return estoque > 0;
+          default:
+            return true;
+        }
+      })();
+
+      if (!matchesStock) return false;
+    }
+
+    if (
+      filterOptions.fornecedorId !== "all" &&
+      produto.fornecedorPrincipal?.id !== filterOptions.fornecedorId
+    ) {
+      return false;
+    }
+
+    if (filterOptions.mlFilter !== "all") {
+      const vinculado = produto._vinculadoML ?? false;
+      if (filterOptions.mlFilter === "linked" && !vinculado) return false;
+      if (filterOptions.mlFilter === "unlinked" && vinculado) return false;
+    }
+
+    if (filterOptions.semCusto && produto.custoMedio) {
+      return false;
     }
 
     return true;
@@ -256,15 +304,139 @@ const ProdutoList = ({
   };
 
   return (
-    <div>
+    <div className="space-y-4">
+      {produtosSemCustoOuFornecedor.length > 0 && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              {produtosSemCustoOuFornecedor.length} produto(s) sem custo médio
+              ou sem fornecedor cadastrado. Isso impede o cálculo correto da
+              Reposição.
+            </span>
+            <button
+              type="button"
+              className="text-sm font-medium underline underline-offset-2"
+              onClick={() =>
+                setFilterOptions((prev) => ({
+                  ...prev,
+                  semCusto: true,
+                  fornecedorId: "all",
+                  mlFilter: "all",
+                  stockFilter: "all",
+                  searchTerm: "",
+                }))
+              }
+            >
+              Ver produtos sem custo
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, SKU ou EAN"
+            className="pl-8 h-9"
+            value={filterOptions.searchTerm}
+            onChange={(e) =>
+              setFilterOptions((prev) => ({
+                ...prev,
+                searchTerm: e.target.value,
+              }))
+            }
+          />
+        </div>
+
+        <Select
+          value={filterOptions.stockFilter}
+          onValueChange={(value) =>
+            setFilterOptions((prev) => ({
+              ...prev,
+              stockFilter: value as typeof prev.stockFilter,
+            }))
+          }
+        >
+          <SelectTrigger className="w-40 h-9">
+            <SelectValue placeholder="Estoque" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todo estoque</SelectItem>
+            <SelectItem value="available">Com estoque</SelectItem>
+            <SelectItem value="low">Estoque baixo</SelectItem>
+            <SelectItem value="none">Sem estoque</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterOptions.fornecedorId}
+          onValueChange={(value) =>
+            setFilterOptions((prev) => ({ ...prev, fornecedorId: value }))
+          }
+        >
+          <SelectTrigger className="w-44 h-9">
+            <SelectValue placeholder="Fornecedor" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos os fornecedores</SelectItem>
+            {fornecedoresDisponiveis.map((fornecedor) => (
+              <SelectItem key={fornecedor.id} value={fornecedor.id}>
+                {fornecedor.nome}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterOptions.mlFilter}
+          onValueChange={(value) =>
+            setFilterOptions((prev) => ({
+              ...prev,
+              mlFilter: value as typeof prev.mlFilter,
+            }))
+          }
+        >
+          <SelectTrigger className="w-44 h-9">
+            <SelectValue placeholder="Mercado Livre" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">ML: todos</SelectItem>
+            <SelectItem value="linked">Vinculado ao ML</SelectItem>
+            <SelectItem value="unlinked">Não vinculado</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Select
+          value={filterOptions.semCusto ? "sem-custo" : "todos"}
+          onValueChange={(value) =>
+            setFilterOptions((prev) => ({
+              ...prev,
+              semCusto: value === "sem-custo",
+            }))
+          }
+        >
+          <SelectTrigger className="w-40 h-9">
+            <SelectValue placeholder="Custo médio" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todos">Custo: todos</SelectItem>
+            <SelectItem value="sem-custo">Sem custo definido</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <Card className="border-border shadow-sm">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader className="bg-background">
                 <TableRow>
+                  <TableHead className="font-medium">Imagem</TableHead>
                   <TableHead className="font-medium">Nome</TableHead>
                   <TableHead className="font-medium">SKU</TableHead>
+                  <TableHead className="font-medium">Fornecedor</TableHead>
                   <TableHead className="font-medium">Estoque Local</TableHead>
                   <TableHead className="font-medium">Full</TableHead>
                   <TableHead className="font-medium">Vendas ML</TableHead>
@@ -285,7 +457,6 @@ const ProdutoList = ({
                       isLoadingStock={stockData[produto.id] === undefined}
                       replenishmentStatus={replenishmentStatus[produto.id]}
                       onDelete={onDelete}
-                      onViewDetails={handleViewDetails}
                       onEdit={handleEdit}
                       onViewSuppliers={handleViewSuppliers}
                       onViewStock={fetchStockDetails}
@@ -295,7 +466,7 @@ const ProdutoList = ({
                 ) : (
                   <TableRow>
                     <TableCell
-                      colSpan={7}
+                      colSpan={9}
                       className="text-center py-8 text-muted-foreground"
                     >
                       {filterOptions.searchTerm
@@ -310,7 +481,6 @@ const ProdutoList = ({
         </CardContent>
       </Card>
 
-      {/* Paginação */}
       {filteredProdutos.length > itemsPerPage && (
         <ProdutoPagination
           currentPage={currentPage}
@@ -322,15 +492,8 @@ const ProdutoList = ({
         />
       )}
 
-      {/* Modais */}
       {selectedProduto && (
         <>
-          <ProdutoDetalhesDialog
-            isOpen={showDetailsModal}
-            onClose={() => setShowDetailsModal(false)}
-            produto={selectedProduto}
-          />
-
           <ProdutoEditarDialog
             isOpen={showEditModal}
             onClose={() => setShowEditModal(false)}

@@ -7,6 +7,16 @@ export interface Produto {
   codigoEAN?: string;
   custoMedio?: number;
   isKit?: boolean;
+  imagemUrl?: string | null;
+  imagemThumbUrl?: string | null;
+  descricao?: string | null;
+  marca?: string | null;
+  categoria?: string | null;
+  pesoGramas?: number | null;
+  alturaCm?: number | null;
+  larguraCm?: number | null;
+  comprimentoCm?: number | null;
+  ativo?: boolean;
   componentes?: Array<{
     produto?: Produto;
     quantidade: number;
@@ -21,9 +31,17 @@ export interface Produto {
       nome: string;
     };
   }>;
+  fornecedorPrincipal?: {
+    id: string;
+    nome: string;
+    prazoEntregaDias?: number | null;
+    precoUnitario?: number | null;
+  } | null;
   _mlTotalVendas?: number;
   _mlEstoqueFull?: number;
   _mlEstoqueTotal?: number;
+  _estoqueLocalTotal?: number;
+  _vinculadoML?: boolean;
 }
 
 export interface KitComponente {
@@ -47,6 +65,11 @@ export interface ProdutoFornecedor {
   preco: number;
   multiplicador: number;
   codigoNF: string;
+  prazoEntregaDias?: number | null;
+  precoUnitario?: number | null;
+  quantidadeMinima?: number | null;
+  principal?: boolean;
+  codigoNoFornecedor?: string | null;
   fornecedor?: {
     id: string;
     nome: string;

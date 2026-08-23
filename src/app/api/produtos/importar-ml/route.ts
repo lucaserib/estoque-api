@@ -194,6 +194,7 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             custoMedio, // Usa custo da última compra ou zero
             ean: null,
+            imagemUrl: item.thumbnail || null,
           },
         });
 

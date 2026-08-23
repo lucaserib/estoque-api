@@ -160,6 +160,16 @@ model Produto {
   ean                 BigInt?
   userId              String
   custoMedio          Int?                  @default(0)
+  imagemUrl           String?
+  imagemThumbUrl      String?
+  descricao           String?
+  marca               String?
+  categoria           String?
+  pesoGramas          Int?
+  alturaCm            Int?
+  larguraCm           Int?
+  comprimentoCm       Int?
+  ativo               Boolean               @default(true)
   componentes         Componente[]          @relation("KitToComponente")
   kitsComponentes     Componente[]          @relation("ProdutoToComponente")
   detalhesSaida       DetalhesSaida[]
@@ -266,14 +276,19 @@ model PedidoProduto {
 }
 
 model ProdutoFornecedor {
-  id            Int        @id @default(autoincrement())
-  produtoId     String
-  fornecedorId  String
-  preco         Int
-  multiplicador Float
-  codigoNF      String?
-  fornecedor    Fornecedor @relation(fields: [fornecedorId], references: [id])
-  produto       Produto    @relation(fields: [produtoId], references: [id])
+  id                 Int        @id @default(autoincrement())
+  produtoId          String
+  fornecedorId       String
+  preco              Int
+  multiplicador      Float
+  codigoNF           String?
+  prazoEntregaDias   Int?
+  precoUnitario      Int?
+  quantidadeMinima   Int?
+  principal          Boolean    @default(false)
+  codigoNoFornecedor String?
+  fornecedor         Fornecedor @relation(fields: [fornecedorId], references: [id])
+  produto            Produto    @relation(fields: [produtoId], references: [id])
 
   @@unique([produtoId, fornecedorId])
 }

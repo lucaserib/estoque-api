@@ -1,12 +1,15 @@
 "use client";
 
 import React, { memo } from "react";
+import Image from "next/image";
+import Link from "next/link";
 import { FaTrash, FaEdit, FaEye, FaLink, FaWarehouse } from "react-icons/fa";
-import { AlertTriangle, TrendingUp, Loader2 } from "lucide-react";
+import { AlertTriangle, TrendingUp, Loader2, ImageOff } from "lucide-react";
 import { Produto } from "../types";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { formatBRL } from "@/lib/format";
 
 interface ProdutoTableRowProps {
   produto: Produto;
@@ -15,17 +18,12 @@ interface ProdutoTableRowProps {
   isLoadingStock: boolean;
   replenishmentStatus?: "ok" | "atencao" | "critico";
   onDelete: (id: string) => void;
-  onViewDetails: (produto: Produto) => void;
   onEdit: (produto: Produto) => void;
   onViewSuppliers: (produto: Produto) => void;
   onViewStock: (produto: Produto) => void;
   onViewReplenishment: (produto: Produto) => void;
 }
 
-/**
- * Memoized table row component for produtos
- * Only re-renders when props actually change
- */
 export const ProdutoTableRow = memo<ProdutoTableRowProps>(
   ({
     produto,
@@ -34,7 +32,6 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
     isLoadingStock,
     replenishmentStatus,
     onDelete,
-    onViewDetails,
     onEdit,
     onViewSuppliers,
     onViewStock,
@@ -65,6 +62,24 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
 
     return (
       <TableRow className={`group ${getRowClassName()}`}>
+        <TableCell>
+          {produto.imagemUrl ? (
+            <div className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
+              <Image
+                src={produto.imagemUrl}
+                alt={produto.nome}
+                fill
+                sizes="40px"
+                className="object-cover"
+              />
+            </div>
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted">
+              <ImageOff className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
+        </TableCell>
+
         <TableCell className="font-medium">
           <div className="flex items-center gap-2">
             {isCritical && (
@@ -79,6 +94,19 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
 
         <TableCell className="text-muted-foreground">
           {produto.sku}
+        </TableCell>
+
+        <TableCell className="text-muted-foreground">
+          {produto.fornecedorPrincipal ? (
+            <span>
+              {produto.fornecedorPrincipal.nome}
+              {typeof produto.fornecedorPrincipal.prazoEntregaDias ===
+                "number" &&
+                ` · ${produto.fornecedorPrincipal.prazoEntregaDias} dias`}
+            </span>
+          ) : (
+            <span className="text-sm">Sem fornecedor</span>
+          )}
         </TableCell>
 
         <TableCell>
@@ -124,20 +152,21 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
         </TableCell>
 
         <TableCell className="text-muted-foreground">
-          {produto.custoMedio
-            ? `R$ ${(produto.custoMedio / 100).toFixed(2)}`
-            : "Não Definido"}
+          {produto.custoMedio ? formatBRL(produto.custoMedio) : "Não definido"}
         </TableCell>
 
         <TableCell className="text-right">
           <div className="flex justify-end items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
+              asChild
               variant="ghost"
               size="sm"
-              onClick={() => onViewDetails(produto)}
               className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              title="Ver ficha do produto"
             >
-              <FaEye className="w-4 h-4" />
+              <Link href={`/produtos/${produto.id}`}>
+                <FaEye className="w-4 h-4" />
+              </Link>
             </Button>
             <Button
               variant="ghost"
@@ -191,6 +220,11 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
       prevProps.produto.id === nextProps.produto.id &&
       prevProps.produto.nome === nextProps.produto.nome &&
       prevProps.produto.sku === nextProps.produto.sku &&
+      prevProps.produto.imagemUrl === nextProps.produto.imagemUrl &&
+      prevProps.produto.fornecedorPrincipal?.nome ===
+        nextProps.produto.fornecedorPrincipal?.nome &&
+      prevProps.produto.fornecedorPrincipal?.prazoEntregaDias ===
+        nextProps.produto.fornecedorPrincipal?.prazoEntregaDias &&
       prevProps.produto.custoMedio === nextProps.produto.custoMedio &&
       prevProps.produto._mlEstoqueFull === nextProps.produto._mlEstoqueFull &&
       prevProps.produto._mlTotalVendas === nextProps.produto._mlTotalVendas &&

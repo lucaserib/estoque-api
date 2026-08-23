@@ -1,5 +1,4 @@
 import { verifyUser } from "@/helpers/verifyUser";
-import { brlToCents } from "@/utils/currency";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -31,6 +30,26 @@ interface RequestBody {
   preco: number;
   multiplicador: number;
   codigoNF: string;
+  prazoEntregaDias?: number | null;
+  quantidadeMinima?: number | null;
+  principal?: boolean;
+  codigoNoFornecedor?: string | null;
+}
+
+async function definirComoPrincipal(
+  produtoId: string,
+  vinculoId: number
+): Promise<void> {
+  await prisma.$transaction([
+    prisma.produtoFornecedor.updateMany({
+      where: { produtoId, NOT: { id: vinculoId } },
+      data: { principal: false },
+    }),
+    prisma.produtoFornecedor.update({
+      where: { id: vinculoId },
+      data: { principal: true },
+    }),
+  ]);
 }
 
 export async function POST(request: NextRequest) {
@@ -40,7 +59,17 @@ export async function POST(request: NextRequest) {
 
     console.log("API POST /produto-fornecedor - Corpo da requisição:", body);
 
-    const { produtoId, fornecedorId, preco, multiplicador, codigoNF } = body;
+    const {
+      produtoId,
+      fornecedorId,
+      preco,
+      multiplicador,
+      codigoNF,
+      prazoEntregaDias,
+      quantidadeMinima,
+      principal,
+      codigoNoFornecedor,
+    } = body;
 
     if (
       !produtoId ||
@@ -130,15 +159,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Preço inválido" }, { status: 400 });
     }
 
+    const isPrimeiroVinculo =
+      (await prisma.produtoFornecedor.count({ where: { produtoId } })) === 0;
+
     const vinculo = await prisma.produtoFornecedor.create({
       data: {
         produtoId,
         fornecedorId,
         preco: Math.round(precoNumerico * 100),
+        precoUnitario: Math.round(precoNumerico * 100),
         multiplicador: Number(multiplicador),
         codigoNF,
+        prazoEntregaDias: prazoEntregaDias ?? null,
+        quantidadeMinima: quantidadeMinima ?? null,
+        codigoNoFornecedor: codigoNoFornecedor || null,
+        principal: principal === true || isPrimeiroVinculo,
       },
     });
+
+    if (vinculo.principal) {
+      await definirComoPrincipal(produtoId, vinculo.id);
+    }
 
     console.log(
       "API POST /produto-fornecedor - Vínculo criado com sucesso:",
@@ -355,7 +396,16 @@ export async function PUT(request: NextRequest) {
 
     console.log("API PUT /produto-fornecedor - Corpo da requisição:", body);
 
-    const { id, preco, multiplicador, codigoNF } = body;
+    const {
+      id,
+      preco,
+      multiplicador,
+      codigoNF,
+      prazoEntregaDias,
+      quantidadeMinima,
+      principal,
+      codigoNoFornecedor,
+    } = body;
 
     if (!id || preco === undefined || !multiplicador || !codigoNF) {
       console.error(
@@ -421,10 +471,19 @@ export async function PUT(request: NextRequest) {
       where: { id: Number(id) },
       data: {
         preco: Math.round(precoNumerico * 100),
+        precoUnitario: Math.round(precoNumerico * 100),
         multiplicador: Number(multiplicador),
         codigoNF,
+        prazoEntregaDias: prazoEntregaDias ?? null,
+        quantidadeMinima: quantidadeMinima ?? null,
+        codigoNoFornecedor: codigoNoFornecedor || null,
+        ...(principal === true ? { principal: true } : {}),
       },
     });
+
+    if (principal === true) {
+      await definirComoPrincipal(vinculoExistente.produtoId, vinculo.id);
+    }
 
     console.log(
       "API PUT /produto-fornecedor - Vínculo atualizado com sucesso:",

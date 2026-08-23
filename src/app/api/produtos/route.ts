@@ -1,29 +1,17 @@
-// src/app/api/produtos/route.ts
 import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { prepareBigIntEAN } from "@/utils/api";
 import { prisma } from "@/lib/prisma";
+import { normalizeSku } from "@/lib/sku";
+import { Prisma } from "@prisma/client";
 
-
-// Função para serializar BigInt como string de forma segura
-const serializeBigInt = (obj: unknown): unknown => {
-  return JSON.parse(
-    JSON.stringify(obj, (key, value) =>
-      typeof value === "bigint" ? value.toString() : value
-    )
-  );
-};
-
-// Função melhorada para converter EAN para BigInt de forma segura
 const safeEANConversion = (ean: string | null): bigint | null => {
   if (!ean) return null;
   if (ean === "") return null;
 
-  // Remove caracteres não numéricos
   const cleanEAN = String(ean).replace(/[^0-9]/g, "");
 
-  // Se não houver dígitos após a limpeza, retorna null
   if (!cleanEAN) return null;
 
   try {
@@ -34,171 +22,148 @@ const safeEANConversion = (ean: string | null): bigint | null => {
   }
 };
 
+const produtoListInclude = {
+  estoques: {
+    include: {
+      armazem: true,
+    },
+  },
+  componentes: {
+    include: {
+      produto: true,
+    },
+  },
+  fornecedores: {
+    include: {
+      fornecedor: {
+        select: { id: true, nome: true },
+      },
+    },
+    orderBy: {
+      principal: "desc" as const,
+    },
+  },
+  ProdutoMercadoLivre: {
+    select: {
+      mlItemId: true,
+      mlAvailableQuantity: true,
+      mlSoldQuantity: true,
+      mlSold90Days: true,
+      mlShippingMode: true,
+      mlStatus: true,
+      mlThumbnail: true,
+    },
+  },
+} satisfies Prisma.ProdutoInclude;
+
+type ProdutoComRelacoes = Prisma.ProdutoGetPayload<{
+  include: typeof produtoListInclude;
+}>;
+
+function enriquecerProduto(produto: ProdutoComRelacoes) {
+  const totalVendas90d = produto.ProdutoMercadoLivre.reduce(
+    (sum, ml) => sum + (ml.mlSold90Days || 0),
+    0
+  );
+
+  const estoqueFullTotal = produto.ProdutoMercadoLivre.filter(
+    (ml) => ml.mlShippingMode === "fulfillment"
+  ).reduce((sum, ml) => sum + (ml.mlAvailableQuantity || 0), 0);
+
+  const estoqueMLTotal = produto.ProdutoMercadoLivre.reduce(
+    (sum, ml) => sum + (ml.mlAvailableQuantity || 0),
+    0
+  );
+
+  const estoqueLocalTotal = produto.estoques.reduce(
+    (sum, estoque) => sum + estoque.quantidade,
+    0
+  );
+
+  const fornecedorPrincipal =
+    produto.fornecedores.find((f) => f.principal) ?? produto.fornecedores[0];
+
+  const imagemResolvida =
+    produto.imagemUrl ??
+    produto.ProdutoMercadoLivre.find((ml) => ml.mlThumbnail)?.mlThumbnail ??
+    null;
+
+  return {
+    ...produto,
+    imagemUrl: imagemResolvida,
+    _mlTotalVendas: totalVendas90d,
+    _mlEstoqueFull: estoqueFullTotal,
+    _mlEstoqueTotal: estoqueMLTotal,
+    _estoqueLocalTotal: estoqueLocalTotal,
+    _vinculadoML: produto.ProdutoMercadoLivre.length > 0,
+    fornecedorPrincipal: fornecedorPrincipal
+      ? {
+          id: fornecedorPrincipal.fornecedor.id,
+          nome: fornecedorPrincipal.fornecedor.nome,
+          prazoEntregaDias: fornecedorPrincipal.prazoEntregaDias,
+          precoUnitario: fornecedorPrincipal.precoUnitario,
+        }
+      : null,
+  };
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const sku = searchParams.get("sku");
-  const armazemId = searchParams.get("armazemId");
   const id = searchParams.get("id");
-  const search = searchParams.get("search"); // Novo parâmetro para busca
+  const search = searchParams.get("search");
 
   try {
     const user = await verifyUser(req);
-    let produtos = [];
 
     if (id) {
-      // Buscar um produto específico pelo ID
       const produto = await prisma.produto.findUnique({
         where: {
-          id: id,
+          id,
           userId: user.id,
         },
-        include: {
-          estoques: {
-            include: {
-              armazem: true,
-            },
-          },
-          componentes: {
-            include: {
-              produto: true,
-            },
-          },
-        },
+        include: produtoListInclude,
       });
 
-      return new Response(JSON.stringify(serializeWithEAN(produto)), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
-    } else if (search) {
-      // Busca por termo em nome ou SKU
-      produtos = await prisma.produto.findMany({
-        where: {
-          OR: [
-            {
-              nome: {
-                contains: search,
-                mode: "insensitive", // Case insensitive
-              },
-            },
-            {
-              sku: {
-                contains: search,
-                mode: "insensitive", // Case insensitive
-              },
-            },
-          ],
-          userId: user.id,
-        },
-        include: {
-          estoques: {
-            include: {
-              armazem: true,
-            },
-          },
-          componentes: {
-            include: {
-              produto: true,
-            },
-          },
-        },
-      });
+      if (!produto) {
+        return NextResponse.json(
+          { error: "Produto não encontrado" },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(
+        serializeWithEAN(enriquecerProduto(produto))
+      );
+    }
+
+    const where: Prisma.ProdutoWhereInput = { userId: user.id };
+
+    if (search) {
+      where.OR = [
+        { nome: { contains: search, mode: "insensitive" } },
+        { sku: { contains: search, mode: "insensitive" } },
+      ];
     } else if (sku) {
-      produtos = await prisma.produto.findMany({
-        where: {
-          sku: {
-            contains: sku,
-          },
-          userId: user.id,
-        },
-        include: {
-          estoques: {
-            include: {
-              armazem: true,
-            },
-          },
-          componentes: {
-            include: {
-              produto: true,
-            },
-          },
-        },
-      });
-    } else {
-      produtos = await prisma.produto.findMany({
-        where: {
-          userId: user.id,
-        },
-        include: {
-          estoques: {
-            include: {
-              armazem: true,
-            },
-          },
-          componentes: {
-            include: {
-              produto: true,
-            },
-          },
-          ProdutoMercadoLivre: {
-            select: {
-              mlAvailableQuantity: true,
-              mlSoldQuantity: true,
-              mlSold90Days: true,
-              mlShippingMode: true,
-              mlStatus: true,
-            },
-          },
-        },
-      });
+      where.sku = { contains: normalizeSku(sku), mode: "insensitive" };
     }
 
-    // Calcular totais de vendas (90 dias) e estoque Full para ordenação
-    interface MLRel {
-      mlSold90Days?: number | null;
-      mlShippingMode?: string | null;
-      mlAvailableQuantity?: number | null;
-    }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- registro do Prisma com relações condicionais
-    const produtosComDados = produtos.map((produto: any) => {
-      // Usar mlSold90Days ao invés de mlSoldQuantity (total de todos os tempos)
-      const totalVendas90d = produto.ProdutoMercadoLivre?.reduce(
-        (sum: number, ml: MLRel) => sum + (ml.mlSold90Days || 0),
-        0
-      ) || 0;
-
-      const estoqueFullTotal = produto.ProdutoMercadoLivre
-        ?.filter((ml: MLRel) => ml.mlShippingMode === 'fulfillment')
-        .reduce((sum: number, ml: MLRel) => sum + (ml.mlAvailableQuantity || 0), 0) || 0;
-
-      const estoqueMLTotal = produto.ProdutoMercadoLivre?.reduce(
-        (sum: number, ml: MLRel) => sum + (ml.mlAvailableQuantity || 0),
-        0
-      ) || 0;
-
-      return {
-        ...produto,
-        _mlTotalVendas: totalVendas90d, // Vendas dos últimos 90 dias
-        _mlEstoqueFull: estoqueFullTotal,
-        _mlEstoqueTotal: estoqueMLTotal,
-      };
+    const produtos = await prisma.produto.findMany({
+      where,
+      include: produtoListInclude,
     });
 
-    // Ordenar por vendas totais (decrescente)
-    produtosComDados.sort(
-      (a: { _mlTotalVendas: number }, b: { _mlTotalVendas: number }) =>
-        b._mlTotalVendas - a._mlTotalVendas
-    );
+    const produtosComDados = produtos
+      .map(enriquecerProduto)
+      .sort((a, b) => b._mlTotalVendas - a._mlTotalVendas);
 
-    return new Response(JSON.stringify(serializeWithEAN(produtosComDados)), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json(serializeWithEAN(produtosComDados));
   } catch (error) {
     console.error("Erro ao buscar produtos:", error);
-    return new Response(JSON.stringify({ error: "Erro ao buscar produtos" }), {
-      status: 500,
-    });
+    return NextResponse.json(
+      { error: "Erro ao buscar produtos" },
+      { status: 500 }
+    );
   }
 }
 
@@ -207,14 +172,29 @@ export async function POST(req: NextRequest) {
     const user = await verifyUser(req);
 
     const body = await req.json();
-    const { nome, sku, ean, componentes, isKit = false } = body;
+    const {
+      nome,
+      sku: skuBruto,
+      ean,
+      componentes,
+      isKit = false,
+      descricao,
+      marca,
+      categoria,
+      pesoGramas,
+      alturaCm,
+      larguraCm,
+      comprimentoCm,
+    } = body;
 
-    if (!nome || !sku) {
+    if (!nome || !skuBruto) {
       return new Response(
         JSON.stringify({ error: "Nome e SKU são obrigatórios" }),
         { status: 400 }
       );
     }
+
+    const sku = normalizeSku(skuBruto);
 
     const existingProduto = await prisma.produto.findFirst({
       where: {
@@ -224,9 +204,10 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingProduto) {
-      return new Response(JSON.stringify({ error: "SKU já existe" }), {
-        status: 400,
-      });
+      return new Response(
+        JSON.stringify({ error: `Já existe um produto com o SKU "${sku}"` }),
+        { status: 400 }
+      );
     }
 
     if (isKit || (componentes && componentes.length > 0)) {
@@ -281,6 +262,13 @@ export async function POST(req: NextRequest) {
           sku,
           ean: safeEANConversion(ean),
           isKit: false,
+          descricao: descricao || null,
+          marca: marca || null,
+          categoria: categoria || null,
+          pesoGramas: pesoGramas ?? null,
+          alturaCm: alturaCm ?? null,
+          larguraCm: larguraCm ?? null,
+          comprimentoCm: comprimentoCm ?? null,
         },
       });
       return new Response(JSON.stringify(serializeWithEAN(novoProduto)), {
@@ -302,8 +290,21 @@ export async function PUT(req: NextRequest) {
     const user = await verifyUser(req);
     const body = await req.json();
 
-    const { id, nome, sku, ean } = body;
-    if (!id || !nome || !sku) {
+    const {
+      id,
+      nome,
+      sku: skuBruto,
+      ean,
+      descricao,
+      marca,
+      categoria,
+      pesoGramas,
+      alturaCm,
+      larguraCm,
+      comprimentoCm,
+      ativo,
+    } = body;
+    if (!id || !nome || !skuBruto) {
       return NextResponse.json(
         {
           error: "ID, Nome, SKU são obrigatórios",
@@ -312,12 +313,46 @@ export async function PUT(req: NextRequest) {
       );
     }
 
+    const produtoExistente = await prisma.produto.findFirst({
+      where: { id, userId: user.id },
+    });
+
+    if (!produtoExistente) {
+      return NextResponse.json(
+        { error: "Produto não encontrado" },
+        { status: 404 }
+      );
+    }
+
+    const sku = normalizeSku(skuBruto);
+
+    if (sku !== produtoExistente.sku) {
+      const skuEmUso = await prisma.produto.findFirst({
+        where: { sku, userId: user.id, NOT: { id } },
+      });
+
+      if (skuEmUso) {
+        return NextResponse.json(
+          { error: `Já existe um produto com o SKU "${sku}"` },
+          { status: 400 }
+        );
+      }
+    }
+
     const produtoAtualizado = await prisma.produto.update({
       where: { id },
       data: {
         nome,
         sku,
         ean: safeEANConversion(ean),
+        descricao: descricao || null,
+        marca: marca || null,
+        categoria: categoria || null,
+        pesoGramas: pesoGramas ?? null,
+        alturaCm: alturaCm ?? null,
+        larguraCm: larguraCm ?? null,
+        comprimentoCm: comprimentoCm ?? null,
+        ...(typeof ativo === "boolean" ? { ativo } : {}),
       },
     });
     return new Response(JSON.stringify(serializeWithEAN(produtoAtualizado)), {
