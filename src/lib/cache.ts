@@ -1,4 +1,4 @@
-import { Redis } from "@upstash/redis";
+import { redis } from "@/lib/redis";
 
 interface CacheItem<T> {
   data: T;
@@ -56,14 +56,6 @@ function getSmartTTL(dataType: string, context?: string): number {
 }
 
 const KEY_PREFIX = "mlcache:";
-
-const redis =
-  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
-    ? new Redis({
-        url: process.env.UPSTASH_REDIS_REST_URL,
-        token: process.env.UPSTASH_REDIS_REST_TOKEN,
-      })
-    : null;
 
 class IntelligentCache {
   private memory = new Map<string, CacheItem<unknown>>();

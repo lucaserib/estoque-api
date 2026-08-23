@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { verifyUser } from "@/helpers/verifyUser";
 import { normalizeSku } from "@/lib/sku";
 import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const linhaSchema = z.object({
   sku: z.string().min(1),
@@ -25,6 +26,12 @@ interface LinhaRejeitada {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+
+    const rateLimit = await checkRateLimit("estoque-importar", user.id, 5, 300);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
+
     const parsed = importarSchema.safeParse(await request.json());
 
     if (!parsed.success) {

@@ -3,10 +3,17 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { prisma } from "@/lib/prisma";
 import { withCache, createCacheKey } from "@/lib/cache";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+
+    const rateLimit = await checkRateLimit("ml-sync-incremental", user.id, 10, 300);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
+
     const body = await request.json();
     const { accountId, syncType = "auto", maxItems = 50 } = body;
 

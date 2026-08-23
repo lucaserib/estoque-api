@@ -3,6 +3,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { NotificationService } from "@/services/notificationService";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -58,6 +59,12 @@ export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     notifyUserId = user.id;
+
+    const rateLimit = await checkRateLimit("ml-sync", user.id, 5, 300);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
+
     const body = await request.json();
     const { accountId, syncType = "full" } = body;
 

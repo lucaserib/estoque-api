@@ -125,6 +125,12 @@ const ProdutosPage = () => {
         );
         return;
       }
+      if (response.status === 429) {
+        toast.error(
+          "Muitas atualizações seguidas. Aguarde alguns minutos antes de tentar de novo."
+        );
+        return;
+      }
       if (!response.ok) {
         throw new Error("Erro ao atualizar dados");
       }
@@ -190,6 +196,12 @@ const ProdutosPage = () => {
             description: "Reconecte sua conta para atualizar o estoque.",
             action: { label: "Reconectar", onClick: () => reconectarBling() },
           });
+          return;
+        }
+        if (errorData?.code === "RATE_LIMITED") {
+          toast.error(
+            "Muitas atualizações seguidas. Aguarde alguns minutos antes de tentar de novo."
+          );
           return;
         }
         throw new Error(errorData?.message || "Erro ao sincronizar estoque");

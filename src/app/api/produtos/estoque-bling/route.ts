@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { BlingService, BlingReconnectError } from "@/services/blingService";
 import { blingErrorResponse } from "@/lib/blingApi";
 import { getProductCost } from "@/helpers/productCostHelper";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 interface SyncDetail {
   sku: string;
@@ -16,6 +17,11 @@ interface SyncDetail {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+
+    const rateLimit = await checkRateLimit("bling-estoque", user.id, 5, 300);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
 
     const blingAccount = await prisma.blingAccount.findFirst({
       where: { userId: user.id },

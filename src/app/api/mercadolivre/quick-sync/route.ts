@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
-/**
- * API de SINCRONIZAÇÃO RÁPIDA
- * Usa as APIs otimizadas para atualizar preços e vendas sem demorar
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+
+    const rateLimit = await checkRateLimit("ml-quick-sync", user.id, 10, 300);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
+
     const {
       accountId,
       updatePrices = true,

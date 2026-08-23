@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+
+    const rateLimit = await checkRateLimit("ml-auto-stock", user.id, 5, 300);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
+
     const { accountId, syncAll = false } = await request.json();
 
     if (!accountId) {

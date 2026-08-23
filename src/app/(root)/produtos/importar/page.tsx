@@ -191,6 +191,13 @@ export default function ImportarProdutosPage() {
           updateStepStatus("bling", "error");
           return;
         }
+        if (errorData?.code === "RATE_LIMITED") {
+          updateStepStatus("import", "error");
+          toast.error(
+            "Muitas importações seguidas. Aguarde alguns minutos antes de tentar de novo."
+          );
+          return;
+        }
         throw new Error(errorData?.error || "Erro na importação");
       }
 

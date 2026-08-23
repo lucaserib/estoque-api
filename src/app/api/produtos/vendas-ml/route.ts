@@ -4,10 +4,16 @@ import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
 import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+
+    const rateLimit = await checkRateLimit("ml-vendas-sync", user.id, 6, 300);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
 
     // Buscar conta ML ativa do usuário
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({

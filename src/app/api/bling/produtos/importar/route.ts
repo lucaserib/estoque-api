@@ -6,6 +6,7 @@ import { BlingService, BlingReconnectError } from "@/services/blingService";
 import { blingErrorResponse } from "@/lib/blingApi";
 import { getProductCost } from "@/helpers/productCostHelper";
 import { normalizeSku } from "@/lib/sku";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 const importarSchema = z.object({
   accountId: z.string().min(1, "ID da conta Bling não fornecido"),
@@ -23,6 +24,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const user = await verifyUser(request);
+
+    const rateLimit = await checkRateLimit("bling-importar", user.id, 3, 300);
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit);
+    }
+
     const parsed = importarSchema.safeParse(await request.json());
 
     if (!parsed.success) {
