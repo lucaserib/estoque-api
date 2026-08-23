@@ -3,12 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,16 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ShoppingCart,
-  DollarSign,
-  PackageSearch,
-  Boxes,
-  ArrowRight,
-  Store,
-  TrendingDown,
-} from "lucide-react";
-import Header from "@/app/components/Header";
+import { ArrowRight, Boxes, Store } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
+import { HeroMetric } from "@/components/ui/hero-metric";
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { SectionCard } from "@/components/ui/section-card";
 import KpiCard from "@/components/dashboard/KpiCard";
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import EvolutionChart, {
@@ -56,6 +46,7 @@ interface HomeData {
   todaySales: number;
   periodRevenue: number;
   revenueGrowth: number | null;
+  itemsSold: number;
   dailyRevenue: DailySalesPoint[];
   restockCount: number;
   restockTop: RestockSuggestion[];
@@ -159,6 +150,7 @@ export default function DashboardPage() {
           sales?.data?.comparison?.growth?.revenueGrowth ??
           previous?.revenueGrowth ??
           null,
+        itemsSold: sales?.data?.summary?.totalItems ?? previous?.itemsSold ?? 0,
         dailyRevenue: sales?.data?.trends?.dailyRevenue ?? previous?.dailyRevenue ?? [],
         restockCount: restock?.summary?.needsAttention ?? 0,
         restockTop: (restock?.suggestions ?? []).slice(0, 5),
@@ -176,22 +168,19 @@ export default function DashboardPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="container mx-auto max-w-7xl p-6 space-y-6">
-        <Header title="Dashboard" subtitle="Visão geral do seu negócio" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-[118px] rounded-xl" />
-          ))}
-        </div>
-        <Skeleton className="h-[340px] rounded-xl" />
+      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+        <PageHeader title="Visão Geral" subtitle="Carregando seu negócio…" />
+        <Skeleton className="h-[124px] rounded-md" />
+        <Skeleton className="h-16 rounded-md" />
+        <Skeleton className="h-[340px] rounded-md" />
       </div>
     );
   }
 
   if (!mlAccount) {
     return (
-      <div className="container mx-auto max-w-7xl p-6 space-y-6">
-        <Header title="Dashboard" subtitle="Visão geral do seu negócio" />
+      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+        <PageHeader title="Visão Geral" subtitle="Visão geral do seu negócio" />
 
         <Card className="rounded-xl">
           <CardContent className="p-10 text-center">
@@ -226,34 +215,45 @@ export default function DashboardPage() {
     );
   }
 
+  const statStripItems: StatStripItem[] = [
+    { label: "Vendas hoje", value: formatNumberBR(homeData?.todaySales ?? 0) },
+    { label: "Itens vendidos", value: formatNumberBR(homeData?.itemsSold ?? 0) },
+    {
+      label: "SKUs a repor",
+      value: formatNumberBR(homeData?.restockCount ?? 0),
+    },
+    {
+      label: "Valor do estoque local",
+      value: stockValue !== null ? formatBRL(stockValue) : "—",
+    },
+  ];
+
   return (
-    <div className="container mx-auto max-w-7xl p-6 space-y-6">
-      <Header
-        title="Dashboard"
-        subtitle={`Visão geral — ${mlAccount.nickname}`}
-      >
-        <Select value={period} onValueChange={setPeriod}>
-          <SelectTrigger className="w-28 h-9">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PERIOD_OPTIONS.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Header>
+    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <PageHeader
+        title="Visão Geral"
+        subtitle={mlAccount.nickname}
+        actions={
+          <Select value={period} onValueChange={setPeriod}>
+            <SelectTrigger className="w-28 h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PERIOD_OPTIONS.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        }
+      />
 
       {loadingData && !homeData ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-[118px] rounded-xl" />
-            ))}
-          </div>
-          <Skeleton className="h-[340px] rounded-xl" />
+          <Skeleton className="h-[124px] rounded-md" />
+          <Skeleton className="h-16 rounded-md" />
+          <Skeleton className="h-[340px] rounded-md" />
         </>
       ) : (
         homeData && (
@@ -265,94 +265,69 @@ export default function DashboardPage() {
               />
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KpiCard
-                label="Vendas Hoje"
-                value={formatNumberBR(homeData.todaySales)}
-                icon={ShoppingCart}
-                tooltip="Pedidos do Mercado Livre criados hoje."
-              />
-              <KpiCard
-                label={`Receita ML (${period}d)`}
-                value={formatBRLReais(homeData.periodRevenue)}
-                icon={DollarSign}
-                delta={homeData.revenueGrowth}
-                deltaLabel={`vs ${period}d anteriores`}
-                tooltip="Receita de pedidos pagos no Mercado Livre no período, incluindo frete."
-              />
-              <KpiCard
-                label="SKUs a Repor"
-                value={formatNumberBR(homeData.restockCount)}
-                icon={PackageSearch}
-                href="/reposicao"
-                subtitle="Ver plano de reposição"
-                tooltip="Anúncios com estoque projetado para acabar, segundo a velocidade de vendas."
-              />
-              <KpiCard
-                label="Valor do Estoque Local"
-                value={stockValue !== null ? formatBRL(stockValue) : "—"}
-                icon={Boxes}
-                tooltip="Soma de quantidade × custo médio de todos os produtos em estoque."
-              />
-            </div>
+            <HeroMetric
+              label={`Receita ML — ${period} dias`}
+              value={formatBRLReais(homeData.periodRevenue)}
+              delta={homeData.revenueGrowth}
+              deltaLabel={`vs ${period}d anteriores`}
+              context="Pedidos pagos no Mercado Livre no período, incluindo frete."
+            />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2">
-                <EvolutionChart data={homeData.dailyRevenue} />
-              </div>
+            <StatStrip items={statStripItems} />
 
-              <Card className="rounded-xl">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <TrendingDown className="h-4 w-4 text-muted-foreground" />
-                    Reposição Urgente
-                  </CardTitle>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <SectionCard title="Evolução da receita" className="lg:col-span-2">
+                <EvolutionChart data={homeData.dailyRevenue} bare />
+              </SectionCard>
+
+              <SectionCard
+                title="Reposição urgente"
+                actions={
                   <Link
                     href="/reposicao"
-                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                    className="flex items-center gap-1 text-xs text-primary hover:underline"
                   >
                     Ver todos
                     <ArrowRight className="h-3 w-3" />
                   </Link>
-                </CardHeader>
-                <CardContent>
-                  {homeData.restockTop.length === 0 ? (
-                    <div className="py-10 text-center text-sm text-muted-foreground">
-                      Nenhum produto precisa de reposição urgente
-                    </div>
-                  ) : (
-                    <ul className="space-y-3">
-                      {homeData.restockTop.map((item) => (
-                        <li
-                          key={item.productId || item.sku}
-                          className="flex items-center justify-between gap-3"
+                }
+              >
+                {homeData.restockTop.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-muted-foreground">
+                    Nenhum produto precisa de reposição urgente
+                  </div>
+                ) : (
+                  <ul className="space-y-3">
+                    {homeData.restockTop.map((item) => (
+                      <li
+                        key={item.productId || item.sku}
+                        className="flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">
+                            {item.productName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {item.daysUntilStockout <= 0
+                              ? "Sem estoque"
+                              : `~${Math.round(
+                                  item.daysUntilStockout
+                                )} dias de estoque`}
+                            {" · "}repor {item.suggestedRestock} un.
+                          </p>
+                        </div>
+                        <Badge
+                          className={`rounded-full shrink-0 ${
+                            PRIORITY_STYLES[item.priority]
+                          }`}
                         >
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {item.productName}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {item.daysUntilStockout <= 0
-                                ? "Sem estoque"
-                                : `~${Math.round(
-                                    item.daysUntilStockout
-                                  )} dias de estoque`}
-                              {" · "}repor {item.suggestedRestock} un.
-                            </p>
-                          </div>
-                          <Badge
-                            className={`rounded-full shrink-0 ${
-                              PRIORITY_STYLES[item.priority]
-                            }`}
-                          >
-                            {PRIORITY_LABELS[item.priority]}
-                          </Badge>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </CardContent>
-              </Card>
+                          {PRIORITY_LABELS[item.priority]}
+                        </Badge>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </SectionCard>
             </div>
           </>
         )
