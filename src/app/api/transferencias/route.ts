@@ -1,9 +1,8 @@
 import { verifyUser } from "@/helpers/verifyUser";
-import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 
 interface TransferenciaItem {
   produtoId: string;

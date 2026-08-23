@@ -1,11 +1,10 @@
 // src/app/api/produtos/route.ts
 import { verifyUser } from "@/helpers/verifyUser";
-import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { prepareBigIntEAN } from "@/utils/api";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 
 // Função para serializar BigInt como string de forma segura
 const serializeBigInt = (obj: unknown): unknown => {

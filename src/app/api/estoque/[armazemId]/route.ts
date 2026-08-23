@@ -1,28 +1,38 @@
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { verifyUser } from "@/helpers/verifyUser";
 
-const prisma = new PrismaClient();
-
-export async function GET(req: Request) {
-  const armazemId = req.url.split("/").pop(); // Captura o último segmento da URL
-
-  if (!armazemId) {
-    console.error("ID do armazém não fornecido");
-    return NextResponse.json(
-      { error: "ID do armazém não fornecido" },
-      { status: 400 }
-    );
-  }
-
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ armazemId: string }> }
+) {
   try {
-    const estoque = await prisma.estoque.findMany({
-      where: { armazemId: armazemId },
-      include: { produto: true },
+    const user = await verifyUser(request);
+    const { armazemId } = await params;
+
+    if (!armazemId) {
+      return NextResponse.json(
+        { error: "ID do armazém não fornecido" },
+        { status: 400 }
+      );
+    }
+
+    const armazem = await prisma.armazem.findFirst({
+      where: { id: armazemId, userId: user.id },
+      select: { id: true },
     });
 
-    if (!estoque.length) {
-      return NextResponse.json([], { status: 200 });
+    if (!armazem) {
+      return NextResponse.json(
+        { error: "Armazém não encontrado" },
+        { status: 404 }
+      );
     }
+
+    const estoque = await prisma.estoque.findMany({
+      where: { armazemId, produto: { userId: user.id } },
+      include: { produto: true },
+    });
 
     const serializedEstoque = estoque.map((item) => ({
       produtoId: item.produtoId,
@@ -38,13 +48,14 @@ export async function GET(req: Request) {
           ? Number(item.produto.custoMedio)
           : null,
         ean: item.produto.ean ? item.produto.ean.toString() : null,
-        userId: item.produto.userId,
       },
     }));
 
     return NextResponse.json(serializedEstoque);
   } catch (error) {
-    console.error("Erro ao buscar estoque:", error);
+    if (error instanceof Error && error.message.includes("não autorizado")) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Erro ao buscar estoque" },
       { status: 500 }

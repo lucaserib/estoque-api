@@ -1,8 +1,7 @@
 import { verifyUser } from "@/helpers/verifyUser";
-import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 
 // Função para tratar requisições GET
 export async function GET(req: NextRequest) {

@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { verifyUser } from "@/helpers/verifyUser";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
+    const user = await verifyUser(request);
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
     const type = searchParams.get("type");
@@ -14,17 +17,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(
-      `[API] Analytics request: accountId=${accountId}, type=${type}`
-    );
+    const account = await prisma.mercadoLivreAccount.findFirst({
+      where: { id: accountId, userId: user.id, isActive: true },
+      select: { id: true },
+    });
 
-    // Obter token válido para a conta
+    if (!account) {
+      return NextResponse.json(
+        { error: "Conta não encontrada" },
+        { status: 404 }
+      );
+    }
+
     const accessToken = await MercadoLivreService.getValidToken(accountId);
-    console.log("[API] Valid token obtained");
 
     if (type === "sync") {
-      console.log("[API] Executing SKU synchronization");
-
       try {
         const syncResult = await MercadoLivreService.syncProductsBySKU(
           accessToken,
@@ -58,17 +65,12 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Tipo padrão: dashboard analytics completo
-    console.log("[API] Fetching comprehensive analytics data");
 
     try {
-      // ✅ CORREÇÃO: Primeiro obter userInfo para ter o seller ID
       const userInfo = await MercadoLivreService.getUserInfo(accessToken);
       const sellerId = userInfo.id.toString();
 
-      console.log(`[API] Using seller ID: ${sellerId} for analytics`);
 
-      // Buscar todas as informações em paralelo para melhor performance
       const [
         sellerMetrics,
         stockInfo,
@@ -85,7 +87,6 @@ export async function GET(request: NextRequest) {
         MercadoLivreService.getMarketplaceFees(accessToken),
       ]);
 
-      // Processar resultados e lidar com falhas parciais
       const resolveResult = <T>(
         result: PromiseSettledResult<T>,
         fallback: T
@@ -201,7 +202,6 @@ export async function GET(request: NextRequest) {
         }),
       });
 
-      // Estruturar resposta completa
       const analyticsData = {
         userInfo: {
           id: userData.id,
@@ -308,7 +308,6 @@ export async function GET(request: NextRequest) {
           },
         },
 
-        // Métricas adicionais calculadas
         insights: {
           stockHealth:
             stockData.lowStockProducts.length === 0 &&
@@ -353,7 +352,6 @@ export async function GET(request: NextRequest) {
               : "Novo vendedor",
         },
 
-        // Metadata da consulta
         metadata: {
           timestamp: new Date().toISOString(),
           accountId,
@@ -362,7 +360,6 @@ export async function GET(request: NextRequest) {
         },
       };
 
-      console.log("[API] Analytics data compiled successfully");
 
       return NextResponse.json({
         success: true,

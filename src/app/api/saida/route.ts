@@ -1,10 +1,10 @@
 import { verifyUser } from "@/helpers/verifyUser";
-import { PrismaClient, Produto } from "@prisma/client";
+import { Produto } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { NotificationService } from "@/services/notificationService";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 
 async function notificarEstoquesCriticos(
   userId: string,

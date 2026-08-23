@@ -1,24 +1,37 @@
-// app/api/estoque/produto/[produtoId]/route.ts
-import { NextResponse } from "next/server";
-import { PrismaClient } from "@prisma/client";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { verifyUser } from "@/helpers/verifyUser";
 
-const prisma = new PrismaClient();
-
-export async function GET(req: Request) {
-  const produtoId = req.url.split("/").pop();
-
-  if (!produtoId) {
-    console.error("ID do produto inválido:", produtoId);
-    return NextResponse.json(
-      { error: "ID do produto inválido" },
-      { status: 400 }
-    );
-  }
-
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ produtoId: string }> }
+) {
   try {
+    const user = await verifyUser(request);
+    const { produtoId } = await params;
+
+    if (!produtoId) {
+      return NextResponse.json(
+        { error: "ID do produto inválido" },
+        { status: 400 }
+      );
+    }
+
+    const produto = await prisma.produto.findFirst({
+      where: { id: produtoId, userId: user.id },
+      select: { id: true },
+    });
+
+    if (!produto) {
+      return NextResponse.json(
+        { error: "Produto não encontrado" },
+        { status: 404 }
+      );
+    }
+
     const estoque = await prisma.estoque.findMany({
-      where: { produtoId: produtoId },
-      include: { armazem: true }, // Inclui informações do armazém
+      where: { produtoId },
+      include: { armazem: true },
     });
 
     const serializedEstoque = estoque.map((item) => ({
@@ -34,7 +47,9 @@ export async function GET(req: Request) {
 
     return NextResponse.json(serializedEstoque);
   } catch (error) {
-    console.error("Erro ao buscar estoque por produto:", error);
+    if (error instanceof Error && error.message.includes("não autorizado")) {
+      return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+    }
     return NextResponse.json(
       { error: "Erro ao buscar estoque" },
       { status: 500 }

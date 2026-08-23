@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { PrismaClient } from "@prisma/client";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 
 // Cache simples em memória com TTL de 3 minutos
 interface MLPrice {

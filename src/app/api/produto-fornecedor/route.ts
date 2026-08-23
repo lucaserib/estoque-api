@@ -1,9 +1,8 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { brlToCents } from "@/utils/currency";
-import { PrismaClient } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-const prisma = new PrismaClient();
 
 // Função para serializar BigInt como string
 const serializeBigInt = (obj: unknown): unknown => {
