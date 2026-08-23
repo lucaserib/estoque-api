@@ -4,7 +4,16 @@ import { memo } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, AlertTriangle, CheckCircle, ShoppingCart, Truck, TrendingUp } from "lucide-react";
+import { StatusPill } from "@/components/ui/status-pill";
+import { DataTableCell, DataTableRow } from "@/components/ui/data-table";
+import {
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle,
+  ShoppingCart,
+  Truck,
+  TrendingUp,
+} from "lucide-react";
 
 interface ReplenishmentItem {
   produtoId: string;
@@ -42,6 +51,12 @@ interface ReplenishmentTableRowProps {
   onViewDetails: (produtoId: string) => void;
 }
 
+const STATUS_BORDER: Record<"ok" | "atencao" | "critico", string> = {
+  critico: "border-l-[3px] border-l-destructive",
+  atencao: "border-l-[3px] border-l-warning",
+  ok: "border-l-[3px] border-l-transparent",
+};
+
 export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
   ({ item, onViewDetails }) => {
     const formatCurrency = (value: number) => {
@@ -51,28 +66,28 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
       }).format(value / 100);
     };
 
-    const getStatusBadge = (status: "ok" | "atencao" | "critico") => {
+    const getStatusPill = (status: "ok" | "atencao" | "critico") => {
       switch (status) {
         case "critico":
           return (
-            <Badge variant="destructive" className="gap-1">
+            <StatusPill tone="critical" className="gap-1">
               <AlertCircle className="h-3 w-3" />
               Crítico
-            </Badge>
+            </StatusPill>
           );
         case "atencao":
           return (
-            <Badge className="gap-1 bg-yellow-500 hover:bg-yellow-600 text-white">
+            <StatusPill tone="warning" className="gap-1">
               <AlertTriangle className="h-3 w-3" />
               Atenção
-            </Badge>
+            </StatusPill>
           );
         default:
           return (
-            <Badge variant="outline" className="gap-1 text-green-600 border-green-600">
+            <StatusPill tone="success" className="gap-1">
               <CheckCircle className="h-3 w-3" />
               OK
-            </Badge>
+            </StatusPill>
           );
       }
     };
@@ -81,19 +96,22 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
       switch (tipo) {
         case "full":
           return (
-            <Badge variant="outline" className="text-blue-600 border-blue-600">
+            <Badge variant="outline" className="text-info border-info/40">
               Full
             </Badge>
           );
         case "local":
           return (
-            <Badge variant="outline" className="text-muted-foreground border-border">
+            <Badge
+              variant="outline"
+              className="text-muted-foreground border-border"
+            >
               Local
             </Badge>
           );
         case "ambos":
           return (
-            <Badge variant="outline" className="text-purple-600 border-purple-600">
+            <Badge variant="outline" className="text-primary border-primary/40">
               Full + Local
             </Badge>
           );
@@ -106,83 +124,59 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
     );
 
     return (
-      <tr
-        className={`border-b border-border hover:bg-background transition-colors ${
-          item.statusGeral === "critico"
-            ? "bg-red-50 dark:bg-red-950/20"
-            : item.statusGeral === "atencao"
-            ? "bg-yellow-50 dark:bg-yellow-950/20"
-            : ""
-        }`}
-      >
-        {/* Status */}
-        <td className="px-4 py-3">
-          {getStatusBadge(item.statusGeral)}
-        </td>
+      <DataTableRow className={STATUS_BORDER[item.statusGeral]}>
+        <DataTableCell className="pl-4">
+          {getStatusPill(item.statusGeral)}
+        </DataTableCell>
 
-        {/* Produto */}
-        <td className="px-4 py-3">
-          <div>
-            <p className="font-medium text-foreground">
-              {item.produtoNome}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              SKU: {item.sku}
-            </p>
-          </div>
-        </td>
+        <DataTableCell>
+          <p className="font-medium text-foreground">{item.produtoNome}</p>
+          <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
+        </DataTableCell>
 
-        {/* Tipo */}
-        <td className="px-4 py-3">
-          {getTipoAnuncioBadge(item.tipoAnuncio)}
-        </td>
+        <DataTableCell>{getTipoAnuncioBadge(item.tipoAnuncio)}</DataTableCell>
 
-        {/* Estoque Local */}
-        <td className="px-4 py-3 text-center">
+        <DataTableCell numeric>
           <span className="font-medium text-foreground">
             {item.estoqueLocal}
           </span>
-        </td>
+        </DataTableCell>
 
-        {/* Estoque Full */}
-        <td className="px-4 py-3 text-center">
-          <span className="font-medium text-blue-600 dark:text-blue-400">
+        <DataTableCell numeric>
+          <span className="font-medium text-info">
             {item.estoqueFull > 0 ? item.estoqueFull : "-"}
           </span>
-        </td>
+        </DataTableCell>
 
-        {/* Dias Restantes */}
-        <td className="px-4 py-3 text-center">
+        <DataTableCell numeric>
           <span
-            className={`font-bold ${
+            className={
               diasRestantesMenor < 3
-                ? "text-red-600 dark:text-red-400"
+                ? "font-bold text-destructive"
                 : diasRestantesMenor < 7
-                ? "text-yellow-600 dark:text-yellow-400"
-                : "text-foreground"
-            }`}
+                ? "font-bold text-warning"
+                : "font-bold text-foreground"
+            }
           >
             {diasRestantesMenor > 999 ? "∞" : `${diasRestantesMenor}d`}
           </span>
-        </td>
+        </DataTableCell>
 
-        {/* Média Diária */}
-        <td className="px-4 py-3 text-center">
-          <div className="flex items-center justify-center gap-1">
+        <DataTableCell numeric>
+          <div className="flex items-center justify-end gap-1">
             <TrendingUp className="h-3 w-3 text-muted-foreground" />
             <span className="text-sm font-medium text-foreground">
               {item.mediaDiaria.toFixed(1)}
             </span>
           </div>
-        </td>
+        </DataTableCell>
 
-        {/* Repor Full */}
-        <td className="px-4 py-3 text-center">
+        <DataTableCell numeric>
           {item.reposicaoFull?.necessaria ? (
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-1">
-                <Truck className="h-3 w-3 text-blue-600" />
-                <span className="font-medium text-blue-900 dark:text-blue-300">
+                <Truck className="h-3 w-3 text-info" />
+                <span className="font-medium text-info">
                   {item.reposicaoFull.quantidadeSugerida}
                 </span>
               </div>
@@ -193,15 +187,14 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
           ) : (
             <span className="text-muted-foreground">-</span>
           )}
-        </td>
+        </DataTableCell>
 
-        {/* Comprar Local */}
-        <td className="px-4 py-3 text-center">
+        <DataTableCell numeric>
           {item.reposicaoLocal.necessaria ? (
-            <div className="flex flex-col items-center gap-1">
+            <div className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-1">
-                <ShoppingCart className="h-3 w-3 text-orange-600" />
-                <span className="font-medium text-orange-900 dark:text-orange-300">
+                <ShoppingCart className="h-3 w-3 text-warning" />
+                <span className="font-medium text-warning">
                   {item.reposicaoLocal.quantidadeSugerida}
                 </span>
               </div>
@@ -212,10 +205,9 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
           ) : (
             <span className="text-muted-foreground">-</span>
           )}
-        </td>
+        </DataTableCell>
 
-        {/* Custo Total */}
-        <td className="px-4 py-3 text-right">
+        <DataTableCell numeric>
           {item.custoIndefinido ? (
             <Link
               href={`/produtos/${item.produtoId}`}
@@ -224,14 +216,13 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
               Custo não definido
             </Link>
           ) : (
-            <span className="font-bold text-purple-900 dark:text-purple-300">
+            <span className="font-bold text-foreground">
               {formatCurrency(item.custoTotalReposicao * 100)}
             </span>
           )}
-        </td>
+        </DataTableCell>
 
-        {/* Ações */}
-        <td className="px-4 py-3">
+        <DataTableCell className="pr-4">
           <Button
             variant="outline"
             size="sm"
@@ -240,8 +231,8 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
           >
             Detalhes
           </Button>
-        </td>
-      </tr>
+        </DataTableCell>
+      </DataTableRow>
     );
   },
   (prevProps, nextProps) => {
