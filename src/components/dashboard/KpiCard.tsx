@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDownRight, ArrowUpRight, Minus, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -9,7 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { formatPercent } from "@/lib/format";
+import { DeltaIndicator } from "@/components/ui/delta-indicator";
 
 interface KpiCardProps {
   label: string;
@@ -32,13 +32,6 @@ const KpiCard = ({
   tooltip,
   href,
 }: KpiCardProps) => {
-  const deltaColor =
-    delta === undefined || delta === null || delta === 0
-      ? "text-muted-foreground"
-      : delta > 0
-      ? "text-success"
-      : "text-destructive";
-
   const content = (
     <Card className="rounded-xl transition-shadow duration-200 hover:shadow-md h-full">
       <CardContent className="p-5">
@@ -65,24 +58,7 @@ const KpiCard = ({
         </p>
         <div className="flex items-center gap-2 mt-1.5 min-h-5">
           {delta !== undefined && delta !== null && (
-            <span
-              className={`flex items-center gap-0.5 text-[13px] font-medium ${deltaColor}`}
-            >
-              {delta > 0 ? (
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              ) : delta < 0 ? (
-                <ArrowDownRight className="h-3.5 w-3.5" />
-              ) : (
-                <Minus className="h-3.5 w-3.5" />
-              )}
-              {delta > 0 ? "+" : ""}
-              {formatPercent(delta)}
-              {deltaLabel && (
-                <span className="text-muted-foreground font-normal ml-1">
-                  {deltaLabel}
-                </span>
-              )}
-            </span>
+            <DeltaIndicator delta={delta} label={deltaLabel} className="text-[13px]" />
           )}
           {subtitle && (
             <span className="text-[13px] text-muted-foreground truncate">
