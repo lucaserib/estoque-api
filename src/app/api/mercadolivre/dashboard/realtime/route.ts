@@ -35,7 +35,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[REALTIME_API] Buscando métricas em tempo real para conta ${accountId}`);
 
     try {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
@@ -166,7 +165,6 @@ export async function GET(request: NextRequest) {
         },
       };
 
-      console.log(`[REALTIME_API] Métricas compiladas com sucesso`);
 
       return NextResponse.json({
         success: true,

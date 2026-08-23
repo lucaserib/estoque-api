@@ -206,14 +206,12 @@ export async function GET(
     // Se temos mlSold90Days no banco, calcular proporcionalmente para o período escolhido
     // Caso contrário, retornar 0 (usuário precisa clicar em "Atualizar Dados")
     if (produtosML.length > 0) {
-      console.log(`[REPLENISHMENT] Produtos ML vinculados: ${produtosML.length}`);
 
       const totalVendas90d = produtosML.reduce(
         (sum, pm) => sum + (pm.mlSold90Days || 0),
         0
       );
 
-      console.log(`[REPLENISHMENT] Total vendas 90 dias: ${totalVendas90d}`);
 
       // Calcular vendas proporcionalmente ao período escolhido
       // Se escolheu 30 dias: (vendas90d / 90) * 30
@@ -222,18 +220,6 @@ export async function GET(
       totalVendasPeriodo = Math.round(
         (totalVendas90d / 90) * params_config.analysisPeriodDays
       );
-
-      console.log(
-        `[REPLENISHMENT] Vendas proporcionais para ${params_config.analysisPeriodDays} dias: ${totalVendasPeriodo}`
-      );
-
-      produtosML.forEach((pm, idx) => {
-        console.log(`[REPLENISHMENT] Produto ML ${idx + 1}:`, {
-          mlItemId: pm.mlItemId,
-          mlSoldQuantity: pm.mlSoldQuantity, // Total histórico (NÃO usar!)
-          mlSold90Days: pm.mlSold90Days, // Vendas 90 dias (base)
-        });
-      });
     }
 
     // NOTA: Se totalVendasPeriodo for 0, significa que os dados ainda não foram atualizados

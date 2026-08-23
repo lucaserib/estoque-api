@@ -90,9 +90,6 @@ export async function GET(request: NextRequest) {
         ordersData = await withCache(
           cacheKey,
           async () => {
-            console.log(
-              `[DASHBOARD_METRICS] Buscando pedidos do ML para métricas...`
-            );
             const result = await MercadoLivreService.getUserOrders(
               accessToken,
               {
@@ -102,11 +99,6 @@ export async function GET(request: NextRequest) {
                 limit: 50, // ✅ CORREÇÃO: Limite máximo da API ML é 50
                 sort: "date_desc",
               }
-            );
-            console.log(
-              `[DASHBOARD_METRICS] ${
-                result.results?.length || 0
-              } pedidos obtidos`
             );
             return result;
           },
@@ -182,16 +174,12 @@ export async function GET(request: NextRequest) {
         }>(fallbackCacheKey);
 
         if (cachedSalesData) {
-          console.log("Usando dados de vendas em cache como fallback");
           todaySales = cachedSalesData.todaySales || 0;
           weekSales = cachedSalesData.weekSales || 0;
           totalRevenue = cachedSalesData.totalRevenue || 0;
           pendingOrders = cachedSalesData.pendingOrders || 0;
           hasRecentSalesData = false; // Indica que são dados cached
         } else {
-          console.log(
-            "Nenhum dado de vendas disponível - usando valores zerados"
-          );
           // Usar valores padrão
           todaySales = 0;
           weekSales = 0;
@@ -258,19 +246,7 @@ export async function GET(request: NextRequest) {
 
       try {
         if (totalRevenue > 0 && totalItemsSold > 0) {
-          // Ticket médio = receita total ÷ total de itens vendidos
-          // ✅ CORREÇÃO: totalRevenue já está em reais (não centavos), então converter para centavos para manter consistência
           averageTicket = Math.round((totalRevenue * 100) / totalItemsSold);
-
-          console.log(
-            `[METRICS] 🎯 Ticket médio calculado: R$ ${(averageTicket / 100).toFixed(2)} ` +
-            `(${totalItemsSold} itens, R$ ${totalRevenue.toFixed(2)} receita)`
-          );
-        } else {
-          console.log(
-            `[METRICS] ⚠️ Dados insuficientes para calcular ticket médio: ` +
-            `receita=${totalRevenue}, itens=${totalItemsSold}`
-          );
         }
       } catch (error) {
         console.warn("Erro ao calcular ticket médio:", error);

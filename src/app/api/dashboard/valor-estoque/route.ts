@@ -6,7 +6,6 @@ export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
-    console.log("Obtendo dados de estoque para usuário:", user.id);
 
     const estoques = await prisma.estoque.findMany({
       where: { armazem: { userId: user.id } },
@@ -19,7 +18,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log("Estoques encontrados:", estoques.length);
 
     const valorTotalEstoque = estoques.reduce((total, item) => {
       const custoMedioCentavos = item.produto.custoMedio ?? 0;
@@ -31,12 +29,6 @@ export async function GET(request: NextRequest) {
       0
     );
 
-    console.log(
-      "Enviando resposta com valorTotal:",
-      valorTotalEstoque,
-      "quantidadeTotal:",
-      quantidadeTotal
-    );
 
     return NextResponse.json(
       {

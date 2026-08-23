@@ -28,7 +28,6 @@ export async function GET(request: NextRequest) {
 
     const accessToken = await MercadoLivreService.getValidToken(mlAccount.id);
 
-    console.log(`[ESTOQUE_FULL] Buscando estoque Full em tempo real...`);
     const estoqueFullPorProduto: { [key: string]: number } = {};
 
     const produtosMLVinculados = await prisma.produtoMercadoLivre.findMany({
@@ -42,9 +41,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(
-      `[ESTOQUE_FULL] Verificando ${produtosMLVinculados.length} produtos vinculados...`
-    );
 
     // Buscar dados atualizados de cada item do ML em tempo real
     for (const produtoML of produtosMLVinculados) {
@@ -63,9 +59,6 @@ export async function GET(request: NextRequest) {
             (estoqueFullPorProduto[produtoML.produtoId] || 0) +
             item.available_quantity;
 
-          console.log(
-            `[ESTOQUE_FULL] ✅ ${produtoML.mlItemId}: ${item.available_quantity} unidades`
-          );
         }
       } catch (itemError) {
         console.error(
@@ -75,11 +68,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(
-      `[ESTOQUE_FULL] Total de produtos com Full: ${
-        Object.keys(estoqueFullPorProduto).length
-      }`
-    );
 
     return NextResponse.json({
       success: true,

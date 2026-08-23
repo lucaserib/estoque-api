@@ -50,10 +50,6 @@ export async function POST(request: NextRequest) {
     const user = await verifyUser(request);
     const body: RequestBody = await request.json();
 
-    console.log(
-      "Recebendo requisição de saída:",
-      JSON.stringify(body, null, 2)
-    );
 
     const { produtos, armazemId } = body;
 
@@ -84,7 +80,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log(`Saída criada com ID: ${saida.id}`);
 
       for (const produto of produtos) {
         const { produtoId, quantidade, isKit } = produto;
@@ -117,9 +112,6 @@ export async function POST(request: NextRequest) {
           throw new Error(`Produto/kit com ID ${produtoId} não encontrado`);
         }
 
-        console.log(
-          `Processando ${isKit ? "kit" : "produto"}: ${produtoInfo.nome}`
-        );
 
         await tx.detalhesSaida.create({
           data: {
@@ -167,9 +159,6 @@ export async function POST(request: NextRequest) {
               },
             });
 
-            console.log(
-              `Estoque do componente ${componente.produto.nome} atualizado: -${quantidadeComponente}`
-            );
           }
         } else if (!isKit) {
           const estoqueProduto = await tx.estoque.findFirst({
@@ -205,9 +194,6 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          console.log(
-            `Estoque do produto ${produtoInfo.nome} atualizado: -${quantidade}`
-          );
         }
       }
 

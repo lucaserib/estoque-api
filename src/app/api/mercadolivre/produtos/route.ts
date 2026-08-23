@@ -5,10 +5,8 @@ import { MercadoLivreService } from "@/services/mercadoLivreService";
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("[PRODUTOS_API] 🚀 Iniciando requisição...");
 
     const user = await verifyUser(request);
-    console.log("[PRODUTOS_API] ✅ Usuário verificado:", user.id);
 
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
@@ -17,23 +15,14 @@ export async function GET(request: NextRequest) {
     const filterStatus = searchParams.get("status") || "all";
     const filterStock = searchParams.get("stock") || "all";
 
-    console.log("[PRODUTOS_API] 📋 Parâmetros:", {
-      accountId,
-      sortBy,
-      sortOrder,
-      filterStatus,
-      filterStock,
-    });
 
     if (!accountId) {
-      console.log("[PRODUTOS_API] ❌ Account ID não fornecido");
       return NextResponse.json(
         { error: "ID da conta não fornecido" },
         { status: 400 }
       );
     }
 
-    console.log("[PRODUTOS_API] 🔍 Buscando conta ML...");
 
     // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
@@ -45,14 +34,12 @@ export async function GET(request: NextRequest) {
     });
 
     if (!account) {
-      console.log("[PRODUTOS_API] ❌ Conta não encontrada ou inativa");
       return NextResponse.json(
         { error: "Conta do Mercado Livre não encontrada ou inativa" },
         { status: 404 }
       );
     }
 
-    console.log("[PRODUTOS_API] ✅ Conta encontrada:", account.mlUserId);
 
     // Construir filtros where
     const whereClause: Record<string, unknown> = {
@@ -124,7 +111,6 @@ export async function GET(request: NextRequest) {
     // Ajustar para final do dia sem problemas de timezone
     fimEsteMs.setHours(23, 59, 59, 999);
 
-    console.log("[PRODUTOS_API] 📊 Verificando se deve buscar vendas...");
 
     // ✅ CORREÇÃO: Sempre buscar dados de vendas para mostrar informações completas
     if (
@@ -134,17 +120,10 @@ export async function GET(request: NextRequest) {
       sortBy === "lastSync"
     ) {
       try {
-        console.log(
-          `[PRODUTOS_API] 🔍 Buscando dados de vendas para ordenação...`
-        );
 
         const accessToken = await MercadoLivreService.getValidToken(accountId);
-        console.log("[PRODUTOS_API] ✅ Token obtido para vendas");
 
         // ✅ CORREÇÃO CRÍTICA: Buscar TODOS os pedidos com paginação completa
-        console.log(
-          "[PRODUTOS_API] 📦 Buscando TODOS os pedidos com paginação..."
-        );
 
         const allOrders = [];
         let offset = 0;
@@ -165,9 +144,6 @@ export async function GET(request: NextRequest) {
             );
 
             allOrders.push(...batchOrders.results);
-            console.log(
-              `[PRODUTOS_API] Página offset ${offset}: +${batchOrders.results.length} pedidos`
-            );
 
             // Se retornou menos que o limite, chegamos ao fim
             hasMore = batchOrders.results.length === limit;
@@ -176,10 +152,6 @@ export async function GET(request: NextRequest) {
             // Delay para não sobrecarregar a API
             await new Promise((resolve) => setTimeout(resolve, 200));
           } catch (batchError) {
-            console.log(
-              `[PRODUTOS_API] ❌ Erro na página ${offset}:`,
-              batchError
-            );
             break;
           }
         }
@@ -189,10 +161,6 @@ export async function GET(request: NextRequest) {
           paging: { total: allOrders.length },
         };
 
-        console.log(
-          "[PRODUTOS_API] ✅ Pedidos obtidos:",
-          orders.results?.length
-        );
 
         // ✅ CORREÇÃO CRÍTICA: Processar vendas DESTE MÊS (não últimos 30 dias)
         // inicioEsteMs e fimEsteMs já declarados no escopo superior
@@ -205,23 +173,6 @@ export async function GET(request: NextRequest) {
           "handling",
         ];
 
-        console.log("[PRODUTOS_API] 📅 Processando vendas DESTE MÊS...");
-        console.log(
-          `[PRODUTOS_API] 📅 Período: ${inicioEsteMs
-            .getDate()
-            .toString()
-            .padStart(2, "0")}/${(inicioEsteMs.getMonth() + 1)
-            .toString()
-            .padStart(2, "0")} até ${fimEsteMs
-            .getDate()
-            .toString()
-            .padStart(2, "0")}/${(fimEsteMs.getMonth() + 1)
-            .toString()
-            .padStart(2, "0")}`
-        );
-        console.log(
-          `[PRODUTOS_API] 📅 Dias no mês: ${fimEsteMs.getDate()} | Hoje: dia ${new Date().getDate()}`
-        );
 
         const validOrders = orders.results.filter((order) => {
           const orderDate = new Date(order.date_created);
@@ -232,9 +183,6 @@ export async function GET(request: NextRequest) {
           );
         });
 
-        console.log(
-          `[PRODUTOS_API] ✅ ${validOrders.length} pedidos válidos DESTE MÊS`
-        );
 
         validOrders.forEach((order) => {
           order.order_items.forEach((item) => {
@@ -255,24 +203,11 @@ export async function GET(request: NextRequest) {
             }
 
             // Debug: Log vendas encontradas com preço correto
-            console.log(
-              `[PRODUTOS_API] 💰 ${item.item.id}: +${
-                item.quantity
-              } unid. @ R$ ${(unitPriceInCents / 100).toFixed(
-                2
-              )} (Revenue: +R$ ${(itemRevenue / 100).toFixed(2)})`
-            );
           });
         });
 
-        console.log(
-          `[PRODUTOS_API] 📊 Vendas processadas para ${salesData.size} produtos únicos`
-        );
 
         // ✅ NOVO: Buscar dados do MÊS ANTERIOR para comparação
-        console.log(
-          "[PRODUTOS_API] 📈 Buscando dados do mês anterior para comparação..."
-        );
 
         const inicioMsAnterior = new Date(
           hoje.getFullYear(),
@@ -288,16 +223,8 @@ export async function GET(request: NextRequest) {
           59
         );
 
-        console.log(
-          `[PRODUTOS_API] 📅 Mês anterior: ${
-            inicioMsAnterior.toISOString().split("T")[0]
-          } até ${fimMsAnterior.toISOString().split("T")[0]}`
-        );
 
         // ✅ CORREÇÃO: Usar os pedidos já coletados (evitar busca duplicada)
-        console.log(
-          `[PRODUTOS_API] 📦 Usando pedidos já coletados: ${allOrders.length}`
-        );
 
         const previousMonthValidOrders = allOrders.filter((order) => {
           const orderDate = new Date(order.date_created);
@@ -329,48 +256,10 @@ export async function GET(request: NextRequest) {
           });
         });
 
-        console.log(
-          `[PRODUTOS_API] 📊 Mês anterior: ${previousMonthValidOrders.length} pedidos, ${salesDataPreviousMonth.size} produtos únicos`
-        );
       } catch (error) {
         console.warn("Erro ao buscar dados de vendas para ordenação:", error);
       }
     }
-
-    // ✅ DEBUGGING DETALHADO: Verificar dados reais
-    const produtosComPromocao = produtosML.filter((p) => p.mlHasPromotion);
-    console.log(`[PRODUTOS_API] 🔍 DEBUGGING DETALHADO:`);
-    console.log(
-      `[PRODUTOS_API] Total de produtos carregados: ${produtosML.length}`
-    );
-    console.log(
-      `[PRODUTOS_API] Produtos com promoção: ${produtosComPromocao.length}`
-    );
-
-    if (produtosComPromocao.length > 0) {
-      console.log(`[PRODUTOS_API] 🏷️ PRODUTOS COM PROMOÇÃO:`);
-      produtosComPromocao.forEach((p) => {
-        console.log(
-          `[PRODUTOS_API] - ${p.mlItemId}: R$ ${(p.mlPrice / 100).toFixed(
-            2
-          )} (original: R$ ${((p.mlOriginalPrice || p.mlPrice) / 100).toFixed(2)}) - ${
-            p.mlPromotionDiscount
-          }% OFF`
-        );
-      });
-    }
-
-    // Debug das vendas também
-    console.log(
-      `[PRODUTOS_API] 📊 DEBUGGING VENDAS - Data hoje: ${
-        new Date().toISOString().split("T")[0]
-      }`
-    );
-    console.log(
-      `[PRODUTOS_API] 📊 Período setembro: ${
-        inicioEsteMs.toISOString().split("T")[0]
-      } até ${fimEsteMs.toISOString().split("T")[0]}`
-    );
 
     // Mapear produtos com informações completas
     const products = produtosML.map((produtoML) => {
@@ -406,13 +295,6 @@ export async function GET(request: NextRequest) {
         quantity: 0,
         revenue: 0,
       };
-
-      // Log de debug para produtos com vendas
-      if (sales.quantity > 0) {
-        console.log(
-          `[PRODUTOS_API] 🛍️ ${produtoML.mlItemId}: ${sales.quantity} vendas neste mês`
-        );
-      }
 
       const product = {
         mlItemId: produtoML.mlItemId,

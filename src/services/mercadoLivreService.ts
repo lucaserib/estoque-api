@@ -84,10 +84,6 @@ export class MercadoLivreService {
       throw new Error("ML_REDIRECT_URI não configurado no arquivo .env");
     }
 
-    console.log("Configurações do ML validadas:", {
-      clientId: this.CLIENT_ID.substring(0, 8) + "...",
-      redirectUri: this.REDIRECT_URI,
-    });
   }
 
   /**
@@ -135,7 +131,6 @@ export class MercadoLivreService {
         verifier: codeVerifier,
         timestamp: Date.now(),
       });
-      console.log(`[ML_PKCE] Code verifier salvo para state: ${state}`);
     }
 
     // Limpar cache antigo (mais de 10 minutos)
@@ -152,23 +147,9 @@ export class MercadoLivreService {
       ...(state && { state }),
     });
 
-    console.log("Configurações do ML validadas:", {
-      clientId: this.CLIENT_ID.substring(0, 8) + "...",
-      redirectUri: this.REDIRECT_URI,
-    });
 
     const authUrl = `https://${authDomain}/authorization?${params.toString()}`;
 
-    console.log("URL de autorização gerada:", authUrl);
-    console.log("Domínio de auth usado:", authDomain);
-    console.log("Parâmetros:", {
-      response_type: "code",
-      client_id: this.CLIENT_ID.substring(0, 8) + "...",
-      redirect_uri: this.REDIRECT_URI,
-      code_challenge: codeChallenge.substring(0, 20) + "...",
-      code_challenge_method: "S256",
-      state: state ? "presente" : "ausente",
-    });
 
     return authUrl;
   }
@@ -237,9 +218,6 @@ export class MercadoLivreService {
     externalVerifier?: string
   ): Promise<MLAuthResponse> {
     try {
-      console.log(`[ML_TOKEN] Iniciando troca de código por token`);
-      console.log(`[ML_TOKEN] Código: ${code.substring(0, 20)}...`);
-      console.log(`[ML_TOKEN] State: ${state}`);
 
       // Verifier persistido fora do processo (cookie) tem prioridade;
       // fallback para o cache em memória (dev/local)
@@ -257,9 +235,6 @@ export class MercadoLivreService {
         );
       }
 
-      console.log(
-        `[ML_TOKEN] Code verifier encontrado: ${verifier.substring(0, 20)}...`
-      );
 
       const body = new URLSearchParams({
         grant_type: "authorization_code",
@@ -270,17 +245,8 @@ export class MercadoLivreService {
         code_verifier: verifier,
       });
 
-      console.log(`[ML_TOKEN] Parâmetros da requisição:`, {
-        grant_type: "authorization_code",
-        client_id: this.CLIENT_ID.substring(0, 8) + "...",
-        redirect_uri: this.REDIRECT_URI,
-        code: code.substring(0, 20) + "...",
-        hasClientSecret: !!this.CLIENT_SECRET,
-        hasCodeVerifier: !!verifier,
-      });
 
       const url = `${this.BASE_URL}/oauth/token`;
-      console.log(`[ML_TOKEN] URL da requisição: ${url}`);
 
       const response = await fetch(url, {
         method: "POST",
@@ -291,7 +257,6 @@ export class MercadoLivreService {
         body: body.toString(),
       });
 
-      console.log(`[ML_TOKEN] Status da resposta: ${response.status}`);
 
       const data = await response.json();
 
@@ -309,14 +274,6 @@ export class MercadoLivreService {
         );
       }
 
-      console.log(`[ML_TOKEN] Token obtido com sucesso:`, {
-        tokenType: data.token_type,
-        expiresIn: data.expires_in,
-        userId: data.user_id,
-        scope: data.scope,
-        hasAccessToken: !!data.access_token,
-        hasRefreshToken: !!data.refresh_token,
-      });
 
       return data as MLAuthResponse;
     } catch (error) {
@@ -385,8 +342,6 @@ export class MercadoLivreService {
     accessToken: string,
     filters: MLSearchFilters = {}
   ): Promise<MLItemsResponse> {
-    console.log("[DEBUG] getUserItems called with filters:", filters);
-    console.log("[DEBUG] AccessToken length:", accessToken?.length);
 
     try {
       // Primeiro validar se o token ainda é válido
@@ -397,10 +352,6 @@ export class MercadoLivreService {
 
       // Obter informações do usuário para conseguir o USER_ID
       const userInfo = await this.getUserInfo(accessToken);
-      console.log("[DEBUG] User info retrieved for getUserItems:", {
-        id: userInfo.id,
-        nickname: userInfo.nickname,
-      });
 
       const params = new URLSearchParams({
         offset: (filters.offset || 0).toString(),
@@ -414,7 +365,6 @@ export class MercadoLivreService {
       const url = `${this.BASE_URL}/users/${
         userInfo.id
       }/items/search?${params.toString()}`;
-      console.log("[DEBUG] Requesting URL:", url);
 
       const response = await fetch(url, {
         headers: {
@@ -428,10 +378,6 @@ export class MercadoLivreService {
       }
 
       const data = await response.json();
-      console.log("[DEBUG] getUserItems response:", {
-        total: data.paging?.total,
-        results_count: data.results?.length,
-      });
 
       return data;
     } catch (error) {
@@ -531,9 +477,6 @@ export class MercadoLivreService {
     accessToken: string
   ): Promise<boolean> {
     try {
-      console.log(
-        `[ML] Atualizando estoque do item ${itemId} para ${quantity}`
-      );
 
       const url = `${this.BASE_URL}/items/${itemId}`;
       const response = await fetch(url, {
@@ -554,9 +497,6 @@ export class MercadoLivreService {
       }
 
       const updatedItem = await response.json();
-      console.log(
-        `[ML] Estoque atualizado com sucesso: ${itemId} -> ${updatedItem.available_quantity}`
-      );
       return true;
     } catch (error) {
       console.error(`Erro ao atualizar estoque do item ${itemId}:`, error);
@@ -646,7 +586,6 @@ export class MercadoLivreService {
       const { resource, topic } = webhookData;
 
       // Log do evento recebido
-      console.log(`[WEBHOOK] Processando: ${topic} - ${resource}`);
 
       // Salvar evento no histórico
       await this.saveWebhookEvent(accountId, webhookData);
@@ -670,9 +609,6 @@ export class MercadoLivreService {
           break;
 
         default:
-          console.log(
-            `[WEBHOOK] Tópico ${topic} não processado automaticamente`
-          );
       }
     } catch (error) {
       console.error(`[WEBHOOK] Erro ao processar webhook:`, error);
@@ -694,7 +630,6 @@ export class MercadoLivreService {
         throw new Error("Item ID não encontrado no resource");
       }
 
-      console.log(`[WEBHOOK] Sincronizando item ${itemId}...`);
 
       const accessToken = await this.getValidToken(accountId);
       const item = await this.getItem(itemId, accessToken);
@@ -791,9 +726,6 @@ export class MercadoLivreService {
         // ✅ NOVO: Programar retry para buscar preços posteriormente
         setTimeout(async () => {
           try {
-            console.log(
-              `[SYNC_RETRY] Tentando novamente buscar preços para ${item.id}`
-            );
             await this.retryPriceSync(item.id, accessToken, accountId);
           } catch (retryError) {
             console.warn(
@@ -804,17 +736,6 @@ export class MercadoLivreService {
         }, 30000); // Retry após 30 segundos
       }
 
-      console.log(
-        `[PRODUTO_ML] ${item.title} - Preço: R$ ${(currentPrice / 100).toFixed(
-          2
-        )}${
-          hasPromotion
-            ? ` (Original: R$ ${(originalPrice! / 100).toFixed(
-                2
-              )}, Desconto: ${promotionDiscount}%)`
-            : ""
-        }`
-      );
 
       const productData = {
         mlTitle: item.title,
@@ -843,7 +764,6 @@ export class MercadoLivreService {
           where: { id: existingProduct.id },
           data: productData,
         });
-        console.log(`[WEBHOOK] Produto ${itemId} atualizado via webhook`);
       } else {
         // Verificar se podemos vincular automaticamente
         const realSku = this.extractRealSku(item);
@@ -861,7 +781,6 @@ export class MercadoLivreService {
             });
 
             if (localProduct) {
-              // Criar vinculação automática
               await prisma.produtoMercadoLivre.create({
                 data: {
                   ...productData,
@@ -870,19 +789,8 @@ export class MercadoLivreService {
                   mlItemId: itemId,
                 },
               });
-              console.log(
-                `[WEBHOOK] Produto ${itemId} vinculado automaticamente via SKU ${realSku}`
-              );
-            } else {
-              console.log(
-                `[WEBHOOK] Produto ${itemId} com SKU ${realSku} não encontrado localmente`
-              );
             }
           }
-        } else {
-          console.log(
-            `[WEBHOOK] Produto ${itemId} sem SKU real - aguardando vinculação manual`
-          );
         }
       }
     } catch (error) {
@@ -955,7 +863,6 @@ export class MercadoLivreService {
       return [];
     }
 
-    console.log(`[DEBUG] Getting details for ${validIds.length} valid items`);
 
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -974,18 +881,12 @@ export class MercadoLivreService {
     }
 
     for (const chunk of chunks) {
-      console.log(`[DEBUG] Fetching items batch: ${chunk.join(",")}`);
 
       const response = await fetch(
         `${this.BASE_URL}/items?ids=${chunk.join(",")}`,
         { headers }
       );
 
-      console.log(
-        `[DEBUG] Response status: ${
-          response.status
-        }, Content-Type: ${response.headers.get("content-type")}`
-      );
 
       if (!response.ok) {
         await this.handleApiError(response, "Erro ao obter produtos ML");
@@ -1174,14 +1075,6 @@ export class MercadoLivreService {
     paging: { total: number; offset: number; limit: number };
   }> {
     // ✅ CORREÇÃO CRÍTICA: Usar endpoint correto da API ML
-    console.log(`[ML_API] getUserOrders called with filters:`, {
-      offset: filters.offset || 0,
-      limit: filters.limit || 50,
-      status: filters.status || "all",
-      sort: filters.sort || "none",
-      hasSeller: !!filters.seller,
-      hasBuyer: !!filters.buyer,
-    });
 
     // ✅ ENDPOINT CORRETO: Usar /orders/search COM seller obrigatório
     if (!filters.seller) {
@@ -1205,7 +1098,6 @@ export class MercadoLivreService {
     }
 
     const url = `${this.BASE_URL}/orders/search?${params.toString()}`;
-    console.log(`[ML_API] Requesting: ${url}`);
 
     const startTime = Date.now();
 
@@ -1218,9 +1110,6 @@ export class MercadoLivreService {
       });
 
       const responseTime = Date.now() - startTime;
-      console.log(
-        `[ML_API] Response received in ${responseTime}ms, status: ${response.status}`
-      );
 
       if (!response.ok) {
         const error = await response.json();
@@ -1233,11 +1122,6 @@ export class MercadoLivreService {
       const data = await response.json();
 
       // ✅ LOGGING: Estatísticas da resposta
-      console.log(
-        `[ML_API] Success - Found ${data.results?.length || 0} orders, total: ${
-          data.paging?.total || 0
-        }`
-      );
 
       if (data.results && data.results.length > 0) {
         const statusBreakdown = data.results.reduce(
@@ -1247,7 +1131,6 @@ export class MercadoLivreService {
           },
           {}
         );
-        console.log(`[ML_API] Status breakdown:`, statusBreakdown);
       }
 
       return data;
@@ -1298,34 +1181,22 @@ export class MercadoLivreService {
    * Obtém ou renova token válido para uma conta
    */
   static async getValidToken(accountId: string): Promise<string> {
-    console.log("[DEBUG] getValidToken called for accountId:", accountId);
 
     const account = await prisma.mercadoLivreAccount.findUniqueOrThrow({
       where: { id: accountId },
     });
 
-    console.log("[DEBUG] Account found:", {
-      id: account.id,
-      mlUserId: account.mlUserId,
-      nickname: account.nickname,
-      isActive: account.isActive,
-      expiresAt: account.expiresAt,
-      tokenValid: account.expiresAt > new Date(),
-    });
 
     // Se o token ainda não expirou, retorna o atual
     if (account.expiresAt > new Date()) {
-      console.log("[DEBUG] Token still valid, returning current token");
       return account.accessToken;
     }
 
-    console.log("[DEBUG] Token expired, attempting to refresh");
 
     // Renova o token
     try {
       const newTokens = await this.refreshAccessToken(account.refreshToken);
 
-      console.log("[DEBUG] Token refreshed successfully");
 
       // Atualiza no banco
       await prisma.mercadoLivreAccount.update({
@@ -1339,10 +1210,6 @@ export class MercadoLivreService {
 
       return newTokens.access_token;
     } catch (error) {
-      console.log(
-        "[DEBUG] Failed to refresh token, marking account as inactive:",
-        error
-      );
 
       const deactivated = await prisma.mercadoLivreAccount.update({
         where: { id: accountId },
@@ -1366,25 +1233,8 @@ export class MercadoLivreService {
     userInfo: MLUserInfo
   ): Promise<MercadoLivreAccount> {
     try {
-      console.log(`[ML_SAVE] Iniciando salvamento da conta`);
-      console.log(`[ML_SAVE] userId: ${userId}`);
-      console.log(`[ML_SAVE] ML userInfo:`, {
-        id: userInfo.id,
-        nickname: userInfo.nickname,
-        siteId: userInfo.site_id,
-        email: userInfo.email,
-        firstName: userInfo.first_name,
-        lastName: userInfo.last_name,
-      });
-      console.log(`[ML_SAVE] authResponse:`, {
-        hasAccessToken: !!authResponse.access_token,
-        hasRefreshToken: !!authResponse.refresh_token,
-        expiresIn: authResponse.expires_in,
-        userId: authResponse.user_id,
-      });
 
       const expiresAt = new Date(Date.now() + authResponse.expires_in * 1000);
-      console.log(`[ML_SAVE] Token expira em: ${expiresAt}`);
 
       const accountData = {
         userId,
@@ -1397,7 +1247,6 @@ export class MercadoLivreService {
         isActive: true,
       };
 
-      console.log(`[ML_SAVE] Dados da conta para upsert:`, accountData);
 
       const account = await prisma.mercadoLivreAccount.upsert({
         where: {
@@ -1417,13 +1266,6 @@ export class MercadoLivreService {
         create: accountData,
       });
 
-      console.log(`[ML_SAVE] Conta salva com sucesso:`, {
-        id: account.id,
-        nickname: account.nickname,
-        siteId: account.siteId,
-        mlUserId: account.mlUserId,
-        isActive: account.isActive,
-      });
 
       return account;
     } catch (error) {
@@ -1542,17 +1384,11 @@ export class MercadoLivreService {
       const accessToken = await this.getValidToken(accountId);
       const order = await this.getOrder(orderId, accessToken);
 
-      console.log(
-        `[WEBHOOK_ORDER] Processando pedido: ${orderId} - Status: ${order.status}`
-      );
 
       // ✅ NOVO: Invalidar cache de vendas quando houver novos pedidos
       if (
         ["paid", "delivered", "ready_to_ship", "shipped"].includes(order.status)
       ) {
-        console.log(
-          `[WEBHOOK_ORDER] Pedido confirmado - invalidando cache de vendas`
-        );
 
         // ✅ MELHORADO: Usar sistema de cache inteligente
         const { mlCache } = await import("@/lib/cache");
@@ -1584,9 +1420,6 @@ export class MercadoLivreService {
               );
             }
 
-            console.log(
-              `[WEBHOOK_ORDER] Atualizada quantidade vendida: ${item.item.id} +${item.quantity}`
-            );
           } catch (updateError) {
             console.warn(
               `[WEBHOOK_ORDER] Erro ao atualizar produto ${item.item.id}:`,
@@ -1599,7 +1432,6 @@ export class MercadoLivreService {
         await this.triggerSaleEvent(accountId, order);
       }
 
-      console.log(`[WEBHOOK_ORDER] Pedido ${orderId} processado com sucesso`);
     } catch (error) {
       console.error(
         `[WEBHOOK_ORDER] Erro ao processar webhook do pedido ${orderId}:`,
@@ -1652,9 +1484,6 @@ export class MercadoLivreService {
       const limiteAlerta = Math.max(5, Math.round(estoqueSeguranca * 0.2));
 
       if (estoqueTotal <= limiteAlerta) {
-        console.log(
-          `[STOCK_ALERT] Estoque baixo detectado: ${produto.mlTitle} - ${estoqueTotal} unidades`
-        );
 
         // ✅ NOVO: Criar alerta de estoque baixo
         await this.createStockAlert(
@@ -1667,9 +1496,6 @@ export class MercadoLivreService {
 
       // ✅ NOVO: Se estoque ML for maior que local, sincronizar
       if (produto.mlAvailableQuantity > estoqueTotal + 2) {
-        console.log(
-          `[STOCK_SYNC] Sincronizando estoque: ML=${produto.mlAvailableQuantity} > Local=${estoqueTotal}`
-        );
 
         const accessToken = await this.getValidToken(accountId);
         await this.updateItemStock(mlItemId, estoqueTotal, accessToken);
@@ -1706,7 +1532,6 @@ export class MercadoLivreService {
         timestamp: new Date().toISOString(),
       };
 
-      console.log(`[STOCK_ALERT] Alerta criado:`, alert);
 
       // ✅ TODO: Implementar sistema de notificações (email, webhook, etc.)
       // await this.sendStockNotification(alert);
@@ -1749,11 +1574,6 @@ export class MercadoLivreService {
         })),
       };
 
-      console.log(`[SALE_EVENT] Nova venda registrada:`, {
-        orderId: saleEvent.orderId,
-        totalAmount: saleEvent.totalAmount,
-        itemCount: saleEvent.itemCount,
-      });
 
       // ✅ TODO: Expandir para analytics em tempo real
       // await this.updateRealTimeMetrics(saleEvent);
@@ -1770,16 +1590,12 @@ export class MercadoLivreService {
     resource: string
   ): Promise<void> {
     try {
-      console.log(`[WEBHOOK_PAYMENT] Processando pagamento: ${resource}`);
 
       // Invalidar cache quando há mudanças de pagamento
       const { mlCache } = await import("@/lib/cache");
       await mlCache.delete(`orders:${accountId}:recent`);
       await mlCache.delete(`metrics:${accountId}:dashboard`);
 
-      console.log(
-        `[WEBHOOK_PAYMENT] Cache invalidado por mudança de pagamento`
-      );
     } catch (error) {
       console.error(
         `[WEBHOOK_PAYMENT] Erro ao processar webhook de pagamento:`,
@@ -1859,15 +1675,9 @@ export class MercadoLivreService {
     lastUpdate: string;
   }> {
     try {
-      console.log("[DEBUG] Getting financial info with correct ML endpoints");
 
       // Obter informações básicas do usuário primeiro
       const userInfo = await this.getUserInfo(accessToken);
-      console.log("[DEBUG] User info retrieved:", {
-        id: userInfo.id,
-        nickname: userInfo.nickname,
-        country_id: userInfo.country_id,
-      });
 
       // Determinar moeda baseada no país
       const currency =
@@ -1948,7 +1758,6 @@ export class MercadoLivreService {
     canceledTransactions: number;
   }> {
     try {
-      console.log("[DEBUG] Getting comprehensive seller metrics");
 
       // Obter informações do usuário
       const userInfo = await this.getUserInfo(accessToken);
@@ -2029,7 +1838,6 @@ export class MercadoLivreService {
     lowStockThreshold: number;
   }> {
     try {
-      console.log("[DEBUG] Getting comprehensive stock info");
 
       // Obter todos os produtos ativos do usuário
       const items = await this.getUserItems(accessToken, {
@@ -2121,7 +1929,6 @@ export class MercadoLivreService {
     freeShippingProductsCount: number;
   }> {
     try {
-      console.log("[DEBUG] Getting comprehensive shipping info");
 
       // Obter uma amostra de produtos para verificar configurações de envio
       const items = await this.getUserItems(accessToken, {
@@ -2233,7 +2040,6 @@ export class MercadoLivreService {
     period: string;
   }> {
     try {
-      console.log("[DEBUG] Getting sales performance data");
 
       // Definir período padrão se não fornecido
       if (!dateFrom) {
@@ -2341,7 +2147,6 @@ export class MercadoLivreService {
     };
   }> {
     try {
-      console.log("[DEBUG] Getting marketplace fees and commissions");
 
       // Obter informações do usuário para determinar o site
       const userInfo = await this.getUserInfo(accessToken);
@@ -2431,7 +2236,6 @@ export class MercadoLivreService {
       status: "matched" | "unmatched";
     }>;
   }> {
-    console.log("[DEBUG] Starting SKU sync for account:", accountId);
 
     try {
       // Verificar se o token é válido antes de continuar
@@ -2454,9 +2258,6 @@ export class MercadoLivreService {
       // Buscar todos os produtos paginando
       while (hasMore && offset < 1000) {
         // Limite de segurança
-        console.log(
-          `[DEBUG] Fetching items page: offset=${offset}, limit=${limit}`
-        );
 
         const itemsResponse = await this.getUserItems(validToken, {
           offset,
@@ -2472,15 +2273,11 @@ export class MercadoLivreService {
           const total = itemsResponse.paging?.total || 0;
           hasMore = offset < total;
 
-          console.log(
-            `[DEBUG] Page processed: ${itemsResponse.results.length} items, total so far: ${allMLItems.length}`
-          );
         } else {
           hasMore = false;
         }
       }
 
-      console.log(`[DEBUG] Found ${allMLItems.length} ML items total`);
 
       if (allMLItems.length === 0) {
         return {
@@ -2495,18 +2292,10 @@ export class MercadoLivreService {
       const itemDetails: MLItem[] = [];
       for (let i = 0; i < allMLItems.length; i += 20) {
         const batch = allMLItems.slice(i, i + 20);
-        console.log(
-          `[DEBUG] Processing batch ${Math.floor(i / 20) + 1}/${Math.ceil(
-            allMLItems.length / 20
-          )}: ${batch.length} items`
-        );
 
         try {
           const batchDetails = await this.getMultipleItems(batch, validToken);
           itemDetails.push(...batchDetails);
-          console.log(
-            `[DEBUG] Batch processed successfully: ${batchDetails.length} items`
-          );
         } catch (batchError) {
           console.error(
             `[ERROR] Failed to process batch ${i}-${i + 20}:`,
@@ -2516,9 +2305,6 @@ export class MercadoLivreService {
         }
       }
 
-      console.log(
-        `[DEBUG] Total item details retrieved: ${itemDetails.length}`
-      );
 
       // Processar cada item para sincronização por SKU
       const results: Array<{
@@ -2577,9 +2363,6 @@ export class MercadoLivreService {
         }
       }
 
-      console.log(
-        `[DEBUG] SKU sync completed: ${matched} matched, ${unmatched} unmatched`
-      );
 
       return {
         matched,
@@ -2633,12 +2416,8 @@ export class MercadoLivreService {
     if (cached) {
       // Remover do cache após uso
       this.codeVerifierCache.delete(state);
-      console.log(
-        `[ML_PKCE] Code verifier encontrado e removido para state: ${state}`
-      );
       return cached.verifier;
     }
-    console.log(`[ML_PKCE] Code verifier não encontrado para state: ${state}`);
     return null;
   }
 
@@ -2653,9 +2432,6 @@ export class MercadoLivreService {
   ): Promise<void> {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(
-          `[PRICE_RETRY] Tentativa ${attempt}/${maxRetries} para item ${itemId}`
-        );
 
         // Buscar preços detalhados usando API oficial /prices
         const pricesResponse = await fetch(
@@ -2732,9 +2508,6 @@ export class MercadoLivreService {
               },
             });
 
-            console.log(
-              `[PRICE_RETRY] Preços atualizados com sucesso para ${itemId}`
-            );
             return; // Sucesso, sair do loop
           }
         }
@@ -2837,9 +2610,6 @@ export class MercadoLivreService {
                 accessToken
               );
 
-              console.log(
-                `Estoque sincronizado ML <- Local: ${mapping.mlItemId} = ${totalLocalStock}`
-              );
             } catch (updateError) {
               errors.push(
                 `Erro ao atualizar ML ${mapping.mlItemId}: ${updateError}`
@@ -2857,9 +2627,6 @@ export class MercadoLivreService {
               mlItem.available_quantity - totalLocalStock
             );
             if (difference > 0) {
-              console.log(
-                `Diferença de estoque detectada: ML=${mlItem.available_quantity}, Local=${totalLocalStock}`
-              );
               // Implementar lógica de atualização do estoque local se necessário
             }
           }

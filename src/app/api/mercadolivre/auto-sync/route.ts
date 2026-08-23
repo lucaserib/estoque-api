@@ -87,7 +87,6 @@ export async function POST(request: NextRequest) {
     const { enabled } = body;
 
     // Por enquanto, apenas simular a ativação/desativação
-    console.log(`[AUTO_SYNC] ${enabled ? 'Ativando' : 'Desativando'} auto-sync para conta ${accountId}`);
 
     return NextResponse.json({
       success: true,

@@ -55,7 +55,6 @@ export async function GET(request: NextRequest) {
         new Date(order.date_created) <= endDate
     );
 
-    console.log(`[VENDAS_ML] Total de pedidos encontrados: ${allOrders.length}`);
 
     // Agrupar vendas POR ANÚNCIO ML (mlItemId)
     // Importante: cada anúncio tem suas próprias vendas
@@ -74,17 +73,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(
-      `[VENDAS_ML] Anúncios ML com vendas nos últimos 90 dias: ${Object.keys(vendasPorAnuncio).length}`
-    );
-
-    // Log detalhado das vendas por anúncio
-    Object.entries(vendasPorAnuncio).forEach(([mlItemId, quantidade]) => {
-      console.log(`[VENDAS_ML] Anúncio ${mlItemId}: ${quantidade} unidades vendidas (90 dias)`);
-    });
-
-    // Buscar estoque Full ATUAL direto da API do ML (tempo real)
-    console.log(`[VENDAS_ML] Buscando estoque Full em tempo real da API do ML...`);
     const estoqueFullPorProduto: { [key: string]: number } = {};
 
     const produtosMLVinculados = await prisma.produtoMercadoLivre.findMany({
@@ -98,9 +86,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(
-      `[VENDAS_ML] Verificando ${produtosMLVinculados.length} produtos vinculados...`
-    );
 
     // Buscar dados atualizados de cada item do ML em tempo real
     for (const produtoML of produtosMLVinculados) {
@@ -119,9 +104,6 @@ export async function GET(request: NextRequest) {
             (estoqueFullPorProduto[produtoML.produtoId] || 0) +
             item.available_quantity;
 
-          console.log(
-            `[VENDAS_ML] ✅ Full: ${produtoML.mlItemId} - ${item.available_quantity} unidades`
-          );
         }
       } catch (itemError) {
         console.error(
@@ -131,11 +113,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(
-      `[VENDAS_ML] Produtos com estoque Full: ${
-        Object.keys(estoqueFullPorProduto).length
-      }`
-    );
 
     const produtosComFull = Object.entries(estoqueFullPorProduto);
     if (produtosComFull.length > 0) {
@@ -190,7 +167,6 @@ export async function GET(request: NextRequest) {
 
     // Atualizar mlSold90Days no banco POR ANÚNCIO (mlItemId)
     // IMPORTANTE: Cada anúncio tem suas próprias vendas!
-    console.log(`[VENDAS_ML] Atualizando vendas dos últimos 90 dias no banco de dados (por anúncio)...`);
     for (const [mlItemId, quantidadeVendida] of Object.entries(vendasPorAnuncio)) {
       try {
         const updateResult = await prisma.produtoMercadoLivre.updateMany({
@@ -203,7 +179,6 @@ export async function GET(request: NextRequest) {
           },
         });
 
-        console.log(`[VENDAS_ML] ✅ Anúncio ${mlItemId} atualizado: ${quantidadeVendida} vendas (90d) - ${updateResult.count} registros atualizados`);
       } catch (updateError) {
         console.error(`[VENDAS_ML] ❌ Erro ao atualizar vendas do anúncio ${mlItemId}:`, updateError);
       }
@@ -222,12 +197,10 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      console.log(`[VENDAS_ML] ✅ ${zeradosResult.count} anúncios sem vendas foram zerados`);
     } catch (zeroError) {
       console.error(`[VENDAS_ML] Erro ao zerar anúncios sem vendas:`, zeroError);
     }
 
-    console.log(`[VENDAS_ML] ✅ Vendas atualizadas no banco de dados!`);
 
     return NextResponse.json({
       success: true,

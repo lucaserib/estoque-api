@@ -53,7 +53,6 @@ function getCache(key: string): CachedResult | null {
 // ✅ HELPER: Verificar usuário para API routes
 async function verifyUserForAPI(request: Request) {
   try {
-    console.log("[PRODUTOS_DINAMICOS_API] 🔐 Verificando autenticação...");
 
     // Criar um NextRequest simulado para getToken
     const url = new URL(request.url);
@@ -77,10 +76,6 @@ async function verifyUserForAPI(request: Request) {
     }
 
     const userId = token.id as string;
-    console.log(
-      "[PRODUTOS_DINAMICOS_API] ✅ Token válido para usuário:",
-      userId
-    );
 
     // Verificar/criar usuário no banco
     let user = await prisma.user.findUnique({
@@ -99,22 +94,16 @@ async function verifyUserForAPI(request: Request) {
           name: token.name || "Usuário",
         },
       });
-      console.log("[PRODUTOS_DINAMICOS_API] ✅ Usuário criado:", user.id);
     }
 
     return user;
   } catch (error) {
-    console.log(
-      "[PRODUTOS_DINAMICOS_API] ❌ Erro de autenticação:",
-      error instanceof Error ? error.message : String(error)
-    );
     throw error;
   }
 }
 
 export async function GET(request: Request) {
   try {
-    console.log("[PRODUTOS_DINAMICOS_API] 🚀 Iniciando busca 100% dinâmica...");
 
     // Verificar autenticação
     let user;
@@ -151,9 +140,6 @@ export async function GET(request: Request) {
     const cachedData = getCache(cacheKey);
 
     if (cachedData) {
-      console.log(
-        "[PRODUTOS_DINAMICOS_API] ✅ Retornando dados do cache (3min TTL)"
-      );
       return NextResponse.json({
         success: true,
         products: cachedData.products,
@@ -175,15 +161,8 @@ export async function GET(request: Request) {
     }
 
     const accessToken = account.accessToken;
-    console.log(
-      "[PRODUTOS_DINAMICOS_API] 🔑 Token válido para:",
-      account.nickname
-    );
 
     // 1. BUSCAR TODOS OS PRODUTOS DO ML EM TEMPO REAL
-    console.log(
-      "[PRODUTOS_DINAMICOS_API] 📦 Buscando produtos em tempo real do ML..."
-    );
 
     const allMLProducts = [];
     let offset = 0;
@@ -200,40 +179,24 @@ export async function GET(request: Request) {
         );
 
         if (!userItemsResponse.ok) {
-          console.log(
-            `[PRODUTOS_DINAMICOS_API] ❌ Erro ao buscar produtos: ${userItemsResponse.status}`
-          );
           break;
         }
 
         const userItemsData = await userItemsResponse.json();
         allMLProducts.push(...userItemsData.results);
 
-        console.log(
-          `[PRODUTOS_DINAMICOS_API] Página offset ${offset}: +${userItemsData.results.length} produtos`
-        );
 
         if (userItemsData.results.length < limit) break;
         offset += limit;
 
         await new Promise((resolve) => setTimeout(resolve, 300));
       } catch (error) {
-        console.log(
-          `[PRODUTOS_DINAMICOS_API] ❌ Erro na página ${offset}:`,
-          error
-        );
         break;
       }
     }
 
-    console.log(
-      `[PRODUTOS_DINAMICOS_API] ✅ Total produtos ML: ${allMLProducts.length}`
-    );
 
     // 2. BUSCAR DETALHES DE CADA PRODUTO EM TEMPO REAL
-    console.log(
-      "[PRODUTOS_DINAMICOS_API] 🔍 Buscando detalhes de cada produto..."
-    );
 
     const produtos = [];
 
@@ -252,9 +215,6 @@ export async function GET(request: Request) {
           );
 
           if (!itemResponse.ok) {
-            console.log(
-              `[PRODUTOS_DINAMICOS_API] ❌ Erro item ${itemId}: ${itemResponse.status}`
-            );
             return null;
           }
 
@@ -310,7 +270,10 @@ export async function GET(request: Request) {
               }
             }
           } catch (priceError) {
-            console.log(`[PRODUTOS_DINAMICOS_API] ⚠️ Erro preços ${itemId}`);
+            console.error(
+              `[PRODUTOS_DINAMICOS_API] Erro ao buscar preços do item ${itemId}:`,
+              priceError
+            );
           }
 
           // Buscar vinculação com produto local (se existir)
@@ -344,8 +307,9 @@ export async function GET(request: Request) {
               };
             }
           } catch (localError) {
-            console.log(
-              `[PRODUTOS_DINAMICOS_API] ⚠️ Erro busca local ${itemId}`
+            console.error(
+              `[PRODUTOS_DINAMICOS_API] Erro ao buscar produto local do item ${itemId}:`,
+              localError
             );
           }
 
@@ -367,10 +331,6 @@ export async function GET(request: Request) {
             salesData: null as SalesData | null,
           };
         } catch (error) {
-          console.log(
-            `[PRODUTOS_DINAMICOS_API] ❌ Erro geral ${itemId}:`,
-            error instanceof Error ? error.message : String(error)
-          );
           return null;
         }
       });
@@ -378,11 +338,6 @@ export async function GET(request: Request) {
       const batchResults = await Promise.all(batchPromises);
       produtos.push(...batchResults.filter(Boolean));
 
-      console.log(
-        `[PRODUTOS_DINAMICOS_API] Processado lote ${Math.floor(i / 10) + 1}: ${
-          produtos.length
-        } produtos válidos`
-      );
 
       // Delay entre lotes
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -390,9 +345,6 @@ export async function GET(request: Request) {
 
     // 3. BUSCAR DADOS DE VENDAS EM TEMPO REAL (se necessário para ordenação)
     if (sortBy === "sales" || sortBy === "smart") {
-      console.log(
-        "[PRODUTOS_DINAMICOS_API] 📊 Buscando vendas em tempo real..."
-      );
 
       // Definir período (este mês)
       const agora = new Date();
@@ -423,7 +375,6 @@ export async function GET(request: Request) {
 
           await new Promise((resolve) => setTimeout(resolve, 200));
         } catch (orderError) {
-          console.log("[PRODUTOS_DINAMICOS_API] ❌ Erro pedidos:", orderError);
           break;
         }
       }
@@ -480,9 +431,6 @@ export async function GET(request: Request) {
         };
       });
 
-      console.log(
-        `[PRODUTOS_DINAMICOS_API] ✅ Vendas processadas para ${produtos.length} produtos`
-      );
     }
 
     // 4. ORDENAÇÃO DINÂMICA
@@ -547,9 +495,6 @@ export async function GET(request: Request) {
     // Salvar no cache
     setCache(cacheKey, result);
 
-    console.log(
-      `[PRODUTOS_DINAMICOS_API] ✅ Retornando ${sortedProducts.length} produtos dinâmicos`
-    );
 
     return NextResponse.json({
       success: true,

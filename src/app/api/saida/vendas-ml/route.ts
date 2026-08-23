@@ -16,10 +16,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-    console.log(
-      "[VENDAS_ML_SAIDA] Buscando vendas do Mercado Livre para usuário:",
-      user.id
-    );
 
     // Buscar conta ativa do Mercado Livre do usuário
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
@@ -51,9 +47,6 @@ export async function GET(request: NextRequest) {
       ? new Date(dateFrom)
       : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 dias por padrão
 
-    console.log(
-      `[VENDAS_ML_SAIDA] Buscando vendas de ${startDate.toISOString()} até ${endDate.toISOString()}`
-    );
 
     // Status válidos para vendas confirmadas (excluindo cancelamentos, devoluções, etc)
     const validStatuses = [
@@ -80,24 +73,6 @@ export async function GET(request: NextRequest) {
       sellerId: mlAccount.mlUserId,
     });
 
-    console.log(
-      `[VENDAS_ML_SAIDA] Total de pedidos carregados: ${allOrders.length}`
-    );
-
-    // Log de exemplo de pedido para debug
-    if (allOrders.length > 0) {
-      const sampleOrder = allOrders[0];
-      console.log(`[VENDAS_ML_SAIDA] Exemplo de pedido:`, {
-        id: sampleOrder.id,
-        date_created: sampleOrder.date_created,
-        status: sampleOrder.status,
-        total_amount: sampleOrder.total_amount,
-        hasOrderItems: !!sampleOrder.order_items,
-        itemsCount: sampleOrder.order_items?.length || 0,
-      });
-    }
-
-    // Filtrar por período E status ao mesmo tempo
     const ordersInPeriod = allOrders.filter((order) => {
       // Verificar se a ordem tem data válida
       if (!order.date_created) {
@@ -136,36 +111,6 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    console.log(
-      `[VENDAS_ML_SAIDA] Total de pedidos válidos no período: ${ordersInPeriod.length}`
-    );
-    console.log(
-      `[VENDAS_ML_SAIDA] Período: ${startDate.toISOString()} até ${endDate.toISOString()}`
-    );
-
-    // Log dos status encontrados
-    if (ordersInPeriod.length > 0) {
-      const statusBreakdown = ordersInPeriod.reduce(
-        (acc: Record<string, number>, order) => {
-          acc[order.status] = (acc[order.status] || 0) + 1;
-          return acc;
-        },
-        {}
-      );
-      console.log(`[VENDAS_ML_SAIDA] Status breakdown:`, statusBreakdown);
-
-      // Log das primeiras e últimas datas
-      const firstOrder = ordersInPeriod[0];
-      const lastOrder = ordersInPeriod[ordersInPeriod.length - 1];
-      console.log(
-        `[VENDAS_ML_SAIDA] Primeira venda: ${firstOrder.date_created} (${firstOrder.status})`
-      );
-      console.log(
-        `[VENDAS_ML_SAIDA] Última venda: ${lastOrder.date_created} (${lastOrder.status})`
-      );
-    }
-
-    // Buscar produtos locais vinculados para obter SKUs
     const produtosML = await prisma.produtoMercadoLivre.findMany({
       where: {
         mercadoLivreAccountId: mlAccount.id,
@@ -180,9 +125,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(
-      `[VENDAS_ML_SAIDA] Produtos ML vinculados: ${produtosML.length}`
-    );
 
     // Criar mapa de mlItemId -> SKU local
     const mlItemToSku = new Map(
@@ -196,11 +138,6 @@ export async function GET(request: NextRequest) {
     );
 
     // Formatar vendas para o formato da aba de saídas
-    console.log(
-      `[VENDAS_ML_SAIDA] Formatando ${
-        ordersInPeriod.length
-      } vendas (slice: ${offset} to ${offset + limit})...`
-    );
 
     const vendas = ordersInPeriod.slice(offset, offset + limit).map((order) => {
       const items = order.order_items.map((item) => {
@@ -279,12 +216,6 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    console.log(`[VENDAS_ML_SAIDA] Retornando resposta:`, {
-      totalVendas: response.vendas.length,
-      total: response.total,
-      totalItems: response.totalItems,
-      totalRevenue: response.totalRevenue,
-    });
 
     return NextResponse.json(response);
   } catch (error) {

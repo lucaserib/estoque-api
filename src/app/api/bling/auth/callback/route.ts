@@ -36,11 +36,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[BLING] Callback recebido para usuário ${userId}`);
 
     const tokens = await BlingService.exchangeCodeForTokens(code);
 
-    console.log("[BLING] Tokens obtidos com sucesso");
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
@@ -59,7 +57,6 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      console.log("[BLING] Conta atualizada com sucesso");
     } else {
       await prisma.blingAccount.create({
         data: {
@@ -71,7 +68,6 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      console.log("[BLING] Nova conta criada com sucesso");
     }
 
     const redirectUrl = new URL("/produtos", request.url);

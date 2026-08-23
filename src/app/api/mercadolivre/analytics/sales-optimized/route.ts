@@ -87,7 +87,6 @@ export async function GET(request: NextRequest) {
         });
       });
 
-      console.log(`[SALES_OPTIMIZED] ✅ Dados processados para ${productSales.size} produtos`);
 
       const productIds = Array.from(productSales.keys());
       
@@ -113,7 +112,6 @@ export async function GET(request: NextRequest) {
             },
           });
 
-          console.log(`[SALES_OPTIMIZED] ✅ ${itemId}: ${sales.quantity} vendas (R$ ${(sales.revenue/100).toFixed(2)})`);
         }
       }
 
@@ -126,10 +124,6 @@ export async function GET(request: NextRequest) {
       
       const averageOrderValue = allOrders.length > 0 ? Math.round(totalOrderValue / allOrders.length) : 0;
       
-      console.log(`[SALES_OPTIMIZED] 📊 VALORES CALCULADOS:`);
-      console.log(`  💰 Valor total dos pedidos: R$ ${(totalOrderValue/100).toFixed(2)}`);
-      console.log(`  📦 Receita dos itens: R$ ${(totalItemsRevenue/100).toFixed(2)}`);
-      console.log(`  🎯 Ticket médio: R$ ${(averageOrderValue/100).toFixed(2)}`);
 
       return NextResponse.json({
         success: true,

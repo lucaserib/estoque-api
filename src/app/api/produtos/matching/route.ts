@@ -19,7 +19,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("[MATCHING] Iniciando processo de matching...");
 
     // Executar matching
     const matches = await ProductMatchingService.matchProducts(
@@ -27,12 +26,10 @@ export async function POST(request: NextRequest) {
       mlAccountId
     );
 
-    console.log(`[MATCHING] ${matches.length} matches encontrados`);
 
     // Se autoApply = true, aplicar matches automáticos
     let applyResult;
     if (autoApply) {
-      console.log("[MATCHING] Aplicando matches automáticos...");
       applyResult = await ProductMatchingService.applyMatches(
         matches,
         mlAccountId

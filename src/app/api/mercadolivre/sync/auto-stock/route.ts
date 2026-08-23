@@ -66,7 +66,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log(`[AUTO_SYNC] Encontrados ${produtosML.length} produtos para sincronização automática`);
 
       let syncedItems = 0;
       let updatedItems = 0;
@@ -127,7 +126,6 @@ export async function POST(request: NextRequest) {
           }
 
           if (shouldUpdate) {
-            console.log(`[AUTO_SYNC] Atualizando ${produtoML.mlItemId}: ${currentMLStock} -> ${newQuantity}`);
 
             // Atualizar estoque no ML
             const updateSuccess = await MercadoLivreService.updateItemStock(
@@ -149,7 +147,6 @@ export async function POST(request: NextRequest) {
               });
 
               updatedItems++;
-              console.log(`[AUTO_SYNC] ✓ ${produtoML.mlItemId} atualizado com sucesso`);
             } else {
               errors.push(`Erro ao atualizar estoque do produto ${produtoML.mlTitle}`);
 
@@ -207,7 +204,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      console.log(`[AUTO_SYNC] Concluído: ${syncedItems} processados, ${updatedItems} atualizados, ${errors.length} erros`);
 
       return NextResponse.json({
         success: true,

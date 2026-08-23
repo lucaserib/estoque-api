@@ -57,7 +57,6 @@ export async function POST(request: NextRequest) {
     const user = await verifyUser(request);
     const body: RequestBody = await request.json();
 
-    console.log("API POST /produto-fornecedor - Corpo da requisição:", body);
 
     const {
       produtoId,
@@ -149,9 +148,6 @@ export async function POST(request: NextRequest) {
     const precoNumerico =
       typeof preco === "number" ? preco : parseFloat(preco as string);
 
-    console.log(
-      `API POST /produto-fornecedor - Preço convertido: ${precoNumerico}`
-    );
 
     // Garantir que o preço seja um valor positivo
     if (isNaN(precoNumerico) || precoNumerico < 0) {
@@ -181,10 +177,6 @@ export async function POST(request: NextRequest) {
       await definirComoPrincipal(produtoId, vinculo.id);
     }
 
-    console.log(
-      "API POST /produto-fornecedor - Vínculo criado com sucesso:",
-      vinculo
-    );
     return NextResponse.json(vinculo, { status: 201 });
   } catch (error) {
     console.error("Erro ao vincular fornecedor:", error);
@@ -203,15 +195,8 @@ export async function GET(request: NextRequest) {
     const fornecedorId = searchParams.get("fornecedorId");
     const produtoId = searchParams.get("produtoId");
 
-    console.log("API /produto-fornecedor - Parâmetros:", {
-      fornecedorId,
-      produtoId,
-    });
 
     if (!fornecedorId && !produtoId) {
-      console.log(
-        "API /produto-fornecedor - Erro: FornecedorId ou ProdutoId é obrigatório"
-      );
       return NextResponse.json(
         { error: "FornecedorId ou ProdutoId é obrigatório" },
         { status: 400 }
@@ -219,22 +204,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (fornecedorId) {
-      console.log(
-        "API /produto-fornecedor - Buscando produtos para fornecedor:",
-        fornecedorId,
-        "| User ID:",
-        user.id
-      );
-
-      // Verificar se o fornecedor pertence ao usuário
       const fornecedor = await prisma.fornecedor.findFirst({
         where: {
           id: fornecedorId,
           userId: user.id,
         },
       });
-
-      console.log("API /produto-fornecedor - Fornecedor encontrado:", fornecedor);
 
       if (!fornecedor) {
         console.error(
@@ -246,13 +221,11 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      console.log("API /produto-fornecedor - Executando query de produtos...");
-
       const produtos = await prisma.produtoFornecedor.findMany({
         where: {
           fornecedorId: fornecedorId,
           produto: {
-            userId: user.id, // Garantir que o produto pertence ao usuário
+            userId: user.id,
           },
         },
         include: {
@@ -260,40 +233,10 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      console.log(
-        `API /produto-fornecedor - Query executada. Encontrados ${produtos.length} produtos para o fornecedor ${fornecedorId}`
-      );
-
-      if (produtos.length === 0) {
-        console.log("API /produto-fornecedor - Nenhum produto encontrado. Verificando se há produtos vinculados sem filtro de usuário...");
-
-        const produtosSemFiltro = await prisma.produtoFornecedor.findMany({
-          where: {
-            fornecedorId: fornecedorId,
-          },
-          include: {
-            produto: true,
-          },
-        });
-
-        console.log(`API /produto-fornecedor - Produtos sem filtro de usuário: ${produtosSemFiltro.length}`);
-        produtosSemFiltro.forEach(p => {
-          console.log(`  - Produto ${p.produto.nome} (userId: ${p.produto.userId}) vs user atual: ${user.id}`);
-        });
-      }
-
       const serializedProdutos = serializeBigInt(produtos);
-      console.log(
-        "API /produto-fornecedor - Produtos serializados:",
-        JSON.stringify(serializedProdutos, null, 2)
-      );
 
       return NextResponse.json(serializedProdutos, { status: 200 });
     } else if (produtoId) {
-      console.log(
-        "API /produto-fornecedor - Buscando fornecedores para produto:",
-        produtoId
-      );
       
       // Verificar se o produto pertence ao usuário
       const produto = await prisma.produto.findFirst({
@@ -325,13 +268,9 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      console.log(
-        `API /produto-fornecedor - Encontrados ${fornecedores.length} fornecedores para o produto`
-      );
       return NextResponse.json(serializeBigInt(fornecedores), { status: 200 });
     }
 
-    console.log("API /produto-fornecedor - Retornando array vazio");
     return NextResponse.json([], { status: 200 });
   } catch (error) {
     console.error("Erro ao buscar produtos ou fornecedores:", error);
@@ -394,7 +333,6 @@ export async function PUT(request: NextRequest) {
     const user = await verifyUser(request);
     const body: RequestBody = await request.json();
 
-    console.log("API PUT /produto-fornecedor - Corpo da requisição:", body);
 
     const {
       id,
@@ -457,9 +395,6 @@ export async function PUT(request: NextRequest) {
     const precoNumerico =
       typeof preco === "number" ? preco : parseFloat(preco as string);
 
-    console.log(
-      `API PUT /produto-fornecedor - Preço convertido: ${precoNumerico}`
-    );
 
     // Garantir que o preço seja um valor positivo
     if (isNaN(precoNumerico) || precoNumerico < 0) {
@@ -485,10 +420,6 @@ export async function PUT(request: NextRequest) {
       await definirComoPrincipal(vinculoExistente.produtoId, vinculo.id);
     }
 
-    console.log(
-      "API PUT /produto-fornecedor - Vínculo atualizado com sucesso:",
-      vinculo
-    );
     return NextResponse.json(serializeBigInt(vinculo), { status: 200 });
   } catch (error) {
     console.error("Erro ao atualizar fornecedor:", error);

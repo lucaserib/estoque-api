@@ -11,9 +11,6 @@ export async function GET(request: NextRequest) {
 
     if (action === "connect") {
       try {
-        console.log(
-          `[ML_AUTH] Gerando URL de autorização para usuário ${user.id}`
-        );
 
         const state = user.id; // Usar ID do usuário como state
         const { authUrl, codeVerifier } =
@@ -49,9 +46,6 @@ export async function GET(request: NextRequest) {
 
     if (action === "accounts") {
       const accounts = await MercadoLivreService.getUserAccounts(user.id);
-      console.log(
-        `[ML_AUTH] ${accounts.length} contas encontradas para usuário ${user.id}`
-      );
 
       const accountsWithDetails = await Promise.all(
         accounts.map(async (account) => {
@@ -115,11 +109,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { code, state } = body;
 
-    console.log(
-      `[ML_AUTH] Processando callback, code: ${
-        code ? "presente" : "ausente"
-      }, state: ${state}`
-    );
 
     if (!code || !state) {
       console.error("[ML_AUTH] Código ou state não fornecido");
@@ -132,15 +121,11 @@ export async function POST(request: NextRequest) {
     const host = request.headers.get("host") || "";
     const isFromNgrok = host.includes(".ngrok") || host.includes("ngrok");
 
-    console.log(`[ML_AUTH] Host: ${host}, isFromNgrok: ${isFromNgrok}`);
 
     let userId: string;
 
     if (isFromNgrok) {
       userId = state;
-      console.log(
-        `[ML_AUTH] Callback do ngrok, usando state como userId: ${userId}`
-      );
 
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -165,36 +150,25 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(`[ML_AUTH] Processando callback para usuário ${userId}`);
 
     try {
       const cookieVerifier = request.cookies.get("ml_pkce_verifier")?.value;
-      console.log(
-        `[ML_AUTH] Trocando código por tokens... (verifier via cookie: ${
-          cookieVerifier ? "sim" : "não"
-        })`
-      );
       const authResponse = await MercadoLivreService.exchangeCodeForToken(
         code,
         state,
         cookieVerifier
       );
 
-      console.log("[ML_AUTH] Obtendo informações do usuário ML...");
       const userInfo = await MercadoLivreService.getUserInfo(
         authResponse.access_token
       );
 
-      console.log(
-        `[ML_AUTH] Salvando conta ML no banco. Nickname: ${userInfo.nickname}, Site: ${userInfo.site_id}`
-      );
       const account = await MercadoLivreService.saveAccount(
         userId,
         authResponse,
         userInfo
       );
 
-      console.log(`[ML_AUTH] Conta conectada com sucesso. ID: ${account.id}`);
       const successResponse = NextResponse.json({
         success: true,
         account: {

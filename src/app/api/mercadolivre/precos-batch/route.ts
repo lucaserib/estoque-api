@@ -19,11 +19,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(
-      `[PRECOS_BATCH] Iniciando atualização ${
-        forceUpdate ? "forçada" : "inteligente"
-      } de preços`
-    );
 
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: { id: accountId, userId: user.id, isActive: true },
@@ -69,7 +64,6 @@ export async function POST(request: NextRequest) {
       take: 50, // ✅ PERFORMANCE: Processar em lotes de 50
     });
 
-    console.log(`[PRECOS_BATCH] ${produtos.length} produtos para atualizar`);
 
     if (produtos.length === 0) {
       return NextResponse.json({
@@ -174,13 +168,6 @@ export async function POST(request: NextRequest) {
 
               updated++;
 
-              console.log(
-                `[PRECOS_BATCH] ✅ ${produto.mlItemId}: R$ ${(
-                  finalPrice / 100
-                ).toFixed(2)}${
-                  hasPromotion ? ` (${promotionDiscount}% OFF)` : ""
-                }`
-              );
             }
           } catch (error) {
             console.error(`[PRECOS_BATCH] Erro ${produto.mlItemId}:`, error);
@@ -193,9 +180,6 @@ export async function POST(request: NextRequest) {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
-    console.log(
-      `[PRECOS_BATCH] ✅ Concluído: ${updated} atualizados, ${withPromotion} com promoção`
-    );
 
     return NextResponse.json({
       success: true,

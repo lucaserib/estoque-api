@@ -4,10 +4,8 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("[PRODUTOS_SIMPLE] Iniciando...");
 
     const user = await verifyUser(request);
-    console.log("[PRODUTOS_SIMPLE] Usuário verificado:", user.id);
 
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
@@ -19,7 +17,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log("[PRODUTOS_SIMPLE] Account ID:", accountId);
 
     // Buscar produtos sem vendas primeiro
     const produtos = await prisma.produtoMercadoLivre.findMany({
@@ -41,7 +38,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log(`[PRODUTOS_SIMPLE] ${produtos.length} produtos encontrados`);
 
     const formattedProducts = produtos.map((produto) => ({
       ...produto,

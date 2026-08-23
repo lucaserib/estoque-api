@@ -39,10 +39,6 @@ const calcularCustoMedioPonderado = async (
     const custoMedioAtual = produto?.custoMedio || 0;
 
     if (quantidadeAtual === 0 || custoMedioAtual === 0) {
-      console.log(
-        "Primeira compra do produto - definindo custo médio como:",
-        novoCusto
-      );
       return novoCusto;
     }
 
@@ -54,17 +50,6 @@ const calcularCustoMedioPonderado = async (
 
     const novoCustoMedio = Math.round(valorTotal / quantidadeTotal);
 
-    console.log({
-      quantidadeAtual,
-      custoMedioAtual,
-      valorEstoqueAtual: quantidadeAtual * custoMedioAtual,
-      novaQuantidade,
-      novoCusto,
-      valorNovoEstoque: novaQuantidade * novoCusto,
-      quantidadeTotal,
-      valorTotal,
-      novoCustoMedio,
-    });
 
     return novoCustoMedio;
   } catch (error) {

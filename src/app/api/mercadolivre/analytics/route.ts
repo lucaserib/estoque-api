@@ -38,11 +38,6 @@ export async function GET(request: NextRequest) {
           accountId
         );
 
-        console.log("[API] SKU sync completed successfully:", {
-          matched: syncResult.matched,
-          unmatched: syncResult.unmatched,
-          total: syncResult.total,
-        });
 
         return NextResponse.json({
           success: true,

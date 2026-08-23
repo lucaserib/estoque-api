@@ -88,7 +88,6 @@ export async function POST(request: NextRequest) {
     try {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
 
-      console.log(`[SYNC] Iniciando sincronização para conta ${accountId}`);
       const itemsResponse = await MercadoLivreService.getUserItems(accessToken);
 
       let newItems = 0;
@@ -96,9 +95,6 @@ export async function POST(request: NextRequest) {
       let errorItems = 0;
       const errors: string[] = [];
 
-      console.log(
-        `[SYNC] ${itemsResponse.results.length} produtos encontrados no ML`
-      );
 
       const BATCH_SIZE = 8; // Processar 8 produtos por vez
       const productBatches: string[][] = [];
@@ -107,9 +103,6 @@ export async function POST(request: NextRequest) {
         productBatches.push(itemsResponse.results.slice(i, i + BATCH_SIZE));
       }
 
-      console.log(
-        `[SYNC] Processando ${itemsResponse.results.length} produtos em ${productBatches.length} lotes de ${BATCH_SIZE}`
-      );
 
       for (
         let batchIndex = 0;
@@ -117,11 +110,6 @@ export async function POST(request: NextRequest) {
         batchIndex++
       ) {
         const batch = productBatches[batchIndex];
-        console.log(
-          `[SYNC] Processando lote ${batchIndex + 1}/${
-            productBatches.length
-          } com ${batch.length} produtos`
-        );
 
         const batchResults = await Promise.allSettled(
           batch.map(async (itemId) => {
@@ -151,9 +139,6 @@ export async function POST(request: NextRequest) {
 
               if (!originalPrice || originalPrice <= currentPrice) {
                 try {
-                  console.log(
-                    `[SYNC] 🔍 Buscando preços detalhados para ${itemId}...`
-                  );
 
                   const pricesResponse = await fetch(
                     `https://api.mercadolibre.com/items/${itemId}/prices`,
@@ -198,25 +183,9 @@ export async function POST(request: NextRequest) {
                       );
                       hasPromotion = true;
 
-                      console.log(
-                        `[SYNC] 🏷️ PROMOÇÃO ENCONTRADA: ${itemId} - R$ ${(
-                          currentPrice / 100
-                        ).toFixed(2)} (era R$ ${(originalPrice / 100).toFixed(
-                          2
-                        )})`
-                      );
                     } else if (standardPrice) {
                       currentPrice = Math.round(standardPrice.amount * 100);
-                      console.log(
-                        `[SYNC] 💰 Preço padrão: ${itemId} - R$ ${(
-                          currentPrice / 100
-                        ).toFixed(2)}`
-                      );
                     }
-                  } else {
-                    console.log(
-                      `[SYNC] ⚠️ Erro ao buscar preços detalhados para ${itemId}: ${pricesResponse.status}`
-                    );
                   }
                 } catch (priceError) {
                   console.error(
@@ -226,9 +195,6 @@ export async function POST(request: NextRequest) {
                 }
               } else {
                 hasPromotion = true;
-                console.log(
-                  `[SYNC] 🏷️ Promoção detectada via item básico: ${itemId}`
-                );
               }
 
               if (
@@ -241,17 +207,6 @@ export async function POST(request: NextRequest) {
                 );
               }
 
-              console.log(
-                `[SYNC] ${item.title} - Preço: R$ ${(
-                  currentPrice / 100
-                ).toFixed(2)}${
-                  hasPromotion
-                    ? ` (Original: R$ ${(originalPrice! / 100).toFixed(
-                        2
-                      )}, Desconto: ${promotionDiscount}%)`
-                    : ""
-                }`
-              );
 
               const productData = {
                 mlTitle: item.title,
@@ -296,18 +251,7 @@ export async function POST(request: NextRequest) {
 
                   if (localProduct) {
                     localProductId = localProduct.id;
-                    console.log(
-                      `[SYNC] ✅ Produto ${itemId} vinculado automaticamente com SKU ${realSku}`
-                    );
-                  } else {
-                    console.log(
-                      `[SYNC] ⚠️ SKU ${realSku} não encontrado localmente para ${itemId} - criando sem vínculo`
-                    );
                   }
-                } else {
-                  console.log(
-                    `[SYNC] ⚠️ Produto ${itemId} sem SELLER_SKU - criando sem vínculo`
-                  );
                 }
 
                 await prisma.produtoMercadoLivre.create({
@@ -339,22 +283,11 @@ export async function POST(request: NextRequest) {
             switch (value?.type) {
               case "updated":
                 updatedItems++;
-                console.log(
-                  `[SYNC] Produto ${value.itemId} atualizado com sucesso`
-                );
                 break;
               case "created":
                 newItems++;
-                console.log(
-                  `[SYNC] Produto ${value.itemId} criado com sucesso`
-                );
                 break;
               case "skipped":
-                console.log(
-                  `[SYNC] Produto ${value.itemId} pulado: ${
-                    (value as { reason?: string }).reason
-                  }`
-                );
                 break;
               case "error":
                 errorItems++;
@@ -377,7 +310,6 @@ export async function POST(request: NextRequest) {
       const duration = Math.round((Date.now() - startTime) / 1000);
       const syncedItems = newItems + updatedItems;
 
-      console.log(`[SYNC] Sincronização concluída em ${duration}s`);
 
       return NextResponse.json({
         success: true,

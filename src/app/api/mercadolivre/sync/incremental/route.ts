@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[INCREMENTAL_SYNC] Iniciando sincronização incremental para conta ${accountId}`);
 
     try {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
@@ -50,12 +49,6 @@ export async function POST(request: NextRequest) {
 
       const timeElapsed = Date.now() - startTime;
 
-      console.log(`[INCREMENTAL_SYNC] Concluída em ${timeElapsed}ms:`, {
-        processed: result.processedItems,
-        updated: result.updatedItems,
-        created: result.newItems,
-        errors: result.errors.length,
-      });
 
       return NextResponse.json({
         success: true,
@@ -108,7 +101,6 @@ async function performIncrementalSync(
 
   // ✅ ESTRATÉGIA 1: Sincronizar apenas produtos modificados recentemente
   if (syncType === "auto" || syncType === "modified") {
-    console.log("[INCREMENTAL_SYNC] Estratégia: Produtos modificados recentemente");
 
     const modifiedResult = await syncModifiedProducts(
       accessToken,
@@ -126,7 +118,6 @@ async function performIncrementalSync(
 
   // ✅ ESTRATÉGIA 2: Sincronizar produtos com estoque crítico
   if (syncType === "auto" || syncType === "critical") {
-    console.log("[INCREMENTAL_SYNC] Estratégia: Produtos com estoque crítico");
 
     const criticalResult = await syncCriticalStockProducts(
       accessToken,
@@ -142,7 +133,6 @@ async function performIncrementalSync(
 
   // ✅ ESTRATÉGIA 3: Sincronizar produtos com erro de sincronização
   if (syncType === "auto" || syncType === "errors") {
-    console.log("[INCREMENTAL_SYNC] Estratégia: Produtos com erro de sincronização");
 
     const errorResult = await syncErrorProducts(
       accessToken,
@@ -158,7 +148,6 @@ async function performIncrementalSync(
 
   // ✅ ESTRATÉGIA 4: Sincronizar produtos mais vendidos (prioridade)
   if (syncType === "auto" || syncType === "bestsellers") {
-    console.log("[INCREMENTAL_SYNC] Estratégia: Produtos mais vendidos");
 
     const bestSellersResult = await syncBestSellingProducts(
       accessToken,
@@ -209,7 +198,6 @@ async function syncModifiedProducts(
     const searchData = await searchResponse.json();
     const itemIds = searchData.results || [];
 
-    console.log(`[INCREMENTAL_SYNC] Encontrados ${itemIds.length} produtos para verificação`);
 
     // Processar em lotes pequenos
     const BATCH_SIZE = 5;
@@ -236,10 +224,8 @@ async function syncModifiedProducts(
 
             if (localProduct) {
               result.updated++;
-              console.log(`[INCREMENTAL_SYNC] Produto atualizado: ${itemId}`);
             } else {
               result.created++;
-              console.log(`[INCREMENTAL_SYNC] Produto criado: ${itemId}`);
             }
           }
 
@@ -293,7 +279,6 @@ async function syncCriticalStockProducts(
       },
     });
 
-    console.log(`[INCREMENTAL_SYNC] Sincronizando ${criticalProducts.length} produtos com estoque crítico`);
 
     for (const produto of criticalProducts) {
       try {
@@ -305,7 +290,6 @@ async function syncCriticalStockProducts(
           await updateProductFromML(item, accountId, userId);
           result.updated++;
 
-          console.log(`[INCREMENTAL_SYNC] Estoque crítico atualizado: ${produto.mlItemId} (${produto.mlAvailableQuantity} → ${item.available_quantity})`);
         }
 
         result.processed++;
@@ -347,7 +331,6 @@ async function syncErrorProducts(
       },
     });
 
-    console.log(`[INCREMENTAL_SYNC] Tentando reprocessar ${errorProducts.length} produtos com erro`);
 
     for (const produto of errorProducts) {
       try {
@@ -356,7 +339,6 @@ async function syncErrorProducts(
         await updateProductFromML(item, accountId, userId);
 
         result.updated++;
-        console.log(`[INCREMENTAL_SYNC] Produto com erro corrigido: ${produto.mlItemId}`);
 
         result.processed++;
       } catch (itemError) {
@@ -401,7 +383,6 @@ async function syncBestSellingProducts(
       },
     });
 
-    console.log(`[INCREMENTAL_SYNC] Sincronizando ${bestSellers.length} produtos mais vendidos`);
 
     for (const produto of bestSellers) {
       try {
@@ -411,7 +392,6 @@ async function syncBestSellingProducts(
         result.updated++;
         result.processed++;
 
-        console.log(`[INCREMENTAL_SYNC] Best seller atualizado: ${produto.mlItemId} (${produto.mlSoldQuantity} vendas)`);
       } catch (itemError) {
         const errorMsg = `Erro no best seller ${produto.mlItemId}: ${itemError instanceof Error ? itemError.message : 'Erro desconhecido'}`;
         result.errors.push(errorMsg);

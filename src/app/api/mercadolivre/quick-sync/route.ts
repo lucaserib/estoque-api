@@ -23,7 +23,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[QUICK_SYNC] Iniciando sincronização rápida...`);
 
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: { id: accountId, userId: user.id, isActive: true },
@@ -66,7 +65,6 @@ export async function POST(request: NextRequest) {
 
       // ✅ ETAPA 1: Atualizar preços (se solicitado)
       if (updatePrices) {
-        console.log(`[QUICK_SYNC] Atualizando preços promocionais...`);
 
         const precosResponse = await fetch(
           `${request.nextUrl.origin}/api/mercadolivre/precos-batch`,
@@ -86,11 +84,6 @@ export async function POST(request: NextRequest) {
 
         if (precosResponse.ok) {
           resultados.precos = await precosResponse.json();
-          console.log(
-            `[QUICK_SYNC] ✅ Preços: ${
-              resultados.precos?.updated || 0
-            } atualizados`
-          );
         } else {
           console.warn(
             `[QUICK_SYNC] ⚠️ Erro ao atualizar preços: ${precosResponse.status}`
@@ -101,7 +94,6 @@ export async function POST(request: NextRequest) {
 
       // ✅ ETAPA 2: Atualizar vendas (se solicitado)
       if (updateSales) {
-        console.log(`[QUICK_SYNC] Atualizando vendas (${period} dias)...`);
 
         const vendasResponse = await fetch(
           `${request.nextUrl.origin}/api/mercadolivre/analytics/sales-optimized?accountId=${accountId}&period=${period}`,
@@ -116,11 +108,6 @@ export async function POST(request: NextRequest) {
 
         if (vendasResponse.ok) {
           resultados.vendas = await vendasResponse.json();
-          console.log(
-            `[QUICK_SYNC] ✅ Vendas: ${
-              resultados.vendas?.summary?.totalQuantity || 0
-            } itens vendidos`
-          );
         } else {
           console.warn(
             `[QUICK_SYNC] ⚠️ Erro ao atualizar vendas: ${vendasResponse.status}`
@@ -134,9 +121,6 @@ export async function POST(request: NextRequest) {
       resultados.fim = new Date().toISOString();
       resultados.duracao = endTime - startTime;
 
-      console.log(
-        `[QUICK_SYNC] ✅ Sincronização concluída em ${resultados.duracao}ms`
-      );
 
       // ✅ TESTE: Verificar algumas métricas pós-sincronização
       const metricas = await prisma.produtoMercadoLivre.aggregate({

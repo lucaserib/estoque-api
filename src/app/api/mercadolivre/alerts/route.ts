@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[ALERTS_API] Buscando alertas: type=${type}, severity=${severity}`);
 
     const cacheKey = createCacheKey("alerts", accountId, type, severity);
 
@@ -502,7 +501,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[ALERTS_API] Processando ação: ${action} para ${alertIds.length} alertas`);
 
     // ✅ PROCESSAR AÇÃO
     const result = { success: true, processed: 0, errors: [] as string[] };
@@ -510,13 +508,11 @@ export async function POST(request: NextRequest) {
     switch (action) {
       case "mark_read":
         // Por enquanto, apenas log. Em produção, armazenar em tabela de alertas lidos
-        console.log(`[ALERTS_API] Marcando como lidos:`, alertIds);
         result.processed = alertIds.length;
         break;
 
       case "dismiss":
         // Dispensar alertas permanentemente
-        console.log(`[ALERTS_API] Dispensando alertas:`, alertIds);
         result.processed = alertIds.length;
         break;
 

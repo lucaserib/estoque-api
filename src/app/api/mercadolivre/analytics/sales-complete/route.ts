@@ -171,18 +171,12 @@ export async function GET(request: NextRequest) {
       const analytics = await withCache(
         cacheKey,
         async (): Promise<SalesAnalytics> => {
-          console.log(
-            `[SALES_COMPLETE] Buscando vendas de ${startDate.toISOString()} até ${endDate.toISOString()} (${actualPeriod} dias${customStartDate ? ' - DATAS CUSTOMIZADAS' : ''})`
-          );
 
           const allOrders: MLOrder[] = await fetchAllOrdersOrThrow({
             accessToken,
             sellerId: account.mlUserId,
           });
 
-          console.log(
-            `[SALES_COMPLETE] Total de pedidos obtidos: ${allOrders.length}`
-          );
 
           const validStatuses = [
             "paid",
@@ -220,12 +214,6 @@ export async function GET(request: NextRequest) {
             );
           });
 
-          console.log(
-            `[SALES_COMPLETE] Pedidos válidos no período: ${periodOrders.length}`
-          );
-          console.log(
-            `[SALES_COMPLETE] Pedidos cancelados no período: ${cancelledOrders.length}`
-          );
 
           const productSales = new Map<string, SalesProduct>();
           const dailyData = new Map<
@@ -476,33 +464,6 @@ export async function GET(request: NextRequest) {
             },
           };
 
-          console.log(
-            `[SALES_COMPLETE] Análise concluída: ${totalOrders} pedidos, ${totalItems} itens`
-          );
-          console.log(
-            `[SALES_COMPLETE] Receita - Produtos: R$ ${totalProductRevenue.toFixed(2)} | Frete: R$ ${totalShippingRevenue.toFixed(2)} | Total: R$ ${totalRevenue.toFixed(2)}`
-          );
-          console.log(
-            `[SALES_COMPLETE] Cancelamentos: ${
-              cancelledOrders.length
-            } pedidos, ${totalCancelledItems} itens, R$ ${totalCancelledRevenue.toFixed(
-              2
-            )} (${cancellationRate.toFixed(2)}%)`
-          );
-          console.log(
-            `[SALES_COMPLETE] Produtos cancelados: ${cancelledProductsList.length} produtos diferentes`
-          );
-          if (cancelledProductsList.length > 0) {
-            console.log(
-              `[SALES_COMPLETE] Top 3 produtos cancelados:`,
-              cancelledProductsList.slice(0, 3).map(p => ({
-                nome: p.productName,
-                quantidade: p.totalCancelled,
-                taxa: `${p.cancellationRate.toFixed(1)}%`
-              }))
-            );
-          }
-
           return analytics;
         },
         "sales"
@@ -523,9 +484,6 @@ export async function GET(request: NextRequest) {
         const previousPeriodData = await withCache(
           prevCacheKey,
           async () => {
-            console.log(
-              `[SALES_COMPLETE] Buscando dados do período anterior: ${prevStartDate.toISOString()} até ${prevEndDate.toISOString()}`
-            );
 
             const allPrevOrders: MLOrder[] = await fetchAllOrdersOrThrow({
               accessToken,

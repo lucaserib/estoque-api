@@ -29,7 +29,6 @@ export async function POST(request: NextRequest) {
     });
 
     if (!account) {
-      console.log(`Conta ML não encontrada para user_id: ${user_id}`);
       return NextResponse.json(
         { error: "Conta não encontrada" },
         { status: 404 }

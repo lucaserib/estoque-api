@@ -70,7 +70,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`[VINCULAÇÃO] Produto ${localProduct.sku} vinculado a ${mlProduct.mlItemId}`);
 
     // Sincronizar estoque se solicitado
     let stockSynced = false;
@@ -94,7 +93,6 @@ export async function POST(request: NextRequest) {
         );
 
         stockSynced = true;
-        console.log(`[VINCULAÇÃO] Estoque sincronizado: ${estoqueTotal} unidades`);
       } catch (stockError) {
         console.error("[VINCULAÇÃO] Erro ao sincronizar estoque:", stockError);
       }

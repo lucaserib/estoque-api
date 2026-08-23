@@ -47,7 +47,6 @@ export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
 
-    console.log("[BATCH_ANALYSIS] Iniciando análise em lote de reposição");
 
     // 1. Buscar todos os produtos do usuário
     const produtos = await prisma.produto.findMany({
@@ -347,15 +346,6 @@ export async function GET(request: NextRequest) {
       return diasA - diasB;
     });
 
-    console.log(
-      `[BATCH_ANALYSIS] Análise concluída: ${summary.total} produtos precisam de reposição`
-    );
-    console.log(
-      `[BATCH_ANALYSIS] Crítico: ${summary.critico} | Atenção: ${summary.atencao}`
-    );
-    console.log(
-      `[BATCH_ANALYSIS] Custo total: R$ ${summary.custoTotalGeral.toFixed(2)}`
-    );
 
     return NextResponse.json({
       success: true,

@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[PRECOS_API] Buscando preços para ${itemIds.length} produtos`);
 
     const accessToken = await MercadoLivreService.getValidToken(accountId);
     const precos = [];
@@ -92,15 +91,6 @@ export async function POST(request: NextRequest) {
 
         precos.push(preco);
 
-        if (preco.temPromocao) {
-          console.log(
-            `[PRECOS_API] ✅ ${itemId}: R$ ${(preco.precoAtual / 100).toFixed(
-              2
-            )} (${preco.desconto}% OFF) - Original: R$ ${(preco.precoOriginal! / 100).toFixed(2)}`
-          );
-        }
-
-        // Delay para não sobrecarregar a API
         await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (itemError) {
         console.error(
@@ -110,11 +100,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log(
-      `[PRECOS_API] ✅ ${precos.length} preços processados, ${
-        precos.filter((p) => p.temPromocao).length
-      } com promoção`
-    );
 
     return NextResponse.json({
       success: true,

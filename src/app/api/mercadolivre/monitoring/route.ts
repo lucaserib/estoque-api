@@ -34,9 +34,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(
-      `[MONITORING] Coletando métricas de performance para ${accountId} (${period})`
-    );
 
     const cacheKey = createCacheKey("monitoring", accountId, period);
 
@@ -92,9 +89,6 @@ async function collectPerformanceMetrics(
   const periodMs = getPeriodMs(period);
   const startDate = new Date(now.getTime() - periodMs);
 
-  console.log(
-    `[MONITORING] Coletando métricas de ${startDate.toISOString()} até ${now.toISOString()}`
-  );
 
   // ✅ MÉTRICAS PARALELAS
   const [

@@ -4,9 +4,6 @@ import { NextRequest } from "next/server";
 
 export async function verifyUser(req: NextRequest) {
   try {
-    console.log("Iniciando verificação de usuário");
-
-    // ✅ MELHORIA: Usar mesma lógica do middleware para detecção de token
     const isSecure = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
     const isFromNgrok =
       req.headers.get("host")?.includes(".ngrok") ||
@@ -20,7 +17,6 @@ export async function verifyUser(req: NextRequest) {
       cookieName: isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token"
     });
 
-    // ✅ FALLBACK: Para ngrok, tentar também com cookie padrão se não encontrou o seguro
     if (!token && isFromNgrok) {
       token = await getToken({
         req,
@@ -28,10 +24,6 @@ export async function verifyUser(req: NextRequest) {
         secureCookie: false,
         cookieName: "next-auth.session-token"
       });
-
-      if (token) {
-        console.log("✅ Token encontrado via fallback para ngrok");
-      }
     }
 
     if (!token) {
@@ -45,17 +37,13 @@ export async function verifyUser(req: NextRequest) {
     }
 
     const userId = token.id as string;
-    console.log("Token obtido para usuário ID:", userId);
 
     try {
-      // Verifica se o usuário já existe no banco de dados
       let user = await prisma.user.findUnique({
         where: { id: userId },
       });
 
-      // Se o usuário não existir, cria um novo
       if (!user) {
-        console.log("Usuário não encontrado no banco, tentando criar");
         if (!token.email) {
           console.error(
             "Não foi possível criar usuário: email não fornecido no token"
@@ -70,9 +58,6 @@ export async function verifyUser(req: NextRequest) {
             name: token.name || "Usuário",
           },
         });
-        console.log("Usuário criado com sucesso:", user.id);
-      } else {
-        console.log("Usuário encontrado:", user.id);
       }
 
       return user;

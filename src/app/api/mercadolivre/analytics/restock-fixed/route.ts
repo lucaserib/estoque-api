@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`[RESTOCK_FIXED] Iniciando análise para ${period} dias`);
 
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: { id: accountId, userId: user.id, isActive: true },
@@ -38,7 +37,6 @@ export async function GET(request: NextRequest) {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
 
       // ✅ CORREÇÃO: Query Prisma simplificada e segura
-      console.log(`[RESTOCK_FIXED] Buscando produtos vinculados...`);
 
       const produtosML = await prisma.produtoMercadoLivre.findMany({
         where: {
@@ -67,9 +65,6 @@ export async function GET(request: NextRequest) {
         take: 100, // ✅ PERFORMANCE: Limitar resultados
       });
 
-      console.log(
-        `[RESTOCK_FIXED] ✅ ${produtosML.length} produtos encontrados`
-      );
 
       if (produtosML.length === 0) {
         return NextResponse.json({
@@ -180,7 +175,6 @@ export async function GET(request: NextRequest) {
         return a.diasRestantes - b.diasRestantes;
       });
 
-      console.log(`[RESTOCK_FIXED] ✅ ${suggestions.length} sugestões geradas`);
 
       return NextResponse.json({
         success: true,
