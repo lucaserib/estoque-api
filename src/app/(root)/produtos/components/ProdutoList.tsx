@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Produto } from "../types";
+import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
 import {
   Table,
   TableBody,
@@ -78,42 +79,57 @@ const ProdutoList = ({
   }>({});
   const [lastReplenishmentFetch, setLastReplenishmentFetch] = useState<number>(0);
   const [isLoadingReplenishment, setIsLoadingReplenishment] = useState(false);
+  const [armazens, setArmazens] = useState<{ id: string; nome: string }[]>([]);
   const itemsPerPage = 10;
   const REPLENISHMENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutos em milissegundos
 
-  // Fetch stock data on mount and when produtos change OR refreshTrigger changes
+  const fetchStockTotals = useCallback(async () => {
+    if (produtos.length === 0) return;
+
+    try {
+      const ids = produtos.map((p) => p.id).join(",");
+      const response = await fetch(`/api/estoque/produtos-batch?ids=${ids}`);
+      if (!response.ok) throw new Error("Erro ao buscar estoque");
+
+      const batch: Record<
+        string,
+        { totalQuantity: number; estoqueSeguranca: number }
+      > = await response.json();
+
+      const stockMap: { [key: string]: number } = {};
+      const estoqueSegurancaMap: { [key: string]: number } = {};
+      for (const [produtoId, info] of Object.entries(batch)) {
+        stockMap[produtoId] = info.totalQuantity;
+        estoqueSegurancaMap[produtoId] = info.estoqueSeguranca;
+      }
+
+      setStockData(stockMap);
+      setEstoqueSegurancaData(estoqueSegurancaMap);
+    } catch (error) {
+      console.error("Erro ao buscar estoque:", error);
+    }
+  }, [produtos]);
+
   useEffect(() => {
-    const fetchStockTotals = async () => {
-      if (produtos.length === 0) return;
+    fetchStockTotals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [produtos.length, refreshTrigger]);
 
+  useEffect(() => {
+    const fetchArmazens = async () => {
       try {
-        // Uma única chamada batch em vez de um fetch por produto (N+1)
-        const ids = produtos.map((p) => p.id).join(",");
-        const response = await fetch(`/api/estoque/produtos-batch?ids=${ids}`);
-        if (!response.ok) throw new Error("Erro ao buscar estoque");
-
-        const batch: Record<
-          string,
-          { totalQuantity: number; estoqueSeguranca: number }
-        > = await response.json();
-
-        const stockMap: { [key: string]: number } = {};
-        const estoqueSegurancaMap: { [key: string]: number } = {};
-        for (const [produtoId, info] of Object.entries(batch)) {
-          stockMap[produtoId] = info.totalQuantity;
-          estoqueSegurancaMap[produtoId] = info.estoqueSeguranca;
+        const response = await fetch("/api/estoque/armazens");
+        if (response.ok) {
+          const todos: { id: string; nome: string }[] = await response.json();
+          setArmazens(todos.filter((a) => a.nome !== FULL_ARMAZEM_NOME));
         }
-
-        setStockData(stockMap);
-        setEstoqueSegurancaData(estoqueSegurancaMap);
       } catch (error) {
-        console.error("Erro ao buscar estoque:", error);
+        console.error("Erro ao buscar armazéns:", error);
       }
     };
 
-    fetchStockTotals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [produtos.length, refreshTrigger]); // Refetch when produtos or refreshTrigger change
+    fetchArmazens();
+  }, []);
 
   // Função para buscar status de reposição com cache
   const fetchReplenishmentStatus = async (forceRefresh = false) => {
@@ -456,11 +472,13 @@ const ProdutoList = ({
                       stockMinimum={estoqueSegurancaData[produto.id]}
                       isLoadingStock={stockData[produto.id] === undefined}
                       replenishmentStatus={replenishmentStatus[produto.id]}
+                      armazens={armazens}
                       onDelete={onDelete}
                       onEdit={handleEdit}
                       onViewSuppliers={handleViewSuppliers}
                       onViewStock={fetchStockDetails}
                       onViewReplenishment={handleViewReplenishment}
+                      onStockAdjusted={fetchStockTotals}
                     />
                   ))
                 ) : (

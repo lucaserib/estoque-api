@@ -1,6 +1,7 @@
 "use client";
 
 import { memo } from "react";
+import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, AlertTriangle, CheckCircle, ShoppingCart, Truck, TrendingUp } from "lucide-react";
@@ -33,6 +34,7 @@ interface ReplenishmentItem {
     custoTotal: number;
   };
   custoTotalReposicao: number;
+  custoIndefinido: boolean;
 }
 
 interface ReplenishmentTableRowProps {
@@ -214,9 +216,18 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
 
         {/* Custo Total */}
         <td className="px-4 py-3 text-right">
-          <span className="font-bold text-purple-900 dark:text-purple-300">
-            {formatCurrency(item.custoTotalReposicao * 100)}
-          </span>
+          {item.custoIndefinido ? (
+            <Link
+              href={`/produtos/${item.produtoId}`}
+              className="text-sm text-warning underline underline-offset-2"
+            >
+              Custo não definido
+            </Link>
+          ) : (
+            <span className="font-bold text-purple-900 dark:text-purple-300">
+              {formatCurrency(item.custoTotalReposicao * 100)}
+            </span>
+          )}
         </td>
 
         {/* Ações */}

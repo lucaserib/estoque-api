@@ -3,6 +3,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
+import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
 
 export async function GET(request: NextRequest) {
   try {
@@ -135,6 +136,57 @@ export async function GET(request: NextRequest) {
         Object.keys(estoqueFullPorProduto).length
       }`
     );
+
+    const produtosComFull = Object.entries(estoqueFullPorProduto);
+    if (produtosComFull.length > 0) {
+      const armazemFull =
+        (await prisma.armazem.findFirst({
+          where: { userId: user.id, nome: FULL_ARMAZEM_NOME },
+        })) ??
+        (await prisma.armazem.create({
+          data: { nome: FULL_ARMAZEM_NOME, userId: user.id },
+        }));
+
+      for (const [produtoId, quantidade] of produtosComFull) {
+        try {
+          const estoqueAtual = await prisma.estoque.findUnique({
+            where: {
+              produtoId_armazemId: { produtoId, armazemId: armazemFull.id },
+            },
+          });
+
+          if (estoqueAtual?.quantidade === quantidade) continue;
+
+          await prisma.$transaction([
+            prisma.estoque.upsert({
+              where: {
+                produtoId_armazemId: {
+                  produtoId,
+                  armazemId: armazemFull.id,
+                },
+              },
+              create: { produtoId, armazemId: armazemFull.id, quantidade },
+              update: { quantidade },
+            }),
+            prisma.estoqueMovimentacao.create({
+              data: {
+                userId: user.id,
+                produtoId,
+                armazemId: armazemFull.id,
+                quantidadeAnterior: estoqueAtual?.quantidade ?? 0,
+                quantidadeNova: quantidade,
+                origem: "SINCRONIZACAO_FULL_ML",
+              },
+            }),
+          ]);
+        } catch (fullSyncError) {
+          console.error(
+            `[VENDAS_ML] Erro ao sincronizar estoque Full do produto ${produtoId}:`,
+            fullSyncError
+          );
+        }
+      }
+    }
 
     // Atualizar mlSold90Days no banco POR ANÚNCIO (mlItemId)
     // IMPORTANTE: Cada anúncio tem suas próprias vendas!

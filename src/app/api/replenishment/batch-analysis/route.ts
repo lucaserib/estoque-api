@@ -36,6 +36,7 @@ interface BatchAnalysisResult {
     custoTotal: number;
   };
   custoTotalReposicao: number;
+  custoIndefinido: boolean;
 }
 
 /**
@@ -284,8 +285,10 @@ export async function GET(request: NextRequest) {
           statusGeral = "atencao";
         }
 
-        const custoTotalReposicao =
-          (reposicaoFull?.custoTotal || 0) + custoTotalLocal;
+        const custoIndefinido = !produto.custoMedio;
+        const custoTotalReposicao = custoIndefinido
+          ? 0
+          : (reposicaoFull?.custoTotal || 0) + custoTotalLocal;
 
         // Adicionar apenas se precisar de reposição (crítico ou atenção)
         if (statusGeral === "critico" || statusGeral === "atencao") {
@@ -305,6 +308,7 @@ export async function GET(request: NextRequest) {
             reposicaoFull,
             reposicaoLocal,
             custoTotalReposicao,
+            custoIndefinido,
           });
 
           summary.total++;

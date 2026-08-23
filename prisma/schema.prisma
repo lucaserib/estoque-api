@@ -27,6 +27,7 @@ model User {
   StockReplenishmentConfig StockReplenishmentConfig[]
   transferencias           TransferenciaEstoque[]
   notifications            Notification[]
+  movimentacoesEstoque     EstoqueMovimentacao[]
 }
 
 model MercadoLivreAccount {
@@ -153,33 +154,34 @@ model Session {
 }
 
 model Produto {
-  id                  String                @id @default(uuid())
-  nome                String
-  sku                 String
-  isKit               Boolean               @default(false)
-  ean                 BigInt?
-  userId              String
-  custoMedio          Int?                  @default(0)
-  imagemUrl           String?
-  imagemThumbUrl      String?
-  descricao           String?
-  marca               String?
-  categoria           String?
-  pesoGramas          Int?
-  alturaCm            Int?
-  larguraCm           Int?
-  comprimentoCm       Int?
-  ativo               Boolean               @default(true)
-  componentes         Componente[]          @relation("KitToComponente")
-  kitsComponentes     Componente[]          @relation("ProdutoToComponente")
-  detalhesSaida       DetalhesSaida[]
-  estoques            Estoque[]
-  pedidos             PedidoProduto[]
-  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fornecedores        ProdutoFornecedor[]
-  saidas              Saida[]
-  ProdutoMercadoLivre ProdutoMercadoLivre[]
-  transferenciaItens  TransferenciaItem[]
+  id                   String                @id @default(uuid())
+  nome                 String
+  sku                  String
+  isKit                Boolean               @default(false)
+  ean                  BigInt?
+  userId               String
+  custoMedio           Int?                  @default(0)
+  imagemUrl            String?
+  imagemThumbUrl       String?
+  descricao            String?
+  marca                String?
+  categoria            String?
+  pesoGramas           Int?
+  alturaCm             Int?
+  larguraCm            Int?
+  comprimentoCm        Int?
+  ativo                Boolean               @default(true)
+  componentes          Componente[]          @relation("KitToComponente")
+  kitsComponentes      Componente[]          @relation("ProdutoToComponente")
+  detalhesSaida        DetalhesSaida[]
+  estoques             Estoque[]
+  pedidos              PedidoProduto[]
+  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fornecedores         ProdutoFornecedor[]
+  saidas               Saida[]
+  ProdutoMercadoLivre  ProdutoMercadoLivre[]
+  transferenciaItens   TransferenciaItem[]
+  movimentacoesEstoque EstoqueMovimentacao[]
 
   @@unique([sku, userId])
 }
@@ -202,6 +204,30 @@ model Estoque {
   produto          Produto @relation(fields: [produtoId], references: [id])
 
   @@id([produtoId, armazemId])
+}
+
+enum OrigemMovimentacaoEstoque {
+  IMPORTACAO_PLANILHA
+  AJUSTE_MANUAL
+  SINCRONIZACAO_FULL_ML
+}
+
+model EstoqueMovimentacao {
+  id                 String                    @id @default(uuid())
+  userId             String
+  produtoId          String
+  armazemId          String
+  quantidadeAnterior Int
+  quantidadeNova     Int
+  origem             OrigemMovimentacaoEstoque
+  observacao         String?
+  createdAt          DateTime                  @default(now())
+  user               User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  produto            Produto                   @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  armazem            Armazem                   @relation(fields: [armazemId], references: [id])
+
+  @@index([produtoId, armazemId])
+  @@map("estoque_movimentacoes")
 }
 
 model Saida {
@@ -235,6 +261,7 @@ model Armazem {
   saidas                Saida[]
   transferenciasDestino TransferenciaEstoque[] @relation("TransferenciaDestino")
   transferenciasOrigem  TransferenciaEstoque[] @relation("TransferenciaOrigem")
+  movimentacoes         EstoqueMovimentacao[]
 }
 
 model Fornecedor {

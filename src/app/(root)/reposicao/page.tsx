@@ -46,6 +46,7 @@ interface BatchAnalysisResult {
     custoTotal: number;
   };
   custoTotalReposicao: number;
+  custoIndefinido: boolean;
 }
 
 interface BatchAnalysisResponse {

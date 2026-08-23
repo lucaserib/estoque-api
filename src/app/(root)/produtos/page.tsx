@@ -334,6 +334,12 @@ const ProdutosPage = () => {
               Integrações
             </Button>
           </Link>
+          <Link href="/produtos/importar-estoque">
+            <Button variant="outline" className="gap-2">
+              <Box className="h-4 w-4" />
+              Importar Estoque
+            </Button>
+          </Link>
           {pendingCount > 0 && (
             <Link href="/produtos/vincular">
               <Button variant="outline" className="gap-2 relative">

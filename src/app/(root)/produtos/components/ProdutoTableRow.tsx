@@ -10,6 +10,12 @@ import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { formatBRL } from "@/lib/format";
+import { InlineStockAdjust } from "./InlineStockAdjust";
+
+interface ArmazemOption {
+  id: string;
+  nome: string;
+}
 
 interface ProdutoTableRowProps {
   produto: Produto;
@@ -17,11 +23,13 @@ interface ProdutoTableRowProps {
   stockMinimum?: number;
   isLoadingStock: boolean;
   replenishmentStatus?: "ok" | "atencao" | "critico";
+  armazens: ArmazemOption[];
   onDelete: (id: string) => void;
   onEdit: (produto: Produto) => void;
   onViewSuppliers: (produto: Produto) => void;
   onViewStock: (produto: Produto) => void;
   onViewReplenishment: (produto: Produto) => void;
+  onStockAdjusted: () => void;
 }
 
 export const ProdutoTableRow = memo<ProdutoTableRowProps>(
@@ -31,11 +39,13 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
     stockMinimum,
     isLoadingStock,
     replenishmentStatus,
+    armazens,
     onDelete,
     onEdit,
     onViewSuppliers,
     onViewStock,
     onViewReplenishment,
+    onStockAdjusted,
   }) => {
     const isCritical = replenishmentStatus === "critico";
     const isAttention = replenishmentStatus === "atencao";
@@ -125,6 +135,12 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
                     <AlertTriangle className="h-4 w-4 text-amber-500" />
                   </span>
                 )}
+              <InlineStockAdjust
+                produtoId={produto.id}
+                armazens={armazens}
+                currentTotal={stockQuantity}
+                onAdjusted={onStockAdjusted}
+              />
             </div>
           ) : (
             <span className="text-muted-foreground text-sm">-</span>
