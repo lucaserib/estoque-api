@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { StatusPill } from "@/components/ui/status-pill";
 import { toast } from "sonner";
 import {
   TrendingUp,
@@ -177,27 +178,24 @@ export function ReposicaoModal({
     switch (status) {
       case "critico":
         return (
-          <Badge variant="destructive" className="gap-1">
+          <StatusPill tone="critical" className="gap-1">
             <AlertCircle className="h-3 w-3" />
             Crítico
-          </Badge>
+          </StatusPill>
         );
       case "atencao":
         return (
-          <Badge className="gap-1 bg-yellow-500 hover:bg-yellow-600 text-white">
+          <StatusPill tone="warning" className="gap-1">
             <AlertTriangle className="h-3 w-3" />
             Atenção
-          </Badge>
+          </StatusPill>
         );
       default:
         return (
-          <Badge
-            variant="outline"
-            className="gap-1 text-green-600 border-green-600"
-          >
+          <StatusPill tone="success" className="gap-1">
             <CheckCircle className="h-3 w-3" />
             OK
-          </Badge>
+          </StatusPill>
         );
     }
   };
@@ -208,7 +206,7 @@ export function ReposicaoModal({
         <div className="sticky top-0 z-10 backdrop-blur-md bg-card/90 border-b border-border rounded-t-xl">
           <DialogHeader className="p-6 pb-4">
             <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
-              <TrendingUp className="h-5 w-5 text-indigo-500" />
+              <TrendingUp className="h-5 w-5 text-primary" />
               Sugestão de Reposição
             </DialogTitle>
             <DialogDescription className="text-muted-foreground mt-2">
@@ -229,12 +227,12 @@ export function ReposicaoModal({
             </h3>
 
             {/* Período de Análise - Destacado */}
-            <div className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-950/30 dark:to-indigo-950/30 p-4 rounded-lg border-2 border-purple-200 dark:border-purple-800">
+            <div className="bg-primary/10 p-4 rounded-lg border-2 border-primary/30">
               <Label
                 htmlFor="analysisPeriodDays"
-                className="text-sm font-semibold text-purple-800 dark:text-purple-200 mb-2 block"
+                className="text-sm font-semibold text-primary mb-2 block"
               >
-                📊 Período de Análise de Vendas
+                Período de Análise de Vendas
               </Label>
               <div className="grid grid-cols-3 gap-2">
                 <button
@@ -244,8 +242,8 @@ export function ReposicaoModal({
                   }
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     config.analysisPeriodDays === 30
-                      ? "bg-purple-600 text-white shadow-lg scale-105"
-                      : "bg-card text-foreground border border-input hover:border-purple-400 dark:hover:border-purple-600"
+                      ? "bg-primary text-primary-foreground shadow-lg scale-105"
+                      : "bg-card text-foreground border border-input hover:border-primary/50"
                   }`}
                 >
                   30 dias
@@ -257,8 +255,8 @@ export function ReposicaoModal({
                   }
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     config.analysisPeriodDays === 60
-                      ? "bg-purple-600 text-white shadow-lg scale-105"
-                      : "bg-card text-foreground border border-input hover:border-purple-400 dark:hover:border-purple-600"
+                      ? "bg-primary text-primary-foreground shadow-lg scale-105"
+                      : "bg-card text-foreground border border-input hover:border-primary/50"
                   }`}
                 >
                   60 dias
@@ -270,15 +268,15 @@ export function ReposicaoModal({
                   }
                   className={`px-4 py-2 rounded-lg font-medium transition-all ${
                     config.analysisPeriodDays === 90
-                      ? "bg-purple-600 text-white shadow-lg scale-105"
-                      : "bg-card text-foreground border border-input hover:border-purple-400 dark:hover:border-purple-600"
+                      ? "bg-primary text-primary-foreground shadow-lg scale-105"
+                      : "bg-card text-foreground border border-input hover:border-primary/50"
                   }`}
                 >
                   90 dias
                 </button>
               </div>
-              <p className="text-xs text-purple-600 dark:text-purple-400 mt-2">
-                ℹ️ Define quantos dias de vendas serão considerados para
+              <p className="text-xs text-muted-foreground mt-2">
+                Define quantos dias de vendas serão considerados para
                 calcular a média diária
               </p>
             </div>
@@ -378,27 +376,27 @@ export function ReposicaoModal({
                     {sugestao.estoqueLocal}
                   </p>
                 </div>
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">
+                <div className="bg-background p-3 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground mb-1">
                     Estoque Full
                   </p>
-                  <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                  <p className="text-2xl font-bold text-info">
                     {sugestao.estoqueFull}
                   </p>
                 </div>
-                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                  <p className="text-xs text-indigo-600 dark:text-indigo-400 mb-1">
+                <div className="bg-background p-3 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground mb-1">
                     Total
                   </p>
-                  <p className="text-2xl font-bold text-indigo-700 dark:text-indigo-300">
+                  <p className="text-2xl font-bold text-foreground">
                     {sugestao.estoqueTotal}
                   </p>
                 </div>
-                <div className="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-                  <p className="text-xs text-purple-600 dark:text-purple-400 mb-1">
+                <div className="bg-background p-3 rounded-lg border border-border">
+                  <p className="text-xs text-muted-foreground mb-1">
                     Tipo
                   </p>
-                  <p className="text-lg font-bold text-purple-700 dark:text-purple-300 uppercase">
+                  <p className="text-lg font-bold text-foreground uppercase">
                     {sugestao.tipoAnuncio === "full"
                       ? "Full"
                       : sugestao.tipoAnuncio === "local"
@@ -410,25 +408,25 @@ export function ReposicaoModal({
 
               {/* Métricas de Vendas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
-                  <p className="text-sm font-medium text-green-800 dark:text-green-200 mb-2">
+                <div className="bg-background p-4 rounded-lg border border-border">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">
                     Vendas ({config.analysisPeriodDays} dias)
                   </p>
-                  <p className="text-3xl font-bold text-green-700 dark:text-green-300">
+                  <p className="text-3xl font-bold text-success">
                     {sugestao.mediaVendas90d}
                   </p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     unidades vendidas
                   </p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
-                  <p className="text-sm font-medium text-orange-800 dark:text-orange-200 mb-2">
+                <div className="bg-background p-4 rounded-lg border border-border">
+                  <p className="text-sm font-medium text-muted-foreground mb-2">
                     Média Diária
                   </p>
-                  <p className="text-3xl font-bold text-orange-700 dark:text-orange-300">
+                  <p className="text-3xl font-bold text-primary">
                     {sugestao.mediaDiaria.toFixed(2)}
                   </p>
-                  <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  <p className="text-xs text-muted-foreground mt-1">
                     unidades/dia
                   </p>
                 </div>
@@ -436,43 +434,43 @@ export function ReposicaoModal({
 
               {/* Reposição Full (se aplicável) */}
               {sugestao.reposicaoFull && (
-                <div className="border-2 border-blue-200 dark:border-blue-800 rounded-lg overflow-hidden">
-                  <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-3">
+                <div className="border-2 border-info/30 rounded-lg overflow-hidden">
+                  <div className="bg-info p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <Truck className="h-5 w-5 text-white" />
-                        <h4 className="font-semibold text-white">
+                        <Truck className="h-5 w-5 text-info-foreground" />
+                        <h4 className="font-semibold text-info-foreground">
                           Reposição Full (Transferência Local → Full)
                         </h4>
                       </div>
                       {getStatusBadge(sugestao.reposicaoFull.status)}
                     </div>
                   </div>
-                  <div className="bg-blue-50 dark:bg-blue-950/30 p-4 space-y-3">
+                  <div className="bg-info/10 p-4 space-y-3">
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                        <p className="text-xs text-info mb-1">
                           Dias Restantes
                         </p>
-                        <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                        <p className="text-xl font-bold text-info">
                           {sugestao.reposicaoFull.diasRestantes > 999
                             ? "∞"
                             : sugestao.reposicaoFull.diasRestantes}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                        <p className="text-xs text-info mb-1">
                           Ponto de Reposição
                         </p>
-                        <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                        <p className="text-xl font-bold text-info">
                           {sugestao.reposicaoFull.pontoReposicao}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-blue-700 dark:text-blue-300 mb-1">
+                        <p className="text-xs text-info mb-1">
                           Sugerido
                         </p>
-                        <p className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                        <p className="text-xl font-bold text-info">
                           {sugestao.reposicaoFull.quantidadeSugerida}
                         </p>
                       </div>
@@ -487,8 +485,8 @@ export function ReposicaoModal({
                             </p>
                             {sugestao.reposicaoFull?.acaoRecomendada ===
                               "aguardar_compra" && (
-                              <div className="mt-2 p-2 bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800 rounded">
-                                <p className="text-xs text-yellow-800 dark:text-yellow-200 flex items-center gap-1">
+                              <div className="mt-2 p-2 bg-warning/10 border border-warning/30 rounded">
+                                <p className="text-xs text-warning flex items-center gap-1">
                                   <AlertTriangle className="h-3 w-3" />
                                   <strong>Atenção:</strong> Será necessário
                                   comprar produtos do fornecedor antes de
@@ -498,7 +496,7 @@ export function ReposicaoModal({
                             )}
                             {sugestao.reposicaoFull?.acaoRecomendada ===
                               "transferir" && (
-                              <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                              <p className="text-xs text-info mt-1">
                                 ✓ Estoque local disponível para transferência
                                 imediata
                               </p>
@@ -508,7 +506,7 @@ export function ReposicaoModal({
                             "transferir" && (
                             <Button
                               size="sm"
-                              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                              className="gap-2 bg-info text-info-foreground hover:bg-info/90 shrink-0"
                               onClick={() =>
                                 toast.info(
                                   "Funcionalidade de transferência em desenvolvimento"
@@ -523,7 +521,7 @@ export function ReposicaoModal({
                       </div>
                     ) : (
                       <div className="bg-card p-3 rounded-lg">
-                        <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                        <p className="text-sm text-success flex items-center gap-2">
                           <CheckCircle className="h-4 w-4" />
                           {sugestao.reposicaoFull.mensagem}
                         </p>
@@ -534,43 +532,43 @@ export function ReposicaoModal({
               )}
 
               {/* Reposição Local */}
-              <div className="border-2 border-orange-200 dark:border-orange-800 rounded-lg overflow-hidden">
-                <div className="bg-gradient-to-r from-orange-500 to-orange-600 p-3">
+              <div className="border-2 border-warning/30 rounded-lg overflow-hidden">
+                <div className="bg-warning p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <ShoppingCart className="h-5 w-5 text-white" />
-                      <h4 className="font-semibold text-white">
+                      <ShoppingCart className="h-5 w-5 text-warning-foreground" />
+                      <h4 className="font-semibold text-warning-foreground">
                         Reposição Local (Compra do Fornecedor)
                       </h4>
                     </div>
                     {getStatusBadge(sugestao.reposicaoLocal.status)}
                   </div>
                 </div>
-                <div className="bg-orange-50 dark:bg-orange-950/30 p-4 space-y-3">
+                <div className="bg-warning/10 p-4 space-y-3">
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">
+                      <p className="text-xs text-warning mb-1">
                         Dias Restantes
                       </p>
-                      <p className="text-xl font-bold text-orange-900 dark:text-orange-100">
+                      <p className="text-xl font-bold text-warning">
                         {sugestao.reposicaoLocal.diasRestantes > 999
                           ? "∞"
                           : sugestao.reposicaoLocal.diasRestantes}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">
+                      <p className="text-xs text-warning mb-1">
                         Ponto de Reposição
                       </p>
-                      <p className="text-xl font-bold text-orange-900 dark:text-orange-100">
+                      <p className="text-xl font-bold text-warning">
                         {sugestao.reposicaoLocal.pontoReposicao}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-orange-700 dark:text-orange-300 mb-1">
+                      <p className="text-xs text-warning mb-1">
                         Sugerido
                       </p>
-                      <p className="text-xl font-bold text-orange-900 dark:text-orange-100">
+                      <p className="text-xl font-bold text-warning">
                         {sugestao.reposicaoLocal.quantidadeSugerida}
                       </p>
                     </div>
@@ -590,7 +588,7 @@ export function ReposicaoModal({
                             <div className="mt-2 space-y-1">
                               {sugestao.reposicaoLocal.quantidadeParaFull >
                                 0 && (
-                                <p className="text-xs text-blue-600 dark:text-blue-400">
+                                <p className="text-xs text-info">
                                   → {sugestao.reposicaoLocal.quantidadeParaFull}{" "}
                                   unidades para transferir ao Full
                                 </p>
@@ -608,7 +606,7 @@ export function ReposicaoModal({
                         </div>
                         <Button
                           size="sm"
-                          className="gap-2 bg-orange-600 hover:bg-orange-700 text-white shrink-0"
+                          className="gap-2 bg-warning text-warning-foreground hover:bg-warning/90 shrink-0"
                           onClick={() =>
                             toast.info(
                               "Funcionalidade de pedido de compra em desenvolvimento"
@@ -622,7 +620,7 @@ export function ReposicaoModal({
                     </div>
                   ) : (
                     <div className="bg-card p-3 rounded-lg">
-                      <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-2">
+                      <p className="text-sm text-success flex items-center gap-2">
                         <CheckCircle className="h-4 w-4" />
                         {sugestao.reposicaoLocal.mensagem}
                       </p>
@@ -637,7 +635,7 @@ export function ReposicaoModal({
                 sugestao.acoesPrioritarias.length > 0 && (
                   <div className="mt-5 border-t-2 border-border pt-5">
                     <h3 className="font-semibold text-sm text-foreground mb-3 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-indigo-500" />
+                      <TrendingUp className="h-4 w-4 text-primary" />
                       Plano de Ação Recomendado
                     </h3>
                     <div className="space-y-2">
@@ -646,20 +644,20 @@ export function ReposicaoModal({
                           key={index}
                           className={`flex items-center justify-between p-3 rounded-lg border-2 ${
                             acao.prioridade === "alta"
-                              ? "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800"
+                              ? "bg-destructive/10 border-destructive/30"
                               : acao.prioridade === "media"
-                              ? "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-800"
-                              : "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800"
+                              ? "bg-warning/10 border-warning/30"
+                              : "bg-success/10 border-success/30"
                           }`}
                         >
                           <div className="flex items-center gap-3 flex-1">
                             <div
                               className={`flex items-center justify-center w-8 h-8 rounded-full font-bold ${
                                 acao.prioridade === "alta"
-                                  ? "bg-red-500 text-white"
+                                  ? "bg-destructive text-destructive-foreground"
                                   : acao.prioridade === "media"
-                                  ? "bg-yellow-500 text-white"
-                                  : "bg-green-500 text-white"
+                                  ? "bg-warning text-warning-foreground"
+                                  : "bg-success text-success-foreground"
                               }`}
                             >
                               {index + 1}
@@ -693,7 +691,7 @@ export function ReposicaoModal({
                               }
                               className={
                                 acao.prioridade === "media"
-                                  ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                                  ? "bg-warning text-warning-foreground hover:bg-warning/90"
                                   : ""
                               }
                             >
@@ -709,8 +707,8 @@ export function ReposicaoModal({
                             variant="outline"
                             className={`ml-3 ${
                               acao.tipo === "transferir_full"
-                                ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
-                                : "bg-orange-600 hover:bg-orange-700 text-white border-orange-600"
+                                ? "bg-info text-info-foreground border-info hover:bg-info/90"
+                                : "bg-warning text-warning-foreground border-warning hover:bg-warning/90"
                             }`}
                             onClick={() => {
                               if (acao.tipo === "transferir_full") {
@@ -740,7 +738,7 @@ export function ReposicaoModal({
             </div>
           )}
 
-          <div className="bg-gradient-to-br from-gray-100 to-gray-50 p-4 rounded-lg border border-input">
+          <div className="bg-muted p-4 rounded-lg border border-input">
             <p className="font-semibold text-foreground mb-2 flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-muted-foreground" />
               Como funciona a análise?
@@ -808,11 +806,7 @@ export function ReposicaoModal({
             <Button variant="outline" onClick={onClose}>
               Fechar
             </Button>
-            <Button
-              onClick={handleSalvar}
-              disabled={loading}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
-            >
+            <Button onClick={handleSalvar} disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

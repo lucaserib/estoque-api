@@ -64,9 +64,9 @@ export function ProdutoEstoqueDialog({
 
   // Get progress color based on percentage
   const getProgressColor = (percentual: number) => {
-    if (percentual <= 30) return "bg-red-500";
-    if (percentual <= 60) return "bg-orange-500";
-    return "bg-green-500";
+    if (percentual <= 30) return "bg-destructive";
+    if (percentual <= 60) return "bg-warning";
+    return "bg-success";
   };
 
   // Calculate total stock
@@ -93,7 +93,7 @@ export function ProdutoEstoqueDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <Warehouse className="h-5 w-5 text-indigo-500" />
+                <Warehouse className="h-5 w-5 text-primary" />
                 Estoque de {produto.nome}
               </DialogTitle>
               <Button
@@ -118,7 +118,7 @@ export function ProdutoEstoqueDialog({
                     {produto.sku}
                   </h3>
                 </div>
-                <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                <Badge className="bg-info/10 text-info">
                   Estoque Total: {totalStock}
                 </Badge>
               </div>
@@ -126,14 +126,14 @@ export function ProdutoEstoqueDialog({
 
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <Warehouse className="h-5 w-5 text-indigo-500" />
+                <Warehouse className="h-5 w-5 text-primary" />
                 Estoque por Armazém
               </h3>
 
               {isLoading ? (
                 <div className="flex justify-center items-center py-10">
                   <div className="flex flex-col items-center">
-                    <Loader2 className="h-10 w-10 text-indigo-500 animate-spin mb-2" />
+                    <Loader2 className="h-10 w-10 text-primary animate-spin mb-2" />
                     <p className="text-muted-foreground">
                       Carregando informações de estoque...
                     </p>
@@ -174,9 +174,7 @@ export function ProdutoEstoqueDialog({
                         return (
                           <TableRow
                             key={item.armazemId}
-                            className={
-                              isCritical ? "bg-red-50 dark:bg-red-900/10" : ""
-                            }
+                            className={isCritical ? "bg-destructive/10" : ""}
                           >
                             <TableCell className="font-medium">
                               {item.armazem?.nome || "Armazém desconhecido"}
@@ -186,8 +184,8 @@ export function ProdutoEstoqueDialog({
                                 variant={isCritical ? "destructive" : "outline"}
                                 className={
                                   isCritical
-                                    ? "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                                    : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                                    ? "bg-destructive/10 text-destructive"
+                                    : "bg-success/10 text-success"
                                 }
                               >
                                 {item.quantidade} un.
@@ -195,10 +193,7 @@ export function ProdutoEstoqueDialog({
                             </TableCell>
                             <TableCell className="text-center">
                               {item.estoqueSeguranca ? (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300"
-                                >
+                                <Badge variant="outline" className="bg-info/10 text-info">
                                   {item.estoqueSeguranca} un.
                                 </Badge>
                               ) : (
@@ -216,8 +211,8 @@ export function ProdutoEstoqueDialog({
                                 />
                                 {isCritical && (
                                   <div className="mt-1 flex items-center">
-                                    <AlertCircle className="h-3 w-3 text-red-500 mr-1" />
-                                    <span className="text-xs text-red-500">
+                                    <AlertCircle className="h-3 w-3 text-destructive mr-1" />
+                                    <span className="text-xs text-destructive">
                                       {(item.estoqueSeguranca || 0) -
                                         item.quantidade}{" "}
                                       un. abaixo do mínimo

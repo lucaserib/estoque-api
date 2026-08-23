@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { StatusPill } from "@/components/ui/status-pill";
 import { toast } from "sonner";
 import {
   TrendingUp,
@@ -26,9 +27,10 @@ import {
   Package,
   DollarSign,
   Calendar,
-  TrendingDown,
   Clock,
   Box,
+  BarChart3,
+  Settings,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -217,24 +219,24 @@ export function ReplenishmentDetailModal({
     switch (status) {
       case "critico":
         return (
-          <Badge variant="destructive" className="gap-1">
+          <StatusPill tone="critical" className="gap-1">
             <AlertCircle className="h-3 w-3" />
             Crítico
-          </Badge>
+          </StatusPill>
         );
       case "atencao":
         return (
-          <Badge className="gap-1 bg-yellow-500 hover:bg-yellow-600 text-white">
+          <StatusPill tone="warning" className="gap-1">
             <AlertTriangle className="h-3 w-3" />
             Atenção
-          </Badge>
+          </StatusPill>
         );
       default:
         return (
-          <Badge variant="outline" className="gap-1 text-green-600 border-green-600">
+          <StatusPill tone="success" className="gap-1">
             <CheckCircle className="h-3 w-3" />
             OK
-          </Badge>
+          </StatusPill>
         );
     }
   };
@@ -247,7 +249,7 @@ export function ReplenishmentDetailModal({
             <div className="flex items-start justify-between">
               <div>
                 <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
-                  <Package className="h-5 w-5 text-purple-500" />
+                  <Package className="h-5 w-5 text-primary" />
                   Análise Detalhada de Reposição
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground mt-2">
@@ -270,16 +272,25 @@ export function ReplenishmentDetailModal({
         <div className="p-6">
           <Tabs defaultValue="analise" className="w-full">
             <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="analise">📊 Análise</TabsTrigger>
-              <TabsTrigger value="configuracao">⚙️ Configuração</TabsTrigger>
-              <TabsTrigger value="detalhes">📦 Detalhes</TabsTrigger>
+              <TabsTrigger value="analise" className="gap-1.5">
+                <BarChart3 className="h-4 w-4" />
+                Análise
+              </TabsTrigger>
+              <TabsTrigger value="configuracao" className="gap-1.5">
+                <Settings className="h-4 w-4" />
+                Configuração
+              </TabsTrigger>
+              <TabsTrigger value="detalhes" className="gap-1.5">
+                <Package className="h-4 w-4" />
+                Detalhes
+              </TabsTrigger>
             </TabsList>
 
             {/* ABA: ANÁLISE */}
             <TabsContent value="analise" className="space-y-6">
               {calculando ? (
                 <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   <span className="ml-3 text-muted-foreground">
                     Calculando sugestões...
                   </span>
@@ -317,10 +328,10 @@ export function ReplenishmentDetailModal({
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center justify-between">
-                          <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+                          <span className="text-3xl font-bold text-info">
                             {sugestao.estoqueFull}
                           </span>
-                          <Truck className="h-8 w-8 text-blue-400" />
+                          <Truck className="h-8 w-8 text-info/70" />
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
                           {sugestao.reposicaoFull
@@ -340,10 +351,10 @@ export function ReplenishmentDetailModal({
                       </CardHeader>
                       <CardContent>
                         <div className="flex items-center justify-between">
-                          <span className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+                          <span className="text-3xl font-bold text-primary">
                             {sugestao.mediaDiaria.toFixed(1)}
                           </span>
-                          <TrendingUp className="h-8 w-8 text-purple-400" />
+                          <TrendingUp className="h-8 w-8 text-primary/70" />
                         </div>
                         <p className="text-xs text-muted-foreground mt-2">
                           {sugestao.mediaVendas90d} vendas ({config.analysisPeriodDays}d)
@@ -354,10 +365,10 @@ export function ReplenishmentDetailModal({
 
                   {/* Ações Prioritárias */}
                   {sugestao.acoesPrioritarias.length > 0 && (
-                    <Card className="border-purple-200 dark:border-purple-800">
+                    <Card className="border-primary/30">
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-lg">
-                          <AlertCircle className="h-5 w-5 text-purple-600" />
+                          <AlertCircle className="h-5 w-5 text-primary" />
                           Ações Recomendadas
                         </CardTitle>
                       </CardHeader>
@@ -367,20 +378,20 @@ export function ReplenishmentDetailModal({
                             key={index}
                             className={`flex items-center justify-between p-4 rounded-lg border-2 ${
                               acao.prioridade === "alta"
-                                ? "bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-800"
+                                ? "bg-destructive/10 border-destructive/30"
                                 : acao.prioridade === "media"
-                                ? "bg-yellow-50 dark:bg-yellow-950/30 border-yellow-300 dark:border-yellow-800"
-                                : "bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800"
+                                ? "bg-warning/10 border-warning/30"
+                                : "bg-success/10 border-success/30"
                             }`}
                           >
                             <div className="flex items-center gap-4 flex-1">
                               <div
                                 className={`flex items-center justify-center w-10 h-10 rounded-full font-bold text-lg ${
                                   acao.prioridade === "alta"
-                                    ? "bg-red-500 text-white"
+                                    ? "bg-destructive text-destructive-foreground"
                                     : acao.prioridade === "media"
-                                    ? "bg-yellow-500 text-white"
-                                    : "bg-green-500 text-white"
+                                    ? "bg-warning text-warning-foreground"
+                                    : "bg-success text-success-foreground"
                                 }`}
                               >
                                 {index + 1}
@@ -423,7 +434,7 @@ export function ReplenishmentDetailModal({
                                 }
                                 className={
                                   acao.prioridade === "media"
-                                    ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                                    ? "bg-warning text-warning-foreground hover:bg-warning/90"
                                     : ""
                                 }
                               >
@@ -438,9 +449,9 @@ export function ReplenishmentDetailModal({
                               size="sm"
                               className={`ml-3 ${
                                 acao.tipo === "transferir_full"
-                                  ? "bg-blue-600 hover:bg-blue-700"
-                                  : "bg-orange-600 hover:bg-orange-700"
-                              } text-white`}
+                                  ? "bg-info text-info-foreground hover:bg-info/90"
+                                  : "bg-warning text-warning-foreground hover:bg-warning/90"
+                              }`}
                               onClick={() => {
                                 toast.info("Funcionalidade em desenvolvimento");
                               }}
@@ -457,11 +468,11 @@ export function ReplenishmentDetailModal({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Reposição Full */}
                     {sugestao.reposicaoFull && (
-                      <Card className="border-blue-200 dark:border-blue-800">
-                        <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/30 dark:to-blue-900/30">
+                      <Card className="border-info/30">
+                        <CardHeader className="bg-info/10">
                           <CardTitle className="flex items-center justify-between text-sm">
                             <span className="flex items-center gap-2">
-                              <Truck className="h-4 w-4 text-blue-600" />
+                              <Truck className="h-4 w-4 text-info" />
                               Reposição Full
                             </span>
                             {getStatusBadge(sugestao.reposicaoFull.status)}
@@ -471,13 +482,13 @@ export function ReplenishmentDetailModal({
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             <div>
                               <p className="text-muted-foreground">Ponto Reposição:</p>
-                              <p className="font-bold text-blue-600">
+                              <p className="font-bold text-info">
                                 {sugestao.reposicaoFull.pontoReposicao} un
                               </p>
                             </div>
                             <div>
                               <p className="text-muted-foreground">Sugerido:</p>
-                              <p className="font-bold text-blue-600">
+                              <p className="font-bold text-info">
                                 {sugestao.reposicaoFull.quantidadeSugerida} un
                               </p>
                             </div>
@@ -492,11 +503,11 @@ export function ReplenishmentDetailModal({
                     )}
 
                     {/* Reposição Local */}
-                    <Card className="border-orange-200 dark:border-orange-800">
-                      <CardHeader className="bg-gradient-to-r from-orange-50 to-orange-100 dark:from-orange-950/30 dark:to-orange-900/30">
+                    <Card className="border-warning/30">
+                      <CardHeader className="bg-warning/10">
                         <CardTitle className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-2">
-                            <ShoppingCart className="h-4 w-4 text-orange-600" />
+                            <ShoppingCart className="h-4 w-4 text-warning" />
                             Reposição Local
                           </span>
                           {getStatusBadge(sugestao.reposicaoLocal.status)}
@@ -506,13 +517,13 @@ export function ReplenishmentDetailModal({
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
                             <p className="text-muted-foreground">Ponto Reposição:</p>
-                            <p className="font-bold text-orange-600">
+                            <p className="font-bold text-warning">
                               {sugestao.reposicaoLocal.pontoReposicao} un
                             </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Sugerido:</p>
-                            <p className="font-bold text-orange-600">
+                            <p className="font-bold text-warning">
                               {sugestao.reposicaoLocal.quantidadeSugerida} un
                             </p>
                           </div>
@@ -536,10 +547,10 @@ export function ReplenishmentDetailModal({
             {/* ABA: CONFIGURAÇÃO */}
             <TabsContent value="configuracao" className="space-y-6">
               {/* Período de Análise - Destaque */}
-              <Card className="border-2 border-purple-200 dark:border-purple-800">
+              <Card className="border-2 border-primary/30">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-purple-600" />
+                    <Calendar className="h-5 w-5 text-primary" />
                     Período de Análise de Vendas
                   </CardTitle>
                 </CardHeader>
@@ -553,8 +564,8 @@ export function ReplenishmentDetailModal({
                       }}
                       className={`px-6 py-4 rounded-lg font-semibold text-lg transition-all ${
                         config.analysisPeriodDays === 30
-                          ? "bg-purple-600 text-white shadow-lg scale-105"
-                          : "bg-muted text-foreground border-2 border-input hover:border-purple-400 dark:hover:border-purple-600"
+                          ? "bg-primary text-primary-foreground shadow-lg scale-105"
+                          : "bg-muted text-foreground border-2 border-input hover:border-primary/50"
                       }`}
                     >
                       30 dias
@@ -567,8 +578,8 @@ export function ReplenishmentDetailModal({
                       }}
                       className={`px-6 py-4 rounded-lg font-semibold text-lg transition-all ${
                         config.analysisPeriodDays === 60
-                          ? "bg-purple-600 text-white shadow-lg scale-105"
-                          : "bg-muted text-foreground border-2 border-input hover:border-purple-400 dark:hover:border-purple-600"
+                          ? "bg-primary text-primary-foreground shadow-lg scale-105"
+                          : "bg-muted text-foreground border-2 border-input hover:border-primary/50"
                       }`}
                     >
                       60 dias
@@ -581,15 +592,15 @@ export function ReplenishmentDetailModal({
                       }}
                       className={`px-6 py-4 rounded-lg font-semibold text-lg transition-all ${
                         config.analysisPeriodDays === 90
-                          ? "bg-purple-600 text-white shadow-lg scale-105"
-                          : "bg-muted text-foreground border-2 border-input hover:border-purple-400 dark:hover:border-purple-600"
+                          ? "bg-primary text-primary-foreground shadow-lg scale-105"
+                          : "bg-muted text-foreground border-2 border-input hover:border-primary/50"
                       }`}
                     >
                       90 dias
                     </button>
                   </div>
                   <p className="text-sm text-muted-foreground mt-3">
-                    ℹ️ Define quantos dias de vendas serão considerados para calcular a média diária.
+                    Define quantos dias de vendas serão considerados para calcular a média diária.
                     A análise será recalculada automaticamente ao mudar o período.
                   </p>
                 </CardContent>
@@ -693,7 +704,7 @@ export function ReplenishmentDetailModal({
                         </div>
                         <div>
                           <p className="text-muted-foreground">Custo Médio:</p>
-                          <p className="font-semibold text-green-600">
+                          <p className="font-semibold text-success">
                             {formatCurrency(produto.custoMedio)}
                           </p>
                         </div>
@@ -738,11 +749,7 @@ export function ReplenishmentDetailModal({
             <Button variant="outline" onClick={onClose}>
               Fechar
             </Button>
-            <Button
-              onClick={handleSalvar}
-              disabled={loading}
-              className="bg-purple-600 hover:bg-purple-700 text-white"
-            >
+            <Button onClick={handleSalvar} disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -222,7 +222,7 @@ function VincularProdutosContent() {
       {produtosPendentes.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-green-500" />
+            <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-success" />
             <h3 className="text-lg font-semibold mb-2">
               Todos os produtos estão vinculados!
             </h3>
@@ -252,7 +252,7 @@ function VincularProdutosContent() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold flex items-center gap-2">
-                      <Store className="h-4 w-4 text-yellow-500" />
+                      <Store className="h-4 w-4 text-primary" />
                       Mercado Livre ({filteredML.length})
                     </h3>
                   </div>
@@ -272,7 +272,7 @@ function VincularProdutosContent() {
                         onClick={() => setSelectedML(produto.id)}
                         className={`p-4 cursor-pointer hover:bg-background border-b last:border-b-0 transition-colors ${
                           selectedML === produto.id
-                            ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
+                            ? "bg-primary/10 border-l-4 border-l-primary"
                             : ""
                         }`}
                       >
@@ -308,14 +308,14 @@ function VincularProdutosContent() {
                                 ML: {produto.mlAvailableQuantity} un.
                               </Badge>
                               {produto.mlShippingMode === "fulfillment" && (
-                                <Badge className="text-xs bg-purple-500 hover:bg-purple-600">
+                                <Badge className="text-xs bg-info text-info-foreground hover:bg-info/90">
                                   Full
                                 </Badge>
                               )}
                             </div>
                           </div>
                           {selectedML === produto.id && (
-                            <CheckCircle2 className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                            <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
                           )}
                         </div>
                       </div>
@@ -333,7 +333,7 @@ function VincularProdutosContent() {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold flex items-center gap-2">
-                      <Package className="h-4 w-4 text-blue-500" />
+                      <Package className="h-4 w-4 text-primary" />
                       Produtos Locais ({filteredLocal.length})
                     </h3>
                   </div>
@@ -353,7 +353,7 @@ function VincularProdutosContent() {
                         onClick={() => setSelectedLocal(produto.id)}
                         className={`p-4 cursor-pointer hover:bg-background border-b last:border-b-0 transition-colors ${
                           selectedLocal === produto.id
-                            ? "bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500"
+                            ? "bg-primary/10 border-l-4 border-l-primary"
                             : ""
                         }`}
                       >
@@ -382,7 +382,7 @@ function VincularProdutosContent() {
                             </Badge>
                           </div>
                           {selectedLocal === produto.id && (
-                            <CheckCircle2 className="h-5 w-5 text-blue-500 flex-shrink-0" />
+                            <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
                           )}
                         </div>
                       </div>

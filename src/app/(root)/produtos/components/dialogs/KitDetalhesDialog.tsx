@@ -63,7 +63,7 @@ export function KitDetalhesDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <Box className="h-5 w-5 text-indigo-500" />
+                <Box className="h-5 w-5 text-primary" />
                 Detalhes do Kit
               </DialogTitle>
               <Button
@@ -114,7 +114,7 @@ export function KitDetalhesDialog({
 
             <div>
               <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <Package className="h-5 w-5 text-indigo-500" />
+                <Package className="h-5 w-5 text-primary" />
                 Componentes do Kit
               </h3>
 
@@ -141,10 +141,7 @@ export function KitDetalhesDialog({
                             {componente.produto?.sku || "N/A"}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Badge
-                              variant="outline"
-                              className="bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300 border-blue-200 dark:border-blue-800"
-                            >
+                            <Badge variant="outline" className="bg-info/10 text-info border-info/30">
                               {componente.quantidade} unidades
                             </Badge>
                           </TableCell>

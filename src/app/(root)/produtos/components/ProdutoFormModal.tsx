@@ -303,7 +303,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                 <Card className="mb-6 border border-border">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-md flex items-center gap-2">
-                      <Package className="h-5 w-5 text-indigo-500" />
+                      <Package className="h-5 w-5 text-primary" />
                       Componentes do Kit
                     </CardTitle>
                   </CardHeader>
@@ -362,7 +362,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
 
                       {isSearching ? (
                         <div className="flex justify-center py-4">
-                          <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
                         </div>
                       ) : searchResults.length > 0 ? (
                         <div className="border rounded-md overflow-hidden mt-2">
@@ -373,7 +373,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                                   key={produto.id}
                                   className={`px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center ${
                                     selectedProdutoId === produto.id
-                                      ? "bg-blue-50 dark:bg-blue-900/20"
+                                      ? "bg-primary/10"
                                       : ""
                                   }`}
                                   onClick={() =>
@@ -389,7 +389,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                                     </p>
                                   </div>
                                   {selectedProdutoId === produto.id && (
-                                    <div className="bg-blue-500 text-white rounded-full p-1">
+                                    <div className="bg-primary text-primary-foreground rounded-full p-1">
                                       <svg
                                         xmlns="http://www.w3.org/2000/svg"
                                         className="h-4 w-4"
@@ -459,10 +459,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                                       </div>
                                     </div>
                                     <div className="flex items-center space-x-3">
-                                      <Badge
-                                        variant="outline"
-                                        className="bg-blue-50 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300"
-                                      >
+                                      <Badge variant="outline" className="bg-info/10 text-info">
                                         Qtd: {kitProduto.quantidade}
                                       </Badge>
                                       <Button
@@ -474,7 +471,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                                             kitProduto.produtoId
                                           )
                                         }
-                                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                       >
                                         <FaTimes className="w-3 h-3" />
                                       </Button>
@@ -513,11 +510,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                 >
                   Cancelar
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-                >
+                <Button type="submit" disabled={isSubmitting} className="gap-2">
                   {isSubmitting ? (
                     <>
                       <Loader2 className="h-4 w-4 animate-spin" />

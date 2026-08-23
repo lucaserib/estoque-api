@@ -300,7 +300,7 @@ export function ProdutoFornecedorDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <Link className="h-5 w-5 text-indigo-500" />
+                <Link className="h-5 w-5 text-primary" />
                 Fornecedores de {produto.nome}
               </DialogTitle>
               <Button
@@ -321,13 +321,13 @@ export function ProdutoFornecedorDialog({
             {/* Fornecedores vinculados */}
             <div>
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Truck className="h-5 w-5 text-indigo-500" />
+                <Truck className="h-5 w-5 text-primary" />
                 Fornecedores Vinculados
               </h3>
 
               {isLoading ? (
                 <div className="flex justify-center p-6">
-                  <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : fornecedoresVinculados.length === 0 ? (
                 <div className="bg-background p-6 rounded-lg border border-border text-center">
@@ -411,7 +411,7 @@ export function ProdutoFornecedorDialog({
                                     size="sm"
                                     onClick={() => handleSaveEdit(vinculo.id)}
                                     disabled={isSubmitting}
-                                    className="h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-success hover:bg-success/10"
                                   >
                                     <Check className="h-4 w-4" />
                                   </Button>
@@ -420,7 +420,7 @@ export function ProdutoFornecedorDialog({
                                     size="sm"
                                     onClick={() => setEditingId(null)}
                                     disabled={isSubmitting}
-                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-background"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                                   >
                                     <X className="h-4 w-4" />
                                   </Button>
@@ -431,7 +431,7 @@ export function ProdutoFornecedorDialog({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleEdit(vinculo)}
-                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
@@ -439,7 +439,7 @@ export function ProdutoFornecedorDialog({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDelete(vinculo.id)}
-                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                   >
                                     <Trash className="h-4 w-4" />
                                   </Button>
@@ -468,7 +468,7 @@ export function ProdutoFornecedorDialog({
 
             <div className="bg-background p-4 rounded-lg border border-border">
               <h3 className="text-md font-semibold mb-4 flex items-center gap-2">
-                <Plus className="h-4 w-4 text-indigo-500" />
+                <Plus className="h-4 w-4 text-primary" />
                 Vincular Novo Fornecedor
               </h3>
 
@@ -538,7 +538,7 @@ export function ProdutoFornecedorDialog({
               <Button
                 onClick={handleVincularFornecedor}
                 disabled={isSubmitting || !fornecedorId}
-                className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
+                className="w-full gap-2"
               >
                 {isSubmitting ? (
                   <>

@@ -121,7 +121,7 @@ export function ProdutoEditarDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <Edit className="h-5 w-5 text-indigo-500" />
+                <Edit className="h-5 w-5 text-primary" />
                 Editar Produto
               </DialogTitle>
               <Button
@@ -192,11 +192,7 @@ export function ProdutoEditarDialog({
             Cancelar
           </Button>
 
-          <Button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white"
-          >
+          <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2">
             {isSubmitting ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
