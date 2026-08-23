@@ -448,7 +448,7 @@ const ProdutoList = ({
           <DataTableHeader>
             <DataTableRow className="hover:bg-transparent">
               <DataTableHead className="pl-4">Imagem</DataTableHead>
-              <DataTableHead>Produto</DataTableHead>
+              <DataTableHead sticky>Produto</DataTableHead>
               <DataTableHead>Fornecedor</DataTableHead>
               <DataTableHead>Estoque Local</DataTableHead>
               <DataTableHead className="text-right">Full</DataTableHead>

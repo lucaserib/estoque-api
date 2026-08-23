@@ -129,7 +129,7 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
           {getStatusPill(item.statusGeral)}
         </DataTableCell>
 
-        <DataTableCell>
+        <DataTableCell sticky>
           <p className="font-medium text-foreground">{item.produtoNome}</p>
           <p className="text-sm text-muted-foreground">SKU: {item.sku}</p>
         </DataTableCell>

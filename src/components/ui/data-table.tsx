@@ -34,7 +34,7 @@ const DataTableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "h-11 border-b border-border transition-colors hover:bg-accent",
+      "group h-11 border-b border-border transition-colors hover:bg-accent",
       className
     )}
     {...props}
@@ -42,27 +42,41 @@ const DataTableRow = React.forwardRef<
 ));
 DataTableRow.displayName = "DataTableRow";
 
-const DataTableHead = React.forwardRef<
-  HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, ...props }, ref) => (
-  <th ref={ref} className={cn("text-eyebrow px-3 text-left align-middle", className)} {...props} />
-));
+interface DataTableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  sticky?: boolean;
+}
+
+const DataTableHead = React.forwardRef<HTMLTableCellElement, DataTableHeadProps>(
+  ({ className, sticky, ...props }, ref) => (
+    <th
+      ref={ref}
+      className={cn(
+        "text-eyebrow px-3 text-left align-middle",
+        sticky && "sticky left-0 z-10 border-r border-border bg-card",
+        className
+      )}
+      {...props}
+    />
+  )
+);
 DataTableHead.displayName = "DataTableHead";
 
 interface DataTableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   numeric?: boolean;
   emphasis?: boolean;
+  sticky?: boolean;
 }
 
 const DataTableCell = React.forwardRef<HTMLTableCellElement, DataTableCellProps>(
-  ({ className, numeric, emphasis, ...props }, ref) => (
+  ({ className, numeric, emphasis, sticky, ...props }, ref) => (
     <td
       ref={ref}
       className={cn(
         "px-3 align-middle",
         numeric && "text-right tabular-nums",
         emphasis && "font-medium text-foreground",
+        sticky &&
+          "sticky left-0 z-10 border-r border-border bg-card group-hover:bg-accent",
         className
       )}
       {...props}

@@ -93,7 +93,7 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
           )}
         </DataTableCell>
 
-        <DataTableCell emphasis>
+        <DataTableCell emphasis sticky>
           <div className="flex items-center gap-2">
             {isCritical && (
               <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />

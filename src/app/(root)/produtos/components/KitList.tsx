@@ -132,7 +132,9 @@ export const KitList = ({
         <DataTable>
           <DataTableHeader>
             <DataTableRow className="hover:bg-transparent">
-              <DataTableHead className="pl-4">Kit</DataTableHead>
+              <DataTableHead sticky className="pl-4">
+                Kit
+              </DataTableHead>
               <DataTableHead>EAN</DataTableHead>
               <DataTableHead>Componentes</DataTableHead>
               <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
@@ -142,7 +144,7 @@ export const KitList = ({
             {currentKits.length > 0 ? (
               currentKits.map((kit) => (
                 <DataTableRow key={kit.id} className="group">
-                  <DataTableCell emphasis className="pl-4">
+                  <DataTableCell emphasis sticky className="pl-4">
                     <div className="flex items-center gap-2">
                       <Box className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <div className="min-w-0">

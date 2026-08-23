@@ -561,7 +561,9 @@ export default function MercadoLivreVendasPage() {
                   <DataTable>
                     <DataTableHeader>
                       <DataTableRow className="hover:bg-transparent">
-                        <DataTableHead className="pl-5">Produto</DataTableHead>
+                        <DataTableHead sticky className="pl-5">
+                          Produto
+                        </DataTableHead>
                         <DataTableHead className="text-right">
                           Unidades
                         </DataTableHead>
@@ -590,7 +592,7 @@ export default function MercadoLivreVendasPage() {
 
                         return (
                           <DataTableRow key={product.mlItemId}>
-                            <DataTableCell className="pl-5">
+                            <DataTableCell sticky className="pl-5">
                               <div className="flex items-center gap-2">
                                 <Badge
                                   variant={

@@ -235,7 +235,7 @@ const ReposicaoPage = () => {
                 <DataTableHeader>
                   <DataTableRow className="hover:bg-transparent">
                     <DataTableHead className="pl-4">Status</DataTableHead>
-                    <DataTableHead>Produto</DataTableHead>
+                    <DataTableHead sticky>Produto</DataTableHead>
                     <DataTableHead>Tipo</DataTableHead>
                     <DataTableHead className="text-right">
                       Estoque Local
