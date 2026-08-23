@@ -46,7 +46,7 @@ const SidebarLink = ({
           isCollapsed ? "justify-center py-3" : "justify-start px-6 py-3"
         } gap-3 transition-colors ${
           isActive
-            ? "bg-primary/10 text-primary"
+            ? "bg-accent text-primary"
             : "text-muted-foreground hover:text-foreground hover:bg-muted"
         }`}
       >
@@ -88,7 +88,7 @@ const SidebarDropdown = ({
           isCollapsed ? "justify-center py-3" : "justify-start px-6 py-3"
         } gap-3 transition-colors ${
           isActive
-            ? "bg-primary/10 text-primary"
+            ? "bg-accent text-primary"
             : "text-muted-foreground hover:text-foreground hover:bg-muted"
         }`}
         onClick={() => setIsOpen(!isOpen)}
@@ -127,7 +127,7 @@ const SidebarSubLink = ({
       <div
         className={`relative cursor-pointer flex items-center pl-12 pr-6 py-2.5 gap-3 transition-colors ${
           isActive
-            ? "bg-primary/10 text-primary"
+            ? "bg-accent text-primary"
             : "text-muted-foreground hover:text-foreground hover:bg-muted"
         }`}
       >
@@ -150,7 +150,7 @@ const SectionLabel = ({
 }) => {
   if (isCollapsed) return null;
   return (
-    <p className="px-6 pt-5 pb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+    <p className="px-6 pt-5 pb-1 text-eyebrow">
       {children}
     </p>
   );
@@ -160,7 +160,7 @@ const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar } = useLayout();
   const sidebarClassNames = `fixed flex flex-col ${
     isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
-  } bg-card border-r border-border transition-all duration-300 overflow-hidden h-full z-40`;
+  } bg-card border-r border-metal transition-all duration-300 overflow-hidden h-full z-40`;
 
   return (
     <div className={sidebarClassNames}>
@@ -183,6 +183,7 @@ const Sidebar = () => {
 
       {/* Links */}
       <div className="flex-grow mt-4">
+        <SectionLabel isCollapsed={isSidebarCollapsed}>Principal</SectionLabel>
         <SidebarLink
           href="/"
           icon={Layout}

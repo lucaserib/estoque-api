@@ -26,7 +26,7 @@ const Navbar = () => {
   useClickOutside(dropdownRef, () => setIsDropdownOpen(false));
 
   return (
-    <div className="flex justify-between items-center w-full mb-7">
+    <div className="flex h-14 justify-between items-center w-full border-b border-metal mb-6">
       <div className="flex justify-between items-center gap-5">
         <button
           className="px-3 py-3 bg-muted rounded-full hover:bg-accent"
@@ -39,7 +39,7 @@ const Navbar = () => {
           <input
             type="search"
             placeholder="Buscar produtos, pedidos…"
-            className="pl-10 pr-4 py-2 w-50 md:w-60 border border-input bg-card rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring"
+            className="pl-10 pr-4 py-2 w-50 md:w-60 border border-input bg-card rounded-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring"
           />
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Search className="text-muted-foreground" size={18} />
