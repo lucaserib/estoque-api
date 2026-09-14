@@ -698,7 +698,7 @@ export default function MercadoLivreVendasPage() {
               <div className="space-y-6">
                 <button
                   onClick={exportToCSV}
-                  className="w-full sm:w-auto flex items-center gap-3 p-4 border border-metal rounded-md hover:bg-accent transition-colors duration-150 text-left"
+                  className="w-full sm:w-auto flex items-center gap-3 p-4 border border-border rounded-md hover:bg-muted transition-colors duration-150 text-left"
                 >
                   <Download className="h-8 w-8 text-primary" />
                   <div>
@@ -709,8 +709,8 @@ export default function MercadoLivreVendasPage() {
                   </div>
                 </button>
 
-                <div className="rounded-md border border-metal p-4">
-                  <h4 className="text-eyebrow mb-3">Resumo do Período</h4>
+                <div className="rounded-md border border-border p-4">
+                  <h4 className="text-sm font-semibold text-foreground mb-3">Resumo do Período</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                     <ul className="space-y-1.5 text-muted-foreground">
                       <li>
