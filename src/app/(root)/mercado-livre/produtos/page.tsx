@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, RefreshCw, Package, Store } from "lucide-react";
 import { toast } from "sonner";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import { useMercadoLivreOptimized } from "@/hooks/useMercadoLivreOptimized";
 
 // ✅ NOVOS COMPONENTES COMPONENTIZADOS
@@ -325,7 +325,7 @@ export default function MercadoLivreProdutosPage() {
   if (status === "loading" || loading) {
     return (
       <div className="container mx-auto p-6">
-        <Header
+        <PageHeader
           title="Produtos Mercado Livre"
           subtitle="Gestão integrada de produtos"
         />
@@ -339,7 +339,7 @@ export default function MercadoLivreProdutosPage() {
   if (accounts.length === 0) {
     return (
       <div className="container mx-auto p-6">
-        <Header
+        <PageHeader
           title="Produtos Mercado Livre"
           subtitle="Gestão integrada de produtos"
         />
@@ -365,15 +365,16 @@ export default function MercadoLivreProdutosPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <Header
+      <PageHeader
         title="Produtos Mercado Livre"
         subtitle="Gestão integrada de produtos"
-      >
-        <Button variant="outline" onClick={() => window.history.back()}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
-      </Header>
+        actions={
+          <Button variant="outline" onClick={() => window.history.back()}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+        }
+      />
 
       {/* Controles e Filtros */}
       <Card>

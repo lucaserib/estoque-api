@@ -1,12 +1,12 @@
 "use client";
 
 import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import MLProductRow from "./MLProductRow";
@@ -62,7 +62,7 @@ interface MLProductsTableProps {
 
 // Skeleton para loading
 const ProductRowSkeleton = () => (
-  <TableRow>
+  <DataTableRow>
     <td className="p-4">
       <div className="flex items-center space-x-3">
         <Skeleton className="w-10 h-10 rounded-md" />
@@ -107,7 +107,7 @@ const ProductRowSkeleton = () => (
         <Skeleton className="w-8 h-8" />
       </div>
     </td>
-  </TableRow>
+  </DataTableRow>
 );
 
 export default function MLProductsTable({
@@ -122,28 +122,28 @@ export default function MLProductsTable({
     <Card>
       <CardContent className="p-0">
         <div className="relative overflow-x-auto">
-          <Table>
-            <TableHeader className="sticky top-0 bg-background">
-              <TableRow>
-                <TableHead className="w-[300px]">Produto</TableHead>
-                <TableHead className="w-[120px]">Preço</TableHead>
-                <TableHead className="w-[100px]">Status</TableHead>
-                <TableHead className="w-[100px]">Estoque ML</TableHead>
-                <TableHead className="w-[160px]">
+          <DataTable>
+            <DataTableHeader className="sticky top-0 bg-background">
+              <DataTableRow>
+                <DataTableHead className="w-[300px]">Produto</DataTableHead>
+                <DataTableHead className="w-[120px]">Preço</DataTableHead>
+                <DataTableHead className="w-[100px]">Status</DataTableHead>
+                <DataTableHead className="w-[100px]">Estoque ML</DataTableHead>
+                <DataTableHead className="w-[160px]">
                   Vendas (
                   {new Date().toLocaleDateString("pt-BR", {
                     month: "short",
                     year: "numeric",
                   })}
                   )
-                </TableHead>
-                <TableHead className="w-[200px]">Produto Local</TableHead>
-                <TableHead className="w-[120px]">Estoque Local</TableHead>
-                <TableHead className="w-[100px]">Última Sync</TableHead>
-                <TableHead className="w-[200px]">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+                </DataTableHead>
+                <DataTableHead className="w-[200px]">Produto Local</DataTableHead>
+                <DataTableHead className="w-[120px]">Estoque Local</DataTableHead>
+                <DataTableHead className="w-[100px]">Última Sync</DataTableHead>
+                <DataTableHead className="w-[200px]">Ações</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
               {loading ? (
                 // Skeleton Loading
                 Array.from({ length: 5 }).map((_, index) => (
@@ -151,7 +151,7 @@ export default function MLProductsTable({
                 ))
               ) : products.length === 0 ? (
                 // Estado vazio
-                <TableRow>
+                <DataTableRow>
                   <td
                     colSpan={9}
                     className="p-8 text-center text-muted-foreground"
@@ -165,7 +165,7 @@ export default function MLProductsTable({
                       </div>
                     </div>
                   </td>
-                </TableRow>
+                </DataTableRow>
               ) : (
                 // Lista de produtos
                 products.map((product) => (
@@ -179,8 +179,8 @@ export default function MLProductsTable({
                   />
                 ))
               )}
-            </TableBody>
-          </Table>
+            </DataTableBody>
+          </DataTable>
         </div>
 
         {/* Informações de paginação/totais */}
@@ -194,13 +194,13 @@ export default function MLProductsTable({
               <div className="flex gap-4">
                 <div>
                   Ativos:{" "}
-                  <span className="font-medium text-green-600">
+                  <span className="font-medium text-success">
                     {products.filter((p) => p.mlStatus === "active").length}
                   </span>
                 </div>
                 <div>
                   Com vendas:{" "}
-                  <span className="font-medium text-blue-600">
+                  <span className="font-medium text-info">
                     {
                       products.filter(
                         (p) =>
@@ -212,7 +212,7 @@ export default function MLProductsTable({
                 </div>
                 <div>
                   Vinculados:{" "}
-                  <span className="font-medium text-purple-600">
+                  <span className="font-medium text-primary">
                     {products.filter((p) => p.localProduct).length}
                   </span>
                 </div>

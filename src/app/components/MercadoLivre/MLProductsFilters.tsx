@@ -138,7 +138,7 @@ export default function MLProductsFilters({
           <span className="font-medium">{totalProducts}</span> produtos
         </div>
         <div>
-          <span className="font-medium text-green-600">{activeProducts}</span>{" "}
+          <span className="font-medium text-success">{activeProducts}</span>{" "}
           ativos
         </div>
         {accountsCount > 0 && (

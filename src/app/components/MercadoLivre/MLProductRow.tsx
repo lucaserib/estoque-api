@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { TableCell, TableRow } from "@/components/ui/table";
+import { DataTableCell, DataTableRow } from "@/components/ui/data-table";
 import {
   Eye,
   Edit,
@@ -78,22 +78,22 @@ export default function MLProductRow({
     > = {
       active: {
         variant: "default",
-        color: "bg-green-100 text-green-800",
+        color: "bg-success/10 text-success",
         text: "Ativo",
       },
       paused: {
         variant: "secondary",
-        color: "bg-yellow-100 text-yellow-800",
+        color: "bg-warning/10 text-warning",
         text: "Pausado",
       },
       closed: {
         variant: "destructive",
-        color: "bg-red-100 text-red-800",
+        color: "bg-destructive/10 text-destructive",
         text: "Fechado",
       },
       under_review: {
         variant: "outline",
-        color: "bg-blue-100 text-blue-800",
+        color: "bg-info/10 text-info",
         text: "Em Análise",
       },
     };
@@ -118,17 +118,17 @@ export default function MLProductRow({
     > = {
       ok: {
         variant: "default",
-        color: "bg-green-100 text-green-800",
+        color: "bg-success/10 text-success",
         icon: <CheckCircle className="h-3 w-3" />,
       },
       low: {
         variant: "secondary",
-        color: "bg-yellow-100 text-yellow-800",
+        color: "bg-warning/10 text-warning",
         icon: <AlertTriangle className="h-3 w-3" />,
       },
       out: {
         variant: "destructive",
-        color: "bg-red-100 text-red-800",
+        color: "bg-destructive/10 text-destructive",
         icon: <AlertTriangle className="h-3 w-3" />,
       },
       unlinked: {
@@ -152,9 +152,9 @@ export default function MLProductRow({
   };
 
   return (
-    <TableRow key={product.mlItemId}>
+    <DataTableRow key={product.mlItemId}>
       {/* Produto */}
-      <TableCell>
+      <DataTableCell>
         <div className="flex items-center space-x-3">
           {product.mlThumbnail && (
             <Image
@@ -174,16 +174,16 @@ export default function MLProductRow({
             </div>
           </div>
         </div>
-      </TableCell>
+      </DataTableCell>
 
       {/* Preço */}
-      <TableCell>
+      <DataTableCell>
         <div className="space-y-1">
           {/* ✅ CORREÇÃO: Exibir preço promocional corretamente */}
           {product.mlHasPromotion && product.mlOriginalPrice ? (
             <div>
               {/* Preço atual (promocional) */}
-              <div className="font-bold text-green-600">
+              <div className="font-bold text-success">
                 {exibirValorEmReais(product.mlPrice)}
               </div>
               {/* Preço original riscado */}
@@ -194,7 +194,7 @@ export default function MLProductRow({
               {product.mlPromotionDiscount && (
                 <Badge
                   variant="secondary"
-                  className="text-xs bg-orange-100 text-orange-800"
+                  className="text-xs bg-warning/10 text-warning"
                 >
                   -{product.mlPromotionDiscount}%
                 </Badge>
@@ -206,24 +206,24 @@ export default function MLProductRow({
             </div>
           )}
         </div>
-      </TableCell>
+      </DataTableCell>
 
       {/* Status */}
-      <TableCell>{getStatusBadge(product.mlStatus)}</TableCell>
+      <DataTableCell>{getStatusBadge(product.mlStatus)}</DataTableCell>
 
       {/* Estoque ML */}
-      <TableCell>
+      <DataTableCell>
         <Badge variant="outline" className="font-mono">
           {product.mlAvailableQuantity}
         </Badge>
-      </TableCell>
+      </DataTableCell>
 
       {/* Vendas */}
-      <TableCell>
+      <DataTableCell>
         <div>
           {/* ✅ NOVO: Vendas deste mês */}
           <div className="font-medium text-sm">
-            <span className="text-green-600 font-bold">
+            <span className="text-success font-bold">
               {product.salesData?.quantityThisMonth || 0}
             </span>{" "}
             unid. (este mês)
@@ -233,7 +233,7 @@ export default function MLProductRow({
           </div>
           {product.salesData?.salesVelocity &&
             product.salesData.salesVelocity > 0 && (
-              <div className="text-xs text-blue-600">
+              <div className="text-xs text-info">
                 {product.salesData.salesVelocity.toFixed(1)}/dia
               </div>
             )}
@@ -247,8 +247,8 @@ export default function MLProductRow({
                     <span
                       className={`ml-1 font-medium ${
                         product.salesData.quantityGrowth > 0
-                          ? "text-green-600"
-                          : "text-red-600"
+                          ? "text-success"
+                          : "text-destructive"
                       }`}
                     >
                       ({product.salesData.quantityGrowth > 0 ? "+" : ""}
@@ -258,10 +258,10 @@ export default function MLProductRow({
               </div>
             )}
         </div>
-      </TableCell>
+      </DataTableCell>
 
       {/* Produto Local */}
-      <TableCell>
+      <DataTableCell>
         {product.localProduct ? (
           <div>
             <div className="font-medium text-sm">
@@ -274,27 +274,27 @@ export default function MLProductRow({
         ) : (
           <div className="text-sm text-muted-foreground">Não vinculado</div>
         )}
-      </TableCell>
+      </DataTableCell>
 
       {/* Estoque Local */}
-      <TableCell>
+      <DataTableCell>
         {getStockBadge(
           product.stockStatus || "unlinked",
           product.localStock || 0
         )}
-      </TableCell>
+      </DataTableCell>
 
       {/* Última Sync */}
-      <TableCell>
+      <DataTableCell>
         <div className="text-xs text-muted-foreground">
           {product.lastSync
             ? new Date(product.lastSync).toLocaleDateString("pt-BR")
             : "Nunca"}
         </div>
-      </TableCell>
+      </DataTableCell>
 
       {/* Ações */}
-      <TableCell>
+      <DataTableCell>
         <div className="flex gap-1">
           <Button
             variant="outline"
@@ -340,7 +340,7 @@ export default function MLProductRow({
             <Store className="h-4 w-4" />
           </Button>
         </div>
-      </TableCell>
-    </TableRow>
+      </DataTableCell>
+    </DataTableRow>
   );
 }

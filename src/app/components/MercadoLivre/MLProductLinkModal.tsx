@@ -155,8 +155,8 @@ export default function MLProductLinkModal({
 
             {/* Informação sobre a vinculação */}
             {selectedLocalProduct && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="text-sm text-blue-800">
+              <div className="p-4 bg-info/10 border border-info/30 rounded-lg">
+                <div className="text-sm text-info">
                   <div className="font-medium mb-1">⚡ Sincronização Automática</div>
                   <div>
                     Após a vinculação, o estoque do Mercado Livre será 
