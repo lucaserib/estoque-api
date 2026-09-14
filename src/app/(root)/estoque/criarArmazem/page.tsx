@@ -99,13 +99,13 @@ const CriarArmazem = () => {
             name="nome"
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-input focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-input focus:outline-none focus:ring-ring focus:border-ring sm:text-sm rounded-md"
           />
         </div>
         {message && (
           <p
             className={`text-center mt-4 ${
-              messageType === "success" ? "text-green-500" : "text-red-500"
+              messageType === "success" ? "text-success" : "text-destructive"
             }`}
           >
             {message}
@@ -113,7 +113,7 @@ const CriarArmazem = () => {
         )}
         <button
           type="submit"
-          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="w-full py-2 px-4 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
         >
           Criar Armazém
         </button>
@@ -133,7 +133,7 @@ const CriarArmazem = () => {
             </span>
             <button
               onClick={() => handleDelete(armazem.id)}
-              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+              className="px-4 py-2 bg-destructive text-destructive-foreground rounded-md hover:bg-destructive/90"
             >
               Deletar
             </button>

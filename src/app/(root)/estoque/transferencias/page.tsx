@@ -18,13 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,7 +41,7 @@ import {
   FileText,
   Loader2,
 } from "lucide-react";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -247,23 +247,19 @@ const TransferenciasPage = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
-      <div className="bg-card rounded-lg shadow-sm border border-border p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <Header name="Transferência de Estoque" />
-            <p className="text-muted-foreground mt-1">
-              Transfira produtos entre armazéns de forma simples e segura
-            </p>
-          </div>
+      <PageHeader
+        title="Transferência de Estoque"
+        subtitle="Transfira produtos entre armazéns de forma simples e segura"
+        actions={
           <Button
             onClick={() => setIsDialogOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-700 dark:hover:bg-indigo-600 gap-2"
+            className="gap-2"
           >
             <ArrowLeftRight className="h-4 w-4" />
             Nova Transferência
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -284,46 +280,46 @@ const TransferenciasPage = () => {
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Origem</TableHead>
-                  <TableHead>Destino</TableHead>
-                  <TableHead>Itens</TableHead>
-                  <TableHead>Observações</TableHead>
-                  <TableHead>Status</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <DataTable>
+              <DataTableHeader>
+                <DataTableRow>
+                  <DataTableHead className="pl-4">Data</DataTableHead>
+                  <DataTableHead>Origem</DataTableHead>
+                  <DataTableHead>Destino</DataTableHead>
+                  <DataTableHead>Itens</DataTableHead>
+                  <DataTableHead>Observações</DataTableHead>
+                  <DataTableHead className="pr-4">Status</DataTableHead>
+                </DataTableRow>
+              </DataTableHeader>
+              <DataTableBody>
                 {transferencias.map((transferencia) => (
-                  <TableRow key={transferencia.id}>
-                    <TableCell>
+                  <DataTableRow key={transferencia.id}>
+                    <DataTableCell className="pl-4">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                         {format(new Date(transferencia.data), "dd/MM/yyyy", {
                           locale: ptBR,
                         })}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell>
                       <div className="flex items-center gap-2">
                         <Warehouse className="h-4 w-4 text-muted-foreground" />
                         {transferencia.armazemOrigem.nome}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell>
                       <div className="flex items-center gap-2">
                         <Warehouse className="h-4 w-4 text-muted-foreground" />
                         {transferencia.armazemDestino.nome}
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                    </DataTableCell>
+                    <DataTableCell>
+                      <Badge className="bg-info/10 text-info">
                         {countTotalItens(transferencia)} itens
                       </Badge>
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell>
                       {transferencia.observacoes ? (
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-muted-foreground" />
@@ -334,14 +330,14 @@ const TransferenciasPage = () => {
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell className="pr-4">
                       <Badge variant="success">Concluída</Badge>
-                    </TableCell>
-                  </TableRow>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
-              </TableBody>
-            </Table>
+              </DataTableBody>
+            </DataTable>
           )}
         </CardContent>
       </Card>
@@ -409,17 +405,17 @@ const TransferenciasPage = () => {
                     <Loader2 className="h-6 w-6 animate-spin" />
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12"></TableHead>
-                        <TableHead>Produto</TableHead>
-                        <TableHead>SKU</TableHead>
-                        <TableHead>Disponível</TableHead>
-                        <TableHead>Quantidade</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <DataTable>
+                    <DataTableHeader>
+                      <DataTableRow>
+                        <DataTableHead className="w-12 pl-4"></DataTableHead>
+                        <DataTableHead>Produto</DataTableHead>
+                        <DataTableHead>SKU</DataTableHead>
+                        <DataTableHead>Disponível</DataTableHead>
+                        <DataTableHead className="pr-4">Quantidade</DataTableHead>
+                      </DataTableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
                       {filteredEstoque.map((estoque) => {
                         const isSelected = selectedItens.some(
                           (item) => item.produtoId === estoque.produtoId
@@ -429,23 +425,23 @@ const TransferenciasPage = () => {
                         );
 
                         return (
-                          <TableRow key={estoque.produtoId}>
-                            <TableCell>
+                          <DataTableRow key={estoque.produtoId}>
+                            <DataTableCell className="pl-4">
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={(checked) =>
                                   handleSelectProduto(estoque, checked as boolean)
                                 }
                               />
-                            </TableCell>
-                            <TableCell className="font-medium">
+                            </DataTableCell>
+                            <DataTableCell className="font-medium">
                               {estoque.produto.nome}
-                            </TableCell>
-                            <TableCell>{estoque.produto.sku}</TableCell>
-                            <TableCell>
+                            </DataTableCell>
+                            <DataTableCell>{estoque.produto.sku}</DataTableCell>
+                            <DataTableCell>
                               <Badge variant="outline">{estoque.quantidade}</Badge>
-                            </TableCell>
-                            <TableCell>
+                            </DataTableCell>
+                            <DataTableCell className="pr-4">
                               {isSelected && selectedItem ? (
                                 <div className="flex items-center gap-2">
                                   <Button
@@ -502,17 +498,17 @@ const TransferenciasPage = () => {
                               ) : (
                                 <span className="text-muted-foreground">-</span>
                               )}
-                            </TableCell>
-                          </TableRow>
+                            </DataTableCell>
+                          </DataTableRow>
                         );
                       })}
-                    </TableBody>
-                  </Table>
+                    </DataTableBody>
+                  </DataTable>
                 )}
               </div>
 
               {selectedItens.length > 0 && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md">
+                <div className="bg-info/10 p-4 rounded-md">
                   <h4 className="font-medium mb-2">Resumo da Transferência</h4>
                   <div className="space-y-1 text-sm">
                     {selectedItens.map((item) => (

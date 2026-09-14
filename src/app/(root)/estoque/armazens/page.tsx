@@ -14,13 +14,13 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   AlertCircle,
   Loader2,
@@ -37,7 +37,7 @@ import {
   PencilIcon,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { EstoqueDeleteDialog } from "@/components/EstoqueDeleteDialog";
 import { toast } from "sonner";
@@ -407,23 +407,19 @@ const EstoquePage = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-6">
-      <div className="bg-card rounded-lg shadow-sm border border-border p-4 md:p-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <Header name="Gestão de Estoque" />
-            <p className="text-muted-foreground mt-1">
-              Gerencie seu estoque por armazém e monitore níveis de produtos
-            </p>
-          </div>
+      <PageHeader
+        title="Gestão de Estoque"
+        subtitle="Gerencie seu estoque por armazém e monitore níveis de produtos"
+        actions={
           <Button
             onClick={() => setIsNewWarehouseOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-700 dark:hover:bg-indigo-600 gap-2"
+            className="gap-2"
           >
             <PlusCircle className="h-4 w-4" />
             Novo Armazém
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {successMessage && (
         <Alert variant="success" className="animate-fade-in">
@@ -470,7 +466,6 @@ const EstoquePage = () => {
             </p>
             <Button
               onClick={() => setIsNewWarehouseOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white"
             >
               <PlusCircle className="h-4 w-4 mr-2" />
               Criar Armazém
@@ -503,7 +498,7 @@ const EstoquePage = () => {
                           e.stopPropagation();
                           handleDeleteWarehouse(armazem.id);
                         }}
-                        className="ml-2 inline-flex h-6 w-6 items-center justify-center p-0 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-red-100 hover:text-red-600 cursor-pointer"
+                        className="ml-2 inline-flex h-6 w-6 items-center justify-center p-0 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
                       >
                         <AlertCircle className="h-3.5 w-3.5" />
                       </div>
@@ -530,7 +525,7 @@ const EstoquePage = () => {
                     <Card className="border border-border shadow-sm">
                       <CardHeader className="bg-background pb-2 flex flex-row justify-between items-center">
                         <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                          <Warehouse className="h-5 w-5 text-indigo-500" />
+                          <Warehouse className="h-5 w-5 text-primary" />
                           Estoque: {armazem.nome}
                         </CardTitle>
                         <div className="flex items-center gap-2">
@@ -559,30 +554,30 @@ const EstoquePage = () => {
                             <LucideLoaderCircle className="h-6 w-6 animate-spin text-primary" />
                           </div>
                         ) : (
-                          <Table>
-                            <TableHeader className="bg-background">
-                              <TableRow>
-                                <TableHead className="font-medium">
+                          <DataTable>
+                            <DataTableHeader>
+                              <DataTableRow>
+                                <DataTableHead className="pl-4">
                                   Produto
-                                </TableHead>
-                                <TableHead className="font-medium">
+                                </DataTableHead>
+                                <DataTableHead>
                                   SKU
-                                </TableHead>
-                                <TableHead className="font-medium text-center">
+                                </DataTableHead>
+                                <DataTableHead className="text-center">
                                   Quantidade
-                                </TableHead>
-                                <TableHead className="font-medium text-center">
+                                </DataTableHead>
+                                <DataTableHead className="text-center">
                                   Est. Segurança
-                                </TableHead>
-                                <TableHead className="font-medium text-center">
+                                </DataTableHead>
+                                <DataTableHead className="text-center">
                                   Status
-                                </TableHead>
-                                <TableHead className="font-medium text-right">
+                                </DataTableHead>
+                                <DataTableHead className="pr-4 text-right">
                                   Ações
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
+                                </DataTableHead>
+                              </DataTableRow>
+                            </DataTableHeader>
+                            <DataTableBody>
                               {filteredEstoque.length > 0 ? (
                                 filteredEstoque.map((item) => {
                                   const isLowStock =
@@ -590,17 +585,17 @@ const EstoquePage = () => {
                                   const isOutOfStock = item.quantidade === 0;
 
                                   return (
-                                    <TableRow
+                                    <DataTableRow
                                       key={item.produto.id}
-                                      className="group hover:bg-background"
+                                      className="group"
                                     >
-                                      <TableCell className="font-medium">
+                                      <DataTableCell className="pl-4 font-medium">
                                         {item.produto.nome}
-                                      </TableCell>
-                                      <TableCell className="text-muted-foreground">
+                                      </DataTableCell>
+                                      <DataTableCell className="text-muted-foreground">
                                         {item.produto.sku}
-                                      </TableCell>
-                                      <TableCell className="text-center">
+                                      </DataTableCell>
+                                      <DataTableCell numeric>
                                         <Badge
                                           variant={
                                             isOutOfStock
@@ -613,16 +608,16 @@ const EstoquePage = () => {
                                         >
                                           {item.quantidade}
                                         </Badge>
-                                      </TableCell>
-                                      <TableCell className="text-center">
+                                      </DataTableCell>
+                                      <DataTableCell numeric>
                                         <Badge
                                           variant="outline"
                                           className="justify-center min-w-10"
                                         >
                                           {item.estoqueSeguranca}
                                         </Badge>
-                                      </TableCell>
-                                      <TableCell className="text-center">
+                                      </DataTableCell>
+                                      <DataTableCell className="text-center">
                                         {isOutOfStock ? (
                                           <Badge variant="destructive">
                                             Esgotado
@@ -634,8 +629,8 @@ const EstoquePage = () => {
                                             Normal
                                           </Badge>
                                         )}
-                                      </TableCell>
-                                      <TableCell className="text-right">
+                                      </DataTableCell>
+                                      <DataTableCell className="pr-4 text-right">
                                         <div className="flex items-center justify-end gap-2">
                                           <Button
                                             variant="ghost"
@@ -643,7 +638,7 @@ const EstoquePage = () => {
                                             onClick={() =>
                                               handleEditarProduto(item)
                                             }
-                                            className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0"
+                                            className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                                           >
                                             <Settings className="h-4 w-4" />
                                           </Button>
@@ -657,30 +652,30 @@ const EstoquePage = () => {
                                                 armazemNome: armazem.nome,
                                               })
                                             }
-                                            className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                                            className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                           >
                                             <Trash2 className="h-4 w-4" />
                                           </Button>
                                         </div>
-                                      </TableCell>
-                                    </TableRow>
+                                      </DataTableCell>
+                                    </DataTableRow>
                                   );
                                 })
                               ) : activeWarehouse === armazem.id &&
                                 !isLoading ? (
-                                <TableRow>
-                                  <TableCell
+                                <DataTableRow>
+                                  <DataTableCell
                                     colSpan={6}
                                     className="text-center py-8 text-muted-foreground"
                                   >
                                     {searchTerm
                                       ? "Nenhum produto encontrado com os critérios de busca."
                                       : "Nenhum produto cadastrado neste armazém."}
-                                  </TableCell>
-                                </TableRow>
+                                  </DataTableCell>
+                                </DataTableRow>
                               ) : null}
-                            </TableBody>
-                          </Table>
+                            </DataTableBody>
+                          </DataTable>
                         )}
                       </CardContent>
                     </Card>
@@ -720,7 +715,7 @@ const EstoquePage = () => {
                   min={0}
                   disabled={true}
                 />
-                <p className="text-xs text-muted-foreground text-amber-600">
+                <p className="text-xs text-warning">
                   A edição direta de quantidade no estoque está temporariamente
                   desabilitada.
                 </p>
@@ -771,13 +766,13 @@ const EstoquePage = () => {
                         />
                       </TabsContent>
                       <TabsContent value="auto">
-                        <div className="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                        <div className="space-y-3 p-3 bg-info/10 rounded-md">
                           <div className="space-y-2">
                             <label
                               htmlFor="tempoReposicao"
                               className="text-sm font-medium flex items-center gap-1"
                             >
-                              <ClockIcon className="h-3.5 w-3.5 text-blue-600" />
+                              <ClockIcon className="h-3.5 w-3.5 text-info" />
                               Tempo médio de reposição (dias)
                             </label>
                             <Input
@@ -817,7 +812,7 @@ const EstoquePage = () => {
                           </Button>
 
                           {mediaConsumoDiario !== null && (
-                            <div className="mt-2 text-xs text-blue-700 dark:text-blue-300">
+                            <div className="mt-2 text-xs text-info">
                               <p className="font-medium">Dados para cálculo:</p>
                               <ul className="list-disc pl-4 mt-1 space-y-1">
                                 <li>
