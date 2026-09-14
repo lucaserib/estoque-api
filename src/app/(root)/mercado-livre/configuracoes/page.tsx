@@ -17,7 +17,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { toast } from "sonner";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import Link from "next/link";
 
 interface MLAccount {
@@ -104,7 +104,7 @@ export default function MercadoLivreConfiguracoesPage() {
   if (status === "loading" || loading) {
     return (
       <div className="container mx-auto p-6">
-        <Header title="Configurações Mercado Livre" subtitle="Gerencie suas contas conectadas" />
+        <PageHeader title="Configurações Mercado Livre" subtitle="Gerencie suas contas conectadas" />
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -114,14 +114,18 @@ export default function MercadoLivreConfiguracoesPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <Header title="Configurações Mercado Livre" subtitle="Gerencie suas contas conectadas">
-        <Link href="/mercado-livre">
-          <Button variant="outline">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar ao Dashboard
-          </Button>
-        </Link>
-      </Header>
+      <PageHeader
+        title="Configurações Mercado Livre"
+        subtitle="Gerencie suas contas conectadas"
+        actions={
+          <Link href="/mercado-livre">
+            <Button variant="outline">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar ao Dashboard
+            </Button>
+          </Link>
+        }
+      />
 
       {/* Botão Conectar Nova Conta */}
       <Card>
@@ -167,8 +171,8 @@ export default function MercadoLivreConfiguracoesPage() {
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                      <Store className="h-6 w-6 text-yellow-600" />
+                    <div className="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
+                      <Store className="h-6 w-6 text-warning" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">

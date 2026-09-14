@@ -28,7 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import MercadoLivreAutoSync from "@/app/components/MercadoLivreAutoSync";
 import MLDashboardMetrics from "@/app/components/MercadoLivre/MLDashboardMetrics";
 import MLTopSellingProducts from "@/app/components/MercadoLivre/MLTopSellingProducts";
@@ -399,7 +399,7 @@ export default function MercadoLivrePage() {
   if (status === "loading" || loading) {
     return (
       <div className="container mx-auto max-w-7xl p-6 space-y-6">
-        <Header title="Mercado Livre" subtitle="Gestão integrada de vendas" />
+        <PageHeader title="Mercado Livre" subtitle="Gestão integrada de vendas" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-[118px] rounded-xl" />
@@ -416,7 +416,7 @@ export default function MercadoLivrePage() {
   if (accounts.length === 0) {
     return (
       <div className="container mx-auto max-w-7xl p-6">
-        <Header title="Mercado Livre" subtitle="Gestão integrada de vendas" />
+        <PageHeader title="Mercado Livre" subtitle="Gestão integrada de vendas" />
         <Card>
           <CardContent className="p-8 text-center">
             <Store className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
@@ -441,7 +441,7 @@ export default function MercadoLivrePage() {
 
   return (
     <div className="container mx-auto max-w-7xl p-6 space-y-6">
-      <Header
+      <PageHeader
         title="Mercado Livre"
         subtitle={`Gestão integrada de vendas${
           currentAccount ? ` — ${currentAccount.nickname}` : ""
@@ -453,29 +453,30 @@ export default function MercadoLivrePage() {
               })}`
             : ""
         }`}
-      >
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            onClick={() => loadAllData()}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9"
+              onClick={() => loadAllData()}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
 
-          <Button
-            variant={autoRefreshEnabled ? "default" : "outline"}
-            size="sm"
-            className="h-9"
-            onClick={toggleAutoRefresh}
-          >
-            <Clock className="h-4 w-4 mr-2" />
-            {autoRefreshEnabled ? "Auto ativado" : "Auto desativado"}
-          </Button>
-        </div>
-      </Header>
+            <Button
+              variant={autoRefreshEnabled ? "default" : "outline"}
+              size="sm"
+              className="h-9"
+              onClick={toggleAutoRefresh}
+            >
+              <Clock className="h-4 w-4 mr-2" />
+              {autoRefreshEnabled ? "Auto ativado" : "Auto desativado"}
+            </Button>
+          </div>
+        }
+      />
 
       {metrics?.warning && (
         <Alert>
