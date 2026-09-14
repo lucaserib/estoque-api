@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
@@ -289,7 +289,7 @@ export default function ImportarProdutosPage() {
   if (status === "loading" || loading) {
     return (
       <div className="container mx-auto p-6">
-        <Header
+        <PageHeader
           title="Importar Produtos"
           subtitle="Bling → Sistema → Mercado Livre"
         />
@@ -305,15 +305,16 @@ export default function ImportarProdutosPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <Header
+      <PageHeader
         title="Importar Produtos"
         subtitle="Integração Bling → Sistema → Mercado Livre"
-      >
-        <Button variant="outline" onClick={() => router.push("/produtos")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
-      </Header>
+        actions={
+          <Button variant="outline" onClick={() => router.push("/produtos")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+        }
+      />
 
       {blingExpired && (
         <Card className="border-warning bg-warning/10">

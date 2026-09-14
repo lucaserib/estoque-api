@@ -4,18 +4,18 @@ import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 import { toast } from "sonner";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
@@ -168,15 +168,16 @@ export default function ImportarEstoquePage() {
 
   return (
     <div className="container mx-auto max-w-4xl p-6 space-y-6">
-      <Header
+      <PageHeader
         title="Importar Estoque"
         subtitle="Suba uma planilha com sku, quantidade, custoMedio e armazem"
-      >
-        <Button variant="outline" onClick={() => router.push("/produtos")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
-      </Header>
+        actions={
+          <Button variant="outline" onClick={() => router.push("/produtos")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+        }
+      />
 
       <Card>
         <CardHeader>
@@ -224,28 +225,28 @@ export default function ImportarEstoquePage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="max-h-96 overflow-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>SKU</TableHead>
-                    <TableHead>Quantidade</TableHead>
-                    <TableHead>Custo médio</TableHead>
-                    <TableHead>Armazém</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
+              <DataTable>
+                <DataTableHeader>
+                  <DataTableRow>
+                    <DataTableHead className="pl-4">SKU</DataTableHead>
+                    <DataTableHead>Quantidade</DataTableHead>
+                    <DataTableHead>Custo médio</DataTableHead>
+                    <DataTableHead>Armazém</DataTableHead>
+                    <DataTableHead className="pr-4">Status</DataTableHead>
+                  </DataTableRow>
+                </DataTableHeader>
+                <DataTableBody>
                   {linhas.map((linha, index) => (
-                    <TableRow key={index} className={!linha.valida ? "bg-destructive/5" : undefined}>
-                      <TableCell>{linha.sku || "—"}</TableCell>
-                      <TableCell>{linha.quantidade}</TableCell>
-                      <TableCell>
+                    <DataTableRow key={index} className={!linha.valida ? "bg-destructive/5" : undefined}>
+                      <DataTableCell className="pl-4">{linha.sku || "—"}</DataTableCell>
+                      <DataTableCell numeric>{linha.quantidade}</DataTableCell>
+                      <DataTableCell numeric>
                         {linha.custoMedio !== undefined
                           ? (linha.custoMedio / 100).toFixed(2)
                           : "—"}
-                      </TableCell>
-                      <TableCell>{linha.armazem || "—"}</TableCell>
-                      <TableCell>
+                      </DataTableCell>
+                      <DataTableCell>{linha.armazem || "—"}</DataTableCell>
+                      <DataTableCell className="pr-4">
                         {linha.valida ? (
                           <span className="text-success text-xs">OK</span>
                         ) : (
@@ -253,11 +254,11 @@ export default function ImportarEstoquePage() {
                             {linha.motivoInvalida}
                           </span>
                         )}
-                      </TableCell>
-                    </TableRow>
+                      </DataTableCell>
+                    </DataTableRow>
                   ))}
-                </TableBody>
-              </Table>
+                </DataTableBody>
+              </DataTable>
             </div>
           </CardContent>
         </Card>
