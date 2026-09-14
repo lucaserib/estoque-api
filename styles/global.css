@@ -3,79 +3,87 @@
 @tailwind utilities;
 
 /* ============================================================
-   Leap Store — Design tokens (shadcn CSS variables)
-   Verde da marca + grafite metálico. Dark-first. darkMode: "class".
+   Leap Stock — Design tokens (shadcn CSS variables)
+   Sistema "Modernist": IBM Plex Sans/Mono, superfícies neutras,
+   cantos 10px (cards) / 8px (botões e inputs). Dark-first. darkMode: "class".
+   Convertido de Leap Store v2.dc.html (redesign-de-app-de-estoque/).
    ============================================================ */
 @layer base {
   :root {
-    --background: 210 20% 97%;
-    --foreground: 210 15% 12%;
+    --background: 210 12% 97%;
+    --foreground: 210 13% 12%;
     --card: 0 0% 100%;
-    --card-foreground: 210 15% 12%;
+    --card-foreground: 210 13% 12%;
     --popover: 0 0% 100%;
-    --popover-foreground: 210 15% 12%;
-    --border: 210 16% 88%;
-    --input: 210 16% 88%;
-    --primary: 100 80% 26%;
+    --popover-foreground: 210 13% 12%;
+    --border: 210 12% 91%;
+    --input: 210 12% 91%;
+    --primary: 118 57% 28%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 20% 94%;
-    --secondary-foreground: 210 15% 12%;
-    --muted: 210 20% 94%;
-    --muted-foreground: 210 8% 45%;
-    --accent: 100 60% 94%;
-    --accent-foreground: 103 80% 22%;
-    --success: 100 80% 26%;
+    --secondary: 200 12% 95%;
+    --secondary-foreground: 210 13% 12%;
+    --muted: 200 12% 95%;
+    --muted-foreground: 208 7% 44%;
+    --accent: 180 11% 98%;
+    --accent-foreground: 210 13% 12%;
+    --success: 118 57% 28%;
     --success-foreground: 0 0% 100%;
-    --warning: 35 92% 31%;
+    --warning: 36 79% 30%;
     --warning-foreground: 0 0% 100%;
-    --destructive: 4 74% 48%;
+    --destructive: 4 63% 44%;
     --destructive-foreground: 0 0% 100%;
-    --info: 205 70% 42%;
+    --info: 205 67% 37%;
     --info-foreground: 0 0% 100%;
-    --ring: 100 80% 26%;
-    --radius: 0.375rem;
-    --chart-1: 100 77% 40%;
-    --chart-2: 205 60% 50%;
-    --chart-3: 35 92% 50%;
-    --chart-4: 210 10% 55%;
-    --chart-5: 103 80% 27%;
-    --metal-edge: 210 16% 82%;
-    --metal-sheen: linear-gradient(160deg, hsl(210 20% 99%), hsl(210 16% 94%));
+    --ring: 118 57% 28%;
+    --radius: 0.625rem;
+    --chart-1: 118 57% 28%;
+    --chart-2: 205 67% 37%;
+    --chart-3: 36 79% 30%;
+    --chart-4: 208 7% 63%;
+    --chart-5: 118 58% 22%;
+    --faint: 208 9% 63%;
+    --fg2: 208 11% 27%;
+    --divider: 210 13% 94%;
+    --shadow-card: 0 1px 2px rgba(20, 26, 32, 0.05), 0 1px 3px rgba(20, 26, 32, 0.04);
+    --shadow-lift: 0 1px 2px rgba(20, 26, 32, 0.06), 0 8px 24px -8px rgba(20, 26, 32, 0.14);
   }
 
   .dark {
-    --background: 210 9% 8%;
-    --foreground: 210 14% 88%;
-    --card: 210 9% 12%;
-    --card-foreground: 210 14% 88%;
-    --popover: 210 9% 12%;
-    --popover-foreground: 210 14% 88%;
-    --border: 210 8% 19%;
-    --input: 210 8% 19%;
-    --primary: 100 77% 47%;
-    --primary-foreground: 103 90% 8%;
-    --secondary: 210 8% 16%;
-    --secondary-foreground: 210 14% 88%;
-    --muted: 210 8% 16%;
-    --muted-foreground: 210 8% 57%;
-    --accent: 210 8% 20%;
-    --accent-foreground: 100 77% 47%;
-    --success: 100 77% 47%;
-    --success-foreground: 103 90% 8%;
-    --warning: 38 95% 58%;
-    --warning-foreground: 30 85% 10%;
-    --destructive: 4 85% 65%;
-    --destructive-foreground: 0 60% 12%;
-    --info: 200 75% 60%;
-    --info-foreground: 205 60% 10%;
-    --ring: 100 77% 47%;
-    --chart-1: 100 77% 47%;
-    --chart-2: 200 65% 58%;
-    --chart-3: 38 95% 58%;
-    --chart-4: 210 10% 60%;
-    --chart-5: 103 60% 33%;
-    --metal-edge: 210 8% 24%;
-    --metal-sheen: linear-gradient(160deg, hsl(210 9% 14%), hsl(210 9% 10%));
+    --background: 210 11% 7%;
+    --foreground: 210 14% 91%;
+    --card: 210 11% 11%;
+    --card-foreground: 210 14% 91%;
+    --popover: 210 11% 11%;
+    --popover-foreground: 210 14% 91%;
+    --border: 210 11% 18%;
+    --input: 210 11% 18%;
+    --primary: 111 54% 54%;
+    --primary-foreground: 110 53% 7%;
+    --secondary: 210 11% 15%;
+    --secondary-foreground: 210 14% 91%;
+    --muted: 210 11% 15%;
+    --muted-foreground: 210 8% 58%;
+    --accent: 204 11% 9%;
+    --accent-foreground: 210 14% 91%;
+    --success: 111 54% 54%;
+    --success-foreground: 110 53% 7%;
+    --warning: 38 73% 62%;
+    --warning-foreground: 36 45% 9%;
+    --destructive: 6 79% 72%;
+    --destructive-foreground: 6 45% 9%;
+    --info: 204 70% 67%;
+    --info-foreground: 204 45% 9%;
+    --ring: 111 54% 54%;
+    --chart-1: 111 54% 54%;
+    --chart-2: 204 70% 67%;
+    --chart-3: 38 73% 62%;
+    --chart-4: 210 7% 45%;
+    --chart-5: 111 61% 62%;
+    --faint: 210 7% 45%;
+    --fg2: 208 12% 79%;
+    --divider: 210 11% 15%;
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -10px rgba(0, 0, 0, 0.6);
   }
 
   *,
@@ -102,11 +110,7 @@
   }
 
   .text-eyebrow {
-    @apply text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-medium;
-  }
-
-  .surface-metal {
-    background-image: var(--metal-sheen);
+    @apply text-xs font-medium text-muted-foreground;
   }
 }
 

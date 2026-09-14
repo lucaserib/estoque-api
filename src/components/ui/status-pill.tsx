@@ -3,7 +3,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const statusPillVariants = cva(
-  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold",
+  "inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium",
   {
     variants: {
       tone: {

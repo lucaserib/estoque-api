@@ -15,21 +15,21 @@ const HeroMetric = React.forwardRef<HTMLDivElement, HeroMetricProps>(
     <div
       ref={ref}
       className={cn(
-        "surface-metal rounded-md border-b-2 border-primary px-6 py-5",
+        "rounded-lg border border-border bg-card px-6 py-5 shadow-card",
         className
       )}
       {...props}
     >
-      <p className="text-eyebrow">{label}</p>
-      <div className="mt-1 flex flex-wrap items-baseline gap-3">
-        <span className="text-display text-[44px] leading-none tabular-nums text-foreground sm:text-[52px]">
+      <p className="text-sm font-semibold text-foreground">{label}</p>
+      <div className="mt-2.5 flex flex-wrap items-baseline gap-3">
+        <span className="font-mono text-[40px] font-semibold leading-none tracking-tight tabular-nums text-foreground">
           {value}
         </span>
         {delta !== undefined && delta !== null && (
           <DeltaIndicator delta={delta} label={deltaLabel} />
         )}
       </div>
-      {context && <p className="mt-2 text-sm text-muted-foreground">{context}</p>}
+      {context && <p className="mt-2 text-xs text-faint">{context}</p>}
     </div>
   )
 );

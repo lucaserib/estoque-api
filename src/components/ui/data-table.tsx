@@ -15,7 +15,11 @@ const DataTableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b [&_tr]:border-border", className)} {...props} />
+  <thead
+    ref={ref}
+    className={cn("[&_tr]:border-b [&_tr]:border-border [&_tr]:bg-accent [&_tr]:hover:bg-accent", className)}
+    {...props}
+  />
 ));
 DataTableHeader.displayName = "DataTableHeader";
 

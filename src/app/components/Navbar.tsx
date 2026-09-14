@@ -26,92 +26,80 @@ const Navbar = () => {
   useClickOutside(dropdownRef, () => setIsDropdownOpen(false));
 
   return (
-    <div className="flex h-14 justify-between items-center w-full border-b border-metal mb-6">
-      <div className="flex justify-between items-center gap-5">
-        <button
-          className="px-3 py-3 bg-muted rounded-full hover:bg-accent"
-          onClick={toggleSidebar}
-        >
-          <Menu className="w-4 h-4" />
-        </button>
+    <div className="flex h-[60px] w-full items-center gap-3.5 border-b border-border bg-card px-1 mb-6">
+      <button
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-fg2 hover:bg-muted md:hidden"
+        onClick={toggleSidebar}
+      >
+        <Menu className="h-4 w-4" />
+      </button>
 
-        <div className="relative">
-          <input
-            type="search"
-            placeholder="Buscar produtos, pedidos…"
-            className="pl-10 pr-4 py-2 w-50 md:w-60 border border-input bg-card rounded-md focus:outline-none focus:border-primary focus:ring-1 focus:ring-ring"
-          />
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="text-muted-foreground" size={18} />
-          </div>
-        </div>
+      <div className="flex min-w-[220px] max-w-[420px] flex-1 items-center gap-2.5 rounded-full border border-border bg-accent px-3.5 py-2">
+        <Search className="h-[15px] w-[15px] shrink-0 text-faint" />
+        <input
+          type="search"
+          placeholder="Buscar SKU, produto, pedido ou anúncio"
+          className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-foreground outline-none placeholder:text-faint"
+        />
+        <span className="hidden shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[11px] text-faint sm:inline-block">
+          ⌘K
+        </span>
       </div>
 
-      <div className="flex justify-between items-center gap-5">
-        <div className="hidden md:flex justify-between items-center gap-5">
-          <div>
-            <button onClick={toggleDarkMode} aria-label="Alternar tema">
-              {isDarkMode ? (
-                <Sun
-                  className="cursor-pointer text-muted-foreground"
-                  size={24}
-                />
-              ) : (
-                <Moon
-                  className="cursor-pointer text-muted-foreground"
-                  size={24}
-                />
-              )}
-            </button>
-          </div>
+      <div className="ml-auto flex items-center gap-2">
+        <NotificationsBell />
 
-          <NotificationsBell />
+        <button
+          onClick={toggleDarkMode}
+          aria-label="Alternar tema"
+          className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-border bg-card text-fg2 hover:bg-muted"
+        >
+          {isDarkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </button>
 
-          <hr className="w-0 h-7 border border-solid border-l border-input mx-3" />
+        <div className="hidden items-center gap-2 md:flex">
+          <div className="mx-1 h-7 w-px bg-border" />
 
           <div className="relative" ref={dropdownRef}>
             <div
-              className="flex items-center gap-3 cursor-pointer hover:bg-muted px-3 py-1 rounded-lg"
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 hover:bg-muted"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
-              <div className="flex items-center gap-1">
-                {status === "loading" ? (
-                  <div className="h-4 bg-muted rounded w-24 animate-pulse"></div>
-                ) : (
-                  <span className="font-semibold">
-                    {session?.user?.name || session?.user?.email || "Convidado"}
-                  </span>
-                )}
-                <ChevronDown
-                  className={`w-4 h-4 transition-transform ${
-                    isDropdownOpen ? "rotate-180" : ""
-                  }`}
-                />
-              </div>
+              {status === "loading" ? (
+                <div className="h-4 w-24 animate-pulse rounded bg-muted" />
+              ) : (
+                <span className="text-[13px] font-medium text-foreground">
+                  {session?.user?.name || session?.user?.email || "Convidado"}
+                </span>
+              )}
+              <ChevronDown
+                className={`h-4 w-4 text-faint transition-transform ${
+                  isDropdownOpen ? "rotate-180" : ""
+                }`}
+              />
             </div>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-card rounded-lg shadow-xl border z-50">
-                <div className="absolute -top-2 right-3 w-4 h-4 bg-card border-t border-l rotate-45"></div>
-
+              <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-border bg-card shadow-lift">
+                <Link
+                  href="/configuracoes-gerais"
+                  className="flex items-center gap-2 rounded-t-lg px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  <Settings className="h-4 w-4" />
+                  Configurações
+                </Link>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
-                  className="w-full px-4 py-3 text-left text-sm text-foreground hover:bg-muted flex items-center gap-2 rounded-lg"
+                  className="flex w-full items-center gap-2 rounded-b-lg px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
                 >
-                  <LogOut className="w-4 h-4" />
+                  <LogOut className="h-4 w-4" />
                   Sair da conta
                 </button>
               </div>
             )}
           </div>
         </div>
-
-        <Link href="/configuracoes-gerais" aria-label="Configurações">
-          <Settings
-            className="cursor-pointer text-muted-foreground"
-            size={24}
-          />
-        </Link>
       </div>
     </div>
   );

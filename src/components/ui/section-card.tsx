@@ -3,23 +3,27 @@ import { cn } from "@/lib/utils";
 
 interface SectionCardProps extends React.HTMLAttributes<HTMLDivElement> {
   title?: string;
+  description?: string;
   actions?: React.ReactNode;
   contentClassName?: string;
 }
 
 const SectionCard = React.forwardRef<HTMLDivElement, SectionCardProps>(
-  ({ title, actions, className, contentClassName, children, ...props }, ref) => (
+  ({ title, description, actions, className, contentClassName, children, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "rounded-md border border-metal bg-card shadow-none dark:shadow-none",
+        "overflow-hidden rounded-lg border border-border bg-card shadow-card",
         className
       )}
       {...props}
     >
       {(title || actions) && (
-        <div className="flex items-center justify-between gap-4 border-b border-metal px-5 py-3">
-          {title && <h3 className="text-eyebrow">{title}</h3>}
+        <div className="flex items-center justify-between gap-4 border-b border-divider px-5 py-4">
+          <div>
+            {title && <h2 className="text-[15px] font-semibold text-foreground">{title}</h2>}
+            {description && <p className="mt-1 text-xs text-faint">{description}</p>}
+          </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
         </div>
       )}

@@ -38,13 +38,8 @@ export function Logo({ variant = "full", size = "md", className }: LogoProps) {
   return (
     <span className={cn("inline-flex items-center gap-2.5", className)}>
       <CubeMark className={s.icon} />
-      <span
-        className={cn(
-          s.text,
-          "text-display uppercase tracking-[0.18em] text-foreground"
-        )}
-      >
-        Leap Store
+      <span className={cn(s.text, "text-display tracking-[0.01em] text-foreground")}>
+        Leap Stock
       </span>
     </span>
   );

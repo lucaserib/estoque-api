@@ -15,6 +15,8 @@ import {
   ArrowLeftRight,
   TrendingDown,
   BarChart3,
+  Zap,
+  Users,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -42,19 +44,16 @@ const SidebarLink = ({
   return (
     <Link href={href}>
       <div
-        className={`relative cursor-pointer flex items-center ${
-          isCollapsed ? "justify-center py-3" : "justify-start px-6 py-3"
-        } gap-3 transition-colors ${
+        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg transition-colors ${
+          isCollapsed ? "justify-center py-2.5" : "px-2.5 py-2"
+        } ${
           isActive
-            ? "bg-accent text-primary"
-            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            ? "bg-primary/10 font-medium text-primary"
+            : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
         }`}
       >
-        {isActive && (
-          <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r bg-primary" />
-        )}
-        <Icon className={`w-5 h-5 ${isActive ? "text-primary" : ""}`} />
-        <span className={`${isCollapsed ? "hidden" : "block"} font-medium`}>
+        <Icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
+        <span className={`${isCollapsed ? "hidden" : "block"} text-[13.5px]`}>
           {label}
         </span>
       </div>
@@ -84,28 +83,28 @@ const SidebarDropdown = ({
   return (
     <div>
       <div
-        className={`relative cursor-pointer flex items-center ${
-          isCollapsed ? "justify-center py-3" : "justify-start px-6 py-3"
-        } gap-3 transition-colors ${
+        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg transition-colors ${
+          isCollapsed ? "justify-center py-2.5" : "px-2.5 py-2"
+        } ${
           isActive
-            ? "bg-accent text-primary"
-            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            ? "bg-primary/10 font-medium text-primary"
+            : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
         }`}
         onClick={() => setIsOpen(!isOpen)}
       >
-        <Icon className="w-5 h-5" />
+        <Icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
         {!isCollapsed && (
           <>
-            <span className="font-medium">{label}</span>
+            <span className="text-[13.5px]">{label}</span>
             {isOpen ? (
-              <ChevronUp className="ml-auto w-4 h-4" />
+              <ChevronUp className="ml-auto h-4 w-4 opacity-60" />
             ) : (
-              <ChevronDown className="ml-auto w-4 h-4" />
+              <ChevronDown className="ml-auto h-4 w-4 opacity-60" />
             )}
           </>
         )}
       </div>
-      {isOpen && !isCollapsed && <div className="space-y-1">{children}</div>}
+      {isOpen && !isCollapsed && <div className="mt-0.5 space-y-0.5">{children}</div>}
     </div>
   );
 };
@@ -125,17 +124,14 @@ const SidebarSubLink = ({
   return (
     <Link href={href}>
       <div
-        className={`relative cursor-pointer flex items-center pl-12 pr-6 py-2.5 gap-3 transition-colors ${
+        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg py-2 pl-8 pr-2.5 transition-colors ${
           isActive
-            ? "bg-accent text-primary"
-            : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            ? "bg-primary/10 font-medium text-primary"
+            : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
         }`}
       >
-        {isActive && (
-          <span className="absolute left-0 top-1 bottom-1 w-[3px] rounded-r bg-primary" />
-        )}
-        <Icon className="w-4 h-4" />
-        <span className="text-sm font-medium">{label}</span>
+        <Icon className="h-4 w-4 shrink-0 opacity-90" />
+        <span className="text-[13px]">{label}</span>
       </div>
     </Link>
   );
@@ -150,7 +146,7 @@ const SectionLabel = ({
 }) => {
   if (isCollapsed) return null;
   return (
-    <p className="px-6 pt-5 pb-1 text-eyebrow">
+    <p className="px-4 pb-1.5 pt-5 text-[11px] font-medium uppercase tracking-[0.08em] text-faint">
       {children}
     </p>
   );
@@ -160,7 +156,7 @@ const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar } = useLayout();
   const sidebarClassNames = `fixed flex flex-col ${
     isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
-  } bg-card border-r border-metal transition-all duration-300 overflow-hidden h-full z-40`;
+  } bg-card border-r border-border transition-all duration-300 overflow-hidden h-full z-40`;
 
   return (
     <div className={sidebarClassNames}>
@@ -170,7 +166,7 @@ const Sidebar = () => {
           isSidebarCollapsed ? "px-4" : "px-6"
         }`}
       >
-        <Link href="/dashboard" aria-label="Leap Store — início">
+        <Link href="/dashboard" aria-label="Leap Stock — início">
           <Logo size="md" variant={isSidebarCollapsed ? "mark" : "full"} />
         </Link>
         <button
@@ -183,24 +179,12 @@ const Sidebar = () => {
 
       {/* Links */}
       <div className="flex-grow mt-4">
-        <SectionLabel isCollapsed={isSidebarCollapsed}>Principal</SectionLabel>
+        <SectionLabel isCollapsed={isSidebarCollapsed}>Operação</SectionLabel>
         <SidebarLink
           href="/"
           icon={Layout}
-          label="Home"
+          label="Visão geral"
           isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/gestao-pedidos"
-          isCollapsed={isSidebarCollapsed}
-          label="Pedidos de Compra"
-          icon={Clipboard}
-        />
-        <SidebarLink
-          href="/fornecedores"
-          isCollapsed={isSidebarCollapsed}
-          label="Fornecedor"
-          icon={Truck}
         />
         <SidebarLink
           icon={Package}
@@ -214,7 +198,24 @@ const Sidebar = () => {
           isCollapsed={isSidebarCollapsed}
           href="/reposicao"
         />
-
+        <SidebarLink
+          icon={ClipboardPaste}
+          label="Saídas"
+          isCollapsed={isSidebarCollapsed}
+          href="/saidas"
+        />
+        <SidebarLink
+          href="/gestao-pedidos"
+          isCollapsed={isSidebarCollapsed}
+          label="Pedidos de compra"
+          icon={Clipboard}
+        />
+        <SidebarLink
+          href="/fornecedores"
+          isCollapsed={isSidebarCollapsed}
+          label="Fornecedores"
+          icon={Truck}
+        />
         <SidebarDropdown
           icon={Warehouse}
           label="Estoque"
@@ -232,14 +233,6 @@ const Sidebar = () => {
           />
         </SidebarDropdown>
 
-        <SidebarLink
-          icon={ClipboardPaste}
-          label="Saídas"
-          isCollapsed={isSidebarCollapsed}
-          href="/saidas"
-        />
-
-        {/* Canais de venda — preparado para futuros marketplaces */}
         <SectionLabel isCollapsed={isSidebarCollapsed}>Canais</SectionLabel>
         <SidebarDropdown
           icon={MercadoLivreIcon}
@@ -249,17 +242,17 @@ const Sidebar = () => {
           <SidebarSubLink
             href="/mercado-livre"
             icon={Layout}
-            label="Dashboard"
+            label="Painel"
           />
           <SidebarSubLink
             href="/mercado-livre/vendas"
             icon={BarChart3}
-            label="Análise de Vendas"
+            label="Vendas"
           />
           <SidebarSubLink
             href="/mercado-livre/produtos"
             icon={Package}
-            label="Produtos"
+            label="Anúncios e vínculos"
           />
           <SidebarSubLink
             href="/mercado-livre/configuracoes"
@@ -267,13 +260,33 @@ const Sidebar = () => {
             label="Configurações"
           />
         </SidebarDropdown>
+
+        <SectionLabel isCollapsed={isSidebarCollapsed}>Sistema</SectionLabel>
+        <SidebarLink
+          href="/integracoes"
+          icon={Zap}
+          label="Integrações"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/configuracoes"
+          icon={Settings}
+          label="Configurações"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/usuarios"
+          icon={Users}
+          label="Usuários"
+          isCollapsed={isSidebarCollapsed}
+        />
       </div>
 
       {/* Footer */}
       {!isSidebarCollapsed && (
         <div className="mb-8 px-6">
-          <p className="text-xs text-muted-foreground text-center">
-            &copy; {new Date().getFullYear()} Leap Store
+          <p className="text-xs text-faint text-center">
+            &copy; {new Date().getFullYear()} Leap Stock
           </p>
         </div>
       )}

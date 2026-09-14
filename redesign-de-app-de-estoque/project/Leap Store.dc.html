@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f5f7f8;--surface:#ffffff;--surface2:#eceff1;--fg:#1a1e21;--muted:#6b7378;--line:#dbe0e4;--rule:#1a1e21;--primary:#317711;--primary-fg:#ffffff;--primary-soft:#e7f1df;--danger:#d52c20;--danger-soft:#fbe6e4;--warn:#985b06;--warn-soft:#f9eddb;--info:#2078b6;--info-soft:#e3eef7}
+[data-theme="dark"]{--bg:#131416;--surface:#1c1f21;--surface2:#25292c;--fg:#dce0e5;--muted:#89919a;--line:#2a3037;--rule:#3d454c;--primary:#59d41c;--primary-fg:#0d1f04;--primary-soft:#1d2e12;--danger:#f0685c;--danger-soft:#331a18;--warn:#f7b23b;--warn-soft:#332612;--info:#5cb3e8;--info-soft:#132833}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--primary);text-decoration:none}
+a:hover{color:var(--fg);text-decoration:underline}
+button{font-family:inherit}
+input,select,textarea{font-family:inherit}
+::selection{background:var(--primary-soft);color:var(--fg)}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+</style>
+</helmet>
+
+<div style="display:flex;min-height:100vh;background:var(--bg)">
+
+  <sc-if value="{{ isLogin }}">
+    <div style="display:flex;width:100%;min-height:100vh;flex-wrap:wrap">
+      <div style="flex:1 1 380px;min-width:0;background:#131416;color:#dce0e5;padding:48px 44px;display:flex;flex-direction:column;justify-content:space-between;gap:48px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="brand/leap-mark.svg" alt="" style="width:28px;height:28px;display:block">
+          <span style="font:700 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.2em;text-transform:uppercase">Leap Store</span>
+        </div>
+        <div>
+          <p style="font:500 11px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#89919a;margin:0 0 18px">Controle de estoque multicanal</p>
+          <h1 style="font:600 52px/1 'Barlow Condensed',sans-serif;margin:0;max-width:11ch;text-wrap:pretty">Um estoque. Todos os canais.</h1>
+          <div style="height:2px;background:#3d454c;margin:26px 0"></div>
+          <p style="font:400 14px/1.6 Inter,sans-serif;color:#89919a;margin:0;max-width:42ch">Mercado Livre e Bling sincronizados com o estoque local, custo médio por entrada e reposição calculada sobre a venda real.</p>
+        </div>
+        <p style="font:400 12px/1.3 Inter,sans-serif;color:#6b7378;margin:0">© 2026 Leap Store</p>
+      </div>
+      <div style="flex:1 1 380px;min-width:0;background:var(--surface);padding:48px 44px;display:flex;align-items:center">
+        <div style="width:100%;max-width:380px">
+          <p style="font:500 11px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0">Acesso</p>
+          <h2 style="font:600 34px/1.05 'Barlow Condensed',sans-serif;margin:8px 0 0;color:var(--fg)">Entrar na conta</h2>
+          <div style="height:2px;background:var(--rule);margin:20px 0 28px"></div>
+          <div style="display:flex;flex-direction:column;gap:18px">
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <label style="font:500 11px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">E-mail</label>
+              <input type="email" placeholder="voce@empresa.com.br" style="width:100%;padding:11px 12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:400 14px/1.2 Inter,sans-serif;border-radius:0">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:7px">
+              <label style="font:500 11px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">Senha</label>
+              <input type="password" placeholder="••••••••••" style="width:100%;padding:11px 12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:400 14px/1.2 Inter,sans-serif;border-radius:0">
+            </div>
+            <button onClick="{{ goDashboard }}" style="width:100%;padding:13px 16px;background:var(--primary);color:var(--primary-fg);border:0;border-radius:0;font:600 13px/1.3 Inter,sans-serif;letter-spacing:.04em;text-align:left;cursor:pointer">Entrar</button>
+            <div style="display:flex;gap:10px;align-items:center">
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+              <span style="font:400 11px/1.3 Inter,sans-serif;color:var(--muted)">ou</span>
+              <div style="flex:1;height:1px;background:var(--line)"></div>
+            </div>
+            <button onClick="{{ goDashboard }}" style="width:100%;padding:13px 16px;background:transparent;color:var(--fg);border:1px solid var(--rule);border-radius:0;font:600 13px/1.3 Inter,sans-serif;text-align:left;cursor:pointer">Continuar com Google</button>
+            <p style="font:400 12px/1.5 Inter,sans-serif;color:var(--muted);margin:6px 0 0">Não tem conta? <a href="#0">Criar acesso</a> · <a href="#0">Esqueci a senha</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isApp }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;width:100%;align-items:stretch">
+
+      <aside style="flex:0 0 232px;background:var(--surface);border-right:2px solid var(--rule);min-height:100vh;display:flex;flex-direction:column">
+        <div style="padding:22px 20px 18px;display:flex;align-items:center;gap:11px;border-bottom:1px solid var(--line)">
+          <img src="brand/leap-mark.svg" alt="" style="width:24px;height:24px;flex:0 0 24px;display:block">
+          <span style="font:700 15px/1 'Barlow Condensed',sans-serif;letter-spacing:.2em;text-transform:uppercase;color:var(--fg)">Leap Store</span>
+        </div>
+        <nav style="flex:1;padding:6px 0 24px;display:flex;flex-direction:column;gap:2px">
+          <sc-for list="{{ navGroups }}" as="group" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:1px">
+              <p style="font:500 10px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0;padding:20px 20px 8px">{{ group.title }}</p>
+              <sc-for list="{{ group.items }}" as="item" hint-placeholder-count="4">
+                <button onClick="{{ item.go }}" style="{{ item.style }}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 16px"><path d="{{ item.icon }}"></path></svg>
+                  <span style="flex:1;text-align:left">{{ item.label }}</span>
+                  <span style="{{ item.badgeStyle }}">{{ item.badge }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </sc-for>
+        </nav>
+        <div style="padding:16px 20px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px">
+          <div style="width:28px;height:28px;background:var(--surface2);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font:600 11px/1.3 Inter,sans-serif;color:var(--muted)">LS</div>
+          <div style="min-width:0;flex:1">
+            <p style="font:500 12px/1.2 Inter,sans-serif;color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Lucas Eriberto</p>
+            <p style="font:400 11px/1.2 Inter,sans-serif;color:var(--muted);margin:2px 0 0">Administrador</p>
+          </div>
+        </div>
+      </aside>
+
+      <main style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+        <header style="position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:2px solid var(--rule);padding:0 24px;display:flex;align-items:center;gap:16px;height:58px;flex-wrap:wrap">
+          <div style="flex:1 1 200px;min-width:0;display:flex;align-items:center;gap:10px;border:1px solid var(--line);background:var(--bg);padding:8px 11px;max-width:400px">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+            <input placeholder="Buscar SKU, produto, pedido ou anúncio" style="flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font:400 13px/1.3 Inter,sans-serif;outline:none">
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+            <div style="display:flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--line);background:var(--bg)">
+              <span style="width:7px;height:7px;background:var(--primary);display:block"></span>
+              <span style="font:500 11px/1.3 Inter,sans-serif;color:var(--muted);letter-spacing:.04em;white-space:nowrap">Sincronizado 14:02</span>
+            </div>
+            <button onClick="{{ toggleTheme }}" style="padding:8px 11px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:500 11px/1.3 Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">{{ themeLabel }}</button>
+            <button onClick="{{ goLogin }}" style="padding:8px 11px;border:1px solid var(--line);background:var(--bg);color:var(--muted);font:500 11px/1.3 Inter,sans-serif;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Sair</button>
+          </div>
+        </header>
+
+        <div style="padding:26px 24px 72px;max-width:1440px;width:100%">
+
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap">
+            <div style="min-width:0">
+              <p style="font:500 11px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0">{{ pageEyebrow }}</p>
+              <h1 style="font:600 34px/1.05 'Barlow Condensed',sans-serif;margin:7px 0 0;color:var(--fg)">{{ pageTitle }}</h1>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button style="padding:10px 14px;border:1px solid var(--rule);background:transparent;color:var(--fg);font:600 12px/1.3 Inter,sans-serif;white-space:nowrap;text-align:left;cursor:pointer">{{ secondaryAction }}</button>
+              <button style="padding:10px 14px;border:0;background:var(--primary);color:var(--primary-fg);font:600 12px/1.3 Inter,sans-serif;white-space:nowrap;text-align:left;cursor:pointer">{{ primaryAction }}</button>
+            </div>
+          </div>
+          <div style="height:2px;background:var(--rule);margin:18px 0 26px"></div>
+
+          <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+            <div style="display:flex;flex-direction:column;gap:26px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));border:1px solid var(--line);background:var(--surface)">
+                <div style="padding:22px;border-right:1px solid var(--line)">
+                  <p style="font:500 10px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0">Receita · 30 dias</p>
+                  <p style="font:600 46px/1 'Barlow Condensed',sans-serif;color:var(--fg);margin:12px 0 0;font-variant-numeric:tabular-nums">R$ 284.910</p>
+                  <p style="font:500 12px/1.3 Inter,sans-serif;color:var(--primary);margin:10px 0 0">+18,4% vs. período anterior</p>
+                </div>
+                <div style="padding:22px;display:flex;align-items:flex-end;gap:4px;min-height:150px">
+                  <sc-for list="{{ chart }}" as="bar" hint-placeholder-count="14">
+                    <div title="{{ bar.label }}" style="{{ bar.style }}"></div>
+                  </sc-for>
+                </div>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));border:1px solid var(--line);background:var(--surface)">
+                <sc-for list="{{ kpis }}" as="kpi" hint-placeholder-count="4">
+                  <div style="padding:18px 20px;border-right:1px solid var(--line)">
+                    <p style="font:500 10px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0">{{ kpi.label }}</p>
+                    <p style="font:600 28px/1 'Barlow Condensed',sans-serif;color:var(--fg);margin:11px 0 0;font-variant-numeric:tabular-nums">{{ kpi.value }}</p>
+                    <p style="{{ kpi.deltaStyle }}">{{ kpi.delta }}</p>
+                  </div>
+                </sc-for>
+              </div>
+
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:26px">
+                <section style="border:1px solid var(--line);background:var(--surface);min-width:0">
+                  <div style="padding:15px 18px;border-bottom:2px solid var(--rule);display:flex;justify-content:space-between;align-items:center;gap:12px">
+                    <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">Reposição urgente</h2>
+                    <a href="#0" onClick="{{ goReposicao }}" style="font:500 11px/1.3 Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase">Ver tudo</a>
+                  </div>
+                  <sc-for list="{{ restock }}" as="r" hint-placeholder-count="5">
+                    <div style="padding:13px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px">
+                      <span style="{{ r.dotStyle }}"></span>
+                      <div style="flex:1;min-width:0">
+                        <p style="font:500 13px/1.3 Inter,sans-serif;color:var(--fg);margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ r.nome }}</p>
+                        <p style="font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin:3px 0 0">{{ r.sku }} · {{ r.dias }}</p>
+                      </div>
+                      <span style="font:600 14px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ r.sugerido }}</span>
+                    </div>
+                  </sc-for>
+                </section>
+
+                <section style="border:1px solid var(--line);background:var(--surface);min-width:0">
+                  <div style="padding:15px 18px;border-bottom:2px solid var(--rule)">
+                    <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">Canais e integrações</h2>
+                  </div>
+                  <sc-for list="{{ channels }}" as="c" hint-placeholder-count="3">
+                    <div style="padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px">
+                      <div style="flex:1;min-width:0">
+                        <p style="font:500 13px/1.3 Inter,sans-serif;color:var(--fg);margin:0">{{ c.nome }}</p>
+                        <p style="font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin:3px 0 0">{{ c.detalhe }}</p>
+                      </div>
+                      <span style="{{ c.pillStyle }}">{{ c.status }}</span>
+                    </div>
+                  </sc-for>
+                </section>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isProdutos }}">
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+                <div style="display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:var(--surface);padding:9px 11px;flex:1 1 240px;max-width:340px">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.5-3.5"></path></svg>
+                  <input placeholder="Filtrar por nome ou SKU" style="flex:1;min-width:0;border:0;background:transparent;color:var(--fg);font:400 13px/1.3 Inter,sans-serif;outline:none">
+                </div>
+                <sc-for list="{{ prodFilters }}" as="f" hint-placeholder-count="4">
+                  <button style="{{ f.style }}">{{ f.label }}</button>
+                </sc-for>
+              </div>
+
+              <div style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+                <table style="width:100%;min-width:900px;border-collapse:collapse">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--rule)">
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 14px">Produto</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 14px">Fornecedor</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 14px">Local</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 14px">Full ML</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 14px">Custo médio</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 14px">Preço</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px 14px">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ produtos }}" as="p" hint-placeholder-count="8">
+                      <tr onClick="{{ p.open }}" style="border-bottom:1px solid var(--line);cursor:pointer">
+                        <td style="padding:13px 14px;border-left:3px solid {{ p.edge }}">
+                          <p style="font:500 13px/1.3 Inter,sans-serif;color:var(--fg);margin:0">{{ p.nome }}</p>
+                          <p style="font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin:3px 0 0">{{ p.sku }}</p>
+                        </td>
+                        <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ p.fornecedor }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ p.local }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ p.full }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ p.custo }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ p.preco }}</td>
+                        <td style="padding:13px 14px"><span style="{{ p.pillStyle }}">{{ p.status }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+                <p style="font:400 12px/1.3 Inter,sans-serif;color:var(--muted);margin:0">Exibindo 8 de 1.284 produtos</p>
+                <div style="display:flex;gap:6px">
+                  <button style="padding:8px 12px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:500 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer">Anterior</button>
+                  <button style="padding:8px 12px;border:1px solid var(--rule);background:var(--surface);color:var(--fg);font:600 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer">Próxima</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isProduto }}">
+            <div style="display:flex;flex-direction:column;gap:22px">
+              <div style="display:flex;gap:2px;border-bottom:2px solid var(--rule);flex-wrap:wrap">
+                <sc-for list="{{ prodTabs }}" as="t" hint-placeholder-count="5">
+                  <button onClick="{{ t.go }}" style="{{ t.style }}">{{ t.label }}</button>
+                </sc-for>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:22px">
+                <section style="border:1px solid var(--line);background:var(--surface);min-width:0">
+                  <div style="padding:15px 18px;border-bottom:2px solid var(--rule)">
+                    <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">Ficha do produto</h2>
+                  </div>
+                  <sc-for list="{{ fichaProduto }}" as="f" hint-placeholder-count="7">
+                    <div style="display:flex;justify-content:space-between;gap:16px;padding:12px 18px;border-bottom:1px solid var(--line)">
+                      <span style="font:400 12px/1.4 Inter,sans-serif;color:var(--muted)">{{ f.k }}</span>
+                      <span style="font:500 13px/1.4 Inter,sans-serif;color:var(--fg);text-align:right;font-variant-numeric:tabular-nums">{{ f.v }}</span>
+                    </div>
+                  </sc-for>
+                </section>
+                <section style="border:1px solid var(--line);background:var(--surface);min-width:0">
+                  <div style="padding:15px 18px;border-bottom:2px solid var(--rule)">
+                    <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">Estoque por armazém</h2>
+                  </div>
+                  <sc-for list="{{ armazens }}" as="a" hint-placeholder-count="4">
+                    <div style="padding:13px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px">
+                      <div style="flex:1;min-width:0">
+                        <p style="font:500 13px/1.3 Inter,sans-serif;color:var(--fg);margin:0">{{ a.nome }}</p>
+                        <p style="font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin:3px 0 0">Mínimo {{ a.min }}</p>
+                      </div>
+                      <span style="font:600 17px/1 'Barlow Condensed',sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ a.qtd }}</span>
+                    </div>
+                  </sc-for>
+                  <div style="padding:15px 18px;display:flex;gap:8px;flex-wrap:wrap">
+                    <button style="padding:9px 13px;border:1px solid var(--rule);background:transparent;color:var(--fg);font:600 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer">Transferir</button>
+                    <button style="padding:9px 13px;border:0;background:var(--primary);color:var(--primary-fg);font:600 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer">Ajustar estoque</button>
+                  </div>
+                </section>
+              </div>
+              <section style="border:1px solid var(--line);background:var(--surface);min-width:0">
+                <div style="padding:15px 18px;border-bottom:2px solid var(--rule)">
+                  <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">Anúncios vinculados</h2>
+                </div>
+                <div style="overflow-x:auto">
+                  <table style="width:100%;min-width:640px;border-collapse:collapse">
+                    <thead>
+                      <tr style="border-bottom:1px solid var(--line)">
+                        <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Anúncio</th>
+                        <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Tipo</th>
+                        <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Preço</th>
+                        <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Estoque</th>
+                        <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Situação</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <sc-for list="{{ produtoAnuncios }}" as="a" hint-placeholder-count="3">
+                        <tr style="border-bottom:1px solid var(--line)">
+                          <td style="padding:12px 18px;font:500 13px/1.3 Inter,sans-serif;color:var(--fg)">{{ a.titulo }}<span style="display:block;font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin-top:3px">{{ a.mlb }}</span></td>
+                          <td style="padding:12px 18px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ a.tipo }}</td>
+                          <td style="padding:12px 18px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ a.preco }}</td>
+                          <td style="padding:12px 18px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ a.estoque }}</td>
+                          <td style="padding:12px 18px"><span style="{{ a.pillStyle }}">{{ a.status }}</span></td>
+                        </tr>
+                      </sc-for>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isReposicao }}">
+            <div style="display:flex;flex-direction:column;gap:22px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));border:1px solid var(--line);background:var(--surface)">
+                <div style="padding:20px;border-right:1px solid var(--line)">
+                  <p style="font:500 10px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0">Custo total sugerido</p>
+                  <p style="font:600 42px/1 'Barlow Condensed',sans-serif;color:var(--fg);margin:11px 0 0;font-variant-numeric:tabular-nums">R$ 96.480</p>
+                </div>
+                <sc-for list="{{ repoKpis }}" as="k" hint-placeholder-count="3">
+                  <div style="padding:20px;border-right:1px solid var(--line)">
+                    <p style="font:500 10px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0">{{ k.label }}</p>
+                    <p style="{{ k.valueStyle }}">{{ k.value }}</p>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+                <table style="width:100%;min-width:900px;border-collapse:collapse">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--rule)">
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Produto</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Local</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Full</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Média/dia</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Dias restantes</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Sugerido</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Custo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ reposicao }}" as="r" hint-placeholder-count="7">
+                      <tr style="border-bottom:1px solid var(--line)">
+                        <td style="padding:13px 14px;border-left:3px solid {{ r.edge }}">
+                          <p style="font:500 13px/1.3 Inter,sans-serif;color:var(--fg);margin:0">{{ r.nome }}</p>
+                          <p style="font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin:3px 0 0">{{ r.sku }}</p>
+                        </td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ r.local }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ r.full }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ r.media }}</td>
+                        <td style="padding:13px 14px;text-align:right"><span style="{{ r.pillStyle }}">{{ r.dias }}</span></td>
+                        <td style="padding:13px 14px;text-align:right;font:600 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ r.sugerido }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ r.custo }}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isSaidas }}">
+            <div style="display:flex;flex-direction:column;gap:20px">
+              <div style="display:flex;gap:2px;border-bottom:2px solid var(--rule);flex-wrap:wrap">
+                <sc-for list="{{ saidaTabs }}" as="t" hint-placeholder-count="2">
+                  <button onClick="{{ t.go }}" style="{{ t.style }}">{{ t.label }}</button>
+                </sc-for>
+              </div>
+              <div style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+                <table style="width:100%;min-width:820px;border-collapse:collapse">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--rule)">
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Data</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Referência</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Canal</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Itens</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Valor</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ saidas }}" as="s" hint-placeholder-count="7">
+                      <tr style="border-bottom:1px solid var(--line)">
+                        <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ s.data }}</td>
+                        <td style="padding:13px 14px;font:500 13px/1.3 Inter,sans-serif;color:var(--fg)">{{ s.ref }}<span style="display:block;font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin-top:3px">{{ s.detalhe }}</span></td>
+                        <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ s.canal }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ s.itens }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ s.valor }}</td>
+                        <td style="padding:13px 14px"><span style="{{ s.pillStyle }}">{{ s.status }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isPedidos }}">
+            <div style="display:flex;flex-direction:column;gap:20px">
+              <div style="display:flex;gap:2px;border-bottom:2px solid var(--rule);flex-wrap:wrap">
+                <sc-for list="{{ pedidoTabs }}" as="t" hint-placeholder-count="3">
+                  <button onClick="{{ t.go }}" style="{{ t.style }}">{{ t.label }}</button>
+                </sc-for>
+              </div>
+              <div style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+                <table style="width:100%;min-width:860px;border-collapse:collapse">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--rule)">
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Pedido</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Fornecedor</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Itens</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Valor</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Previsão</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ pedidos }}" as="p" hint-placeholder-count="6">
+                      <tr style="border-bottom:1px solid var(--line)">
+                        <td style="padding:13px 14px;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ p.codigo }}</td>
+                        <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ p.fornecedor }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ p.itens }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ p.valor }}</td>
+                        <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ p.previsao }}</td>
+                        <td style="padding:13px 14px"><span style="{{ p.pillStyle }}">{{ p.status }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isFornecedores }}">
+            <div style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+              <table style="width:100%;min-width:860px;border-collapse:collapse">
+                <thead>
+                  <tr style="border-bottom:2px solid var(--rule)">
+                    <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Fornecedor</th>
+                    <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">CNPJ</th>
+                    <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Contato</th>
+                    <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Prazo</th>
+                    <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Produtos</th>
+                    <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Compras 90d</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ fornecedores }}" as="f" hint-placeholder-count="6">
+                    <tr style="border-bottom:1px solid var(--line)">
+                      <td style="padding:13px 14px;font:500 13px/1.3 Inter,sans-serif;color:var(--fg)">{{ f.nome }}</td>
+                      <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ f.cnpj }}</td>
+                      <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ f.contato }}</td>
+                      <td style="padding:13px 14px;text-align:right;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ f.prazo }}</td>
+                      <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ f.produtos }}</td>
+                      <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ f.compras }}</td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isMlVendas }}">
+            <div style="display:flex;flex-direction:column;gap:24px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));border:1px solid var(--line);background:var(--surface)">
+                <sc-for list="{{ mlKpis }}" as="k" hint-placeholder-count="4">
+                  <div style="padding:20px;border-right:1px solid var(--line)">
+                    <p style="font:500 10px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0">{{ k.label }}</p>
+                    <p style="font:600 32px/1 'Barlow Condensed',sans-serif;color:var(--fg);margin:11px 0 0;font-variant-numeric:tabular-nums">{{ k.value }}</p>
+                    <p style="{{ k.deltaStyle }}">{{ k.delta }}</p>
+                  </div>
+                </sc-for>
+              </div>
+              <section style="border:1px solid var(--line);background:var(--surface)">
+                <div style="padding:15px 18px;border-bottom:2px solid var(--rule);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+                  <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">Receita por dia</h2>
+                  <div style="display:flex;gap:2px">
+                    <sc-for list="{{ periodos }}" as="pd" hint-placeholder-count="4">
+                      <button style="{{ pd.style }}">{{ pd.label }}</button>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="padding:22px 18px;display:flex;align-items:flex-end;gap:5px;min-height:200px">
+                  <sc-for list="{{ chart }}" as="bar" hint-placeholder-count="14">
+                    <div title="{{ bar.label }}" style="{{ bar.style }}"></div>
+                  </sc-for>
+                </div>
+              </section>
+              <section style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+                <div style="padding:15px 18px;border-bottom:2px solid var(--rule)">
+                  <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">Mais vendidos</h2>
+                </div>
+                <table style="width:100%;min-width:700px;border-collapse:collapse">
+                  <thead>
+                    <tr style="border-bottom:1px solid var(--line)">
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Anúncio</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Unid.</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Pedidos</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Ticket</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Receita</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ topProdutos }}" as="t" hint-placeholder-count="5">
+                      <tr style="border-bottom:1px solid var(--line)">
+                        <td style="padding:12px 18px;font:500 13px/1.3 Inter,sans-serif;color:var(--fg)">{{ t.titulo }}<span style="display:block;font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin-top:3px">{{ t.mlb }}</span></td>
+                        <td style="padding:12px 18px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ t.unid }}</td>
+                        <td style="padding:12px 18px;text-align:right;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ t.pedidos }}</td>
+                        <td style="padding:12px 18px;text-align:right;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ t.ticket }}</td>
+                        <td style="padding:12px 18px;text-align:right;font:600 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ t.receita }}</td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isAnuncios }}">
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));border:1px solid var(--line);background:var(--surface)">
+                <sc-for list="{{ vinculoKpis }}" as="k" hint-placeholder-count="3">
+                  <div style="padding:18px 20px;border-right:1px solid var(--line)">
+                    <p style="font:500 10px/1.3 Inter,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0">{{ k.label }}</p>
+                    <p style="{{ k.valueStyle }}">{{ k.value }}</p>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+                <table style="width:100%;min-width:900px;border-collapse:collapse">
+                  <thead>
+                    <tr style="border-bottom:2px solid var(--rule)">
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Anúncio</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">SKU vinculado</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Tipo</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Preço</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Estoque</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Vínculo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ anuncios }}" as="a" hint-placeholder-count="7">
+                      <tr style="border-bottom:1px solid var(--line)">
+                        <td style="padding:13px 14px;font:500 13px/1.3 Inter,sans-serif;color:var(--fg)">{{ a.titulo }}<span style="display:block;font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin-top:3px">{{ a.mlb }}</span></td>
+                        <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ a.sku }}</td>
+                        <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ a.tipo }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ a.preco }}</td>
+                        <td style="padding:13px 14px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ a.estoque }}</td>
+                        <td style="padding:13px 14px"><span style="{{ a.pillStyle }}">{{ a.vinculo }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isIntegracoes }}">
+            <div style="display:flex;flex-direction:column;gap:24px">
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px">
+                <sc-for list="{{ integracoes }}" as="i" hint-placeholder-count="2">
+                  <section style="border:1px solid var(--line);background:var(--surface);min-width:0">
+                    <div style="padding:16px 18px;border-bottom:2px solid var(--rule);display:flex;align-items:center;gap:12px">
+                      <sc-if value="{{ i.isML }}" hint-placeholder-val="{{ true }}"><img src="brand/ML.png" alt="" style="width:26px;height:26px;object-fit:contain;display:block"></sc-if><sc-if value="{{ i.isBling }}"><span style="width:22px;height:22px;background:var(--info);display:block"></span></sc-if>
+                      <h2 style="flex:1;font:600 19px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">{{ i.nome }}</h2>
+                      <span style="{{ i.pillStyle }}">{{ i.status }}</span>
+                    </div>
+                    <sc-for list="{{ i.rows }}" as="row" hint-placeholder-count="4">
+                      <div style="display:flex;justify-content:space-between;gap:16px;padding:12px 18px;border-bottom:1px solid var(--line)">
+                        <span style="font:400 12px/1.4 Inter,sans-serif;color:var(--muted)">{{ row.k }}</span>
+                        <span style="font:500 13px/1.4 Inter,sans-serif;color:var(--fg);text-align:right">{{ row.v }}</span>
+                      </div>
+                    </sc-for>
+                    <div style="padding:16px 18px;display:flex;gap:8px;flex-wrap:wrap">
+                      <button style="padding:9px 13px;border:1px solid var(--rule);background:transparent;color:var(--fg);font:600 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer">Sincronizar agora</button>
+                      <button style="padding:9px 13px;border:1px solid var(--line);background:transparent;color:var(--muted);font:600 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer">Desconectar</button>
+                    </div>
+                  </section>
+                </sc-for>
+              </div>
+              <section style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+                <div style="padding:15px 18px;border-bottom:2px solid var(--rule)">
+                  <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">Histórico de sincronização</h2>
+                </div>
+                <table style="width:100%;min-width:700px;border-collapse:collapse">
+                  <thead>
+                    <tr style="border-bottom:1px solid var(--line)">
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Quando</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Origem</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Escopo</th>
+                      <th style="text-align:right;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Registros</th>
+                      <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:12px 18px">Resultado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <sc-for list="{{ syncLog }}" as="l" hint-placeholder-count="6">
+                      <tr style="border-bottom:1px solid var(--line)">
+                        <td style="padding:12px 18px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ l.quando }}</td>
+                        <td style="padding:12px 18px;font:500 13px/1.3 Inter,sans-serif;color:var(--fg)">{{ l.origem }}</td>
+                        <td style="padding:12px 18px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ l.escopo }}</td>
+                        <td style="padding:12px 18px;text-align:right;font:500 13px/1.3 Inter,sans-serif;color:var(--fg);font-variant-numeric:tabular-nums">{{ l.registros }}</td>
+                        <td style="padding:12px 18px"><span style="{{ l.pillStyle }}">{{ l.resultado }}</span></td>
+                      </tr>
+                    </sc-for>
+                  </tbody>
+                </table>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isConfig }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px">
+              <sc-for list="{{ configSections }}" as="s" hint-placeholder-count="3">
+                <section style="border:1px solid var(--line);background:var(--surface);min-width:0">
+                  <div style="padding:15px 18px;border-bottom:2px solid var(--rule)">
+                    <h2 style="font:600 17px/1 'Barlow Condensed',sans-serif;letter-spacing:.06em;text-transform:uppercase;color:var(--fg);margin:0">{{ s.titulo }}</h2>
+                    <p style="font:400 12px/1.5 Inter,sans-serif;color:var(--muted);margin:6px 0 0">{{ s.desc }}</p>
+                  </div>
+                  <div style="padding:18px;display:flex;flex-direction:column;gap:16px">
+                    <sc-for list="{{ s.fields }}" as="f" hint-placeholder-count="3">
+                      <div style="display:flex;flex-direction:column;gap:7px">
+                        <label style="font:500 11px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)">{{ f.label }}</label>
+                        <input value="{{ f.value }}" readonly style="width:100%;padding:10px 12px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font:400 13px/1.2 Inter,sans-serif">
+                        <span style="font:400 11px/1.4 Inter,sans-serif;color:var(--muted)">{{ f.hint }}</span>
+                      </div>
+                    </sc-for>
+                  </div>
+                </section>
+              </sc-for>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{ isUsuarios }}">
+            <div style="border:1px solid var(--line);background:var(--surface);overflow-x:auto">
+              <table style="width:100%;min-width:760px;border-collapse:collapse">
+                <thead>
+                  <tr style="border-bottom:2px solid var(--rule)">
+                    <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Usuário</th>
+                    <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Papel</th>
+                    <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Acesso a</th>
+                    <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Último acesso</th>
+                    <th style="text-align:left;font:600 10px/1.3 Inter,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:14px">Situação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <sc-for list="{{ usuarios }}" as="u" hint-placeholder-count="5">
+                    <tr style="border-bottom:1px solid var(--line)">
+                      <td style="padding:13px 14px;font:500 13px/1.3 Inter,sans-serif;color:var(--fg)">{{ u.nome }}<span style="display:block;font:400 11px/1.3 Inter,sans-serif;color:var(--muted);margin-top:3px">{{ u.email }}</span></td>
+                      <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ u.papel }}</td>
+                      <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted)">{{ u.escopo }}</td>
+                      <td style="padding:13px 14px;font:400 13px/1.3 Inter,sans-serif;color:var(--muted);font-variant-numeric:tabular-nums">{{ u.acesso }}</td>
+                      <td style="padding:13px 14px"><span style="{{ u.pillStyle }}">{{ u.status }}</span></td>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </div>
+          </sc-if>
+
+        </div>
+      </main>
+    </div>
+  </sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1280,&quot;height&quot;:900},&quot;startRoute&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;dashboard&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;dashboard&quot;,&quot;produtos&quot;,&quot;produto&quot;,&quot;reposicao&quot;,&quot;saidas&quot;,&quot;pedidos&quot;,&quot;fornecedores&quot;,&quot;mlvendas&quot;,&quot;anuncios&quot;,&quot;integracoes&quot;,&quot;config&quot;,&quot;usuarios&quot;,&quot;login&quot;],&quot;section&quot;:&quot;Navegação&quot;},&quot;startTheme&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;light&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;light&quot;,&quot;dark&quot;],&quot;section&quot;:&quot;Aparência&quot;}}">
+const PILL = "display:inline-block;padding:4px 8px;font:600 10px/1.2 Inter,sans-serif;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;";
+const pill = (tone) => PILL + "background:var(--" + tone + "-soft);color:var(--" + tone + ")";
+const pillNeutral = PILL + "background:var(--surface2);color:var(--muted)";
+
+const ICONS = {
+  dash: "M3 3h7v8H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 15h7v6H3z",
+  package: "M21 8v8a2 2 0 0 1-1 1.73l-7 4a2 2 0 0 1-2 0l-7-4A2 2 0 0 1 3 16V8a2 2 0 0 1 1-1.73l7-4a2 2 0 0 1 2 0l7 4A2 2 0 0 1 21 8zM3.3 7 12 12l8.7-5M12 22V12",
+  trend: "M16 17h6v-6M22 17l-8.5-8.5-5 5L2 7",
+  out: "M18 9l-6-6-6 6M12 3v14M5 21h14",
+  clip: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M9 2h6v4H9zM8 12h8M8 17h5",
+  truck: "M10 17h4V5H2v12h3M20 17h2v-3.3a4 4 0 0 0-1.2-2.9L19 9h-5v8h1M7.5 15a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5M17.5 15a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5",
+  chart: "M3 3v18h18M7 16V9M12 16V5M17 16v-4",
+  link: "M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.8 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7",
+  zap: "M13 2 4 14h7l-1 8 9-12h-7z",
+  gear: "M12.2 2h-.4a2 2 0 0 0-2 2v.2a2 2 0 0 1-1 1.7l-.4.3a2 2 0 0 1-2 0l-.2-.1a2 2 0 0 0-2.7.7l-.2.4a2 2 0 0 0 .7 2.7l.2.1a2 2 0 0 1 1 1.7v.5a2 2 0 0 1-1 1.8l-.2.1a2 2 0 0 0-.7 2.7l.2.4a2 2 0 0 0 2.7.7l.2-.1a2 2 0 0 1 2 0l.4.3a2 2 0 0 1 1 1.7V20a2 2 0 0 0 2 2h.4a2 2 0 0 0 2-2v-.2a2 2 0 0 1 1-1.7l.4-.3a2 2 0 0 1 2 0l.2.1a2 2 0 0 0 2.7-.7l.2-.4a2 2 0 0 0-.7-2.7l-.2-.1a2 2 0 0 1-1-1.8v-.5a2 2 0 0 1 1-1.7l.2-.1a2 2 0 0 0 .7-2.7l-.2-.4a2 2 0 0 0-2.7-.7l-.2.1a2 2 0 0 1-2 0l-.4-.3a2 2 0 0 1-1-1.7V4a2 2 0 0 0-2-2zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
+  users: "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8",
+  lock: "M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4"
+};
+
+const PAGES = {
+  dashboard: { eyebrow: "Visão geral", title: "Painel do negócio", primary: "Sincronizar tudo", secondary: "Últimos 30 dias" },
+  produtos: { eyebrow: "Catálogo", title: "Produtos", primary: "Novo produto", secondary: "Importar planilha" },
+  produto: { eyebrow: "Catálogo · SKU-4471", title: "Cadeira Gamer Pro X", primary: "Editar produto", secondary: "Voltar à lista" },
+  reposicao: { eyebrow: "Planejamento", title: "Reposição", primary: "Gerar pedido", secondary: "Recalcular" },
+  saidas: { eyebrow: "Movimentações", title: "Saídas", primary: "Nova saída", secondary: "Exportar" },
+  pedidos: { eyebrow: "Suprimentos", title: "Pedidos de compra", primary: "Novo pedido", secondary: "Exportar" },
+  fornecedores: { eyebrow: "Suprimentos", title: "Fornecedores", primary: "Novo fornecedor", secondary: "Exportar" },
+  mlvendas: { eyebrow: "Mercado Livre", title: "Análise de vendas", primary: "Atualizar dados", secondary: "Exportar" },
+  anuncios: { eyebrow: "Mercado Livre", title: "Anúncios e vínculos", primary: "Vincular em lote", secondary: "Importar anúncios" },
+  integracoes: { eyebrow: "Sistema", title: "Integrações", primary: "Conectar canal", secondary: "Ver logs" },
+  config: { eyebrow: "Sistema", title: "Configurações", primary: "Salvar alterações", secondary: "Descartar" },
+  usuarios: { eyebrow: "Sistema", title: "Usuários e permissões", primary: "Convidar usuário", secondary: "Exportar" }
+};
+
+const CHART = [42, 58, 51, 73, 66, 88, 61, 79, 95, 70, 84, 100, 76, 91];
+
+class Component extends DCLogic {
+  state = { route: "dashboard", theme: "light", prodTab: "geral", saidaTab: "manual", pedidoTab: "pendentes" };
+
+  componentDidMount() {
+    const theme = this.props.startTheme || "light";
+    const route = this.props.startRoute || "dashboard";
+    this.setState({ theme, route });
+    document.documentElement.setAttribute("data-theme", theme);
+    document.body.style.background = "var(--bg)";
+  }
+
+  setTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    this.setState({ theme });
+  }
+
+  go(route) {
+    this.setState({ route });
+    window.scrollTo(0, 0);
+  }
+
+  navItem(id, label, icon, badge) {
+    const active = this.state.route === id || (id === "produtos" && this.state.route === "produto");
+    const base = "display:flex;align-items:center;gap:11px;width:100%;padding:9px 20px;border:0;border-left:3px solid ";
+    const style = base + (active ? "var(--primary);background:var(--primary-soft);color:var(--fg)" : "transparent;background:transparent;color:var(--muted)") +
+      ";font:" + (active ? "600" : "500") + " 13px/1.2 Inter,sans-serif;text-align:left;cursor:pointer";
+    return {
+      label, icon: ICONS[icon], go: () => this.go(id), style,
+      badge: badge || "",
+      badgeStyle: badge
+        ? "display:inline-block;padding:2px 6px;background:var(--danger-soft);color:var(--danger);font:600 10px/1.3 Inter,sans-serif"
+        : "display:none"
+    };
+  }
+
+  tab(group, id, label, setter) {
+    const active = this.state[group] === id;
+    return {
+      label,
+      go: () => this.setState({ [group]: id }),
+      style: "padding:11px 16px;border:0;border-bottom:3px solid " + (active ? "var(--primary)" : "transparent") +
+        ";background:transparent;color:" + (active ? "var(--fg)" : "var(--muted)") +
+        ";font:600 12px/1.3 Inter,sans-serif;letter-spacing:.06em;text-transform:uppercase;cursor:pointer;margin-bottom:-2px"
+    };
+  }
+
+  renderVals() {
+    const r = this.state.route;
+    const page = PAGES[r] || PAGES.dashboard;
+    const max = Math.max.apply(null, CHART);
+
+    return {
+      isLogin: r === "login",
+      isApp: r !== "login",
+      isDashboard: r === "dashboard",
+      isProdutos: r === "produtos",
+      isProduto: r === "produto",
+      isReposicao: r === "reposicao",
+      isSaidas: r === "saidas",
+      isPedidos: r === "pedidos",
+      isFornecedores: r === "fornecedores",
+      isMlVendas: r === "mlvendas",
+      isAnuncios: r === "anuncios",
+      isIntegracoes: r === "integracoes",
+      isConfig: r === "config",
+      isUsuarios: r === "usuarios",
+
+      pageEyebrow: page.eyebrow,
+      pageTitle: page.title,
+      primaryAction: page.primary,
+      secondaryAction: page.secondary,
+
+      themeLabel: this.state.theme === "dark" ? "Claro" : "Escuro",
+      toggleTheme: () => this.setTheme(this.state.theme === "dark" ? "light" : "dark"),
+      goLogin: () => this.go("login"),
+      goDashboard: () => this.go("dashboard"),
+      goReposicao: () => this.go("reposicao"),
+
+      navGroups: [
+        { title: "Operação", items: [
+          this.navItem("dashboard", "Visão geral", "dash"),
+          this.navItem("produtos", "Produtos", "package"),
+          this.navItem("reposicao", "Reposição", "trend", "23"),
+          this.navItem("saidas", "Saídas", "out"),
+          this.navItem("pedidos", "Pedidos de compra", "clip"),
+          this.navItem("fornecedores", "Fornecedores", "truck")
+        ]},
+        { title: "Canais", items: [
+          this.navItem("mlvendas", "ML · Vendas", "chart"),
+          this.navItem("anuncios", "ML · Anúncios", "link", "6")
+        ]},
+        { title: "Sistema", items: [
+          this.navItem("integracoes", "Integrações", "zap"),
+          this.navItem("config", "Configurações", "gear"),
+          this.navItem("usuarios", "Usuários", "users"),
+          this.navItem("login", "Tela de login", "lock")
+        ]}
+      ],
+
+      chart: CHART.map((v, i) => ({
+        label: "Dia " + (i + 1),
+        style: "flex:1;min-width:6px;height:" + Math.round((v / max) * 100) + "%;background:" +
+          (v === max ? "var(--primary)" : "var(--surface2)")
+      })),
+
+      kpis: [
+        { label: "Pedidos ML", value: "1.842", delta: "+12,1%", deltaStyle: "font:500 12px/1.3 Inter,sans-serif;color:var(--primary);margin:9px 0 0" },
+        { label: "Ticket médio", value: "R$ 154,60", delta: "+4,3%", deltaStyle: "font:500 12px/1.3 Inter,sans-serif;color:var(--primary);margin:9px 0 0" },
+        { label: "Valor em estoque", value: "R$ 612.300", delta: "1.284 SKUs", deltaStyle: "font:500 12px/1.3 Inter,sans-serif;color:var(--muted);margin:9px 0 0" },
+        { label: "Rupturas previstas", value: "23", delta: "7 críticas em 5 dias", deltaStyle: "font:500 12px/1.3 Inter,sans-serif;color:var(--danger);margin:9px 0 0" }
+      ],
+
+      restock: [
+        { nome: "Cadeira Gamer Pro X", sku: "SKU-4471", dias: "3 dias de cobertura", sugerido: "120", dotStyle: "width:8px;height:8px;background:var(--danger);flex:0 0 8px" },
+        { nome: "Mesa Elevável 140cm", sku: "SKU-2210", dias: "5 dias de cobertura", sugerido: "40", dotStyle: "width:8px;height:8px;background:var(--danger);flex:0 0 8px" },
+        { nome: "Suporte Monitor Duplo", sku: "SKU-8802", dias: "9 dias de cobertura", sugerido: "85", dotStyle: "width:8px;height:8px;background:var(--warn);flex:0 0 8px" },
+        { nome: "Teclado Mecânico 65%", sku: "SKU-1194", dias: "11 dias de cobertura", sugerido: "200", dotStyle: "width:8px;height:8px;background:var(--warn);flex:0 0 8px" },
+        { nome: "Headset Sem Fio HX", sku: "SKU-6027", dias: "14 dias de cobertura", sugerido: "60", dotStyle: "width:8px;height:8px;background:var(--warn);flex:0 0 8px" }
+      ],
+
+      channels: [
+        { nome: "Mercado Livre", detalhe: "leapstore.oficial · 412 anúncios ativos", status: "Ativo", pillStyle: pill("primary") },
+        { nome: "Bling ERP", detalhe: "Última sincronização há 8 minutos", status: "Ativo", pillStyle: pill("primary") },
+        { nome: "Webhook de pedidos", detalhe: "3 eventos aguardando reprocessamento", status: "Atenção", pillStyle: pill("warn") }
+      ],
+
+      prodFilters: [
+        { label: "Todos", style: "padding:9px 13px;border:1px solid var(--rule);background:var(--fg);color:var(--bg);font:600 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer" },
+        { label: "Crítico", style: "padding:9px 13px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:500 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer" },
+        { label: "Sem fornecedor", style: "padding:9px 13px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:500 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer" },
+        { label: "Sem vínculo ML", style: "padding:9px 13px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:500 12px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer" }
+      ],
+
+      produtos: [
+        { nome: "Cadeira Gamer Pro X", sku: "SKU-4471", fornecedor: "Móveis Andrade · 21 dias", local: "18", full: "42", custo: "R$ 512,40", preco: "R$ 1.199,00", status: "Crítico", pillStyle: pill("danger"), edge: "var(--danger)", open: () => this.go("produto") },
+        { nome: "Mesa Elevável 140cm", sku: "SKU-2210", fornecedor: "Móveis Andrade · 21 dias", local: "7", full: "12", custo: "R$ 780,00", preco: "R$ 1.849,00", status: "Crítico", pillStyle: pill("danger"), edge: "var(--danger)", open: () => this.go("produto") },
+        { nome: "Suporte Monitor Duplo", sku: "SKU-8802", fornecedor: "TechParts BR · 14 dias", local: "64", full: "38", custo: "R$ 96,20", preco: "R$ 249,90", status: "Atenção", pillStyle: pill("warn"), edge: "var(--warn)", open: () => this.go("produto") },
+        { nome: "Teclado Mecânico 65%", sku: "SKU-1194", fornecedor: "TechParts BR · 14 dias", local: "210", full: "154", custo: "R$ 148,00", preco: "R$ 389,00", status: "Atenção", pillStyle: pill("warn"), edge: "var(--warn)", open: () => this.go("produto") },
+        { nome: "Headset Sem Fio HX", sku: "SKU-6027", fornecedor: "Import Sound · 35 dias", local: "88", full: "61", custo: "R$ 172,30", preco: "R$ 429,00", status: "OK", pillStyle: pill("primary"), edge: "transparent", open: () => this.go("produto") },
+        { nome: "Mousepad XL Costurado", sku: "SKU-3318", fornecedor: "TechParts BR · 14 dias", local: "540", full: "300", custo: "R$ 18,90", preco: "R$ 69,90", status: "OK", pillStyle: pill("primary"), edge: "transparent", open: () => this.go("produto") },
+        { nome: "Webcam 1080p Auto", sku: "SKU-7745", fornecedor: "Sem fornecedor", local: "31", full: "0", custo: "—", preco: "R$ 219,00", status: "Sem custo", pillStyle: pillNeutral, edge: "transparent", open: () => this.go("produto") },
+        { nome: "Luminária de Mesa LED", sku: "SKU-5560", fornecedor: "Import Sound · 35 dias", local: "126", full: "74", custo: "R$ 44,10", preco: "R$ 139,00", status: "OK", pillStyle: pill("primary"), edge: "transparent", open: () => this.go("produto") }
+      ],
+
+      prodTabs: [
+        this.tab("prodTab", "geral", "Visão geral"),
+        this.tab("prodTab", "estoque", "Estoque"),
+        this.tab("prodTab", "anuncios", "Anúncios"),
+        this.tab("prodTab", "reposicao", "Reposição"),
+        this.tab("prodTab", "historico", "Histórico")
+      ],
+
+      fichaProduto: [
+        { k: "SKU", v: "SKU-4471" },
+        { k: "EAN", v: "7898142501234" },
+        { k: "Fornecedor principal", v: "Móveis Andrade" },
+        { k: "Prazo de entrega", v: "21 dias" },
+        { k: "Custo médio", v: "R$ 512,40" },
+        { k: "Preço de venda", v: "R$ 1.199,00" },
+        { k: "Margem bruta", v: "57,3%" },
+        { k: "Média de vendas", v: "6,2 un./dia" }
+      ],
+
+      armazens: [
+        { nome: "Galpão Central — SP", min: "40", qtd: "12" },
+        { nome: "Galpão Norte — GO", min: "20", qtd: "6" },
+        { nome: "Mercado Livre Full", min: "60", qtd: "42" },
+        { nome: "Em trânsito", min: "—", qtd: "80" }
+      ],
+
+      produtoAnuncios: [
+        { titulo: "Cadeira Gamer Pro X Reclinável", mlb: "MLB3921884471", tipo: "Full", preco: "R$ 1.199,00", estoque: "42", status: "Ativo", pillStyle: pill("primary") },
+        { titulo: "Cadeira Gamer Pro X — Preta", mlb: "MLB3921884472", tipo: "Local", preco: "R$ 1.249,00", estoque: "18", status: "Ativo", pillStyle: pill("primary") },
+        { titulo: "Kit Cadeira + Apoio de Pés", mlb: "MLB4410023881", tipo: "Local", preco: "R$ 1.389,00", estoque: "4", status: "Estoque baixo", pillStyle: pill("warn") }
+      ],
+
+      repoKpis: [
+        { label: "Críticos", value: "7", valueStyle: "font:600 42px/1 'Barlow Condensed',sans-serif;color:var(--danger);margin:11px 0 0;font-variant-numeric:tabular-nums" },
+        { label: "Atenção", value: "16", valueStyle: "font:600 42px/1 'Barlow Condensed',sans-serif;color:var(--warn);margin:11px 0 0;font-variant-numeric:tabular-nums" },
+        { label: "Saudáveis", value: "1.261", valueStyle: "font:600 42px/1 'Barlow Condensed',sans-serif;color:var(--fg);margin:11px 0 0;font-variant-numeric:tabular-nums" }
+      ],
+
+      reposicao: [
+        { nome: "Cadeira Gamer Pro X", sku: "SKU-4471", local: "18", full: "42", media: "6,2", dias: "3 dias", sugerido: "120", custo: "R$ 61.488", edge: "var(--danger)", pillStyle: pill("danger") },
+        { nome: "Mesa Elevável 140cm", sku: "SKU-2210", local: "7", full: "12", media: "1,9", dias: "5 dias", sugerido: "40", custo: "R$ 31.200", edge: "var(--danger)", pillStyle: pill("danger") },
+        { nome: "Suporte Monitor Duplo", sku: "SKU-8802", local: "64", full: "38", media: "8,4", dias: "9 dias", sugerido: "85", custo: "R$ 8.177", edge: "var(--warn)", pillStyle: pill("warn") },
+        { nome: "Teclado Mecânico 65%", sku: "SKU-1194", local: "210", full: "154", media: "22,1", dias: "11 dias", sugerido: "200", custo: "R$ 29.600", edge: "var(--warn)", pillStyle: pill("warn") },
+        { nome: "Headset Sem Fio HX", sku: "SKU-6027", local: "88", full: "61", media: "7,3", dias: "14 dias", sugerido: "60", custo: "R$ 10.338", edge: "var(--warn)", pillStyle: pill("warn") },
+        { nome: "Luminária de Mesa LED", sku: "SKU-5560", local: "126", full: "74", media: "5,1", dias: "28 dias", sugerido: "—", custo: "—", edge: "transparent", pillStyle: pill("primary") },
+        { nome: "Mousepad XL Costurado", sku: "SKU-3318", local: "540", full: "300", media: "19,6", dias: "36 dias", sugerido: "—", custo: "—", edge: "transparent", pillStyle: pill("primary") }
+      ],
+
+      saidaTabs: [
+        this.tab("saidaTab", "manual", "Saídas manuais"),
+        this.tab("saidaTab", "ml", "Vendas Mercado Livre")
+      ],
+
+      saidas: [
+        { data: "06/09 14:02", ref: "SAI-001284", detalhe: "Conferência por leitor de código", canal: "Manual", itens: "14", valor: "R$ 4.218,00", status: "Concluída", pillStyle: pill("primary") },
+        { data: "06/09 11:37", ref: "MLB-2000009134221", detalhe: "leapstore.oficial", canal: "Mercado Livre", itens: "2", valor: "R$ 2.398,00", status: "Faturada", pillStyle: pill("primary") },
+        { data: "06/09 09:12", ref: "MLB-2000009133870", detalhe: "leapstore.oficial", canal: "Mercado Livre Full", itens: "1", valor: "R$ 389,00", status: "Faturada", pillStyle: pill("primary") },
+        { data: "05/09 18:44", ref: "SAI-001283", detalhe: "Baixa por avaria", canal: "Manual", itens: "3", valor: "R$ 1.537,20", status: "Ajuste", pillStyle: pill("warn") },
+        { data: "05/09 16:20", ref: "MLB-2000009131002", detalhe: "leapstore.oficial", canal: "Mercado Livre", itens: "5", valor: "R$ 1.245,00", status: "Faturada", pillStyle: pill("primary") },
+        { data: "05/09 10:05", ref: "SAI-001282", detalhe: "Transferência p/ Galpão Norte", canal: "Interna", itens: "60", valor: "—", status: "Em trânsito", pillStyle: pill("info") },
+        { data: "04/09 15:51", ref: "MLB-2000009129441", detalhe: "leapstore.oficial", canal: "Mercado Livre", itens: "1", valor: "R$ 1.199,00", status: "Cancelada", pillStyle: pill("danger") }
+      ],
+
+      pedidoTabs: [
+        this.tab("pedidoTab", "pendentes", "Pendentes"),
+        this.tab("pedidoTab", "transito", "Em trânsito"),
+        this.tab("pedidoTab", "concluidos", "Concluídos")
+      ],
+
+      pedidos: [
+        { codigo: "PC-2026-0184", fornecedor: "Móveis Andrade", itens: "160", valor: "R$ 92.688", previsao: "27/09/2026", status: "Aguardando envio", pillStyle: pill("warn") },
+        { codigo: "PC-2026-0183", fornecedor: "TechParts BR", itens: "285", valor: "R$ 37.777", previsao: "20/09/2026", status: "Confirmado", pillStyle: pill("info") },
+        { codigo: "PC-2026-0182", fornecedor: "Import Sound", itens: "60", valor: "R$ 10.338", previsao: "11/10/2026", status: "Confirmado", pillStyle: pill("info") },
+        { codigo: "PC-2026-0181", fornecedor: "TechParts BR", itens: "400", valor: "R$ 7.560", previsao: "08/09/2026", status: "Em trânsito", pillStyle: pill("info") },
+        { codigo: "PC-2026-0180", fornecedor: "Móveis Andrade", itens: "90", valor: "R$ 46.116", previsao: "02/09/2026", status: "Recebido", pillStyle: pill("primary") },
+        { codigo: "PC-2026-0179", fornecedor: "Import Sound", itens: "120", valor: "R$ 20.676", previsao: "28/08/2026", status: "Recebido parcial", pillStyle: pill("warn") }
+      ],
+
+      fornecedores: [
+        { nome: "Móveis Andrade", cnpj: "12.884.221/0001-04", contato: "comercial@andrade.com.br", prazo: "21 dias", produtos: "38", compras: "R$ 284.900" },
+        { nome: "TechParts BR", cnpj: "07.442.019/0001-88", contato: "vendas@techparts.com.br", prazo: "14 dias", produtos: "212", compras: "R$ 176.420" },
+        { nome: "Import Sound", cnpj: "22.109.774/0001-31", contato: "leandro@importsound.com", prazo: "35 dias", produtos: "44", compras: "R$ 98.310" },
+        { nome: "Casa & Cia Distribuidora", cnpj: "31.556.882/0001-19", contato: "pedidos@casaecia.com.br", prazo: "10 dias", produtos: "126", compras: "R$ 64.880" },
+        { nome: "Nordeste Suprimentos", cnpj: "18.334.907/0001-52", contato: "sac@nordestesup.com.br", prazo: "18 dias", produtos: "73", compras: "R$ 41.205" },
+        { nome: "Prime Cabos", cnpj: "44.201.663/0001-70", contato: "contato@primecabos.com.br", prazo: "9 dias", produtos: "59", compras: "R$ 28.740" }
+      ],
+
+      mlKpis: [
+        { label: "Receita", value: "R$ 284.910", delta: "+18,4%", deltaStyle: "font:500 12px/1.3 Inter,sans-serif;color:var(--primary);margin:9px 0 0" },
+        { label: "Pedidos", value: "1.842", delta: "+12,1%", deltaStyle: "font:500 12px/1.3 Inter,sans-serif;color:var(--primary);margin:9px 0 0" },
+        { label: "Unidades", value: "2.316", delta: "+9,7%", deltaStyle: "font:500 12px/1.3 Inter,sans-serif;color:var(--primary);margin:9px 0 0" },
+        { label: "Ticket médio", value: "R$ 154,60", delta: "−1,2%", deltaStyle: "font:500 12px/1.3 Inter,sans-serif;color:var(--danger);margin:9px 0 0" }
+      ],
+
+      periodos: [
+        { label: "7d", style: "padding:7px 11px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:500 11px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer" },
+        { label: "15d", style: "padding:7px 11px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:500 11px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer" },
+        { label: "30d", style: "padding:7px 11px;border:1px solid var(--rule);background:var(--fg);color:var(--bg);font:600 11px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer" },
+        { label: "90d", style: "padding:7px 11px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font:500 11px/1.3 Inter,sans-serif;white-space:nowrap;cursor:pointer" }
+      ],
+
+      topProdutos: [
+        { titulo: "Teclado Mecânico 65% RGB", mlb: "MLB3810094411", unid: "663", pedidos: "612", ticket: "R$ 389,00", receita: "R$ 257.907" },
+        { titulo: "Cadeira Gamer Pro X Reclinável", mlb: "MLB3921884471", unid: "186", pedidos: "184", ticket: "R$ 1.199,00", receita: "R$ 223.014" },
+        { titulo: "Headset Sem Fio HX", mlb: "MLB3777120027", unid: "219", pedidos: "211", ticket: "R$ 429,00", receita: "R$ 93.951" },
+        { titulo: "Suporte Monitor Duplo", mlb: "MLB3655488802", unid: "252", pedidos: "240", ticket: "R$ 249,90", receita: "R$ 62.974" },
+        { titulo: "Mousepad XL Costurado", mlb: "MLB3401113318", unid: "588", pedidos: "540", ticket: "R$ 69,90", receita: "R$ 41.101" }
+      ],
+
+      vinculoKpis: [
+        { label: "Anúncios ativos", value: "412", valueStyle: "font:600 32px/1 'Barlow Condensed',sans-serif;color:var(--fg);margin:11px 0 0;font-variant-numeric:tabular-nums" },
+        { label: "Sem SKU vinculado", value: "6", valueStyle: "font:600 32px/1 'Barlow Condensed',sans-serif;color:var(--danger);margin:11px 0 0;font-variant-numeric:tabular-nums" },
+        { label: "Divergência de estoque", value: "11", valueStyle: "font:600 32px/1 'Barlow Condensed',sans-serif;color:var(--warn);margin:11px 0 0;font-variant-numeric:tabular-nums" }
+      ],
+
+      anuncios: [
+        { titulo: "Cadeira Gamer Pro X Reclinável", mlb: "MLB3921884471", sku: "SKU-4471", tipo: "Full", preco: "R$ 1.199,00", estoque: "42", vinculo: "Vinculado", pillStyle: pill("primary") },
+        { titulo: "Teclado Mecânico 65% RGB", mlb: "MLB3810094411", sku: "SKU-1194", tipo: "Full", preco: "R$ 389,00", estoque: "154", vinculo: "Vinculado", pillStyle: pill("primary") },
+        { titulo: "Kit Home Office Completo", mlb: "MLB4410023881", sku: "—", tipo: "Local", preco: "R$ 2.489,00", estoque: "9", vinculo: "Sem vínculo", pillStyle: pill("danger") },
+        { titulo: "Webcam 1080p Auto Foco", mlb: "MLB3990017745", sku: "—", tipo: "Local", preco: "R$ 219,00", estoque: "31", vinculo: "Sem vínculo", pillStyle: pill("danger") },
+        { titulo: "Suporte Monitor Duplo", mlb: "MLB3655488802", sku: "SKU-8802", tipo: "Full", preco: "R$ 249,90", estoque: "38", vinculo: "Divergente", pillStyle: pill("warn") },
+        { titulo: "Headset Sem Fio HX", mlb: "MLB3777120027", sku: "SKU-6027", tipo: "Local", preco: "R$ 429,00", estoque: "61", vinculo: "Vinculado", pillStyle: pill("primary") },
+        { titulo: "Mousepad XL Costurado", mlb: "MLB3401113318", sku: "SKU-3318", tipo: "Full", preco: "R$ 69,90", estoque: "300", vinculo: "Vinculado", pillStyle: pill("primary") }
+      ],
+
+      integracoes: [
+        { nome: "Mercado Livre", status: "Conectado", pillStyle: pill("primary"), isML: true, isBling: false,
+          rows: [
+            { k: "Conta", v: "leapstore.oficial" },
+            { k: "Anúncios sincronizados", v: "412" },
+            { k: "Última sincronização", v: "Hoje, 14:02" },
+            { k: "Token expira em", v: "5 h 12 min" },
+            { k: "Webhook de pedidos", v: "Ativo" }
+          ] },
+        { nome: "Bling ERP", status: "Conectado", pillStyle: pill("primary"), isML: false, isBling: true,
+          rows: [
+            { k: "Conta", v: "Leap Store Comércio LTDA" },
+            { k: "Produtos espelhados", v: "1.284" },
+            { k: "Última sincronização", v: "Hoje, 13:54" },
+            { k: "Notas emitidas (30d)", v: "1.792" },
+            { k: "Fila de erros", v: "3 registros" }
+          ] }
+      ],
+
+      syncLog: [
+        { quando: "06/09 14:02", origem: "Mercado Livre", escopo: "Estoque e preços", registros: "412", resultado: "Sucesso", pillStyle: pill("primary") },
+        { quando: "06/09 13:54", origem: "Bling", escopo: "Notas fiscais", registros: "38", resultado: "Sucesso", pillStyle: pill("primary") },
+        { quando: "06/09 13:02", origem: "Mercado Livre", escopo: "Pedidos", registros: "27", resultado: "Sucesso", pillStyle: pill("primary") },
+        { quando: "06/09 12:11", origem: "Bling", escopo: "Produtos", registros: "1.284", resultado: "3 falhas", pillStyle: pill("warn") },
+        { quando: "06/09 11:02", origem: "Mercado Livre", escopo: "Estoque Full", registros: "196", resultado: "Sucesso", pillStyle: pill("primary") },
+        { quando: "06/09 09:44", origem: "Mercado Livre", escopo: "Anúncios", registros: "412", resultado: "Timeout", pillStyle: pill("danger") }
+      ],
+
+      configSections: [
+        { titulo: "Empresa", desc: "Dados usados em pedidos e documentos.", fields: [
+          { label: "Razão social", value: "Leap Store Comércio LTDA", hint: "Aparece nos pedidos de compra." },
+          { label: "CNPJ", value: "29.114.882/0001-45", hint: "Sincronizado com o Bling." },
+          { label: "Fuso horário", value: "America/Sao_Paulo", hint: "Base para relatórios e cortes diários." }
+        ] },
+        { titulo: "Estoque", desc: "Regras de cálculo e alertas.", fields: [
+          { label: "Método de custo", value: "Custo médio ponderado", hint: "Recalculado a cada entrada confirmada." },
+          { label: "Cobertura mínima", value: "15 dias", hint: "Abaixo disso o produto entra em Atenção." },
+          { label: "Cobertura crítica", value: "7 dias", hint: "Abaixo disso o produto entra em Crítico." }
+        ] },
+        { titulo: "Notificações", desc: "Quem recebe o quê e quando.", fields: [
+          { label: "Alerta de ruptura", value: "E-mail diário às 08:00", hint: "Enviado para o grupo de compras." },
+          { label: "Falha de sincronização", value: "Imediato, e-mail + painel", hint: "Somente administradores." },
+          { label: "Resumo semanal", value: "Segunda-feira, 07:00", hint: "Receita, rupturas e compras da semana." }
+        ] }
+      ],
+
+      usuarios: [
+        { nome: "Lucas Eriberto", email: "lucas@leapstore.com.br", papel: "Administrador", escopo: "Tudo", acesso: "Agora", status: "Ativo", pillStyle: pill("primary") },
+        { nome: "Marina Duarte", email: "marina@leapstore.com.br", papel: "Compras", escopo: "Reposição, pedidos, fornecedores", acesso: "Hoje, 11:20", status: "Ativo", pillStyle: pill("primary") },
+        { nome: "Rafael Nunes", email: "rafael@leapstore.com.br", papel: "Estoque", escopo: "Produtos, saídas, armazéns", acesso: "Ontem, 17:48", status: "Ativo", pillStyle: pill("primary") },
+        { nome: "Camila Souza", email: "camila@leapstore.com.br", papel: "Vendas", escopo: "Mercado Livre, relatórios", acesso: "02/09, 09:15", status: "Ativo", pillStyle: pill("primary") },
+        { nome: "contador@escritoriolm.com.br", email: "Acesso externo", papel: "Somente leitura", escopo: "Relatórios financeiros", acesso: "—", status: "Convite pendente", pillStyle: pill("warn") }
+      ]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

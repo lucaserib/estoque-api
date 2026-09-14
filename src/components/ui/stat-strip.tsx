@@ -6,6 +6,7 @@ export interface StatStripItem {
   label: string;
   value: string;
   delta?: number | null;
+  note?: string;
 }
 
 interface StatStripProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -17,28 +18,31 @@ const StatStrip = React.forwardRef<HTMLDivElement, StatStripProps>(
   ({ items, size = "default", className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn(
-        "grid grid-cols-2 gap-x-6 gap-y-4 sm:flex sm:gap-0 sm:divide-x sm:divide-border",
-        className
-      )}
+      className={cn("grid grid-cols-[repeat(auto-fit,minmax(216px,1fr))] gap-4", className)}
       {...props}
     >
       {items.map((item) => (
-        <div key={item.label} className="sm:flex-1 sm:px-4 sm:first:pl-0">
-          <p className="text-eyebrow">{item.label}</p>
-          <div className="mt-1 flex items-center gap-2">
-            <span
-              className={cn(
-                "tabular-nums font-semibold text-foreground",
-                size === "sm" ? "text-base" : "text-xl"
-              )}
-            >
-              {item.value}
-            </span>
-            {item.delta !== undefined && item.delta !== null && (
-              <DeltaIndicator delta={item.delta} />
+        <div
+          key={item.label}
+          className="rounded-lg border border-border bg-card px-5 py-[18px] shadow-card"
+        >
+          <p className="text-sm text-muted-foreground">{item.label}</p>
+          <p
+            className={cn(
+              "mt-3 font-mono font-semibold leading-none tracking-tight tabular-nums text-foreground",
+              size === "sm" ? "text-lg" : "text-[27px]"
             )}
-          </div>
+          >
+            {item.value}
+          </p>
+          {((item.delta !== undefined && item.delta !== null) || item.note) && (
+            <div className="mt-2.5 flex items-center gap-1.5">
+              {item.delta !== undefined && item.delta !== null && (
+                <DeltaIndicator delta={item.delta} />
+              )}
+              {item.note && <span className="text-xs text-faint">{item.note}</span>}
+            </div>
+          )}
         </div>
       ))}
     </div>

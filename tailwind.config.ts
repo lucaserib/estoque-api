@@ -57,6 +57,9 @@ export default {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        faint: "hsl(var(--faint))",
+        fg2: "hsl(var(--fg2))",
+        divider: "hsl(var(--divider))",
         chart: {
           "1": "hsl(var(--chart-1))",
           "2": "hsl(var(--chart-2))",
@@ -65,18 +68,19 @@ export default {
           "5": "hsl(var(--chart-5))",
         },
       },
-      borderColor: {
-        metal: "hsl(var(--metal-edge))",
-      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        card: "var(--shadow-card)",
+        lift: "var(--shadow-lift)",
+      },
       fontFamily: {
-        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
-        display: ["var(--font-barlow-condensed)", "var(--font-inter)", "sans-serif"],
-        mono: ["var(--font-geist-mono)", "monospace"],
+        sans: ["var(--font-ibm-plex-sans)", "system-ui", "sans-serif"],
+        display: ["var(--font-ibm-plex-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-ibm-plex-mono)", "monospace"],
       },
     },
   },

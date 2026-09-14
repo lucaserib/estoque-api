@@ -1,4 +1,3 @@
-import { ArrowDownRight, ArrowUpRight, Minus } from "lucide-react";
 import { formatPercent } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -10,19 +9,22 @@ interface DeltaIndicatorProps {
 
 export function DeltaIndicator({ delta, label, className }: DeltaIndicatorProps) {
   const isEmpty = delta === undefined || delta === null || delta === 0;
-  const color = isEmpty
-    ? "text-muted-foreground"
+  const toneClass = isEmpty
+    ? "bg-secondary text-muted-foreground"
     : delta > 0
-    ? "text-success"
-    : "text-destructive";
-  const Icon = isEmpty ? Minus : delta > 0 ? ArrowUpRight : ArrowDownRight;
+    ? "bg-success/10 text-success"
+    : "bg-destructive/10 text-destructive";
 
   return (
-    <span className={cn("inline-flex items-center gap-1 text-xs font-medium", color, className)}>
-      <Icon className="h-3.5 w-3.5" />
-      {!isEmpty && delta > 0 ? "+" : ""}
-      {isEmpty ? "—" : formatPercent(delta)}
-      {label && <span className="text-muted-foreground font-normal">{label}</span>}
+    <span
+      className={cn(
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-medium",
+        toneClass,
+        className
+      )}
+    >
+      {isEmpty ? "—" : `${delta > 0 ? "+" : ""}${formatPercent(delta)}`}
+      {label && <span className="font-normal opacity-70">{label}</span>}
     </span>
   );
 }

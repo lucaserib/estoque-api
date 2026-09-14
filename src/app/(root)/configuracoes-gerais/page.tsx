@@ -238,7 +238,7 @@ export default function ConfiguracoesGeraisPage() {
             <User className="h-5 w-5" />
             Conta
           </CardTitle>
-          <CardDescription>Dados do seu acesso ao Leap Store</CardDescription>
+          <CardDescription>Dados do seu acesso ao Leap Stock</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">

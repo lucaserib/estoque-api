@@ -95,7 +95,7 @@ export default function AssinaturaPage() {
           <div>
             <h1 className="text-2xl font-semibold">Assinatura</h1>
             <p className="text-muted-foreground">
-              Escolha um plano para continuar usando o Leap Store.
+              Escolha um plano para continuar usando o Leap Stock.
             </p>
           </div>
           <Button variant="ghost" onClick={() => signOut()}>
