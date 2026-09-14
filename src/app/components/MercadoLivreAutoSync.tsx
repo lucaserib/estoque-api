@@ -276,9 +276,9 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Produtos Sincronizados</p>
-                <p className="text-2xl font-bold text-green-600">{stats.synced || 0}</p>
+                <p className="text-2xl font-bold text-success">{stats.synced || 0}</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
+              <CheckCircle className="h-8 w-8 text-success" />
             </div>
           </CardContent>
         </Card>
@@ -288,9 +288,9 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Com Erro</p>
-                <p className="text-2xl font-bold text-red-600">{stats.error || 0}</p>
+                <p className="text-2xl font-bold text-destructive">{stats.error || 0}</p>
               </div>
-              <AlertCircle className="h-8 w-8 text-red-600" />
+              <AlertCircle className="h-8 w-8 text-destructive" />
             </div>
           </CardContent>
         </Card>
@@ -312,9 +312,9 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Desatualizados</p>
-                <p className="text-2xl font-bold text-orange-600">{staleProducts}</p>
+                <p className="text-2xl font-bold text-warning">{staleProducts}</p>
               </div>
-              <Clock className="h-8 w-8 text-orange-600" />
+              <Clock className="h-8 w-8 text-warning" />
             </div>
           </CardContent>
         </Card>
@@ -359,7 +359,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           )}
 
           {isEnabled && (
-            <div className="flex items-center gap-2 text-sm text-green-600">
+            <div className="flex items-center gap-2 text-sm text-success">
               <Zap className="h-4 w-4" />
               <span>
                 Sincronização automática ativa - Intervalo: {syncInterval} minutos

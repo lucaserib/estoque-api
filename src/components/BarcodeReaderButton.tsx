@@ -68,7 +68,7 @@ const BarcodeReaderButton = ({
           <DialogHeader className="p-4 border-b border-border">
             <div className="flex items-center justify-between">
               <DialogTitle className="flex items-center gap-2 text-lg font-semibold">
-                <ScanLine className="h-5 w-5 text-indigo-500" />
+                <ScanLine className="h-5 w-5 text-primary" />
                 {dialogTitle}
               </DialogTitle>
               <Button
@@ -85,7 +85,7 @@ const BarcodeReaderButton = ({
           <div className="p-4">
             {lastScannedCode ? (
               <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                <CheckCircle2 className="h-16 w-16 text-green-500 animate-pulse" />
+                <CheckCircle2 className="h-16 w-16 text-success animate-pulse" />
                 <div className="text-center">
                   <p className="text-lg font-medium text-foreground">
                     Código lido com sucesso!

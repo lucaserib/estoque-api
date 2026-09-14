@@ -59,7 +59,7 @@ export function ProdutoDeleteDialog({
             Tem certeza que deseja excluir o produto{" "}
             <span className="font-medium text-foreground">{produtoNome}</span>?
             {hasVinculos && (
-              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 text-sm rounded-md border border-amber-200 dark:border-amber-800">
+              <div className="mt-4 p-3 bg-warning/10 text-warning text-sm rounded-md border border-warning/30">
                 <p className="flex items-center gap-2 font-medium">
                   <Link className="h-4 w-4" />
                   Este produto possui vínculos ativos:
@@ -116,7 +116,7 @@ export function ProdutoDeleteDialog({
             <Button
               variant="destructive"
               disabled={isSubmitting || (hasVinculos && !forceDelete)}
-              className="gap-2 bg-red-600 hover:bg-red-700 text-white"
+              className="gap-2"
             >
               {isSubmitting ? (
                 <>

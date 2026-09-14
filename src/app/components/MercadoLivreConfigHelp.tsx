@@ -22,21 +22,21 @@ const MercadoLivreConfigHelp = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Card className="mb-6 border-blue-200 bg-blue-50">
+    <Card className="mb-6 border-info/30 bg-info/10">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
         <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-blue-100 transition-colors">
+          <CardHeader className="cursor-pointer hover:bg-info/20 transition-colors">
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-blue-600" />
-                <span className="text-blue-800">
+                <HelpCircle className="h-5 w-5 text-info" />
+                <span className="text-info">
                   Configuração do Mercado Livre
                 </span>
               </div>
               {isOpen ? (
-                <ChevronUp className="h-4 w-4 text-blue-600" />
+                <ChevronUp className="h-4 w-4 text-info" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-blue-600" />
+                <ChevronDown className="h-4 w-4 text-info" />
               )}
             </CardTitle>
           </CardHeader>
@@ -103,7 +103,7 @@ const MercadoLivreConfigHelp = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-100 p-3 rounded-md">
+            <div className="flex items-center gap-2 text-sm text-success bg-success/10 p-3 rounded-md">
               <CheckCircle className="h-4 w-4" />
               <span>
                 Após a configuração, clique em &quot;Conectar Conta&quot; para

@@ -515,7 +515,7 @@ const BarcodeReader = ({
           {/* Scanning overlay */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className="relative w-4/5 h-1/3 border-2 border-white border-opacity-60 rounded-lg">
-              <div className="absolute top-0 left-0 w-full h-1 bg-green-500 animate-scan"></div>
+              <div className="absolute top-0 left-0 w-full h-1 bg-success animate-scan"></div>
             </div>
             <p className="text-white mt-2 font-medium">
               Posicione o código de barras no quadro
@@ -555,14 +555,14 @@ const BarcodeReader = ({
 
             {/* Success indicator */}
             {successScan && (
-              <Badge className="ml-2 bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+              <Badge className="ml-2 bg-success/10 text-success">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Scan bem-sucedido
               </Badge>
             )}
 
             {validationInProgress && (
-              <Badge className="ml-2 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+              <Badge className="ml-2 bg-warning/10 text-warning">
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                 Validando...
               </Badge>
@@ -592,7 +592,7 @@ const BarcodeReader = ({
                 validationInProgress
               }
               className={
-                successScan ? "border-green-500 focus:ring-green-500" : ""
+                successScan ? "border-success focus:ring-success" : ""
               }
               autoFocus
             />
@@ -628,7 +628,7 @@ const BarcodeReader = ({
               validationInProgress ||
               barcode.length !== 13
             }
-            className="dark:bg-green-700 dark:hover:bg-green-600"
+            className="bg-success hover:bg-success/90 text-success-foreground"
             onClick={(e) => {
               e.preventDefault();
               handleManualSubmit(e);
@@ -670,7 +670,7 @@ const BarcodeReader = ({
       </form>
 
       {isBarcodeDetectionSupported === false && (
-        <p className="text-sm text-amber-600 dark:text-amber-400">
+        <p className="text-sm text-warning">
           Seu navegador não suporta o scanner do código de barras, por favor
           insira manualmente ou conecte um aparelho de conferência.
         </p>

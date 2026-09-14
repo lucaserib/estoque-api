@@ -153,15 +153,15 @@ export function DatePickerWithRange({
               className="bg-card p-3 max-w-full"
               classNames={{
                 day_today:
-                  "bg-blue-100 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100",
+                  "bg-primary/10 text-primary",
                 day_selected:
-                  "bg-blue-600 text-white hover:bg-blue-700 hover:text-white focus:bg-blue-700 focus:text-white dark:bg-blue-600",
+                  "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground focus:bg-primary/90 focus:text-primary-foreground",
                 day_range_middle:
-                  "bg-blue-100 text-blue-900 dark:bg-blue-900/20 dark:text-blue-100",
+                  "bg-primary/10 text-primary",
                 months: isDesktop ? "flex space-x-4" : "space-y-4",
                 caption: "flex justify-center pt-1 pb-2 relative items-center",
                 caption_label: "text-sm font-medium",
-                cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-blue-100 dark:[&:has([aria-selected])]:bg-blue-900/20",
+                cell: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-primary/10",
                 nav_button:
                   "h-7 w-7 bg-transparent p-0 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full",
                 table: "w-full border-collapse space-y-1",
@@ -183,7 +183,7 @@ export function DatePickerWithRange({
               variant="default"
               size="sm"
               onClick={handleApply}
-              className="text-xs bg-blue-600 hover:bg-blue-700 text-white border-blue-600"
+              className="text-xs"
               disabled={!internalDate?.from || !internalDate?.to}
             >
               Aplicar

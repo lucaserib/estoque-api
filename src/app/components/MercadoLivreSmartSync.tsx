@@ -5,13 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -241,19 +241,19 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
           {summary && (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{summary.total || 0}</div>
+                <div className="text-2xl font-bold text-info">{summary.total || 0}</div>
                 <div className="text-sm text-muted-foreground">Total ML</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{summary.potential_matches || 0}</div>
+                <div className="text-2xl font-bold text-success">{summary.potential_matches || 0}</div>
                 <div className="text-sm text-muted-foreground">Match Potencial</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{summary.similar_found || 0}</div>
+                <div className="text-2xl font-bold text-warning">{summary.similar_found || 0}</div>
                 <div className="text-sm text-muted-foreground">Similares</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{summary.unmatched || 0}</div>
+                <div className="text-2xl font-bold text-destructive">{summary.unmatched || 0}</div>
                 <div className="text-sm text-muted-foreground">Não Vinculados</div>
               </div>
               <div className="text-center">
@@ -274,22 +274,22 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
               Carregando produtos inteligentes...
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produto ML</TableHead>
-                  <TableHead>SKU Real</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Preço</TableHead>
-                  <TableHead>Estoque</TableHead>
-                  <TableHead>Produto Local</TableHead>
-                  <TableHead>Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <DataTable>
+              <DataTableHeader>
+                <DataTableRow>
+                  <DataTableHead className="pl-4">Produto ML</DataTableHead>
+                  <DataTableHead>SKU Real</DataTableHead>
+                  <DataTableHead>Status</DataTableHead>
+                  <DataTableHead>Preço</DataTableHead>
+                  <DataTableHead>Estoque</DataTableHead>
+                  <DataTableHead>Produto Local</DataTableHead>
+                  <DataTableHead className="pr-4">Ações</DataTableHead>
+                </DataTableRow>
+              </DataTableHeader>
+              <DataTableBody>
                 {produtos.map((produto) => (
-                  <TableRow key={produto.mlItemId}>
-                    <TableCell>
+                  <DataTableRow key={produto.mlItemId}>
+                    <DataTableCell className="pl-4">
                       <div className="flex items-center gap-3">
                         <MLImage
                           src={produto.thumbnail || ""}
@@ -305,8 +305,8 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                           <div className="text-xs text-muted-foreground">{produto.mlItemId}</div>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell>
                       {produto.realSku ? (
                         <Badge variant="outline" className="font-mono">
                           {produto.realSku}
@@ -314,35 +314,35 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                       ) : (
                         <span className="text-muted-foreground text-sm">Sem SKU</span>
                       )}
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell>
                       {getStatusBadge(produto.matchStatus)}
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell numeric>
                       <div className="font-medium">
                         {exibirValorEmReais(produto.price * 100)}
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell numeric>
                       <Badge variant={produto.availableQuantity > 0 ? "success" : "destructive"}>
                         {produto.availableQuantity}
                       </Badge>
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell>
                       {produto.localProduct ? (
                         <div>
                           <div className="font-medium text-sm">{produto.localProduct.nome}</div>
                           <div className="text-xs text-muted-foreground">{produto.localProduct.sku}</div>
                         </div>
                       ) : produto.suggestedMatches.length > 0 ? (
-                        <div className="text-sm text-blue-600">
+                        <div className="text-sm text-info">
                           {produto.suggestedMatches.length} sugestão(ões)
                         </div>
                       ) : (
                         <span className="text-muted-foreground text-sm">Não vinculado</span>
                       )}
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell className="pr-4">
                       <div className="flex items-center gap-2">
                         {produto.matchStatus !== 'matched' && (
                           <Button
@@ -375,11 +375,11 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                           <Eye className="h-3 w-3" />
                         </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
-              </TableBody>
-            </Table>
+              </DataTableBody>
+            </DataTable>
           )}
         </CardContent>
       </Card>
@@ -429,7 +429,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                           key={suggestion.id}
                           className={`p-3 border rounded-md cursor-pointer transition-colors ${
                             selectedLocalProduct === suggestion.id
-                              ? 'bg-blue-50 border-blue-200'
+                              ? 'bg-primary/10 border-primary/30'
                               : 'hover:bg-background'
                           }`}
                           onClick={() => setSelectedLocalProduct(suggestion.id)}
@@ -440,7 +440,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                               <div className="text-sm text-muted-foreground">SKU: {suggestion.sku}</div>
                             </div>
                             {selectedLocalProduct === suggestion.id && (
-                              <CheckCircle className="h-5 w-5 text-blue-600" />
+                              <CheckCircle className="h-5 w-5 text-primary" />
                             )}
                           </div>
                         </div>
