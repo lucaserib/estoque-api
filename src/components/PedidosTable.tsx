@@ -340,7 +340,7 @@ const PedidosTable = ({
             size="sm"
             onClick={handleDownloadSelected}
             disabled={selectedPedidos.size === 0 || isDownloadingMultiple}
-            className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800"
+            className="text-primary hover:bg-primary/10 border-primary/30"
           >
             {isDownloadingMultiple ? (
               <>
@@ -372,7 +372,7 @@ const PedidosTable = ({
                           currentItems.length > 0
                         }
                         onChange={toggleSelectAll}
-                        className="h-4 w-4 rounded border-input text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
+                        className="h-4 w-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-0"
                       />
                     </div>
                   </TableHead>

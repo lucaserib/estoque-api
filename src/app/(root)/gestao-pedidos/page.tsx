@@ -5,23 +5,18 @@ import { DateRange } from "react-day-picker";
 import { format, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-import Header from "@/app/components/Header";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PedidosTable from "@/components/PedidosTable";
 
-import {
-  Plus,
-  Download,
-  Search,
-  CheckCircle2,
-  Clock,
-  ShoppingCart,
-} from "lucide-react";
+import { Plus, Download, Search, CheckCircle2, Clock } from "lucide-react";
 import NovoPedidoForm from "./components/NovoPedidoForm";
 import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { SectionCard } from "@/components/ui/section-card";
 
 interface PedidoFilter {
   dateRange: DateRange | undefined;
@@ -77,39 +72,36 @@ const GestaoPedidos = () => {
     console.log("Exportando dados...");
   };
 
+  const statItems: StatStripItem[] = [
+    { label: "Pedidos pendentes", value: isLoadingStats ? "—" : String(stats.pendentes) },
+    { label: "Pedidos concluídos", value: isLoadingStats ? "—" : String(stats.concluidos) },
+    {
+      label: "Valor total (30 dias)",
+      value: isLoadingStats ? "—" : `R$ ${(stats.valorTotal / 100).toFixed(2)}`,
+    },
+  ];
+
   return (
-    <div className="container max-w-screen-xl mx-auto p-4 md:p-6 space-y-6">
-      <div className="bg-card rounded-lg shadow-sm border border-border p-4 md:p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <Header name="Gestão de Pedidos" />
-            <p className="text-muted-foreground mt-1">
-              Gerencie seus pedidos de compra e monitore o fluxo de entrada de
-              produtos
-            </p>
-          </div>
-          <Button
-            onClick={() => setIsFormOpen(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-700 dark:hover:bg-indigo-600 gap-2"
-          >
+    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <PageHeader
+        title="Pedidos de compra"
+        subtitle="Gerencie seus pedidos de compra e monitore o fluxo de entrada de produtos."
+        actions={
+          <Button onClick={() => setIsFormOpen(true)} className="gap-2">
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Novo Pedido</span>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {isFormOpen ? (
-        <Card className="border border-indigo-200 dark:border-indigo-800 shadow-sm overflow-hidden">
-          <CardHeader className="bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-900">
+        <Card className="border border-primary/30 shadow-card overflow-hidden">
+          <CardHeader className="bg-primary/10 border-b border-primary/20">
             <div className="flex justify-between items-center">
-              <CardTitle className="text-xl font-bold text-indigo-900 dark:text-indigo-100">
+              <CardTitle className="text-xl font-bold text-foreground">
                 Novo Pedido de Compra
               </CardTitle>
-              <Button
-                variant="outline"
-                onClick={() => setIsFormOpen(false)}
-                className="border-indigo-200 hover:bg-indigo-100 dark:border-indigo-800 dark:hover:bg-indigo-900/50"
-              >
+              <Button variant="outline" onClick={() => setIsFormOpen(false)}>
                 Voltar
               </Button>
             </div>
@@ -125,103 +117,22 @@ const GestaoPedidos = () => {
         </Card>
       ) : (
         <>
-          {/* Dashboard cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-card border border-border shadow-sm overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-center">
-                  <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Pedidos Pendentes
-                    </p>
-                    <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-foreground">
-                        {isLoadingStats ? "-" : stats.pendentes}
-                      </h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActiveTab("pendentes")}
-                        className="ml-2 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:text-amber-300 dark:hover:bg-amber-900/20"
-                      >
-                        Ver todos
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="h-full w-2 bg-amber-500"></div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border border-border shadow-sm overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-center">
-                  <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Pedidos Concluídos
-                    </p>
-                    <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-foreground">
-                        {isLoadingStats ? "-" : stats.concluidos}
-                      </h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setActiveTab("concluidos")}
-                        className="ml-2 text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:text-green-300 dark:hover:bg-green-900/20"
-                      >
-                        Ver todos
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="h-full w-2 bg-green-500"></div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border border-border shadow-sm overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-center">
-                  <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Valor Total (30 dias)
-                    </p>
-                    <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-foreground">
-                        {isLoadingStats
-                          ? "-"
-                          : `R$ ${(stats.valorTotal / 100).toFixed(2)}`}
-                      </h3>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setIsFormOpen(true)}
-                        className="ml-2 text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:text-indigo-300 dark:hover:bg-indigo-900/20"
-                      >
-                        <Plus className="h-4 w-4 mr-1" /> Novo
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="h-full w-2 bg-indigo-500"></div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+          <StatStrip items={statItems} />
 
           {/* Filtros */}
-          <Card className="bg-card border border-border shadow-sm">
+          <Card className="border border-border shadow-card">
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row justify-between gap-4">
                 <div className="flex flex-1 gap-2">
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-faint" />
                     <Input
                       placeholder="Buscar pedido, fornecedor..."
                       value={filter.searchTerm}
                       onChange={(e) =>
                         handleFilterChange({ searchTerm: e.target.value })
                       }
-                      className="pl-9 h-10 bg-background border-border"
+                      className="pl-9 h-10"
                     />
                   </div>
                   <DatePickerWithRange
@@ -232,11 +143,7 @@ const GestaoPedidos = () => {
                     className="min-w-[280px]"
                   />
                 </div>
-                <Button
-                  variant="outline"
-                  onClick={handleExport}
-                  className="h-10 border-border bg-background hover:bg-muted gap-2"
-                >
+                <Button variant="outline" onClick={handleExport} className="h-10 gap-2">
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">Exportar</span>
                 </Button>
@@ -245,32 +152,24 @@ const GestaoPedidos = () => {
           </Card>
 
           {/* Tabs and content */}
-          <Card className="bg-card border border-border shadow-sm overflow-hidden">
-            <Tabs
-              defaultValue="concluidos"
-              value={activeTab}
-              onValueChange={setActiveTab}
-            >
-              <div className="px-4 pt-4 border-b border-border">
-                <TabsList className="grid w-full grid-cols-2 h-10 bg-muted p-1 rounded-md">
-                  <TabsTrigger
-                    value="pendentes"
-                    className="flex gap-2 items-center data-[state=active]:bg-amber-100 data-[state=active]:text-amber-900 dark:data-[state=active]:bg-amber-900/40 dark:data-[state=active]:text-amber-100 rounded-md transition-colors"
-                  >
+          <Tabs defaultValue="concluidos" value={activeTab} onValueChange={setActiveTab}>
+            <SectionCard
+              contentClassName="p-4"
+              title="Pedidos"
+              actions={
+                <TabsList className="grid grid-cols-2">
+                  <TabsTrigger value="pendentes" className="flex gap-2 items-center">
                     <Clock className="h-4 w-4" />
                     Pendentes
                   </TabsTrigger>
-                  <TabsTrigger
-                    value="concluidos"
-                    className="flex gap-2 items-center data-[state=active]:bg-green-100 data-[state=active]:text-green-900 dark:data-[state=active]:bg-green-900/40 dark:data-[state=active]:text-green-100 rounded-md transition-colors"
-                  >
+                  <TabsTrigger value="concluidos" className="flex gap-2 items-center">
                     <CheckCircle2 className="h-4 w-4" />
                     Concluídos
                   </TabsTrigger>
                 </TabsList>
-              </div>
-
-              <TabsContent value="pendentes" className="p-4">
+              }
+            >
+              <TabsContent value="pendentes" className="mt-0">
                 <PedidosTable
                   status="pendente"
                   dateRange={filter.dateRange}
@@ -279,7 +178,7 @@ const GestaoPedidos = () => {
                 />
               </TabsContent>
 
-              <TabsContent value="concluidos" className="p-4">
+              <TabsContent value="concluidos" className="mt-0">
                 <PedidosTable
                   status="confirmado"
                   dateRange={filter.dateRange}
@@ -287,8 +186,8 @@ const GestaoPedidos = () => {
                   onRefresh={() => setActiveTab("concluidos")}
                 />
               </TabsContent>
-            </Tabs>
-          </Card>
+            </SectionCard>
+          </Tabs>
         </>
       )}
     </div>

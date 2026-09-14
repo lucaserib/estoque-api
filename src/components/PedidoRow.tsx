@@ -93,7 +93,7 @@ export function PedidoRow({
       className={`
         group transition-all duration-150 
         ${isHovered ? "bg-background" : ""}
-        ${isSelected ? "bg-indigo-50 dark:bg-indigo-900/20" : ""}
+        ${isSelected ? "bg-primary/10" : ""}
         hover:bg-background
         border-b border-border
       `}
@@ -107,7 +107,7 @@ export function PedidoRow({
             type="checkbox"
             checked={isSelected}
             onChange={onToggleSelect}
-            className="h-4 w-4 rounded border-input text-indigo-600 focus:ring-indigo-500 focus:ring-offset-0"
+            className="h-4 w-4 rounded border-input text-primary focus:ring-ring focus:ring-offset-0"
           />
         </TableCell>
       )}
@@ -116,7 +116,7 @@ export function PedidoRow({
         <div className="flex items-center">
           <span
             className={`
-            text-indigo-600 dark:text-indigo-400
+            text-primary
             ${isHovered ? "scale-110" : ""}
             transition-transform duration-200
           `}
@@ -148,7 +148,7 @@ export function PedidoRow({
       </TableCell>
 
       <TableCell className="font-medium">
-        <span className="text-green-600 dark:text-green-400">
+        <span className="text-success">
           {formatBRL(valorTotal)}
         </span>
       </TableCell>
@@ -171,7 +171,7 @@ export function PedidoRow({
                       variant="ghost"
                       size="sm"
                       onClick={onViewDetails}
-                      className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -187,7 +187,7 @@ export function PedidoRow({
                       variant="ghost"
                       size="sm"
                       onClick={onConfirm}
-                      className="h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/50"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-success hover:bg-success/10"
                     >
                       <Check className="h-4 w-4" />
                     </Button>
@@ -203,7 +203,7 @@ export function PedidoRow({
                       variant="ghost"
                       size="sm"
                       onClick={onDelete}
-                      className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-900/50"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -221,7 +221,7 @@ export function PedidoRow({
                       variant="ghost"
                       size="sm"
                       onClick={onViewDetails}
-                      className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -238,7 +238,7 @@ export function PedidoRow({
                       size="sm"
                       onClick={handleDownloadPDF}
                       disabled={isDownloading}
-                      className="h-8 w-8 p-0 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 dark:text-indigo-400 dark:hover:bg-indigo-900/50"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                     >
                       {isDownloading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
