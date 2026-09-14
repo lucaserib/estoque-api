@@ -8,13 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   Dialog,
   DialogContent,
@@ -49,7 +49,7 @@ import {
   Truck,
 } from "lucide-react";
 import { toast } from "sonner";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import MercadoLivreConfigHelp from "@/app/components/MercadoLivreConfigHelp";
 import {
   MercadoLivreAccount,
@@ -983,22 +983,22 @@ export default function MercadoLivreConfigPage() {
       active: {
         label: "Ativo",
         variant: "default" as const,
-        color: "bg-green-100 text-green-800",
+        color: "bg-success/10 text-success",
       },
       paused: {
         label: "Pausado",
         variant: "secondary" as const,
-        color: "bg-yellow-100 text-yellow-800",
+        color: "bg-warning/10 text-warning",
       },
       closed: {
         label: "Finalizado",
         variant: "destructive" as const,
-        color: "bg-red-100 text-red-800",
+        color: "bg-destructive/10 text-destructive",
       },
       under_review: {
         label: "Em Revisão",
         variant: "outline" as const,
-        color: "bg-blue-100 text-blue-800",
+        color: "bg-info/10 text-info",
       },
       inactive: {
         label: "Inativo",
@@ -1024,22 +1024,22 @@ export default function MercadoLivreConfigPage() {
     const statusMap = {
       success: {
         label: "Sucesso",
-        color: "bg-green-100 text-green-800",
+        color: "bg-success/10 text-success",
         icon: CheckCircle,
       },
       error: {
         label: "Erro",
-        color: "bg-red-100 text-red-800",
+        color: "bg-destructive/10 text-destructive",
         icon: AlertCircle,
       },
       running: {
         label: "Executando",
-        color: "bg-blue-100 text-blue-800",
+        color: "bg-info/10 text-info",
         icon: Loader2,
       },
       partial: {
         label: "Parcial",
-        color: "bg-yellow-100 text-yellow-800",
+        color: "bg-warning/10 text-warning",
         icon: AlertCircle,
       },
     };
@@ -1097,7 +1097,7 @@ export default function MercadoLivreConfigPage() {
   if (status === "loading") {
     return (
       <div className="container mx-auto p-6 max-w-6xl">
-        <Header name="Mercado Livre" />
+        <PageHeader title="Mercado Livre" />
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin" />
           <span className="ml-2">Verificando autenticação...</span>
@@ -1109,7 +1109,7 @@ export default function MercadoLivreConfigPage() {
   if (loading) {
     return (
       <div className="container mx-auto p-6 max-w-6xl">
-        <Header name="Mercado Livre" />
+        <PageHeader title="Mercado Livre" />
         <div className="flex items-center justify-center min-h-[400px]">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
@@ -1119,35 +1119,37 @@ export default function MercadoLivreConfigPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-6xl space-y-6">
-      <div className="flex justify-between items-center">
-        <Header name="Integração Mercado Livre" />
-        <Button
-          onClick={connectAccount}
-          disabled={connecting}
-          className="gap-2"
-        >
-          {connecting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Plus className="h-4 w-4" />
-          )}
-          Conectar Conta
-        </Button>
-      </div>
+      <PageHeader
+        title="Integração Mercado Livre"
+        actions={
+          <Button
+            onClick={connectAccount}
+            disabled={connecting}
+            className="gap-2"
+          >
+            {connecting ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Plus className="h-4 w-4" />
+            )}
+            Conectar Conta
+          </Button>
+        }
+      />
 
       {/* Aviso quando estiver no ngrok */}
       {isNgrokMode && (
-        <Card className="border-blue-200 bg-blue-50">
+        <Card className="border-info/30 bg-info/10">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="animate-spin">
-                <Loader2 className="h-5 w-5 text-blue-600" />
+                <Loader2 className="h-5 w-5 text-info" />
               </div>
               <div>
-                <h3 className="font-medium text-blue-800">
+                <h3 className="font-medium text-info">
                   Processando autorização do Mercado Livre
                 </h3>
-                <p className="text-sm text-blue-600">
+                <p className="text-sm text-info">
                   Você será redirecionado automaticamente para o localhost em
                   alguns segundos...
                 </p>
@@ -1162,17 +1164,17 @@ export default function MercadoLivreConfigPage() {
 
       {/* Banner de boas-vindas quando há conta conectada */}
       {accounts.length > 0 && (
-        <Card className="border-green-200 bg-green-50">
+        <Card className="border-success/30 bg-success/10">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                <CheckCircle className="h-6 w-6 text-white" />
+              <div className="w-12 h-12 bg-success rounded-full flex items-center justify-center">
+                <CheckCircle className="h-6 w-6 text-success-foreground" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-green-800">
+                <h3 className="font-semibold text-success">
                   🎉 Mercado Livre conectado com sucesso!
                 </h3>
-                <p className="text-sm text-green-700">
+                <p className="text-sm text-success">
                   Você possui {accounts.length} conta
                   {accounts.length > 1 ? "s" : ""} conectada
                   {accounts.length > 1 ? "s" : ""}. Agora você pode gerenciar
@@ -1183,7 +1185,7 @@ export default function MercadoLivreConfigPage() {
               <div className="text-right">
                 <Badge
                   variant="outline"
-                  className="text-green-600 border-green-600"
+                  className="text-success border-success"
                 >
                   ✅ Ativo
                 </Badge>
@@ -1194,12 +1196,12 @@ export default function MercadoLivreConfigPage() {
       )}
 
       {/* Debug Panel */}
-      <Card className="border-yellow-200 bg-yellow-50">
+      <Card className="border-warning/30 bg-warning/10">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-yellow-600" />
-              <span className="text-yellow-800">Informações de Debug</span>
+              <Settings className="h-5 w-5 text-warning" />
+              <span className="text-warning">Informações de Debug</span>
             </div>
             <Button
               variant="outline"
@@ -1271,7 +1273,7 @@ export default function MercadoLivreConfigPage() {
                   {debugInfo.error && (
                     <div>
                       <strong>Último erro:</strong>
-                      <div className="bg-red-100 p-2 rounded mt-1 text-red-700">
+                      <div className="bg-destructive/10 p-2 rounded mt-1 text-destructive">
                         {debugInfo.error}
                       </div>
                     </div>
@@ -1343,7 +1345,7 @@ export default function MercadoLivreConfigPage() {
               <Button
                 onClick={connectAccount}
                 disabled={connecting}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-primary hover:bg-primary/90"
               >
                 {connecting ? (
                   <>
@@ -1378,7 +1380,7 @@ export default function MercadoLivreConfigPage() {
                             ?.powerSellerStatus === "platinum" && (
                             <Badge
                               variant="outline"
-                              className="text-purple-600 border-purple-600"
+                              className="text-primary border-primary"
                             >
                               ⭐ Power Seller
                             </Badge>
@@ -1514,7 +1516,7 @@ export default function MercadoLivreConfigPage() {
                           {analyticsData.stock && (
                             <div>
                               <p className="text-muted-foreground">Estoque Baixo</p>
-                              <p className="font-medium text-yellow-600">
+                              <p className="font-medium text-warning">
                                 {analyticsData.stock.lowStockProducts.length}
                               </p>
                             </div>
@@ -1534,16 +1536,16 @@ export default function MercadoLivreConfigPage() {
       {selectedAccount && products.length > 0 && (
         <div className="space-y-4">
           {/* Última Sincronização */}
-          <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+          <Card className="bg-info/10 border-info/30">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                    <Clock className="h-5 w-5 text-white" />
+                  <div className="w-10 h-10 bg-info rounded-full flex items-center justify-center">
+                    <Clock className="h-5 w-5 text-info-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-blue-800">Última Sincronização</h3>
-                    <p className="text-sm text-blue-600">
+                    <h3 className="font-medium text-info">Última Sincronização</h3>
+                    <p className="text-sm text-info">
                       {products.length > 0 && isClient
                         ? `${formatDateSafe(products[0]?.lastSyncAt)} - ${products.length} produtos sincronizados`
                         : "Aguardando primeira sincronização..."
@@ -1555,7 +1557,7 @@ export default function MercadoLivreConfigPage() {
                   onClick={() => syncProducts(selectedAccount, "full")}
                   disabled={syncing}
                   size="sm"
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-info hover:bg-info/90"
                 >
                   {syncing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1572,7 +1574,7 @@ export default function MercadoLivreConfigPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <Package className="h-8 w-8 text-blue-500" />
+                <Package className="h-8 w-8 text-info" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">Total</p>
                   <p className="text-2xl font-bold">{stats.total}</p>
@@ -1584,7 +1586,7 @@ export default function MercadoLivreConfigPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <CheckCircle className="h-8 w-8 text-green-500" />
+                <CheckCircle className="h-8 w-8 text-success" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">Ativos</p>
                   <p className="text-2xl font-bold">{stats.active}</p>
@@ -1596,7 +1598,7 @@ export default function MercadoLivreConfigPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <AlertCircle className="h-8 w-8 text-yellow-500" />
+                <AlertCircle className="h-8 w-8 text-warning" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">Pausados</p>
                   <p className="text-2xl font-bold">{stats.paused}</p>
@@ -1608,7 +1610,7 @@ export default function MercadoLivreConfigPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-emerald-500" />
+                <DollarSign className="h-8 w-8 text-success" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">
                     Valor Total
@@ -1624,7 +1626,7 @@ export default function MercadoLivreConfigPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <TrendingUp className="h-8 w-8 text-purple-500" />
+                <TrendingUp className="h-8 w-8 text-primary" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">Estoque</p>
                   <p className="text-2xl font-bold">{stats.totalQuantity}</p>
@@ -1699,13 +1701,13 @@ export default function MercadoLivreConfigPage() {
                       placeholder="Buscar produtos..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring"
                     />
                   </div>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring"
                   >
                     <option value="all">Todos os status</option>
                     <option value="active">Ativos</option>
@@ -1750,22 +1752,22 @@ export default function MercadoLivreConfigPage() {
                 ) : (
                   <>
                     <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Produto</TableHead>
-                            <TableHead>SKU Local</TableHead>
-                            <TableHead>Preço ML</TableHead>
-                            <TableHead>Quantidade</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Última Sinc.</TableHead>
-                            <TableHead>Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
+                      <DataTable>
+                        <DataTableHeader>
+                          <DataTableRow>
+                            <DataTableHead className="pl-4">Produto</DataTableHead>
+                            <DataTableHead>SKU Local</DataTableHead>
+                            <DataTableHead>Preço ML</DataTableHead>
+                            <DataTableHead>Quantidade</DataTableHead>
+                            <DataTableHead>Status</DataTableHead>
+                            <DataTableHead>Última Sinc.</DataTableHead>
+                            <DataTableHead className="pr-4">Ações</DataTableHead>
+                          </DataTableRow>
+                        </DataTableHeader>
+                        <DataTableBody>
                           {paginatedProducts.map((product) => (
-                            <TableRow key={product.id}>
-                              <TableCell>
+                            <DataTableRow key={product.id}>
+                              <DataTableCell className="pl-4">
                                 <div className="flex items-center gap-2">
                                   {product.mlThumbnail ? (
                                     <MLImage
@@ -1788,25 +1790,25 @@ export default function MercadoLivreConfigPage() {
                                     </p>
                                   </div>
                                 </div>
-                              </TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell>
                                 {product.produto?.sku || "N/A"}
-                              </TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell>
                                 {exibirValorEmReais(product.mlPrice)}
-                              </TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell>
                                 <Badge variant="outline">
                                   {product.mlAvailableQuantity} un.
                                 </Badge>
-                              </TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell>
                                 {getStatusBadge(product.mlStatus)}
-                              </TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell>
                                 {formatDateShort(product.lastSyncAt)}
-                              </TableCell>
-                              <TableCell>
+                              </DataTableCell>
+                              <DataTableCell className="pr-4">
                                 <div className="flex gap-1">
                                   {product.mlPermalink && (
                                     <Button variant="ghost" size="sm" asChild>
@@ -1820,11 +1822,11 @@ export default function MercadoLivreConfigPage() {
                                     </Button>
                                   )}
                                 </div>
-                              </TableCell>
-                            </TableRow>
+                              </DataTableCell>
+                            </DataTableRow>
                           ))}
-                        </TableBody>
-                      </Table>
+                        </DataTableBody>
+                      </DataTable>
                     </div>
 
                     {/* Paginação */}
@@ -1880,17 +1882,17 @@ export default function MercadoLivreConfigPage() {
 
                 {/* Resumo da Importação */}
                 {importData && (
-                  <Card className="bg-gradient-to-r from-green-50 to-blue-50 border-green-200">
+                  <Card className="bg-success/10 border-success/30">
                     <CardContent className="p-4">
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
                         <div>
-                          <div className="text-2xl font-bold text-blue-600">
+                          <div className="text-2xl font-bold text-info">
                             {importData.summary.total}
                           </div>
                           <div className="text-sm text-muted-foreground">Total ML</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-green-600">
+                          <div className="text-2xl font-bold text-success">
                             {importData.summary.new}
                           </div>
                           <div className="text-sm text-muted-foreground">Novos</div>
@@ -1902,13 +1904,13 @@ export default function MercadoLivreConfigPage() {
                           <div className="text-sm text-muted-foreground">Já Importados</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-purple-600">
+                          <div className="text-2xl font-bold text-info">
                             {importData.summary.fullProducts}
                           </div>
                           <div className="text-sm text-muted-foreground">Full</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-orange-600">
+                          <div className="text-2xl font-bold text-warning">
                             {importData.summary.flexProducts}
                           </div>
                           <div className="text-sm text-muted-foreground">Flex</div>
@@ -1961,7 +1963,7 @@ export default function MercadoLivreConfigPage() {
                             key={product.mlItemId}
                             className={`border rounded-lg p-4 cursor-pointer transition-colors ${
                               selectedForImport.has(product.mlItemId)
-                                ? "border-blue-500 bg-blue-50"
+                                ? "border-primary bg-primary/10"
                                 : "border-border hover:border-input"
                             }`}
                             onClick={() => toggleProductSelection(product.mlItemId)}
@@ -1998,8 +2000,8 @@ export default function MercadoLivreConfigPage() {
                                     variant={product.isFull ? "default" : "secondary"}
                                     className={
                                       product.isFull
-                                        ? "bg-purple-100 text-purple-800"
-                                        : "bg-orange-100 text-orange-800"
+                                        ? "bg-info/10 text-info"
+                                        : "bg-warning/10 text-warning"
                                     }
                                   >
                                     {product.isFull ? "🚚 Full" : "📦 Flex"}
@@ -2016,7 +2018,7 @@ export default function MercadoLivreConfigPage() {
                 ) : importData?.newProducts && importData.newProducts.length === 0 ? (
                   <Card>
                     <CardContent className="p-8 text-center">
-                      <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                      <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-foreground mb-2">
                         Todos os produtos já foram importados!
                       </h3>
@@ -2041,19 +2043,19 @@ export default function MercadoLivreConfigPage() {
 
                 {/* Resultado da Importação */}
                 {importResult && (
-                  <Card className="border-green-200 bg-green-50">
+                  <Card className="border-success/30 bg-success/10">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                        <CheckCircle className="h-5 w-5 text-success mt-0.5" />
                         <div>
-                          <h4 className="font-medium text-green-800">
+                          <h4 className="font-medium text-success">
                             Importação Concluída!
                           </h4>
-                          <p className="text-sm text-green-700">
+                          <p className="text-sm text-success">
                             {importResult.imported} produtos importados com sucesso
                             {importResult.errors > 0 && ` (${importResult.errors} erros)`}
                           </p>
-                          <p className="text-xs text-green-600 mt-1">
+                          <p className="text-xs text-success mt-1">
                             Agora você pode configurar custos e impostos na aba "Produtos" ou na página de produtos.
                           </p>
                         </div>
@@ -2088,35 +2090,35 @@ export default function MercadoLivreConfigPage() {
 
                 {/* Estatísticas */}
                 {importedProductsStats.total > 0 && (
-                  <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+                  <Card className="bg-primary/10 border-primary/30">
                     <CardContent className="p-4">
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
                         <div>
-                          <div className="text-2xl font-bold text-purple-600">
+                          <div className="text-2xl font-bold text-primary">
                             {importedProductsStats.total}
                           </div>
                           <div className="text-sm text-muted-foreground">Total</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-red-600">
+                          <div className="text-2xl font-bold text-destructive">
                             {importedProductsStats.pending}
                           </div>
                           <div className="text-sm text-muted-foreground">Pendentes</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-green-600">
+                          <div className="text-2xl font-bold text-success">
                             {importedProductsStats.configured}
                           </div>
                           <div className="text-sm text-muted-foreground">Configurados</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-purple-600">
+                          <div className="text-2xl font-bold text-info">
                             {importedProductsStats.fullProducts}
                           </div>
                           <div className="text-sm text-muted-foreground">Full</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-orange-600">
+                          <div className="text-2xl font-bold text-warning">
                             {importedProductsStats.flexProducts}
                           </div>
                           <div className="text-sm text-muted-foreground">Flex</div>
@@ -2135,7 +2137,7 @@ export default function MercadoLivreConfigPage() {
                       setManagementFilter(e.target.value);
                       loadImportedProducts(e.target.value);
                     }}
-                    className="px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring"
                   >
                     <option value="all">Todos os produtos</option>
                     <option value="pending">Pendentes de configuração</option>
@@ -2193,8 +2195,8 @@ export default function MercadoLivreConfigPage() {
                                             variant={product.mlData.isFull ? "default" : "secondary"}
                                             className={
                                               product.mlData.isFull
-                                                ? "bg-purple-100 text-purple-800"
-                                                : "bg-orange-100 text-orange-800"
+                                                ? "bg-info/10 text-info"
+                                                : "bg-warning/10 text-warning"
                                             }
                                           >
                                             {product.mlData.isFull ? "🚚 Full" : "📦 Flex"}
@@ -2210,7 +2212,7 @@ export default function MercadoLivreConfigPage() {
                                         ⚠️ Pendente
                                       </Badge>
                                     ) : (
-                                      <Badge variant="default" className="bg-green-100 text-green-800">
+                                      <Badge variant="default" className="bg-success/10 text-success">
                                         ✅ Configurado
                                       </Badge>
                                     )}
@@ -2305,7 +2307,7 @@ export default function MercadoLivreConfigPage() {
                               ...editingProduct,
                               nome: e.target.value
                             })}
-                            className="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring"
                           />
                         </div>
                         
@@ -2318,7 +2320,7 @@ export default function MercadoLivreConfigPage() {
                               ...editingProduct,
                               sku: e.target.value
                             })}
-                            className="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring"
                           />
                         </div>
                         
@@ -2333,7 +2335,7 @@ export default function MercadoLivreConfigPage() {
                               ...editingProduct,
                               custoMedio: parseFloat(e.target.value) || 0
                             })}
-                            className="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            className="w-full px-3 py-2 border border-input rounded-md focus:ring-2 focus:ring-ring focus:border-ring"
                             placeholder="0.00"
                           />
                         </div>
@@ -2374,7 +2376,7 @@ export default function MercadoLivreConfigPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <BarChart className="h-5 w-5 text-blue-500" />
+                        <BarChart className="h-5 w-5 text-info" />
                         Métricas do Vendedor
                       </CardTitle>
                     </CardHeader>
@@ -2397,7 +2399,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Anúncios Ativos:
                             </span>
-                            <span className="font-semibold text-green-600">
+                            <span className="font-semibold text-success">
                               {analyticsData.metrics.activeListings}
                             </span>
                           </div>
@@ -2405,7 +2407,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Anúncios Pausados:
                             </span>
-                            <span className="font-semibold text-yellow-600">
+                            <span className="font-semibold text-warning">
                               {analyticsData.metrics.pausedListings}
                             </span>
                           </div>
@@ -2430,7 +2432,7 @@ export default function MercadoLivreConfigPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Package className="h-5 w-5 text-orange-500" />
+                        <Package className="h-5 w-5 text-warning" />
                         Controle de Estoque
                       </CardTitle>
                     </CardHeader>
@@ -2453,7 +2455,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Estoque Baixo:
                             </span>
-                            <span className="font-semibold text-yellow-600">
+                            <span className="font-semibold text-warning">
                               {analyticsData.stock.lowStockProducts.length}
                             </span>
                           </div>
@@ -2461,7 +2463,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Sem Estoque:
                             </span>
-                            <span className="font-semibold text-red-600">
+                            <span className="font-semibold text-destructive">
                               {analyticsData.stock.outOfStockProducts.length}
                             </span>
                           </div>
@@ -2478,7 +2480,7 @@ export default function MercadoLivreConfigPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Truck className="h-5 w-5 text-purple-500" />
+                        <Truck className="h-5 w-5 text-primary" />
                         Configurações de Envio
                       </CardTitle>
                     </CardHeader>
@@ -2496,8 +2498,8 @@ export default function MercadoLivreConfigPage() {
                             <span
                               className={`font-semibold ${
                                 analyticsData.shipping.mercadoEnviosEnabled
-                                  ? "text-green-600"
-                                  : "text-red-600"
+                                  ? "text-success"
+                                  : "text-destructive"
                               }`}
                             >
                               {analyticsData.shipping.mercadoEnviosEnabled
@@ -2512,8 +2514,8 @@ export default function MercadoLivreConfigPage() {
                             <span
                               className={`font-semibold ${
                                 analyticsData.shipping.freeShippingEnabled
-                                  ? "text-green-600"
-                                  : "text-red-600"
+                                  ? "text-success"
+                                  : "text-destructive"
                               }`}
                             >
                               {analyticsData.shipping.freeShippingEnabled
@@ -2542,7 +2544,7 @@ export default function MercadoLivreConfigPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-green-500" />
+                        <DollarSign className="h-5 w-5 text-success" />
                         Informações Financeiras
                       </CardTitle>
                     </CardHeader>
@@ -2557,7 +2559,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Saldo Disponível:
                             </span>
-                            <span className="font-semibold text-green-600">
+                            <span className="font-semibold text-success">
                               {exibirValorEmReais(
                                 analyticsData.financial.availableBalance
                               )}
@@ -2567,7 +2569,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Saldo Pendente:
                             </span>
-                            <span className="font-semibold text-yellow-600">
+                            <span className="font-semibold text-warning">
                               {exibirValorEmReais(
                                 analyticsData.financial.pendingBalance
                               )}
@@ -2600,7 +2602,7 @@ export default function MercadoLivreConfigPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Link className="h-5 w-5 text-purple-500" />
+                      <Link className="h-5 w-5 text-primary" />
                       Sincronização por SKU
                     </CardTitle>
                   </CardHeader>
@@ -2634,7 +2636,7 @@ export default function MercadoLivreConfigPage() {
                         <div className="border border-border rounded-lg p-4">
                           <div className="grid grid-cols-3 gap-4 mb-4">
                             <div className="text-center">
-                              <div className="text-2xl font-bold text-green-600">
+                              <div className="text-2xl font-bold text-success">
                                 {skuSyncResult.matched}
                               </div>
                               <div className="text-sm text-muted-foreground">
@@ -2642,7 +2644,7 @@ export default function MercadoLivreConfigPage() {
                               </div>
                             </div>
                             <div className="text-center">
-                              <div className="text-2xl font-bold text-yellow-600">
+                              <div className="text-2xl font-bold text-warning">
                                 {skuSyncResult.unmatched}
                               </div>
                               <div className="text-sm text-muted-foreground">
@@ -2650,7 +2652,7 @@ export default function MercadoLivreConfigPage() {
                               </div>
                             </div>
                             <div className="text-center">
-                              <div className="text-2xl font-bold text-blue-600">
+                              <div className="text-2xl font-bold text-info">
                                 {skuSyncResult.total}
                               </div>
                               <div className="text-sm text-muted-foreground">Total</div>
@@ -2659,15 +2661,15 @@ export default function MercadoLivreConfigPage() {
 
                           {skuSyncResult.results.length > 0 && (
                             <div className="max-h-60 overflow-y-auto">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Item ML</TableHead>
-                                    <TableHead>SKU</TableHead>
-                                    <TableHead>Status</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
+                              <DataTable>
+                                <DataTableHeader>
+                                  <DataTableRow>
+                                    <DataTableHead className="pl-4">Item ML</DataTableHead>
+                                    <DataTableHead>SKU</DataTableHead>
+                                    <DataTableHead className="pr-4">Status</DataTableHead>
+                                  </DataTableRow>
+                                </DataTableHeader>
+                                <DataTableBody>
                                   {skuSyncResult.results
                                     .slice(0, 10)
                                     .map(
@@ -2678,12 +2680,12 @@ export default function MercadoLivreConfigPage() {
                                         title: string;
                                         status: "matched" | "unmatched";
                                       }) => (
-                                        <TableRow key={result.mlItemId}>
-                                          <TableCell className="max-w-xs truncate">
+                                        <DataTableRow key={result.mlItemId}>
+                                          <DataTableCell className="pl-4 max-w-xs truncate">
                                             {result.title}
-                                          </TableCell>
-                                          <TableCell>{result.sku}</TableCell>
-                                          <TableCell>
+                                          </DataTableCell>
+                                          <DataTableCell>{result.sku}</DataTableCell>
+                                          <DataTableCell className="pr-4">
                                             <Badge
                                               variant={
                                                 result.status === "matched"
@@ -2692,7 +2694,7 @@ export default function MercadoLivreConfigPage() {
                                               }
                                               className={
                                                 result.status === "matched"
-                                                  ? "bg-green-100 text-green-800"
+                                                  ? "bg-success/10 text-success"
                                                   : ""
                                               }
                                             >
@@ -2700,12 +2702,12 @@ export default function MercadoLivreConfigPage() {
                                                 ? "Encontrado"
                                                 : "Não encontrado"}
                                             </Badge>
-                                          </TableCell>
-                                        </TableRow>
+                                          </DataTableCell>
+                                        </DataTableRow>
                                       )
                                     )}
-                                </TableBody>
-                              </Table>
+                                </DataTableBody>
+                              </DataTable>
                               {skuSyncResult.results.length > 10 && (
                                 <div className="text-center text-sm text-muted-foreground mt-2">
                                   ... e mais {skuSyncResult.results.length - 10}{" "}
@@ -2724,7 +2726,7 @@ export default function MercadoLivreConfigPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-yellow-500" />
+                      <AlertCircle className="h-5 w-5 text-warning" />
                       Alertas de Estoque
                     </CardTitle>
                   </CardHeader>
@@ -2738,7 +2740,7 @@ export default function MercadoLivreConfigPage() {
                         {/* Produtos com estoque baixo */}
                         {analyticsData.stock.lowStockProducts.length > 0 && (
                           <div>
-                            <h4 className="font-medium text-sm mb-2 text-yellow-600">
+                            <h4 className="font-medium text-sm mb-2 text-warning">
                               Produtos com Estoque Baixo (≤ 5 unidades)
                             </h4>
                             <div className="max-h-40 overflow-y-auto">
@@ -2748,7 +2750,7 @@ export default function MercadoLivreConfigPage() {
                                   .map((product) => (
                                     <div
                                       key={product.id}
-                                      className="flex justify-between items-center p-2 bg-yellow-50 rounded"
+                                      className="flex justify-between items-center p-2 bg-warning/10 rounded"
                                     >
                                       <div className="flex-1">
                                         <p className="text-sm font-medium truncate">
@@ -2760,7 +2762,7 @@ export default function MercadoLivreConfigPage() {
                                       </div>
                                       <Badge
                                         variant="outline"
-                                        className="text-yellow-600 border-yellow-600"
+                                        className="text-warning border-warning"
                                       >
                                         {product.availableQuantity} un.
                                       </Badge>
@@ -2783,7 +2785,7 @@ export default function MercadoLivreConfigPage() {
                         {/* Produtos sem estoque */}
                         {analyticsData.stock.outOfStockProducts.length > 0 && (
                           <div>
-                            <h4 className="font-medium text-sm mb-2 text-red-600">
+                            <h4 className="font-medium text-sm mb-2 text-destructive">
                               Produtos Sem Estoque
                             </h4>
                             <div className="max-h-40 overflow-y-auto">
@@ -2793,7 +2795,7 @@ export default function MercadoLivreConfigPage() {
                                   .map((product) => (
                                     <div
                                       key={product.id}
-                                      className="flex justify-between items-center p-2 bg-red-50 rounded"
+                                      className="flex justify-between items-center p-2 bg-destructive/10 rounded"
                                     >
                                       <div className="flex-1">
                                         <p className="text-sm font-medium truncate">
@@ -2825,7 +2827,7 @@ export default function MercadoLivreConfigPage() {
                         {analyticsData.stock.lowStockProducts.length === 0 &&
                           analyticsData.stock.outOfStockProducts.length ===
                             0 && (
-                            <div className="text-center text-green-600 p-6">
+                            <div className="text-center text-success p-6">
                               <CheckCircle className="h-8 w-8 mx-auto mb-2" />
                               <p className="font-medium">Estoque em dia!</p>
                               <p className="text-sm">
@@ -2856,21 +2858,21 @@ export default function MercadoLivreConfigPage() {
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Data/Hora</TableHead>
-                          <TableHead>Tipo</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Itens</TableHead>
-                          <TableHead>Duração</TableHead>
-                          <TableHead>Resultado</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
+                    <DataTable>
+                      <DataTableHeader>
+                        <DataTableRow>
+                          <DataTableHead className="pl-4">Data/Hora</DataTableHead>
+                          <DataTableHead>Tipo</DataTableHead>
+                          <DataTableHead>Status</DataTableHead>
+                          <DataTableHead>Itens</DataTableHead>
+                          <DataTableHead>Duração</DataTableHead>
+                          <DataTableHead className="pr-4">Resultado</DataTableHead>
+                        </DataTableRow>
+                      </DataTableHeader>
+                      <DataTableBody>
                         {syncHistory.map((history) => (
-                          <TableRow key={history.id}>
-                            <TableCell>
+                          <DataTableRow key={history.id}>
+                            <DataTableCell className="pl-4">
                               <div className="flex flex-col">
                                 <span className="font-medium">
                                   {formatDateSafe(history.startedAt)}
@@ -2882,29 +2884,29 @@ export default function MercadoLivreConfigPage() {
                                   </span>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell>
+                            </DataTableCell>
+                            <DataTableCell>
                               <Badge variant="outline">
                                 {history.syncType}
                               </Badge>
-                            </TableCell>
-                            <TableCell>
+                            </DataTableCell>
+                            <DataTableCell>
                               {getSyncStatusBadge(history.status)}
-                            </TableCell>
-                            <TableCell>
+                            </DataTableCell>
+                            <DataTableCell>
                               <div className="text-sm">
                                 <div>Total: {history.totalItems}</div>
-                                <div className="text-green-600">
+                                <div className="text-success">
                                   ✓ {history.syncedItems}
                                 </div>
                                 {history.errorItems > 0 && (
-                                  <div className="text-red-600">
+                                  <div className="text-destructive">
                                     ✗ {history.errorItems}
                                   </div>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell>
+                            </DataTableCell>
+                            <DataTableCell>
                               {history.duration ? (
                                 <div className="flex items-center gap-1">
                                   <Clock className="h-4 w-4 text-muted-foreground" />
@@ -2913,25 +2915,25 @@ export default function MercadoLivreConfigPage() {
                               ) : (
                                 <span className="text-muted-foreground">-</span>
                               )}
-                            </TableCell>
-                            <TableCell>
+                            </DataTableCell>
+                            <DataTableCell className="pr-4">
                               <div className="text-sm">
                                 {history.newItems > 0 && (
-                                  <div className="text-blue-600">
+                                  <div className="text-info">
                                     +{history.newItems} novos
                                   </div>
                                 )}
                                 {history.updatedItems > 0 && (
-                                  <div className="text-orange-600">
+                                  <div className="text-warning">
                                     ↻ {history.updatedItems} atualizados
                                   </div>
                                 )}
                               </div>
-                            </TableCell>
-                          </TableRow>
+                            </DataTableCell>
+                          </DataTableRow>
                         ))}
-                      </TableBody>
-                    </Table>
+                      </DataTableBody>
+                    </DataTable>
                   </div>
                 )}
               </TabsContent>
@@ -2970,9 +2972,9 @@ export default function MercadoLivreConfigPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   {syncResult.success ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    <CheckCircle className="h-5 w-5 text-success" />
                   ) : (
-                    <AlertCircle className="h-5 w-5 text-red-500" />
+                    <AlertCircle className="h-5 w-5 text-destructive" />
                   )}
                   <h3 className="font-medium">
                     {syncResult.success
@@ -2992,13 +2994,13 @@ export default function MercadoLivreConfigPage() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Novos:</p>
-                    <p className="font-medium text-green-600">
+                    <p className="font-medium text-success">
                       {syncResult.newItems}
                     </p>
                   </div>
                   <div>
                     <p className="text-muted-foreground">Atualizados:</p>
-                    <p className="font-medium text-blue-600">
+                    <p className="font-medium text-info">
                       {syncResult.updatedItems}
                     </p>
                   </div>
