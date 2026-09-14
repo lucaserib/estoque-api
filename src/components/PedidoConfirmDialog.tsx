@@ -22,13 +22,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   CheckCircle2,
   Warehouse,
@@ -224,7 +224,7 @@ export function PedidoConfirmDialog({
           <DialogHeader className="p-6 pb-3">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                <CheckCircle2 className="h-5 w-5 text-success" />
                 Confirmar Recebimento - Pedido #{pedido.id}
               </DialogTitle>
 
@@ -272,9 +272,9 @@ export function PedidoConfirmDialog({
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2 space-y-6">
             {/* Mensagem informativa */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 p-3 text-sm text-blue-700 dark:text-blue-300">
+            <div className="bg-info/10 rounded-lg border border-info/30 p-3 text-sm text-info">
               <div className="flex gap-2">
-                <AlertTriangle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                <AlertTriangle className="h-5 w-5 text-info flex-shrink-0" />
                 <div>
                   <p className="font-medium">Informação</p>
                   <p>
@@ -289,9 +289,9 @@ export function PedidoConfirmDialog({
 
             {/* Erro */}
             {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-300">
+              <div className="bg-destructive/10 rounded-lg border border-destructive/30 p-3 text-sm text-destructive">
                 <div className="flex gap-2">
-                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0" />
+                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
                   <div>
                     <p className="font-medium">Erro</p>
                     <p>{error}</p>
@@ -305,7 +305,7 @@ export function PedidoConfirmDialog({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-foreground  items-center gap-1">
                   <Warehouse className="h-4 w-4 text-muted-foreground" />
-                  Armazém de Destino <span className="text-red-500">*</span>
+                  Armazém de Destino <span className="text-destructive">*</span>
                 </label>
                 <Select onValueChange={setArmazemId} value={armazemId}>
                   <SelectTrigger className="w-full">
@@ -323,7 +323,7 @@ export function PedidoConfirmDialog({
                   </SelectContent>
                 </Select>
                 {!armazemId && (
-                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+                  <p className="text-xs text-warning mt-1">
                     Selecione um armazém para confirmar o pedido
                   </p>
                 )}
@@ -349,12 +349,12 @@ export function PedidoConfirmDialog({
               <div>
                 <div className="flex items-center justify-between mb-3 mt-6">
                   <h3 className="font-medium text-foreground flex items-center gap-2">
-                    <Package className="h-4 w-4 text-indigo-500" />
+                    <Package className="h-4 w-4 text-primary" />
                     Produtos Recebidos
                   </h3>
 
                   {hasMenorQuantidade() && (
-                    <div className="flex items-center gap-1 text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 py-1 px-2 rounded-full border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center gap-1 text-xs bg-warning/10 text-warning py-1 px-2 rounded-full border border-warning/30">
                       <AlertTriangle className="h-3 w-3" />
                       <span>
                         Itens faltantes serão adicionados a um novo pedido
@@ -364,28 +364,28 @@ export function PedidoConfirmDialog({
                 </div>
 
                 <div className="overflow-hidden rounded-md border border-border">
-                  <Table>
-                    <TableHeader className="bg-background">
-                      <TableRow>
-                        <TableHead className="font-medium">Produto</TableHead>
-                        <TableHead className="font-medium text-center w-24">
+                  <DataTable>
+                    <DataTableHeader>
+                      <DataTableRow>
+                        <DataTableHead className="pl-4">Produto</DataTableHead>
+                        <DataTableHead className="text-center w-24">
                           Qtd. Pedida
-                        </TableHead>
-                        <TableHead className="font-medium text-center w-28">
+                        </DataTableHead>
+                        <DataTableHead className="text-center w-28">
                           Qtd. Recebida
-                        </TableHead>
-                        <TableHead className="font-medium text-right w-32">
+                        </DataTableHead>
+                        <DataTableHead className="text-right w-32">
                           Custo Unit.
-                        </TableHead>
-                        <TableHead className="font-medium text-right w-24">
+                        </DataTableHead>
+                        <DataTableHead className="text-right w-24">
                           Mult.
-                        </TableHead>
-                        <TableHead className="font-medium text-right w-32">
+                        </DataTableHead>
+                        <DataTableHead className="pr-4 text-right w-32">
                           Subtotal
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                        </DataTableHead>
+                      </DataTableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
                       {produtos.map((produto, index) => {
                         const originalProduto = pedido.produtos[index];
                         const subtotal =
@@ -396,11 +396,8 @@ export function PedidoConfirmDialog({
                           produto.quantidade < originalProduto.quantidade;
 
                         return (
-                          <TableRow
-                            key={produto.produtoId}
-                            className="hover:bg-background group"
-                          >
-                            <TableCell>
+                          <DataTableRow key={produto.produtoId}>
+                            <DataTableCell className="pl-4">
                               <div
                                 className="font-medium text-foreground truncate max-w-[180px]"
                                 title={produto.produto?.nome}
@@ -419,16 +416,16 @@ export function PedidoConfirmDialog({
                                     {getCodigoEAN(produto.produto)}
                                   </span>
                                 ) : (
-                                  <span className="text-amber-500 dark:text-amber-400 text-xs italic">
+                                  <span className="text-warning text-xs italic">
                                     Sem código de barras
                                   </span>
                                 )}
                               </div>
-                            </TableCell>
-                            <TableCell className="text-center font-medium text-muted-foreground">
+                            </DataTableCell>
+                            <DataTableCell numeric className="text-center font-medium text-muted-foreground">
                               {originalProduto.quantidade}
-                            </TableCell>
-                            <TableCell>
+                            </DataTableCell>
+                            <DataTableCell>
                               <div className="flex items-center justify-center gap-1">
                                 <Input
                                   type="number"
@@ -442,7 +439,7 @@ export function PedidoConfirmDialog({
                                   }
                                   className={`w-16 text-center ${
                                     isLessQuantity
-                                      ? "border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/20"
+                                      ? "border-warning bg-warning/10"
                                       : ""
                                   }`}
                                   disabled={isSubmitting}
@@ -467,7 +464,7 @@ export function PedidoConfirmDialog({
                                       buttonLabel=""
                                       buttonVariant="ghost"
                                       size="sm"
-                                      className="h-8 w-8 p-0 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 transition-colors"
+                                      className="h-8 w-8 p-0 hover:bg-primary/10 text-primary transition-colors"
                                       validateBarcode={(barcode) => {
                                         return !!(
                                           produto.produto &&
@@ -479,15 +476,15 @@ export function PedidoConfirmDialog({
                                   )}
                               </div>
                               {isLessQuantity && (
-                                <div className="flex items-center justify-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                <div className="flex items-center justify-center gap-1 text-xs text-warning mt-1">
                                   <MinusCircle className="h-3 w-3" />
                                   {originalProduto.quantidade -
                                     produto.quantidade}{" "}
                                   faltantes
                                 </div>
                               )}
-                            </TableCell>
-                            <TableCell className="text-right">
+                            </DataTableCell>
+                            <DataTableCell className="text-right">
                               <Input
                                 type="number"
                                 min="0"
@@ -502,30 +499,30 @@ export function PedidoConfirmDialog({
                                 className="w-24 text-right ml-auto"
                                 disabled={isSubmitting}
                               />
-                            </TableCell>
-                            <TableCell className="text-right text-muted-foreground font-medium">
+                            </DataTableCell>
+                            <DataTableCell numeric className="text-muted-foreground font-medium">
                               {produto.multiplicador}x
-                            </TableCell>
-                            <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
+                            </DataTableCell>
+                            <DataTableCell numeric className="pr-4 font-medium text-success">
                               {formatBRL(subtotal)}
-                            </TableCell>
-                          </TableRow>
+                            </DataTableCell>
+                          </DataTableRow>
                         );
                       })}
 
-                      <TableRow className="border-t-2 border-border bg-background">
-                        <TableCell
+                      <DataTableRow className="bg-muted font-medium hover:bg-muted">
+                        <DataTableCell
                           colSpan={5}
-                          className="text-right text-foreground font-semibold"
+                          className="pl-4 text-right text-foreground font-semibold"
                         >
                           Total do Pedido:
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-green-600 dark:text-green-400">
+                        </DataTableCell>
+                        <DataTableCell numeric className="pr-4 font-bold text-success">
                           {formatBRL(calcularValorTotal())}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
+                        </DataTableCell>
+                      </DataTableRow>
+                    </DataTableBody>
+                  </DataTable>
                 </div>
               </div>
             ) : (
@@ -550,7 +547,7 @@ export function PedidoConfirmDialog({
             <Button
               onClick={handleSubmit}
               disabled={isSubmitting || !armazemId}
-              className="gap-2 bg-green-600 hover:bg-green-700 text-white"
+              className="gap-2 bg-success hover:bg-success/90 text-success-foreground"
             >
               {isSubmitting ? (
                 <>

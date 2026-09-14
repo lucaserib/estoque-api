@@ -17,13 +17,13 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   Calendar,
   Clock,
@@ -101,8 +101,8 @@ export function PedidoDetalhesDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50">
-                  <span className="text-indigo-600 dark:text-indigo-400 text-sm">
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10">
+                  <span className="text-primary text-sm">
                     #
                   </span>
                 </span>
@@ -116,7 +116,7 @@ export function PedidoDetalhesDialog({
                     size="sm"
                     onClick={handleDownloadPDF}
                     disabled={isDownloading}
-                    className="h-8 gap-1 border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30"
+                    className="h-8 gap-1 border-primary/30 text-primary hover:bg-primary/10"
                   >
                     {isDownloading ? (
                       <>
@@ -151,8 +151,8 @@ export function PedidoDetalhesDialog({
               <Badge
                 className={`px-3 py-1 ${
                   pedido.status === "confirmado"
-                    ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                    : "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"
+                    ? "bg-success/10 text-success"
+                    : "bg-warning/10 text-warning"
                 }`}
               >
                 {pedido.status === "confirmado" ? (
@@ -193,7 +193,7 @@ export function PedidoDetalhesDialog({
 
                 {pedido.dataConclusao && (
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="h-4 w-4 text-success" />
                     <span className="font-medium text-foreground">
                       Data de conclusão:
                     </span>
@@ -222,7 +222,7 @@ export function PedidoDetalhesDialog({
                   <span className="font-medium text-foreground">
                     Valor total:
                   </span>
-                  <span className="text-green-600 dark:text-green-400 font-medium">
+                  <span className="text-success font-medium">
                     {formatBRL(valorTotal)}
                   </span>
                 </div>
@@ -246,32 +246,22 @@ export function PedidoDetalhesDialog({
             {/* Tabela de produtos */}
             <div className="mb-4">
               <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
-                <Package className="h-4 w-4 text-indigo-500" />
+                <Package className="h-4 w-4 text-primary" />
                 Lista de Produtos
               </h3>
 
               <div className="overflow-hidden rounded-md border border-border">
-                <Table>
-                  <TableHeader className="bg-background">
-                    <TableRow>
-                      <TableHead className="font-medium text-muted-foreground">
-                        Produto
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground text-right">
-                        Qtd
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground text-right">
-                        Custo Unit.
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground text-right">
-                        Mult.
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground text-right">
-                        Subtotal
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <DataTable>
+                  <DataTableHeader>
+                    <DataTableRow className="hover:bg-transparent">
+                      <DataTableHead className="pl-4">Produto</DataTableHead>
+                      <DataTableHead className="text-right">Qtd</DataTableHead>
+                      <DataTableHead className="text-right">Custo Unit.</DataTableHead>
+                      <DataTableHead className="text-right">Mult.</DataTableHead>
+                      <DataTableHead className="pr-4 text-right">Subtotal</DataTableHead>
+                    </DataTableRow>
+                  </DataTableHeader>
+                  <DataTableBody>
                     {pedido.produtos.map((produto) => {
                       const multiplicador =
                         produto.multiplicador ||
@@ -281,49 +271,43 @@ export function PedidoDetalhesDialog({
                         produto.quantidade * produto.custo * multiplicador;
 
                       return (
-                        <TableRow
-                          key={produto.produtoId}
-                          className=" "
-                        >
-                          <TableCell>
-                            <div className="font-medium text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        <DataTableRow key={produto.produtoId}>
+                          <DataTableCell className="pl-4">
+                            <div className="font-medium text-foreground">
                               {produto.produto?.nome ||
                                 "Produto não encontrado"}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               SKU: {produto.produto?.sku || "N/A"}
                             </div>
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
+                          </DataTableCell>
+                          <DataTableCell numeric emphasis>
                             {produto.quantidade}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
+                          </DataTableCell>
+                          <DataTableCell numeric className="text-muted-foreground">
                             {formatBRL(produto.custo)}
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
+                          </DataTableCell>
+                          <DataTableCell numeric className="text-muted-foreground">
                             {multiplicador}x
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
+                          </DataTableCell>
+                          <DataTableCell numeric className="pr-4 font-medium text-success">
                             {formatBRL(subtotal)}
-                          </TableCell>
-                        </TableRow>
+                          </DataTableCell>
+                        </DataTableRow>
                       );
                     })}
 
                     {/* Linha do total */}
-                    <TableRow className="bg-background font-medium">
-                      <TableCell
-                        colSpan={4}
-                        className="text-right text-foreground"
-                      >
+                    <DataTableRow className="bg-muted font-medium hover:bg-muted">
+                      <DataTableCell colSpan={4} className="pl-4 text-right text-foreground">
                         Total do Pedido:
-                      </TableCell>
-                      <TableCell className="text-right font-bold text-green-600 dark:text-green-400">
+                      </DataTableCell>
+                      <DataTableCell numeric className="pr-4 font-bold text-success">
                         {formatBRL(valorTotal)}
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+                      </DataTableCell>
+                    </DataTableRow>
+                  </DataTableBody>
+                </DataTable>
               </div>
             </div>
           </div>
