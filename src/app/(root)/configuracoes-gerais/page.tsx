@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import {
   Card,
@@ -19,13 +19,11 @@ import {
   Moon,
   Sun,
   Store,
-  RefreshCw,
-  Unplug,
-  ExternalLink,
+  ArrowRight,
   ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import { useLayout } from "@/app/context/LayoutContext";
 import { formatRelativeTime } from "@/lib/format";
 
@@ -50,9 +48,6 @@ interface IntegrationRowProps {
   detail: string;
   lastSync: string | null;
   status: "ativo" | "expirado" | "desconectado";
-  onConnect: () => void;
-  onDisconnect?: () => void;
-  manageHref?: string;
 }
 
 const IntegrationRow = ({
@@ -61,14 +56,9 @@ const IntegrationRow = ({
   detail,
   lastSync,
   status,
-  onConnect,
-  onDisconnect,
-  manageHref,
 }: IntegrationRowProps) => {
-  const router = useRouter();
-
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 border-b last:border-b-0">
+    <div className="flex items-center justify-between gap-3 py-4 border-b last:border-b-0">
       <div className="flex items-center gap-3 min-w-0">
         <div className="p-2 rounded-lg bg-muted text-muted-foreground shrink-0">
           {icon}
@@ -93,35 +83,6 @@ const IntegrationRow = ({
             </p>
           )}
         </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        {status === "desconectado" && (
-          <Button size="sm" onClick={onConnect}>
-            Conectar
-          </Button>
-        )}
-        {status === "expirado" && (
-          <Button size="sm" onClick={onConnect}>
-            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-            Reconectar
-          </Button>
-        )}
-        {status === "ativo" && manageHref && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => router.push(manageHref)}
-          >
-            <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-            Gerenciar
-          </Button>
-        )}
-        {status !== "desconectado" && onDisconnect && (
-          <Button size="sm" variant="ghost" onClick={onDisconnect}>
-            <Unplug className="h-3.5 w-3.5 mr-1.5" />
-            Desconectar
-          </Button>
-        )}
       </div>
     </div>
   );
@@ -161,55 +122,6 @@ export default function ConfiguracoesGeraisPage() {
     loadIntegrations();
   }, [loadIntegrations]);
 
-  const connectML = async () => {
-    try {
-      const response = await fetch("/api/mercadolivre/auth?action=connect");
-      if (!response.ok) throw new Error();
-      const data = await response.json();
-      window.location.href = data.authUrl;
-    } catch {
-      toast.error("Erro ao iniciar conexão com o Mercado Livre");
-    }
-  };
-
-  const connectBling = async () => {
-    try {
-      const response = await fetch("/api/bling/auth?action=connect");
-      if (!response.ok) throw new Error();
-      const data = await response.json();
-      window.location.href = data.authUrl;
-    } catch {
-      toast.error("Erro ao iniciar conexão com o Bling");
-    }
-  };
-
-  const disconnectML = async (accountId: string) => {
-    try {
-      const response = await fetch(
-        `/api/mercadolivre/auth?accountId=${accountId}`,
-        { method: "DELETE" }
-      );
-      if (!response.ok) throw new Error();
-      toast.success("Conta do Mercado Livre desconectada");
-      loadIntegrations();
-    } catch {
-      toast.error("Erro ao desconectar conta do Mercado Livre");
-    }
-  };
-
-  const disconnectBling = async (accountId: string) => {
-    try {
-      const response = await fetch(`/api/bling/auth?accountId=${accountId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error();
-      toast.success("Conta do Bling desconectada");
-      loadIntegrations();
-    } catch {
-      toast.error("Erro ao desconectar conta do Bling");
-    }
-  };
-
   const mlAccount = mlAccounts.find((acc) => acc.isActive) ?? mlAccounts[0];
   const blingAccount =
     blingAccounts.find((acc) => acc.isActive) ?? blingAccounts[0];
@@ -227,7 +139,7 @@ export default function ConfiguracoesGeraisPage() {
 
   return (
     <div className="container mx-auto p-6 max-w-4xl space-y-6">
-      <Header
+      <PageHeader
         title="Configurações"
         subtitle="Conta, aparência e integrações"
       />
@@ -302,13 +214,23 @@ export default function ConfiguracoesGeraisPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Store className="h-5 w-5" />
-            Integrações
-          </CardTitle>
-          <CardDescription>
-            Status das conexões com marketplaces e ERPs
-          </CardDescription>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Store className="h-5 w-5" />
+                Integrações
+              </CardTitle>
+              <CardDescription>
+                Status das conexões com marketplaces e ERPs
+              </CardDescription>
+            </div>
+            <Button asChild size="sm" variant="outline" className="gap-2">
+              <Link href="/integracoes">
+                Gerenciar
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -328,11 +250,6 @@ export default function ConfiguracoesGeraisPage() {
                 }
                 lastSync={null}
                 status={mlStatus}
-                onConnect={connectML}
-                onDisconnect={
-                  mlAccount ? () => disconnectML(mlAccount.id) : undefined
-                }
-                manageHref="/configuracoes"
               />
               <IntegrationRow
                 icon={<Store className="h-5 w-5" />}
@@ -344,13 +261,6 @@ export default function ConfiguracoesGeraisPage() {
                 }
                 lastSync={blingAccount?.lastSyncAt ?? null}
                 status={blingStatus}
-                onConnect={connectBling}
-                onDisconnect={
-                  blingAccount
-                    ? () => disconnectBling(blingAccount.id)
-                    : undefined
-                }
-                manageHref="/produtos/importar"
               />
             </div>
           )}
