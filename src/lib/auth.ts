@@ -3,15 +3,11 @@ import GoogleProvider from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
 import { prisma } from "../../lib/prisma";
 import bcrypt from "bcryptjs";
+import { UserRole } from "@prisma/client";
 
-declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-    };
+declare module "next-auth/jwt" {
+  interface JWT {
+    role?: UserRole;
   }
 }
 
@@ -72,6 +68,12 @@ export const authOptions: NextAuthOptions = {
         token.name = user.name;
         token.email = user.email;
         token.image = user.image;
+
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email as string },
+          select: { role: true },
+        });
+        token.role = dbUser?.role ?? "ADMIN";
       }
       return token;
     },
@@ -81,6 +83,7 @@ export const authOptions: NextAuthOptions = {
         name: token.name,
         email: token.email,
         image: token.image as string | null | undefined,
+        role: token.role ?? "ADMIN",
       };
       return session;
     },

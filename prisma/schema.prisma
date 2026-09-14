@@ -7,12 +7,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  ADMIN
+  COMPRAS
+  ESTOQUE
+  VENDAS
+  LEITURA
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
 model User {
   id                       String                     @id @default(uuid())
   name                     String?
   email                    String                     @unique
   password                 String?
   image                    String?
+  role                     UserRole                   @default(ADMIN)
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
   accounts                 Account[]
@@ -29,6 +44,22 @@ model User {
   notifications            Notification[]
   movimentacoesEstoque     EstoqueMovimentacao[]
   subscription             Subscription?
+  invitationsSent          Invitation[]               @relation("InvitationsSent")
+}
+
+model Invitation {
+  id          String           @id @default(uuid())
+  email       String
+  role        UserRole
+  token       String           @unique
+  status      InvitationStatus @default(PENDING)
+  invitedById String
+  invitedBy   User             @relation("InvitationsSent", fields: [invitedById], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@map("invitations")
 }
 
 model MercadoLivreAccount {

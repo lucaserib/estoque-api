@@ -1,16 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
+import { Loader2 } from "lucide-react";
 
-export default function Register() {
+function RegisterForm() {
   const [form, setForm] = useState({ name: "", email: "", password: "" });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("invite");
+
+  useEffect(() => {
+    if (!inviteToken) return;
+
+    fetch(`/api/convites/${inviteToken}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.email) {
+          setForm((prev) => ({ ...prev, email: data.email }));
+        }
+      });
+  }, [inviteToken]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +36,7 @@ export default function Register() {
       const res = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, inviteToken }),
       });
 
       if (!res.ok) {
@@ -49,7 +64,9 @@ export default function Register() {
         Crie sua conta
       </h1>
       <p className="mb-7 mt-2 text-sm text-muted-foreground">
-        Comece a controlar seu estoque em minutos.
+        {inviteToken
+          ? "Você foi convidado para o Leap Stock. Defina sua senha para concluir o cadastro."
+          : "Comece a controlar seu estoque em minutos."}
       </p>
 
       <button
@@ -95,7 +112,8 @@ export default function Register() {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             required
-            className="auth-input w-full h-11 pl-3 rounded-lg border"
+            readOnly={!!inviteToken}
+            className="auth-input w-full h-11 pl-3 rounded-lg border disabled:opacity-60 read-only:opacity-60"
           />
         </div>
 
@@ -158,5 +176,19 @@ export default function Register() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Register() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      }
+    >
+      <RegisterForm />
+    </Suspense>
   );
 }
