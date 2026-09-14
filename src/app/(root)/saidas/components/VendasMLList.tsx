@@ -5,13 +5,13 @@ import { ptBR } from "date-fns/locale";
 import { VendaML } from "../types";
 import { VendaMLDetalhesDialog } from "./VendaMLDetalhesDialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,7 +21,6 @@ import {
   DollarSign,
   User,
   Package,
-  TrendingUp,
 } from "lucide-react";
 
 interface VendasMLListProps {
@@ -32,36 +31,31 @@ interface VendasMLListProps {
 const statusConfig = {
   paid: {
     label: "Pago",
-    color:
-      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+    color: "bg-success/10 text-success",
   },
   delivered: {
     label: "Entregue",
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+    color: "bg-success/10 text-success",
   },
   ready_to_ship: {
     label: "Pronto para Envio",
-    color:
-      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+    color: "bg-warning/10 text-warning",
   },
   shipped: {
     label: "Enviado",
-    color:
-      "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
+    color: "bg-info/10 text-info",
   },
   handling: {
     label: "Em Preparação",
-    color:
-      "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    color: "bg-warning/10 text-warning",
   },
   confirmed: {
     label: "Confirmado",
-    color:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+    color: "bg-info/10 text-info",
   },
   cancelled: {
     label: "Cancelado",
-    color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+    color: "bg-destructive/10 text-destructive",
   },
 };
 
@@ -117,29 +111,26 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
 
   return (
     <div className="space-y-4">
-      <div className="border rounded-md overflow-hidden">
-        <Table>
-          <TableHeader className="bg-background">
-            <TableRow>
-              <TableHead className="font-medium">Data</TableHead>
-              <TableHead className="font-medium">Pedido</TableHead>
-              <TableHead className="font-medium">Comprador</TableHead>
-              <TableHead className="font-medium">Status</TableHead>
-              <TableHead className="font-medium">Itens</TableHead>
-              <TableHead className="font-medium text-right">Valor</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+      <div className="border border-border rounded-md overflow-hidden">
+        <DataTable>
+          <DataTableHeader>
+            <DataTableRow className="hover:bg-transparent">
+              <DataTableHead className="pl-4">Data</DataTableHead>
+              <DataTableHead>Pedido</DataTableHead>
+              <DataTableHead>Comprador</DataTableHead>
+              <DataTableHead>Status</DataTableHead>
+              <DataTableHead>Itens</DataTableHead>
+              <DataTableHead className="text-right">Valor</DataTableHead>
+              <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
+            </DataTableRow>
+          </DataTableHeader>
+          <DataTableBody>
             {vendas.map((venda) => {
               const statusInfo = getStatusConfig(venda.status);
 
               return (
-                <TableRow
-                  key={venda.id}
-                  className="hover:bg-background group"
-                >
-                  <TableCell>
+                <DataTableRow key={venda.id} className="group">
+                  <DataTableCell className="pl-4">
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground" />
                       <span>
@@ -153,15 +144,15 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
                         locale: ptBR,
                       })}
                     </div>
-                  </TableCell>
+                  </DataTableCell>
 
-                  <TableCell>
+                  <DataTableCell>
                     <div className="font-mono text-sm">
                       {venda.orderId.substring(0, 12)}...
                     </div>
-                  </TableCell>
+                  </DataTableCell>
 
-                  <TableCell>
+                  <DataTableCell>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
                       <div>
@@ -175,16 +166,16 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
                         )}
                       </div>
                     </div>
-                  </TableCell>
+                  </DataTableCell>
 
-                  <TableCell>
+                  <DataTableCell>
                     <Badge className={statusInfo.color}>
                       {statusInfo.label}
                     </Badge>
-                  </TableCell>
+                  </DataTableCell>
 
-                  <TableCell>
-                    <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                  <DataTableCell>
+                    <Badge className="bg-info/10 text-info">
                       <Package className="h-3 w-3 mr-1" />
                       {countTotalItems(venda)}{" "}
                       {countTotalItems(venda) === 1 ? "item" : "itens"}
@@ -194,12 +185,12 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
                         {venda.items.length} produtos
                       </div>
                     )}
-                  </TableCell>
+                  </DataTableCell>
 
-                  <TableCell className="text-right">
+                  <DataTableCell numeric>
                     <div className="flex items-center justify-end gap-1">
-                      <DollarSign className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      <span className="font-semibold text-green-600 dark:text-green-400">
+                      <DollarSign className="h-4 w-4 text-success" />
+                      <span className="font-semibold text-success">
                         {formatCurrency(venda.total_amount, venda.currency_id)}
                       </span>
                     </div>
@@ -209,24 +200,24 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
                         {formatCurrency(venda.paid_amount, venda.currency_id)}
                       </div>
                     )}
-                  </TableCell>
+                  </DataTableCell>
 
-                  <TableCell className="text-right">
+                  <DataTableCell className="pr-4 text-right">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleViewDetails(venda)}
-                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-foreground hover:bg-accent"
                       title="Ver detalhes"
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                  </TableCell>
-                </TableRow>
+                  </DataTableCell>
+                </DataTableRow>
               );
             })}
-          </TableBody>
-        </Table>
+          </DataTableBody>
+        </DataTable>
       </div>
 
       {/* Details Dialog */}

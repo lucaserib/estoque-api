@@ -1,15 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import Header from "@/app/components/Header";
 import Link from "next/link";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -27,9 +20,7 @@ import {
   Search,
   AlertCircle,
   Package,
-  CalendarDays,
   ShoppingCart,
-  TrendingUp,
   BarChart3,
   MoreVertical,
   ExternalLink,
@@ -45,6 +36,9 @@ import { SaidaLoadingSkeleton } from "./components/SaidaLoadingSkeleton";
 import { SaidaList } from "./components/SaidaList";
 import { NovaSaidaDialog } from "./components/NovaSaidaDialog";
 import { VendasMLList } from "./components/VendasMLList";
+import { PageHeader } from "@/components/ui/page-header";
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { SectionCard } from "@/components/ui/section-card";
 
 // Main component for the Saidas page
 const SaidasPage = () => {
@@ -183,151 +177,56 @@ const SaidasPage = () => {
   );
   const totalRevenueML = vendasMLData?.totalRevenue || 0;
 
+  const statItems: StatStripItem[] =
+    activeTab === "manual"
+      ? [
+          { label: "Saídas manuais", value: loading ? "—" : String(totalSaidas) },
+          { label: "Total de itens", value: loading ? "—" : String(totalItens) },
+          {
+            label: "Período",
+            value: `${format(normalizedDateRange.from, "dd/MM", { locale: ptBR })} – ${format(
+              normalizedDateRange.to,
+              "dd/MM",
+              { locale: ptBR }
+            )}`,
+          },
+        ]
+      : [
+          { label: "Vendas ML", value: loadingVendasML ? "—" : String(totalVendasML) },
+          { label: "Itens vendidos", value: loadingVendasML ? "—" : String(totalItensML) },
+          {
+            label: "Receita total",
+            value: loadingVendasML
+              ? "—"
+              : new Intl.NumberFormat("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                }).format(totalRevenueML / 100),
+          },
+        ];
+
   return (
-    <div className="container max-w-screen-xl mx-auto p-4 md:p-6 space-y-6">
-      {/* Header section */}
-      <div className="bg-card rounded-lg shadow-sm border border-border p-4 md:p-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <Header name="Registro de Saídas" />
-            <p className="text-muted-foreground mt-1">
-              Gerencie todas as saídas de produtos: manuais e vendas do Mercado
-              Livre
-            </p>
-          </div>
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-700 dark:hover:bg-indigo-600 gap-2"
-          >
+    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <PageHeader
+        title="Saídas"
+        subtitle="Gerencie todas as saídas de produtos: manuais e vendas do Mercado Livre."
+        actions={
+          <Button onClick={() => setShowCreateModal(true)} className="gap-2">
             <PlusCircle className="h-4 w-4" />
             <span className="hidden sm:inline">Nova Saída Manual</span>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
-      {/* Summary Cards - Dinâmicas baseadas na aba ativa */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {activeTab === "manual" ? (
-          <>
-            <Card className="bg-card border border-border shadow-sm overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-center">
-                  <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Saídas Manuais
-                    </p>
-                    <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-foreground">
-                        {loading ? "-" : totalSaidas}
-                      </h3>
-                    </div>
-                  </div>
-                  <div className="h-full w-2 bg-blue-500"></div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border border-border shadow-sm overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-center">
-                  <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Total de Itens
-                    </p>
-                    <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-foreground">
-                        {loading ? "-" : totalItens}
-                      </h3>
-                    </div>
-                  </div>
-                  <div className="h-full w-2 bg-green-500"></div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          <>
-            <Card className="bg-card border border-border shadow-sm overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-center">
-                  <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Vendas ML
-                    </p>
-                    <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-foreground">
-                        {loadingVendasML ? "-" : totalVendasML}
-                      </h3>
-                    </div>
-                  </div>
-                  <div className="h-full w-2 bg-green-500"></div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-card border border-border shadow-sm overflow-hidden">
-              <CardContent className="p-0">
-                <div className="flex items-center">
-                  <div className="p-4 md:p-6 flex-1">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Itens Vendidos
-                    </p>
-                    <div className="mt-2 flex items-center">
-                      <h3 className="text-2xl font-bold text-foreground">
-                        {loadingVendasML ? "-" : totalItensML}
-                      </h3>
-                    </div>
-                  </div>
-                  <div className="h-full w-2 bg-blue-500"></div>
-                </div>
-              </CardContent>
-            </Card>
-          </>
-        )}
-
-        <Card className="bg-card border border-border shadow-sm overflow-hidden">
-          <CardContent className="p-0">
-            <div className="flex items-center">
-              <div className="p-4 md:p-6 flex-1">
-                <p className="text-sm font-medium text-muted-foreground">
-                  {activeTab === "mercadolivre" ? "Receita Total" : "Período"}
-                </p>
-                <div className="mt-2 flex items-center">
-                  {activeTab === "mercadolivre" ? (
-                    <h3 className="text-xl font-bold text-green-600 dark:text-green-400">
-                      {loadingVendasML
-                        ? "-"
-                        : new Intl.NumberFormat("pt-BR", {
-                            style: "currency",
-                            currency: "BRL",
-                          }).format(totalRevenueML / 100)}
-                    </h3>
-                  ) : (
-                    <h3 className="text-lg font-bold text-foreground">
-                      {format(normalizedDateRange.from, "dd/MM/yyyy", {
-                        locale: ptBR,
-                      })}{" "}
-                      -{" "}
-                      {format(normalizedDateRange.to, "dd/MM/yyyy", {
-                        locale: ptBR,
-                      })}
-                    </h3>
-                  )}
-                </div>
-              </div>
-              <div className="h-full w-2 bg-amber-500"></div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <StatStrip items={statItems} />
 
       {/* Filters */}
-      <Card className="bg-card border border-border shadow-sm">
+      <Card className="border border-border shadow-card">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row justify-between gap-4">
             <div className="flex flex-1 gap-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-faint" />
                 <Input
                   placeholder={
                     activeTab === "manual"
@@ -336,7 +235,7 @@ const SaidasPage = () => {
                   }
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-10 bg-background border-border"
+                  className="pl-9 h-10"
                 />
               </div>
               <DatePickerWithRange
@@ -348,7 +247,7 @@ const SaidasPage = () => {
             <Button
               variant="outline"
               onClick={() => setRefreshTrigger((prev) => prev + 1)}
-              className="h-10 border-border bg-background hover:bg-muted gap-2"
+              className="h-10 gap-2"
             >
               <RefreshCw className="h-4 w-4" />
               <span className="hidden sm:inline">Atualizar</span>
@@ -358,143 +257,97 @@ const SaidasPage = () => {
       </Card>
 
       {/* Main Content com Tabs */}
-      <Card className="bg-card border border-border shadow-sm">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <CardHeader className="pb-3 border-b border-border">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <div>
-                  <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                    {activeTab === "manual" ? (
-                      <>
-                        <Package className="h-5 w-5 text-indigo-500" />
-                        Saídas Manuais
-                      </>
-                    ) : (
-                      <>
-                        <ShoppingCart className="h-5 w-5 text-green-500" />
-                        Vendas do Mercado Livre
-                      </>
-                    )}
-                  </CardTitle>
-                  <CardDescription>
-                    {activeTab === "manual"
-                      ? `${filteredSaidas.length} ${
-                          filteredSaidas.length === 1 ? "registro" : "registros"
-                        } encontrados`
-                      : `${filteredVendasML.length} ${
-                          filteredVendasML.length === 1 ? "venda" : "vendas"
-                        } encontradas`}
-                  </CardDescription>
-                </div>
-
-                {/* Dropdown de Ações para ML */}
-                {activeTab === "mercadolivre" && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0"
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <SectionCard
+          title={activeTab === "manual" ? "Saídas manuais" : "Vendas do Mercado Livre"}
+          description={
+            activeTab === "manual"
+              ? `${filteredSaidas.length} ${
+                  filteredSaidas.length === 1 ? "registro encontrado" : "registros encontrados"
+                }`
+              : `${filteredVendasML.length} ${
+                  filteredVendasML.length === 1 ? "venda encontrada" : "vendas encontradas"
+                }`
+          }
+          actions={
+            <div className="flex items-center gap-3">
+              {activeTab === "mercadolivre" && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 w-8 p-0">
+                      <MoreVertical className="h-4 w-4" />
+                      <span className="sr-only">Abrir menu</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-56">
+                    <DropdownMenuLabel>Ações do Mercado Livre</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/mercado-livre/vendas"
+                        className="flex items-center cursor-pointer"
                       >
-                        <MoreVertical className="h-4 w-4" />
-                        <span className="sr-only">Abrir menu</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-56">
-                      <DropdownMenuLabel>
-                        Ações do Mercado Livre
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/mercado-livre/vendas"
-                          className="flex items-center cursor-pointer"
-                        >
-                          <BarChart3 className="mr-2 h-4 w-4" />
-                          <span>Análise Completa de Vendas</span>
-                          <ExternalLink className="ml-auto h-3 w-3 opacity-50" />
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link
-                          href="/mercado-livre"
-                          className="flex items-center cursor-pointer"
-                        >
-                          <ShoppingCart className="mr-2 h-4 w-4" />
-                          <span>Dashboard ML</span>
-                          <ExternalLink className="ml-auto h-3 w-3 opacity-50" />
-                        </Link>
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-
-              <TabsList className="grid w-full md:w-auto grid-cols-2 gap-2">
-                <TabsTrigger
-                  value="manual"
-                  className="flex items-center gap-2 data-[state=active]:bg-indigo-500 data-[state=active]:text-white"
-                >
+                        <BarChart3 className="mr-2 h-4 w-4" />
+                        <span>Análise Completa de Vendas</span>
+                        <ExternalLink className="ml-auto h-3 w-3 opacity-50" />
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/mercado-livre" className="flex items-center cursor-pointer">
+                        <ShoppingCart className="mr-2 h-4 w-4" />
+                        <span>Dashboard ML</span>
+                        <ExternalLink className="ml-auto h-3 w-3 opacity-50" />
+                      </Link>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <TabsList className="grid grid-cols-2 gap-2">
+                <TabsTrigger value="manual" className="flex items-center gap-2">
                   <Package className="h-4 w-4" />
                   <span className="hidden sm:inline">Saídas Manuais</span>
                   <span className="sm:hidden">Manual</span>
-                  {totalSaidas > 0 && (
-                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 text-xs font-medium">
-                      {totalSaidas}
-                    </span>
-                  )}
                 </TabsTrigger>
-                <TabsTrigger
-                  value="mercadolivre"
-                  className="flex items-center gap-2 data-[state=active]:bg-green-500 data-[state=active]:text-white"
-                >
+                <TabsTrigger value="mercadolivre" className="flex items-center gap-2">
                   <ShoppingCart className="h-4 w-4" />
                   <span className="hidden sm:inline">Mercado Livre</span>
                   <span className="sm:hidden">ML</span>
-                  {totalVendasML > 0 && (
-                    <span className="ml-1 px-1.5 py-0.5 rounded-full bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 text-xs font-medium">
-                      {totalVendasML}
-                    </span>
-                  )}
                 </TabsTrigger>
               </TabsList>
             </div>
-          </CardHeader>
+          }
+        >
+          <TabsContent value="manual" className="mt-0">
+            {error ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : loading ? (
+              <SaidaLoadingSkeleton />
+            ) : (
+              <SaidaList saidas={filteredSaidas} />
+            )}
+          </TabsContent>
 
-          <CardContent className="pt-6">
-            <TabsContent value="manual" className="mt-0">
-              {error ? (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              ) : loading ? (
-                <SaidaLoadingSkeleton />
-              ) : (
-                <SaidaList saidas={filteredSaidas} />
-              )}
-            </TabsContent>
-
-            <TabsContent value="mercadolivre" className="mt-0">
-              {errorVendasML ? (
-                <Alert variant="destructive" className="mb-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    {typeof errorVendasML === "string"
-                      ? errorVendasML
-                      : "Erro ao carregar vendas do Mercado Livre"}
-                  </AlertDescription>
-                </Alert>
-              ) : loadingVendasML ? (
-                <SaidaLoadingSkeleton />
-              ) : (
-                <VendasMLList vendas={filteredVendasML} />
-              )}
-            </TabsContent>
-          </CardContent>
-        </Tabs>
-      </Card>
+          <TabsContent value="mercadolivre" className="mt-0">
+            {errorVendasML ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {typeof errorVendasML === "string"
+                    ? errorVendasML
+                    : "Erro ao carregar vendas do Mercado Livre"}
+                </AlertDescription>
+              </Alert>
+            ) : loadingVendasML ? (
+              <SaidaLoadingSkeleton />
+            ) : (
+              <VendasMLList vendas={filteredVendasML} />
+            )}
+          </TabsContent>
+        </SectionCard>
+      </Tabs>
 
       {/* Modal for creating new saida */}
       {showCreateModal && (

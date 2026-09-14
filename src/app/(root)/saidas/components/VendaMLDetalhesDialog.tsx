@@ -12,13 +12,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   X,
   Calendar,
@@ -44,36 +44,31 @@ interface VendaMLDetalhesDialogProps {
 const statusConfig = {
   paid: {
     label: "Pago",
-    color:
-      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+    color: "bg-success/10 text-success",
   },
   delivered: {
     label: "Entregue",
-    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+    color: "bg-success/10 text-success",
   },
   ready_to_ship: {
     label: "Pronto para Envio",
-    color:
-      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
+    color: "bg-warning/10 text-warning",
   },
   shipped: {
     label: "Enviado",
-    color:
-      "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
+    color: "bg-info/10 text-info",
   },
   handling: {
     label: "Em Preparação",
-    color:
-      "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    color: "bg-warning/10 text-warning",
   },
   confirmed: {
     label: "Confirmado",
-    color:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+    color: "bg-info/10 text-info",
   },
   cancelled: {
     label: "Cancelado",
-    color: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+    color: "bg-destructive/10 text-destructive",
   },
 };
 
@@ -112,7 +107,7 @@ export function VendaMLDetalhesDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <ShoppingBag className="h-5 w-5 text-green-500" />
+                <ShoppingBag className="h-5 w-5 text-primary" />
                 Detalhes da Venda - Mercado Livre
               </DialogTitle>
               <Button
@@ -130,7 +125,7 @@ export function VendaMLDetalhesDialog({
         <ScrollArea className="max-h-[calc(90vh-5rem)]">
           <div className="p-6 space-y-6">
             {/* Informações do Pedido */}
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+            <div className="bg-success/10 p-4 rounded-lg border border-success/30">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -171,7 +166,7 @@ export function VendaMLDetalhesDialog({
                     <DollarSign className="h-4 w-4" />
                     Valor Total
                   </div>
-                  <div className="font-bold text-xl text-green-600 dark:text-green-400">
+                  <div className="font-bold text-xl text-success">
                     {formatCurrency(venda.total_amount, venda.currency_id)}
                   </div>
                 </div>
@@ -181,7 +176,7 @@ export function VendaMLDetalhesDialog({
             {/* Informações do Comprador */}
             <div className="bg-background p-4 rounded-lg border border-border">
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                <User className="h-5 w-5 text-indigo-500" />
+                <User className="h-5 w-5 text-primary" />
                 Comprador
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -218,7 +213,7 @@ export function VendaMLDetalhesDialog({
             {venda.shipping && (
               <div className="bg-background p-4 rounded-lg border border-border">
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-blue-500" />
+                  <Truck className="h-5 w-5 text-info" />
                   Envio
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -250,7 +245,7 @@ export function VendaMLDetalhesDialog({
             {venda.payments && venda.payments.length > 0 && (
               <div className="bg-background p-4 rounded-lg border border-border">
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <CreditCard className="h-5 w-5 text-purple-500" />
+                  <CreditCard className="h-5 w-5 text-primary" />
                   Pagamento
                 </h3>
                 <div className="space-y-2">
@@ -265,8 +260,8 @@ export function VendaMLDetalhesDialog({
                       <Badge
                         className={
                           payment.status === "approved"
-                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                            : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
+                            ? "bg-success/10 text-success"
+                            : "bg-warning/10 text-warning"
                         }
                       >
                         {payment.status}
@@ -280,36 +275,25 @@ export function VendaMLDetalhesDialog({
             {/* Lista de Produtos */}
             <div>
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                <Package className="h-5 w-5 text-indigo-500" />
+                <Package className="h-5 w-5 text-primary" />
                 Produtos ({totalItems} {totalItems === 1 ? "item" : "itens"})
               </h3>
 
-              <div className="border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader className="bg-background">
-                    <TableRow>
-                      <TableHead className="font-medium">Produto</TableHead>
-                      <TableHead className="font-medium text-center">
-                        SKU Local
-                      </TableHead>
-                      <TableHead className="font-medium text-center">
-                        Quantidade
-                      </TableHead>
-                      <TableHead className="font-medium text-right">
-                        Preço Unit.
-                      </TableHead>
-                      <TableHead className="font-medium text-right">
-                        Total
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <DataTable>
+                  <DataTableHeader>
+                    <DataTableRow className="hover:bg-transparent">
+                      <DataTableHead className="pl-4">Produto</DataTableHead>
+                      <DataTableHead>SKU Local</DataTableHead>
+                      <DataTableHead>Quantidade</DataTableHead>
+                      <DataTableHead className="text-right">Preço Unit.</DataTableHead>
+                      <DataTableHead className="pr-4 text-right">Total</DataTableHead>
+                    </DataTableRow>
+                  </DataTableHeader>
+                  <DataTableBody>
                     {venda.items.map((item) => (
-                      <TableRow
-                        key={item.id}
-                        className="hover:bg-background"
-                      >
-                        <TableCell>
+                      <DataTableRow key={item.id}>
+                        <DataTableCell className="pl-4">
                           <div className="flex items-start gap-3">
                             {item.thumbnail && (
                               <Image
@@ -332,13 +316,10 @@ export function VendaMLDetalhesDialog({
                                 )}
                             </div>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-center">
+                        </DataTableCell>
+                        <DataTableCell>
                           {item.sku ? (
-                            <Badge
-                              variant="outline"
-                              className="font-mono text-xs"
-                            >
+                            <Badge variant="outline" className="font-mono text-xs">
                               {item.sku}
                             </Badge>
                           ) : (
@@ -346,41 +327,39 @@ export function VendaMLDetalhesDialog({
                               Não vinculado
                             </span>
                           )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
-                            {item.quantity}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right text-foreground">
+                        </DataTableCell>
+                        <DataTableCell>
+                          <Badge className="bg-info/10 text-info">{item.quantity}</Badge>
+                        </DataTableCell>
+                        <DataTableCell numeric>
                           {formatCurrency(item.unit_price, venda.currency_id)}
-                        </TableCell>
-                        <TableCell className="text-right font-semibold text-foreground">
+                        </DataTableCell>
+                        <DataTableCell numeric emphasis className="pr-4">
                           {formatCurrency(item.total_price, venda.currency_id)}
-                        </TableCell>
-                      </TableRow>
+                        </DataTableCell>
+                      </DataTableRow>
                     ))}
-                  </TableBody>
-                </Table>
+                  </DataTableBody>
+                </DataTable>
               </div>
             </div>
 
             {/* Resumo Financeiro */}
-            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800">
+            <div className="bg-success/10 p-4 rounded-lg border border-success/30">
               <div className="flex justify-between items-center">
                 <div className="text-muted-foreground font-medium">
                   Valor Total da Venda
                 </div>
-                <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                <div className="text-2xl font-bold text-success">
                   {formatCurrency(venda.total_amount, venda.currency_id)}
                 </div>
               </div>
               {venda.paid_amount !== venda.total_amount && (
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-green-200 dark:border-green-800">
+                <div className="flex justify-between items-center mt-2 pt-2 border-t border-success/30">
                   <div className="text-sm text-muted-foreground">
                     Valor Pago
                   </div>
-                  <div className="text-lg font-semibold text-green-600 dark:text-green-400">
+                  <div className="text-lg font-semibold text-success">
                     {formatCurrency(venda.paid_amount, venda.currency_id)}
                   </div>
                 </div>

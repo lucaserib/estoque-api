@@ -24,13 +24,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -347,7 +347,7 @@ export function NovaSaidaDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <Package className="h-5 w-5 text-indigo-500" />
+                <Package className="h-5 w-5 text-primary" />
                 Registrar Nova Saída
               </DialogTitle>
               <div className="flex items-center gap-2">
@@ -356,7 +356,7 @@ export function NovaSaidaDialog({
                     variant="outline"
                     size="sm"
                     onClick={toggleScannerMode}
-                    className="flex items-center gap-1.5 h-8 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
+                    className="flex items-center gap-1.5 h-8 text-primary hover:bg-primary/10"
                   >
                     {modoBarcodeScanner ? (
                       <>
@@ -408,7 +408,7 @@ export function NovaSaidaDialog({
                 htmlFor="armazem"
                 className="text-base font-medium text-foreground mb-1 flex items-center gap-2"
               >
-                <Warehouse className="h-4 w-4 text-indigo-500" />
+                <Warehouse className="h-4 w-4 text-primary" />
                 Armazém
               </Label>
               <Select
@@ -434,7 +434,7 @@ export function NovaSaidaDialog({
                 </SelectContent>
               </Select>
               {!armazemId && (
-                <p className="mt-1 text-sm text-amber-500 dark:text-amber-400">
+                <p className="mt-1 text-sm text-warning">
                   Selecione um armazém para continuar
                 </p>
               )}
@@ -487,7 +487,7 @@ export function NovaSaidaDialog({
                             <CommandEmpty>
                               {produtosLoading ? (
                                 <div className="flex items-center justify-center p-4">
-                                  <Loader2 className="h-5 w-5 animate-spin text-indigo-500 mr-2" />
+                                  <Loader2 className="h-5 w-5 animate-spin text-primary mr-2" />
                                   <span>Carregando...</span>
                                 </div>
                               ) : (
@@ -546,7 +546,7 @@ export function NovaSaidaDialog({
                   disabled={
                     !armazemId || !sku || quantidade <= 0 || isSubmitting
                   }
-                  className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white dark:bg-indigo-700 dark:hover:bg-indigo-600"
+                  className="w-full gap-2"
                 >
                   <Plus className="h-4 w-4" />
                   Adicionar Item
@@ -558,78 +558,63 @@ export function NovaSaidaDialog({
             {!modoBarcodeScanner && saidaProdutos.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <Package className="h-5 w-5 text-indigo-500" />
+                  <Package className="h-5 w-5 text-primary" />
                   Itens na Saída
                 </h3>
 
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-background">
-                      <TableRow>
-                        <TableHead className="font-medium">Produto</TableHead>
-                        <TableHead className="font-medium text-center">
-                          Tipo
-                        </TableHead>
-                        <TableHead className="font-medium text-center">
-                          Quantidade
-                        </TableHead>
-                        <TableHead className="font-medium text-right">
-                          Ações
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <DataTable>
+                    <DataTableHeader>
+                      <DataTableRow className="hover:bg-transparent">
+                        <DataTableHead className="pl-4">Produto</DataTableHead>
+                        <DataTableHead>Tipo</DataTableHead>
+                        <DataTableHead>Quantidade</DataTableHead>
+                        <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
+                      </DataTableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
                       {saidaProdutos.map((item) => (
-                        <TableRow
-                          key={item.sku}
-                          className="hover:bg-background"
-                        >
-                          <TableCell>
+                        <DataTableRow key={item.sku}>
+                          <DataTableCell className="pl-4">
                             <div className="font-medium text-foreground">
                               {item.nome || "Produto"}
                             </div>
                             <div className="text-xs text-muted-foreground">
                               SKU: {item.sku}
                             </div>
-                          </TableCell>
-                          <TableCell className="text-center">
+                          </DataTableCell>
+                          <DataTableCell>
                             {item.isKit ? (
-                              <Badge
-                                variant="outline"
-                                className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800"
-                              >
+                              <Badge variant="outline" className="bg-info/10 text-info">
                                 <Package className="h-3 w-3 mr-1" />
                                 Kit
                               </Badge>
                             ) : (
-                              <Badge
-                                variant="outline"
-                                className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800"
-                              >
+                              <Badge variant="outline" className="bg-success/10 text-success">
                                 Produto
                               </Badge>
                             )}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                          </DataTableCell>
+                          <DataTableCell>
+                            <Badge className="bg-info/10 text-info">
                               {item.quantidade} un.
                             </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
+                          </DataTableCell>
+                          <DataTableCell className="pr-4 text-right">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRemoverProduto(item.sku)}
-                              className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                               disabled={isSubmitting}
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
-                          </TableCell>
-                        </TableRow>
+                          </DataTableCell>
+                        </DataTableRow>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </DataTableBody>
+                  </DataTable>
                 </div>
               </div>
             )}
@@ -652,7 +637,7 @@ export function NovaSaidaDialog({
                 disabled={
                   saidaProdutos.length === 0 || !armazemId || isSubmitting
                 }
-                className="gap-2 bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
+                className="gap-2"
               >
                 {isSubmitting ? (
                   <>

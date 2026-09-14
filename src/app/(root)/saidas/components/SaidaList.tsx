@@ -5,13 +5,13 @@ import { ptBR } from "date-fns/locale";
 import { Saida } from "../types";
 import { SaidaDetalhesDialog } from "./SaidaDetalhesDialog";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -394,7 +394,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
       <div className="flex justify-between items-center mb-2">
         <div className="text-sm text-muted-foreground">
           {selectedIds.length > 0 ? (
-            <span className="font-medium text-indigo-600">
+            <span className="font-medium text-primary">
               {selectedIds.length}{" "}
               {selectedIds.length === 1
                 ? "saída selecionada"
@@ -409,7 +409,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
             <ExportButton
               onClick={handleExportSelectedSaidas}
               label={`Exportar ${selectedIds.length} Selecionadas`}
-              className="bg-indigo-600 text-white hover:bg-indigo-700"
             />
           )}
           <ExportButton
@@ -419,11 +418,11 @@ export function SaidaList({ saidas }: SaidaListProps) {
         </div>
       </div>
 
-      <div className="border rounded-md overflow-hidden">
-        <Table>
-          <TableHeader className="bg-background">
-            <TableRow>
-              <TableHead className="w-12">
+      <div className="border border-border rounded-md overflow-hidden">
+        <DataTable>
+          <DataTableHeader>
+            <DataTableRow className="hover:bg-transparent">
+              <DataTableHead className="w-12 pl-4">
                 <Checkbox
                   checked={
                     selectedIds.length === saidas.length && saidas.length > 0
@@ -431,28 +430,25 @@ export function SaidaList({ saidas }: SaidaListProps) {
                   onCheckedChange={toggleSelectAll}
                   aria-label="Selecionar todas as saídas"
                 />
-              </TableHead>
-              <TableHead className="font-medium">Data</TableHead>
-              <TableHead className="font-medium">Armazém</TableHead>
-              <TableHead className="font-medium">Itens</TableHead>
-              <TableHead className="font-medium">Detalhes</TableHead>
-              <TableHead className="text-right">Ações</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+              </DataTableHead>
+              <DataTableHead>Data</DataTableHead>
+              <DataTableHead>Armazém</DataTableHead>
+              <DataTableHead>Itens</DataTableHead>
+              <DataTableHead>Detalhes</DataTableHead>
+              <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
+            </DataTableRow>
+          </DataTableHeader>
+          <DataTableBody>
             {saidas.map((saida) => (
-              <TableRow
-                key={saida.id}
-                className="hover:bg-background group"
-              >
-                <TableCell>
+              <DataTableRow key={saida.id} className="group">
+                <DataTableCell className="pl-4">
                   <Checkbox
                     checked={selectedIds.includes(saida.id)}
                     onCheckedChange={() => toggleSelection(saida.id)}
                     aria-label={`Selecionar saída ${saida.id}`}
                   />
-                </TableCell>
-                <TableCell>
+                </DataTableCell>
+                <DataTableCell>
                   <div className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-muted-foreground" />
                     <span>
@@ -461,47 +457,40 @@ export function SaidaList({ saidas }: SaidaListProps) {
                       })}
                     </span>
                   </div>
-                </TableCell>
-                <TableCell>
+                </DataTableCell>
+                <DataTableCell>
                   <div className="flex items-center gap-2">
                     <Warehouse className="h-4 w-4 text-muted-foreground" />
                     <span className="font-medium">{saida.armazem.nome}</span>
                   </div>
-                </TableCell>
-                <TableCell>
-                  <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                </DataTableCell>
+                <DataTableCell>
+                  <Badge className="bg-info/10 text-info">
                     {countTotalItems(saida)} itens
                   </Badge>
-                </TableCell>
-                <TableCell>
+                </DataTableCell>
+                <DataTableCell>
                   <div className="flex flex-wrap gap-1 max-w-md">
                     {saida.detalhes.slice(0, 2).map((detalhe) => (
-                      <Badge
-                        key={detalhe.id}
-                        variant="outline"
-                        className="bg-background"
-                      >
+                      <Badge key={detalhe.id} variant="outline">
                         {detalhe.isKit && <Package className="h-3 w-3 mr-1" />}
                         {detalhe.produto.sku} ({detalhe.quantidade})
                       </Badge>
                     ))}
                     {saida.detalhes.length > 2 && (
-                      <Badge
-                        variant="outline"
-                        className="bg-background"
-                      >
+                      <Badge variant="outline">
                         +{saida.detalhes.length - 2} itens
                       </Badge>
                     )}
                   </div>
-                </TableCell>
-                <TableCell className="text-right">
+                </DataTableCell>
+                <DataTableCell className="pr-4 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => handleViewDetails(saida)}
-                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-foreground hover:bg-accent"
                       title="Ver detalhes"
                     >
                       <Eye className="h-4 w-4" />
@@ -510,17 +499,17 @@ export function SaidaList({ saidas }: SaidaListProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleExportSaidaDetails(saida)}
-                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-green-600 hover:text-green-800 hover:bg-green-100 dark:text-green-400 dark:hover:bg-green-900/20"
+                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-success hover:bg-success/10"
                       title="Exportar para Excel"
                     >
                       <FileDown className="h-4 w-4" />
                     </Button>
                   </div>
-                </TableCell>
-              </TableRow>
+                </DataTableCell>
+              </DataTableRow>
             ))}
-          </TableBody>
-        </Table>
+          </DataTableBody>
+        </DataTable>
       </div>
 
       {/* Details Dialog com opção de exportar */}

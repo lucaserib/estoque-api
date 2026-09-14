@@ -9,13 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Trash2,
@@ -637,7 +637,7 @@ export default function BarcodeScannerSelecaoProdutos({
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-            <Scan className="h-5 w-5 text-indigo-500" />
+            <Scan className="h-5 w-5 text-primary" />
             Leitura de Código de Barras
           </h3>
           <Button
@@ -657,7 +657,7 @@ export default function BarcodeScannerSelecaoProdutos({
       </div>
 
       {/* Área do Scanner */}
-      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800 p-4">
+      <div className="bg-info/10 rounded-lg border border-info/30 p-4">
         <BarcodeReader
           onScan={handleScan}
           continuousMode={true}
@@ -667,7 +667,7 @@ export default function BarcodeScannerSelecaoProdutos({
           allowManualInput={true}
           maxLength={30}
         />
-        <div className="mt-3 text-sm text-blue-700 dark:text-blue-300">
+        <div className="mt-3 text-sm text-info">
           <p className="flex items-center">
             <Info className="h-4 w-4 mr-1" />
             Você também pode digitar o código manualmente e pressionar Enter.
@@ -741,56 +741,49 @@ export default function BarcodeScannerSelecaoProdutos({
       {produtosSelecionados.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Package className="h-5 w-5 text-indigo-500" />
+            <Package className="h-5 w-5 text-primary" />
             Produtos Selecionados ({totalEscaneado} itens)
           </h3>
 
-          <div className="border rounded-lg overflow-hidden">
-            <Table>
-              <TableHeader className="bg-background">
-                <TableRow>
-                  <TableHead className="font-medium">Produto</TableHead>
-                  <TableHead className="font-medium text-center">
-                    Quantidade
-                  </TableHead>
-                  <TableHead className="font-medium text-right">
-                    Ações
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+          <div className="border border-border rounded-lg overflow-hidden">
+            <DataTable>
+              <DataTableHeader>
+                <DataTableRow className="hover:bg-transparent">
+                  <DataTableHead className="pl-4">Produto</DataTableHead>
+                  <DataTableHead>Quantidade</DataTableHead>
+                  <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
+                </DataTableRow>
+              </DataTableHeader>
+              <DataTableBody>
                 {produtosSelecionados.map((item) => (
-                  <TableRow
-                    key={item.sku}
-                    className="hover:bg-background"
-                  >
-                    <TableCell>
+                  <DataTableRow key={item.sku}>
+                    <DataTableCell className="pl-4">
                       <div className="font-medium text-foreground">
                         {item.nome}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         SKU: {item.sku}
                       </div>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                    </DataTableCell>
+                    <DataTableCell>
+                      <Badge className="bg-info/10 text-info">
                         {item.quantidade} un.
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </DataTableCell>
+                    <DataTableCell className="pr-4 text-right">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => onRemoverProduto(item.sku)}
-                        className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    </TableCell>
-                  </TableRow>
+                    </DataTableCell>
+                  </DataTableRow>
                 ))}
-              </TableBody>
-            </Table>
+              </DataTableBody>
+            </DataTable>
           </div>
         </div>
       )}
@@ -798,23 +791,19 @@ export default function BarcodeScannerSelecaoProdutos({
       {/* Produtos não encontrados */}
       {produtosDesconhecidos.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-warning mb-2 flex items-center gap-2">
             <AlertCircle className="h-5 w-5" />
             Códigos não reconhecidos
           </h3>
-          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg">
+          <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
             <div className="flex flex-wrap gap-2">
               {produtosDesconhecidos.map((codigo) => (
-                <Badge
-                  key={codigo}
-                  variant="outline"
-                  className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-800"
-                >
+                <Badge key={codigo} variant="outline" className="bg-warning/10 text-warning">
                   {codigo}
                 </Badge>
               ))}
             </div>
-            <p className="text-sm text-amber-600 dark:text-amber-400 mt-2">
+            <p className="text-sm text-warning mt-2">
               Estes códigos não correspondem a nenhum produto no sistema.
             </p>
           </div>
@@ -826,7 +815,7 @@ export default function BarcodeScannerSelecaoProdutos({
         <div>
           <div className="flex justify-between items-center mb-2">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <History className="h-5 w-5 text-indigo-500" />
+              <History className="h-5 w-5 text-primary" />
               Histórico de Leituras
             </h3>
             <Button
@@ -848,9 +837,9 @@ export default function BarcodeScannerSelecaoProdutos({
                 >
                   <div className="flex items-center gap-2">
                     {validarCodigoBarras(scan.codigo) ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <CheckCircle className="h-4 w-4 text-success" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                      <AlertCircle className="h-4 w-4 text-warning" />
                     )}
                     <div>
                       <div className="font-medium">

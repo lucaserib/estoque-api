@@ -4,7 +4,6 @@ import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
-import { Logo } from "@/components/brand/Logo";
 
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -47,18 +46,12 @@ const LoginPage = () => {
 
   return (
     <div className="w-full">
-      {/* Logo + título */}
-      <div className="mb-8 flex flex-col items-center gap-4 text-center">
-        <Logo size="lg" />
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">
-            Bem-vindo de volta
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Estoque e reposição para quem vende no Mercado Livre
-          </p>
-        </div>
-      </div>
+      <h1 className="text-[23px] font-semibold leading-tight tracking-tight text-foreground">
+        Entrar na sua conta
+      </h1>
+      <p className="mb-7 mt-2 text-sm text-muted-foreground">
+        Estoque e reposição para quem vende no Mercado Livre.
+      </p>
 
       <button
         onClick={handleGoogleSignIn}

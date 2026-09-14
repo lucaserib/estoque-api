@@ -15,13 +15,13 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   Calendar,
   Warehouse,
@@ -72,7 +72,7 @@ export function SaidaDetalhesDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <ShoppingBag className="h-5 w-5 text-indigo-500" />
+                <ShoppingBag className="h-5 w-5 text-primary" />
                 Detalhes da Saída
               </DialogTitle>
               <div className="flex items-center gap-2">
@@ -81,7 +81,7 @@ export function SaidaDetalhesDialog({
                     variant="outline"
                     size="sm"
                     onClick={onExport}
-                    className="h-8 flex items-center gap-1.5 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20"
+                    className="h-8 flex items-center gap-1.5 text-success hover:bg-success/10"
                   >
                     <FileDown className="h-4 w-4" />
                     Exportar Excel
@@ -156,69 +156,52 @@ export function SaidaDetalhesDialog({
 
             <div className="mb-4">
               <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
-                <Package className="h-4 w-4 text-indigo-500" />
+                <Package className="h-4 w-4 text-primary" />
                 Lista de Produtos
               </h3>
 
               <div className="overflow-hidden rounded-md border border-border">
-                <Table>
-                  <TableHeader className="bg-background">
-                    <TableRow>
-                      <TableHead className="font-medium text-muted-foreground">
-                        Produto
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground">
-                        SKU
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground text-center">
-                        Quantidade
-                      </TableHead>
-                      <TableHead className="font-medium text-muted-foreground text-center">
-                        Tipo
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <DataTable>
+                  <DataTableHeader>
+                    <DataTableRow className="hover:bg-transparent">
+                      <DataTableHead className="pl-4">Produto</DataTableHead>
+                      <DataTableHead>SKU</DataTableHead>
+                      <DataTableHead>Quantidade</DataTableHead>
+                      <DataTableHead className="pr-4">Tipo</DataTableHead>
+                    </DataTableRow>
+                  </DataTableHeader>
+                  <DataTableBody>
                     {saida.detalhes.map((detalhe) => (
-                      <TableRow
-                        key={detalhe.id}
-                        className="hover:bg-background group"
-                      >
-                        <TableCell>
-                          <div className="font-medium text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                      <DataTableRow key={detalhe.id} className="group">
+                        <DataTableCell className="pl-4">
+                          <div className="font-medium text-foreground transition-colors group-hover:text-primary">
                             {detalhe.produto.nome}
                           </div>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        </DataTableCell>
+                        <DataTableCell className="text-muted-foreground">
                           {detalhe.produto.sku}
-                        </TableCell>
-                        <TableCell className="text-center font-medium">
-                          <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                        </DataTableCell>
+                        <DataTableCell className="font-medium">
+                          <Badge className="bg-info/10 text-info">
                             {detalhe.quantidade} un.
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
+                        </DataTableCell>
+                        <DataTableCell className="pr-4">
                           {detalhe.isKit ? (
-                            <Badge
-                              variant="outline"
-                              className="bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300 border-purple-200 dark:border-purple-800"
-                            >
+                            <Badge variant="outline" className="bg-info/10 text-info">
                               <Package className="h-3 w-3 mr-1" />
                               Kit
                             </Badge>
                           ) : (
-                            <Badge
-                              variant="outline"
-                              className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-green-200 dark:border-green-800"
-                            >
+                            <Badge variant="outline" className="bg-success/10 text-success">
                               Produto
                             </Badge>
                           )}
-                        </TableCell>
-                      </TableRow>
+                        </DataTableCell>
+                      </DataTableRow>
                     ))}
-                  </TableBody>
-                </Table>
+                  </DataTableBody>
+                </DataTable>
               </div>
             </div>
           </div>
