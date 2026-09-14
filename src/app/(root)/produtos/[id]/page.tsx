@@ -13,20 +13,20 @@ import {
   Link2,
   Warehouse,
 } from "lucide-react";
-import Header from "@/app/components/Header";
+import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import { ProdutoEditarDialog } from "../components/dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "../components/dialogs/ProdutoFornecedorDialog";
@@ -143,7 +143,7 @@ export default function ProdutoFichaPage() {
   if (!produto) {
     return (
       <div className="container mx-auto max-w-5xl p-6">
-        <Header title="Produto não encontrado" />
+        <PageHeader title="Produto não encontrado" />
         <Card>
           <CardContent className="p-10 text-center text-muted-foreground">
             Este produto não existe ou não pertence à sua conta.
@@ -165,12 +165,16 @@ export default function ProdutoFichaPage() {
 
   return (
     <div className="container mx-auto max-w-5xl p-6 space-y-6">
-      <Header title={produto.nome} subtitle={`SKU ${produto.sku}`}>
-        <Button variant="outline" onClick={() => router.push("/produtos")}>
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
-      </Header>
+      <PageHeader
+        title={produto.nome}
+        subtitle={`SKU ${produto.sku}`}
+        actions={
+          <Button variant="outline" onClick={() => router.push("/produtos")}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+        }
+      />
 
       <Card>
         <CardContent className="flex flex-col sm:flex-row gap-6 pt-6">
@@ -312,43 +316,43 @@ export default function ProdutoFichaPage() {
                   Nenhum fornecedor vinculado a este produto.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fornecedor</TableHead>
-                      <TableHead>Prazo</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead>Qtd. mínima</TableHead>
-                      <TableHead>Código no fornecedor</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <DataTable>
+                  <DataTableHeader>
+                    <DataTableRow>
+                      <DataTableHead>Fornecedor</DataTableHead>
+                      <DataTableHead>Prazo</DataTableHead>
+                      <DataTableHead>Preço</DataTableHead>
+                      <DataTableHead>Qtd. mínima</DataTableHead>
+                      <DataTableHead>Código no fornecedor</DataTableHead>
+                    </DataTableRow>
+                  </DataTableHeader>
+                  <DataTableBody>
                     {produto.fornecedores.map((vinculo) => (
-                      <TableRow key={vinculo.id}>
-                        <TableCell className="flex items-center gap-2">
+                      <DataTableRow key={vinculo.id}>
+                        <DataTableCell className="flex items-center gap-2">
                           {vinculo.principal && (
                             <Star className="h-3.5 w-3.5 fill-warning text-warning" />
                           )}
                           {vinculo.fornecedor.nome}
-                        </TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell>
                           {vinculo.prazoEntregaDias != null
                             ? `${vinculo.prazoEntregaDias} dias`
                             : "—"}
-                        </TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell>
                           {vinculo.precoUnitario
                             ? formatBRL(vinculo.precoUnitario)
                             : formatBRL(vinculo.preco)}
-                        </TableCell>
-                        <TableCell>{vinculo.quantidadeMinima ?? "—"}</TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell>{vinculo.quantidadeMinima ?? "—"}</DataTableCell>
+                        <DataTableCell>
                           {vinculo.codigoNoFornecedor || "—"}
-                        </TableCell>
-                      </TableRow>
+                        </DataTableCell>
+                      </DataTableRow>
                     ))}
-                  </TableBody>
-                </Table>
+                  </DataTableBody>
+                </DataTable>
               )}
             </CardContent>
           </Card>
@@ -365,26 +369,26 @@ export default function ProdutoFichaPage() {
                   Sem registros de estoque.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Armazém</TableHead>
-                      <TableHead>Quantidade</TableHead>
-                      <TableHead>Estoque de segurança</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <DataTable>
+                  <DataTableHeader>
+                    <DataTableRow>
+                      <DataTableHead>Armazém</DataTableHead>
+                      <DataTableHead>Quantidade</DataTableHead>
+                      <DataTableHead>Estoque de segurança</DataTableHead>
+                    </DataTableRow>
+                  </DataTableHeader>
+                  <DataTableBody>
                     {produto.estoques.map((estoque, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{estoque.armazem?.nome || "—"}</TableCell>
-                        <TableCell>{estoque.quantidade}</TableCell>
-                        <TableCell>
+                      <DataTableRow key={index}>
+                        <DataTableCell>{estoque.armazem?.nome || "—"}</DataTableCell>
+                        <DataTableCell>{estoque.quantidade}</DataTableCell>
+                        <DataTableCell>
                           {estoque.estoqueSeguranca ?? "—"}
-                        </TableCell>
-                      </TableRow>
+                        </DataTableCell>
+                      </DataTableRow>
                     ))}
-                  </TableBody>
-                </Table>
+                  </DataTableBody>
+                </DataTable>
               )}
             </CardContent>
           </Card>
@@ -402,30 +406,30 @@ export default function ProdutoFichaPage() {
                   Nenhum anúncio do Mercado Livre vinculado.
                 </p>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Anúncio</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Preço</TableHead>
-                      <TableHead>Estoque ML</TableHead>
-                      <TableHead />
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
+                <DataTable>
+                  <DataTableHeader>
+                    <DataTableRow>
+                      <DataTableHead>Anúncio</DataTableHead>
+                      <DataTableHead>Status</DataTableHead>
+                      <DataTableHead>Preço</DataTableHead>
+                      <DataTableHead>Estoque ML</DataTableHead>
+                      <DataTableHead />
+                    </DataTableRow>
+                  </DataTableHeader>
+                  <DataTableBody>
                     {produto.ProdutoMercadoLivre.map((anuncio) => (
-                      <TableRow key={anuncio.mlItemId}>
-                        <TableCell className="max-w-xs truncate">
+                      <DataTableRow key={anuncio.mlItemId}>
+                        <DataTableCell className="max-w-xs truncate">
                           {anuncio.mlTitle}
-                        </TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell>
                           <Badge variant="outline">{anuncio.mlStatus}</Badge>
-                        </TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell>
                           {anuncio.mlPrice ? formatBRL(anuncio.mlPrice) : "—"}
-                        </TableCell>
-                        <TableCell>{anuncio.mlAvailableQuantity}</TableCell>
-                        <TableCell>
+                        </DataTableCell>
+                        <DataTableCell>{anuncio.mlAvailableQuantity}</DataTableCell>
+                        <DataTableCell>
                           {anuncio.mlPermalink && (
                             <a
                               href={anuncio.mlPermalink}
@@ -436,11 +440,11 @@ export default function ProdutoFichaPage() {
                               Ver <ExternalLink className="h-3 w-3" />
                             </a>
                           )}
-                        </TableCell>
-                      </TableRow>
+                        </DataTableCell>
+                      </DataTableRow>
                     ))}
-                  </TableBody>
-                </Table>
+                  </DataTableBody>
+                </DataTable>
               )}
             </CardContent>
           </Card>
@@ -458,30 +462,30 @@ export default function ProdutoFichaPage() {
                     Nenhuma compra registrada.
                   </p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Fornecedor</TableHead>
-                        <TableHead>Qtd.</TableHead>
-                        <TableHead>Custo</TableHead>
-                        <TableHead>Data</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <DataTable>
+                    <DataTableHeader>
+                      <DataTableRow>
+                        <DataTableHead>Fornecedor</DataTableHead>
+                        <DataTableHead>Qtd.</DataTableHead>
+                        <DataTableHead>Custo</DataTableHead>
+                        <DataTableHead>Data</DataTableHead>
+                      </DataTableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
                       {produto.pedidos.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.pedido.fornecedor.nome}</TableCell>
-                          <TableCell>{item.quantidade}</TableCell>
-                          <TableCell>{formatBRL(item.custo)}</TableCell>
-                          <TableCell>
+                        <DataTableRow key={index}>
+                          <DataTableCell>{item.pedido.fornecedor.nome}</DataTableCell>
+                          <DataTableCell>{item.quantidade}</DataTableCell>
+                          <DataTableCell>{formatBRL(item.custo)}</DataTableCell>
+                          <DataTableCell>
                             {item.pedido.dataConclusao
                               ? formatDateBR(item.pedido.dataConclusao)
                               : item.pedido.status}
-                          </TableCell>
-                        </TableRow>
+                          </DataTableCell>
+                        </DataTableRow>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </DataTableBody>
+                  </DataTable>
                 )}
               </CardContent>
             </Card>
@@ -496,22 +500,22 @@ export default function ProdutoFichaPage() {
                     Nenhuma saída registrada.
                   </p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Quantidade</TableHead>
-                        <TableHead>Data</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                  <DataTable>
+                    <DataTableHeader>
+                      <DataTableRow>
+                        <DataTableHead>Quantidade</DataTableHead>
+                        <DataTableHead>Data</DataTableHead>
+                      </DataTableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
                       {produto.detalhesSaida.map((item, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{item.quantidade}</TableCell>
-                          <TableCell>{formatDateBR(item.saida.data)}</TableCell>
-                        </TableRow>
+                        <DataTableRow key={index}>
+                          <DataTableCell>{item.quantidade}</DataTableCell>
+                          <DataTableCell>{formatDateBR(item.saida.data)}</DataTableCell>
+                        </DataTableRow>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </DataTableBody>
+                  </DataTable>
                 )}
               </CardContent>
             </Card>
