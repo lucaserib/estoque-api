@@ -15,13 +15,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   X,
@@ -384,7 +384,7 @@ export function FornecedorProdutoDialog({
           <DialogHeader className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <Link className="h-5 w-5 text-indigo-500" />
+                <Link className="h-5 w-5 text-primary" />
                 Produtos de {fornecedor.nome}
               </DialogTitle>
               <Button
@@ -405,13 +405,13 @@ export function FornecedorProdutoDialog({
             {/* Produtos vinculados */}
             <div>
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <Package className="h-5 w-5 text-indigo-500" />
+                <Package className="h-5 w-5 text-primary" />
                 Produtos Vinculados
               </h3>
 
               {isLoading ? (
                 <div className="flex justify-center p-6">
-                  <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : produtosVinculados.length === 0 ? (
                 <div className="bg-background p-6 rounded-lg border border-border text-center">
@@ -422,22 +422,22 @@ export function FornecedorProdutoDialog({
                 </div>
               ) : (
                 <div className="border border-border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-background">
-                      <TableRow>
-                        <TableHead className="font-medium">Produto</TableHead>
-                        <TableHead className="font-medium">Preço</TableHead>
-                        <TableHead className="font-medium">Mult.</TableHead>
-                        <TableHead className="font-medium">Código NF</TableHead>
-                        <TableHead className="font-medium text-right">
+                  <DataTable>
+                    <DataTableHeader>
+                      <DataTableRow>
+                        <DataTableHead className="pl-4">Produto</DataTableHead>
+                        <DataTableHead>Preço</DataTableHead>
+                        <DataTableHead>Mult.</DataTableHead>
+                        <DataTableHead>Código NF</DataTableHead>
+                        <DataTableHead className="pr-4 text-right">
                           Ações
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+                        </DataTableHead>
+                      </DataTableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
                       {produtosVinculados.map((vinculo) => (
-                        <TableRow key={vinculo.id}>
-                          <TableCell className="font-medium">
+                        <DataTableRow key={vinculo.id}>
+                          <DataTableCell className="pl-4 font-medium">
                             <div>
                               <div className="font-medium">
                                 {vinculo.produto?.nome || "Nome não disponível"}
@@ -446,8 +446,8 @@ export function FornecedorProdutoDialog({
                                 SKU: {vinculo.produto?.sku || "N/A"}
                               </div>
                             </div>
-                          </TableCell>
-                          <TableCell>
+                          </DataTableCell>
+                          <DataTableCell>
                             {editingId === vinculo.id ? (
                               <Input
                                 type="number"
@@ -464,8 +464,8 @@ export function FornecedorProdutoDialog({
                                 : Number(vinculo.preco) / 100
                               ).toFixed(2)}`
                             )}
-                          </TableCell>
-                          <TableCell>
+                          </DataTableCell>
+                          <DataTableCell>
                             {editingId === vinculo.id ? (
                               <Input
                                 type="number"
@@ -481,8 +481,8 @@ export function FornecedorProdutoDialog({
                             ) : (
                               `${vinculo.multiplicador}x`
                             )}
-                          </TableCell>
-                          <TableCell>
+                          </DataTableCell>
+                          <DataTableCell>
                             {editingId === vinculo.id ? (
                               <Input
                                 type="text"
@@ -493,8 +493,8 @@ export function FornecedorProdutoDialog({
                             ) : (
                               vinculo.codigoNF
                             )}
-                          </TableCell>
-                          <TableCell className="text-right">
+                          </DataTableCell>
+                          <DataTableCell className="pr-4 text-right">
                             <div className="flex justify-end space-x-1">
                               {editingId === vinculo.id ? (
                                 <>
@@ -503,7 +503,7 @@ export function FornecedorProdutoDialog({
                                     size="sm"
                                     onClick={() => handleSaveEdit(vinculo.id)}
                                     disabled={isSubmitting}
-                                    className="h-8 w-8 p-0 text-green-600 hover:text-green-800 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
+                                    className="h-8 w-8 p-0 text-success hover:bg-success/10"
                                   >
                                     <Check className="h-4 w-4" />
                                   </Button>
@@ -512,7 +512,7 @@ export function FornecedorProdutoDialog({
                                     size="sm"
                                     onClick={() => setEditingId(null)}
                                     disabled={isSubmitting}
-                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-background"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                                   >
                                     <X className="h-4 w-4" />
                                   </Button>
@@ -523,7 +523,7 @@ export function FornecedorProdutoDialog({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleEdit(vinculo)}
-                                    className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
                                   >
                                     <Edit className="h-4 w-4" />
                                   </Button>
@@ -531,18 +531,18 @@ export function FornecedorProdutoDialog({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDelete(vinculo.id)}
-                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-800 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                                   >
                                     <Trash className="h-4 w-4" />
                                   </Button>
                                 </>
                               )}
                             </div>
-                          </TableCell>
-                        </TableRow>
+                          </DataTableCell>
+                        </DataTableRow>
                       ))}
-                    </TableBody>
-                  </Table>
+                    </DataTableBody>
+                  </DataTable>
                 </div>
               )}
             </div>
@@ -561,7 +561,7 @@ export function FornecedorProdutoDialog({
             {/* Adicionar Novo Produto */}
             <div className="bg-background p-4 rounded-lg border border-border">
               <h3 className="text-md font-semibold mb-4 flex items-center gap-2">
-                <Plus className="h-4 w-4 text-indigo-500" />
+                <Plus className="h-4 w-4 text-primary" />
                 Vincular Novo Produto
               </h3>
 
@@ -580,7 +580,7 @@ export function FornecedorProdutoDialog({
                     />
                     <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
                       {isSearching ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       ) : (
                         <Search className="h-4 w-4 text-muted-foreground" />
                       )}
@@ -590,7 +590,7 @@ export function FornecedorProdutoDialog({
 
                 {isSearching ? (
                   <div className="flex justify-center py-4">
-                    <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
                 ) : searchResults.length > 0 ? (
                   <div className="border rounded-md overflow-hidden mt-2">
@@ -601,7 +601,7 @@ export function FornecedorProdutoDialog({
                             key={produto.id}
                             className={`px-3 py-2 cursor-pointer hover:bg-muted flex justify-between items-center ${
                               selectedProdutoId === produto.id
-                                ? "bg-blue-50 dark:bg-blue-900/20"
+                                ? "bg-primary/10"
                                 : ""
                             }`}
                             onClick={() => setSelectedProdutoId(produto.id)}
@@ -613,7 +613,7 @@ export function FornecedorProdutoDialog({
                               </p>
                             </div>
                             {selectedProdutoId === produto.id && (
-                              <div className="bg-blue-500 text-white rounded-full p-1">
+                              <div className="bg-primary text-primary-foreground rounded-full p-1">
                                 <svg
                                   xmlns="http://www.w3.org/2000/svg"
                                   className="h-4 w-4"
@@ -696,7 +696,7 @@ export function FornecedorProdutoDialog({
                     !multiplicador ||
                     !codigoNF
                   }
-                  className="w-full gap-2 bg-indigo-600 hover:bg-indigo-700 text-white mt-4"
+                  className="w-full gap-2 bg-primary hover:bg-primary/90 text-primary-foreground mt-4"
                 >
                   {isSubmitting ? (
                     <>

@@ -16,8 +16,8 @@ import {
 import { useLayout } from "@/app/context/LayoutContext";
 import { useFetch } from "@/app/hooks/useFetch";
 import { Fornecedor } from "./types";
-import Header from "@/app/components/Header";
 import { toast } from "sonner";
+import { PageHeader } from "@/components/ui/page-header";
 import { FornecedorEditDialog } from "@/components/FornecedorEditDialog";
 import { FornecedorProdutoDialog } from "@/app/components/FornecedorProdutoDialog";
 import {
@@ -250,19 +250,28 @@ const FornecedoresPage = () => {
 
   return (
     <div className={`flex-1 transition-all duration-300`}>
-      <main className="max-w-6xl mx-auto p-6 ">
-        <Header name="Gestão de Fornecedores" />
+      <main className="max-w-6xl mx-auto p-6 space-y-8">
+        <PageHeader
+          title="Fornecedores"
+          subtitle="Gerencie seus fornecedores e os produtos vinculados a cada um."
+          actions={
+            <Button onClick={() => setIsModalOpen(true)} className="gap-2">
+              <PlusCircle className="h-4 w-4" />
+              <span>Novo Fornecedor</span>
+            </Button>
+          }
+        />
 
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-6 mb-8 gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="relative w-full sm:w-96">
             <input
               type="text"
               placeholder="Buscar fornecedor..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-card text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
-            <Search className="absolute left-3 top-2.5 text-muted-foreground h-5 w-5" />
+            <Search className="absolute left-3 top-2.5 text-faint h-5 w-5" />
           </div>
 
           <div className="flex items-center gap-2">
@@ -275,19 +284,9 @@ const FornecedoresPage = () => {
               <ExportButton
                 onClick={handleExportSelectedFornecedores}
                 label={`Exportar ${selectedFornecedores.length} Selecionados`}
-                className="bg-indigo-600 text-white hover:bg-indigo-700"
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
               />
             )}
-
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={() => setIsModalOpen(true)}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
-              >
-                <PlusCircle size={20} />
-                <span>Novo Fornecedor</span>
-              </Button>
-            </div>
           </div>
         </div>
 
@@ -299,8 +298,8 @@ const FornecedoresPage = () => {
             </span>
           </div>
         ) : error ? (
-          <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-            <p className="text-red-600 dark:text-red-400">{error}</p>
+          <div className="bg-destructive/10 p-4 rounded-lg">
+            <p className="text-destructive">{error}</p>
           </div>
         ) : fornecedores?.length === 0 ? (
           <div className="bg-background rounded-lg shadow-sm p-8 text-center">
@@ -315,7 +314,7 @@ const FornecedoresPage = () => {
             </p>
             <button
               onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+              className="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
             >
               <PlusCircle size={18} />
               <span>Adicionar Fornecedor</span>
@@ -334,7 +333,7 @@ const FornecedoresPage = () => {
                     filteredFornecedores.length > 0
                   }
                   onChange={toggleSelectAllFornecedores}
-                  className="h-4 w-4 rounded border-input text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
                 />
                 <span>Selecionar todos</span>
               </div>
@@ -348,7 +347,7 @@ const FornecedoresPage = () => {
 
             {/* Contador de selecionados */}
             {selectedFornecedores.length > 0 && (
-              <div className="flex justify-between items-center py-2 px-4 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 rounded-md text-indigo-700 dark:text-indigo-300">
+              <div className="flex justify-between items-center py-2 px-4 bg-primary/10 border border-primary/30 rounded-md text-primary">
                 <span>
                   {selectedFornecedores.length} fornecedor
                   {selectedFornecedores.length !== 1 ? "es" : ""} selecionado
@@ -357,7 +356,7 @@ const FornecedoresPage = () => {
                 <Button
                   variant="ghost"
                   onClick={() => setSelectedFornecedores([])}
-                  className="h-8 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
+                  className="h-8 text-primary hover:bg-primary/10"
                 >
                   <X className="h-4 w-4 mr-1" />
                   Limpar seleção
@@ -382,9 +381,9 @@ const FornecedoresPage = () => {
                           onChange={() =>
                             toggleFornecedorSelection(String(fornecedor.id))
                           }
-                          className="h-4 w-4 rounded border-input text-indigo-600 focus:ring-indigo-500"
+                          className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
                         />
-                        <h3 className="text-lg font-semibold text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                        <h3 className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
                           {fornecedor.nome}
                         </h3>
                       </div>
@@ -419,14 +418,14 @@ const FornecedoresPage = () => {
                     <div className="flex items-center gap-2 mt-4 md:mt-0">
                       <button
                         onClick={() => handleEditFornecedor(fornecedor)}
-                        className="flex items-center gap-1 text-blue-600 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-400 transition-colors"
+                        className="flex items-center gap-1 text-muted-foreground hover:text-primary transition-colors"
                       >
                         <Pencil className="h-4 w-4" />
                         <span>Editar</span>
                       </button>
                       <button
                         onClick={() => setFornecedorParaProdutos(fornecedor)}
-                        className="flex items-center gap-1 text-purple-600 hover:text-purple-800 dark:text-purple-500 dark:hover:text-purple-400 transition-colors"
+                        className="flex items-center gap-1 text-muted-foreground hover:text-info transition-colors"
                       >
                         <Package className="h-4 w-4" />
                         <span>Produtos</span>
@@ -435,7 +434,7 @@ const FornecedoresPage = () => {
                         onClick={() =>
                           handleDeleteFornecedor(fornecedor.id.toString())
                         }
-                        className="flex items-center gap-1 text-red-600 hover:text-red-800 dark:text-red-500 dark:hover:text-red-400 transition-colors"
+                        className="flex items-center gap-1 text-muted-foreground hover:text-destructive transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                         <span>Excluir</span>
@@ -482,7 +481,7 @@ const FornecedoresPage = () => {
                       value={nome}
                       onChange={(e) => setNome(e.target.value)}
                       required
-                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
                   <div>
@@ -493,7 +492,7 @@ const FornecedoresPage = () => {
                       type="text"
                       value={inscricaoEstadual}
                       onChange={(e) => setInscricaoEstadual(e.target.value)}
-                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
                   <div>
@@ -504,7 +503,7 @@ const FornecedoresPage = () => {
                       type="text"
                       value={cnpj}
                       onChange={(e) => setCnpj(e.target.value)}
-                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
                   <div>
@@ -515,7 +514,7 @@ const FornecedoresPage = () => {
                       type="text"
                       value={contato}
                       onChange={(e) => setContato(e.target.value)}
-                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
                   <div>
@@ -526,7 +525,7 @@ const FornecedoresPage = () => {
                       type="text"
                       value={endereco}
                       onChange={(e) => setEndereco(e.target.value)}
-                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                   </div>
 
@@ -534,8 +533,8 @@ const FornecedoresPage = () => {
                     <div
                       className={`py-2 px-3 rounded-md ${
                         formMessageType === "success"
-                          ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
-                          : "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+                          ? "bg-success/10 text-success"
+                          : "bg-destructive/10 text-destructive"
                       }`}
                     >
                       {formMessage}
@@ -552,7 +551,7 @@ const FornecedoresPage = () => {
                     </button>
                     <button
                       type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                      className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
                     >
                       Cadastrar
                     </button>

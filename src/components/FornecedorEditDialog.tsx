@@ -106,7 +106,7 @@ export function FornecedorEditDialog({
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                   required
-                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
@@ -117,7 +117,7 @@ export function FornecedorEditDialog({
                   type="text"
                   value={inscricaoEstadual}
                   onChange={(e) => setInscricaoEstadual(e.target.value)}
-                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
@@ -128,7 +128,7 @@ export function FornecedorEditDialog({
                   type="text"
                   value={cnpj}
                   onChange={(e) => setCnpj(e.target.value)}
-                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
@@ -139,7 +139,7 @@ export function FornecedorEditDialog({
                   type="text"
                   value={contato}
                   onChange={(e) => setContato(e.target.value)}
-                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
               <div>
@@ -150,7 +150,7 @@ export function FornecedorEditDialog({
                   type="text"
                   value={endereco}
                   onChange={(e) => setEndereco(e.target.value)}
-                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full p-2 mt-1 border border-input rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
@@ -165,7 +165,7 @@ export function FornecedorEditDialog({
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <span className="flex items-center gap-2">
