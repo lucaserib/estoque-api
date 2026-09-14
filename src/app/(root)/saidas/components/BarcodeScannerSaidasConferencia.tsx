@@ -6,13 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import {
   AlertCircle,
   QrCode,
@@ -310,18 +310,18 @@ const BarcodeScannerSaidasConferencia = ({
 
   return (
     <div className="space-y-6">
-      <div className="bg-indigo-50 dark:bg-indigo-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800 p-4 relative">
+      <div className="bg-primary/10 rounded-lg border border-primary/30 p-4 relative">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <QrCode className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-            <h3 className="font-medium text-indigo-800 dark:text-indigo-300">
+            <QrCode className="h-5 w-5 text-primary" />
+            <h3 className="font-medium text-primary">
               Conferência de Saída por Código de Barras
             </h3>
-            <Badge className="bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 ml-2">
+            <Badge className="bg-primary/10 text-primary ml-2">
               {calcularTotalContado()} de {calcularTotalEsperado()} itens
             </Badge>
             {conferido && (
-              <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+              <Badge className="bg-success/10 text-success">
                 <CheckCircle className="h-3 w-3 mr-1" />
                 Conferido
               </Badge>
@@ -332,16 +332,13 @@ const BarcodeScannerSaidasConferencia = ({
               variant="outline"
               size="sm"
               onClick={confirmarReiniciar}
-              className="flex items-center gap-1.5 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/30"
+              className="flex items-center gap-1.5 border-warning/40 text-warning hover:bg-warning/10"
               disabled={calcularTotalContado() === 0}
             >
               <RefreshCw className="h-4 w-4" />
               <span>Zerar Contagem</span>
               {calcularTotalContado() > 0 && (
-                <Badge
-                  variant="secondary"
-                  className="ml-1 bg-amber-100 dark:bg-amber-900/30 border-0 text-xs"
-                >
+                <Badge variant="secondary" className="ml-1 bg-warning/10 border-0 text-xs">
                   {calcularTotalContado()}
                 </Badge>
               )}
@@ -357,7 +354,7 @@ const BarcodeScannerSaidasConferencia = ({
             </Button>
           </div>
         </div>
-        <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-2">
+        <p className="text-sm text-primary mt-2">
           Escaneie o código de barras dos produtos para conferir a saída. Os
           produtos serão incrementados a cada leitura.
         </p>
@@ -379,8 +376,8 @@ const BarcodeScannerSaidasConferencia = ({
       </div>
 
       {mostrarConfirmacao && (
-        <div className="absolute z-10 top-full mt-2 right-0 bg-card rounded-lg shadow-lg border border-red-200 dark:border-red-800 p-3 w-64">
-          <p className="text-sm text-red-600 dark:text-red-400 mb-2">
+        <div className="absolute z-10 top-full mt-2 right-0 bg-card rounded-lg shadow-lift border border-destructive/30 p-3 w-64">
+          <p className="text-sm text-destructive mb-2">
             Tem certeza? Você perderá todos os {calcularTotalContado()} itens
             contados.
           </p>
@@ -406,10 +403,7 @@ const BarcodeScannerSaidasConferencia = ({
       )}
 
       {error && (
-        <Alert
-          variant="destructive"
-          className="bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800"
-        >
+        <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -427,13 +421,10 @@ const BarcodeScannerSaidasConferencia = ({
         <div className="bg-background px-4 py-3 border-b border-border">
           <div className="flex items-center justify-between">
             <h3 className="font-medium flex items-center gap-2">
-              <Barcode className="h-4 w-4 text-indigo-500" />
+              <Barcode className="h-4 w-4 text-primary" />
               Produtos da Saída
             </h3>
-            <Badge
-              variant="outline"
-              className="bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800"
-            >
+            <Badge variant="outline" className="bg-primary/10 text-primary">
               <Package className="h-3 w-3 mr-1" />
               {saida.detalhes.length} itens
             </Badge>
@@ -441,17 +432,17 @@ const BarcodeScannerSaidasConferencia = ({
         </div>
 
         <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-14">Conf.</TableHead>
-                <TableHead>Produto</TableHead>
-                <TableHead className="w-20 text-center">Esperado</TableHead>
-                <TableHead className="w-32">Código EAN</TableHead>
-                <TableHead className="text-right">Última Leitura</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow className="hover:bg-transparent">
+                <DataTableHead className="w-14 pl-4">Conf.</DataTableHead>
+                <DataTableHead>Produto</DataTableHead>
+                <DataTableHead className="w-20 text-right">Esperado</DataTableHead>
+                <DataTableHead className="w-32">Código EAN</DataTableHead>
+                <DataTableHead className="pr-4 text-right">Última Leitura</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
               {saida.detalhes.map((detalhe) => {
                 const detalheInfo = detalhesMap.get(detalhe.id);
                 const quantidadeConferida =
@@ -467,13 +458,13 @@ const BarcodeScannerSaidasConferencia = ({
                     ? ""
                     : diferente
                     ? quantidadeConferida < detalhe.quantidade
-                      ? "bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
-                      : "bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
-                    : "bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30";
+                      ? "bg-warning/10 hover:bg-warning/15"
+                      : "bg-destructive/10 hover:bg-destructive/15"
+                    : "bg-success/10 hover:bg-success/15";
 
                 return (
-                  <TableRow key={detalhe.id} className={classeStatus}>
-                    <TableCell className="font-medium">
+                  <DataTableRow key={detalhe.id} className={classeStatus}>
+                    <DataTableCell className="pl-4 font-medium">
                       <div className="flex items-center gap-2">
                         <Input
                           type="number"
@@ -488,41 +479,39 @@ const BarcodeScannerSaidasConferencia = ({
                           className={`w-16 text-center ${
                             quantidadeConferida !== 0 && diferente
                               ? quantidadeConferida < detalhe.quantidade
-                                ? "border-yellow-300 dark:border-yellow-700"
-                                : "border-red-300 dark:border-red-700"
+                                ? "border-warning/50"
+                                : "border-destructive/50"
                               : quantidadeConferida > 0
-                              ? "border-green-300 dark:border-green-700"
+                              ? "border-success/50"
                               : ""
                           }`}
                         />
                       </div>
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell>
                       <div className="font-medium text-foreground">
                         {detalhe.produto.nome || "Produto não encontrado"}
                       </div>
                       <div className="text-xs text-muted-foreground">
                         SKU: {detalhe.produto.sku || "N/A"}
                       </div>
-                    </TableCell>
-                    <TableCell className="text-center">
+                    </DataTableCell>
+                    <DataTableCell numeric>
                       <Badge
-                        className={`
-                          ${
-                            quantidadeConferida === 0
-                              ? "bg-muted text-foreground"
-                              : diferente
-                              ? quantidadeConferida < detalhe.quantidade
-                                ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300"
-                                : "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300"
-                              : "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                          }
-                        `}
+                        className={
+                          quantidadeConferida === 0
+                            ? "bg-muted text-foreground"
+                            : diferente
+                            ? quantidadeConferida < detalhe.quantidade
+                              ? "bg-warning/10 text-warning"
+                              : "bg-destructive/10 text-destructive"
+                            : "bg-success/10 text-success"
+                        }
                       >
                         {detalhe.quantidade} un.
                       </Badge>
-                    </TableCell>
-                    <TableCell>
+                    </DataTableCell>
+                    <DataTableCell>
                       {temEAN ? (
                         <div className="flex items-center gap-1">
                           <Barcode className="h-3 w-3 text-muted-foreground" />
@@ -535,14 +524,14 @@ const BarcodeScannerSaidasConferencia = ({
                           Não cadastrado
                         </span>
                       )}
-                    </TableCell>
-                    <TableCell className="text-right">
+                    </DataTableCell>
+                    <DataTableCell className="pr-4 text-right">
                       {ultimoScan ? (
                         <div className="flex items-center justify-end gap-1.5">
                           <span className="text-xs text-muted-foreground">
                             {ultimoScan.timestamp.toLocaleTimeString()}
                           </span>
-                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          <CheckCircle2 className="h-4 w-4 text-success" />
                         </div>
                       ) : temEAN ? (
                         <span className="text-xs text-muted-foreground italic">
@@ -551,27 +540,27 @@ const BarcodeScannerSaidasConferencia = ({
                       ) : (
                         <X className="h-4 w-4 text-muted-foreground ml-auto" />
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </DataTableCell>
+                  </DataTableRow>
                 );
               })}
-            </TableBody>
-          </Table>
+            </DataTableBody>
+          </DataTable>
         </div>
       </div>
 
       {produtosDesconhecidos.length > 0 && (
-        <div className="border border-yellow-200 dark:border-yellow-800 rounded-lg overflow-hidden bg-yellow-50 dark:bg-yellow-900/20">
-          <div className="bg-yellow-100 dark:bg-yellow-800/30 px-4 py-3 border-b border-yellow-200 dark:border-yellow-800 flex justify-between items-center">
-            <h3 className="font-medium flex items-center gap-2 text-yellow-800 dark:text-yellow-300">
-              <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+        <div className="border border-warning/30 rounded-lg overflow-hidden bg-warning/10">
+          <div className="bg-warning/15 px-4 py-3 border-b border-warning/30 flex justify-between items-center">
+            <h3 className="font-medium flex items-center gap-2 text-warning">
+              <AlertCircle className="h-4 w-4 text-warning" />
               Produtos Não Encontrados na Saída
             </h3>
             <Button
               variant="outline"
               size="sm"
               onClick={limparProdutosDesconhecidos}
-              className="h-8 text-xs border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300"
+              className="h-8 text-xs border-warning/40 text-warning"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
               Limpar
@@ -579,7 +568,7 @@ const BarcodeScannerSaidasConferencia = ({
           </div>
 
           <div className="max-h-48 overflow-y-auto p-4">
-            <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-2">
+            <p className="text-sm text-warning mb-2">
               Estes códigos de barras foram escaneados, mas não correspondem a
               nenhum produto nesta saída.
             </p>
@@ -587,13 +576,13 @@ const BarcodeScannerSaidasConferencia = ({
               {produtosDesconhecidos.map((item, index) => (
                 <div
                   key={`${item.codigoEAN}-${index}`}
-                  className="flex justify-between items-center py-2 px-3 bg-yellow-100/50 dark:bg-yellow-900/20 rounded text-sm border border-yellow-200 dark:border-yellow-800"
+                  className="flex justify-between items-center py-2 px-3 bg-warning/10 rounded text-sm border border-warning/30"
                 >
                   <div className="flex items-center gap-2">
-                    <Barcode className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                    <Barcode className="h-4 w-4 text-warning" />
                     <span className="font-mono">{item.codigoEAN}</span>
                   </div>
-                  <span className="text-xs text-yellow-700 dark:text-yellow-300">
+                  <span className="text-xs text-warning">
                     {item.timestamp.toLocaleTimeString()}
                   </span>
                 </div>
@@ -607,7 +596,7 @@ const BarcodeScannerSaidasConferencia = ({
         <div className="border border-border rounded-lg overflow-hidden">
           <div className="bg-background px-4 py-3 border-b border-border flex justify-between items-center">
             <h3 className="font-medium flex items-center gap-2">
-              <Package className="h-4 w-4 text-indigo-500" />
+              <Package className="h-4 w-4 text-primary" />
               Histórico de Leituras
             </h3>
             <Button
@@ -622,28 +611,28 @@ const BarcodeScannerSaidasConferencia = ({
           </div>
 
           <div className="max-h-48 overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Hora</TableHead>
-                  <TableHead>Código</TableHead>
-                  <TableHead>Produto</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <DataTable>
+              <DataTableHeader>
+                <DataTableRow className="hover:bg-transparent">
+                  <DataTableHead className="pl-4">Hora</DataTableHead>
+                  <DataTableHead>Código</DataTableHead>
+                  <DataTableHead className="pr-4">Produto</DataTableHead>
+                </DataTableRow>
+              </DataTableHeader>
+              <DataTableBody>
                 {historicoScans.map((scan, index) => (
-                  <TableRow key={`${scan.codigoEAN}-${index}`}>
-                    <TableCell className="text-xs">
+                  <DataTableRow key={`${scan.codigoEAN}-${index}`}>
+                    <DataTableCell className="pl-4 text-xs">
                       {scan.timestamp.toLocaleTimeString()}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs">
+                    </DataTableCell>
+                    <DataTableCell className="font-mono text-xs">
                       {scan.codigoEAN}
-                    </TableCell>
-                    <TableCell>{scan.nome}</TableCell>
-                  </TableRow>
+                    </DataTableCell>
+                    <DataTableCell className="pr-4">{scan.nome}</DataTableCell>
+                  </DataTableRow>
                 ))}
-              </TableBody>
-            </Table>
+              </DataTableBody>
+            </DataTable>
           </div>
         </div>
       )}
