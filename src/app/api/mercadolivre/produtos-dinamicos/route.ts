@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { prisma } from "@/lib/prisma";
+import { pickMlImageUrl } from "@/lib/imageUrl";
 
 
 // Cache simples em memória com TTL de 3 minutos
@@ -323,11 +324,10 @@ export async function GET(request: Request) {
             mlAvailableQuantity: item.available_quantity,
             mlSoldQuantity: item.sold_quantity || 0,
             mlStatus: item.status,
-            mlThumbnail: item.thumbnail,
+            mlThumbnail: pickMlImageUrl(item),
             mlPermalink: item.permalink,
             produto: produtoLocal,
             lastSyncAt: new Date().toISOString(),
-            // Campos de vendas serão preenchidos depois se necessário
             salesData: null as SalesData | null,
           };
         } catch (error) {

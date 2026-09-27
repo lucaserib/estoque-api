@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { ProductImage } from "@/components/ui/product-image";
 import {
   Dialog,
   DialogContent,
@@ -90,19 +90,14 @@ export default function MLProductLinkModal({
 
         {selectedProduct && (
           <div className="space-y-6">
-            {/* Produto do Mercado Livre */}
             <div>
               <h4 className="font-medium mb-3">Produto do Mercado Livre</h4>
               <div className="flex items-center space-x-4 p-4 border rounded-lg bg-muted/50">
-                {selectedProduct.mlThumbnail && (
-                  <Image
-                    src={selectedProduct.mlThumbnail}
-                    alt={selectedProduct.mlTitle}
-                    width={64}
-                    height={64}
-                    className="w-16 h-16 rounded-md object-cover"
-                  />
-                )}
+                <ProductImage
+                  src={selectedProduct.mlThumbnail}
+                  alt={selectedProduct.mlTitle}
+                  size={64}
+                />
                 <div className="flex-1">
                   <div className="font-medium mb-1">
                     {selectedProduct.mlTitle}
@@ -117,7 +112,6 @@ export default function MLProductLinkModal({
               </div>
             </div>
 
-            {/* Seleção do Produto Local */}
             <div>
               <h4 className="font-medium mb-3">Selecionar Produto Local</h4>
               {localProducts.length === 0 ? (
@@ -153,11 +147,10 @@ export default function MLProductLinkModal({
               )}
             </div>
 
-            {/* Informação sobre a vinculação */}
             {selectedLocalProduct && (
               <div className="p-4 bg-info/10 border border-info/30 rounded-lg">
                 <div className="text-sm text-info">
-                  <div className="font-medium mb-1">⚡ Sincronização Automática</div>
+                  <div className="font-medium mb-1">Sincronização Automática</div>
                   <div>
                     Após a vinculação, o estoque do Mercado Livre será 
                     automaticamente atualizado com base no estoque local.

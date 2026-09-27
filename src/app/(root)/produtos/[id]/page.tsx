@@ -2,11 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowLeft,
-  ImageOff,
   ExternalLink,
   Star,
   Pencil,
@@ -27,6 +25,7 @@ import {
   DataTableHeader,
   DataTableRow,
 } from "@/components/ui/data-table";
+import { ProductImage } from "@/components/ui/product-image";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import { ProdutoEditarDialog } from "../components/dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "../components/dialogs/ProdutoFornecedorDialog";
@@ -178,21 +177,12 @@ export default function ProdutoFichaPage() {
 
       <Card>
         <CardContent className="flex flex-col sm:flex-row gap-6 pt-6">
-          {produto.imagemUrl ? (
-            <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-              <Image
-                src={produto.imagemUrl}
-                alt={produto.nome}
-                fill
-                sizes="112px"
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="flex h-28 w-28 shrink-0 items-center justify-center rounded-lg border border-border bg-muted">
-              <ImageOff className="h-8 w-8 text-muted-foreground" />
-            </div>
-          )}
+          <ProductImage
+            src={produto.imagemUrl}
+            alt={produto.nome}
+            size={112}
+            rounded="lg"
+          />
 
           <div className="flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">

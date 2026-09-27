@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { pickMlImageUrl } from "@/lib/imageUrl";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,7 +17,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -32,7 +32,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se o produto local pertence ao usuário
     const localProduct = await prisma.produto.findFirst({
       where: {
         id: localProductId,
@@ -47,7 +46,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Obter dados atualizados do produto ML
     let accessToken;
     try {
       accessToken = await MercadoLivreService.getValidToken(accountId);
@@ -70,13 +68,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se já existe vinculação
     const existingML = await prisma.produtoMercadoLivre.findFirst({
       where: {
         mlItemId: mlItemId,
         mercadoLivreAccountId: accountId,
       },
     });
+
+    const mlImageUrl = pickMlImageUrl(mlItem);
 
     const productData = {
       mlTitle: mlItem.title,
@@ -87,7 +86,7 @@ export async function POST(request: NextRequest) {
       mlCondition: mlItem.condition,
       mlListingType: mlItem.listing_type_id || "gold_special",
       mlPermalink: mlItem.permalink,
-      mlThumbnail: mlItem.thumbnail,
+      mlThumbnail: mlImageUrl,
       mlCategoryId: mlItem.category_id,
       mlLastUpdated: new Date(mlItem.last_updated || new Date()),
       lastSyncAt: new Date(),
@@ -96,7 +95,6 @@ export async function POST(request: NextRequest) {
     };
 
     if (existingML) {
-      // Atualizar vinculação existente
       await prisma.produtoMercadoLivre.update({
         where: { id: existingML.id },
         data: {
@@ -105,7 +103,6 @@ export async function POST(request: NextRequest) {
         },
       });
     } else {
-      // Criar nova vinculação
       await prisma.produtoMercadoLivre.create({
         data: {
           ...productData,
@@ -116,14 +113,13 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!localProduct.imagemUrl && mlItem.thumbnail) {
+    if (!localProduct.imagemUrl && mlImageUrl) {
       await prisma.produto.update({
         where: { id: localProductId },
-        data: { imagemUrl: mlItem.thumbnail },
+        data: { imagemUrl: mlImageUrl },
       });
     }
 
-    // Sincronizar estoque do produto local para o ML
     try {
       const estoqueTotal = await prisma.estoque.aggregate({
         where: {
@@ -136,13 +132,11 @@ export async function POST(request: NextRequest) {
 
       const quantidadeLocal = estoqueTotal._sum.quantidade || 0;
 
-      // Atualizar quantidade no ML se diferente
       if (quantidadeLocal !== mlItem.available_quantity) {
         await MercadoLivreService.updateItemStock(mlItemId, quantidadeLocal, accessToken);
       }
     } catch (error) {
       console.warn("Erro ao sincronizar estoque:", error);
-      // Não falhar a vinculação por causa da sincronização de estoque
     }
 
     return NextResponse.json({

@@ -8,7 +8,12 @@ const nextConfig = {
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
     unoptimized: false,
     remotePatterns: [
-      // Mercado Livre domains - principais
+      {
+        protocol: "https",
+        hostname: "**.mlstatic.com",
+        port: "",
+        pathname: "/**",
+      },
       {
         protocol: "https",
         hostname: "http2.mlstatic.com",
@@ -27,7 +32,6 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
-      // Subdomínios por país - Brasil
       {
         protocol: "https",
         hostname: "mlb-s1-p.mlstatic.com",
@@ -46,7 +50,6 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
-      // Subdomínios por país - Argentina
       {
         protocol: "https",
         hostname: "mla-s1-p.mlstatic.com",
@@ -59,7 +62,6 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
-      // Subdomínios por país - Colômbia
       {
         protocol: "https",
         hostname: "mco-s1-p.mlstatic.com",
@@ -72,7 +74,6 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
-      // Subdomínios por país - Chile
       {
         protocol: "https",
         hostname: "mlc-s1-p.mlstatic.com",
@@ -85,7 +86,6 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
-      // Subdomínios por país - Uruguai
       {
         protocol: "https",
         hostname: "mlu-s1-p.mlstatic.com",
@@ -98,7 +98,6 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
-      // Subdomínios por país - México
       {
         protocol: "https",
         hostname: "mlm-s1-p.mlstatic.com",
@@ -111,14 +110,12 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
-      // CDN adicional
       {
         protocol: "https",
         hostname: "resources.mlstatic.com",
         port: "",
         pathname: "/**",
       },
-      // Bling (imagens de produto)
       {
         protocol: "https",
         hostname: "bling.com.br",
@@ -131,7 +128,6 @@ const nextConfig = {
         port: "",
         pathname: "/**",
       },
-      // Upload manual de imagem (Vercel Blob)
       {
         protocol: "https",
         hostname: "*.public.blob.vercel-storage.com",

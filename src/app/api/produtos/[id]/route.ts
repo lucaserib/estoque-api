@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
+import { normalizeImageUrl } from "@/lib/imageUrl";
 
 /**
  * GET /api/produtos/[id]
@@ -93,6 +94,7 @@ export async function GET(
 
     const produtoSerialized = {
       ...produto,
+      imagemUrl: normalizeImageUrl(produto.imagemUrl),
       custoMedio: Number(produto.custoMedio),
       estoques: produto.estoques.map((estoque) => ({
         ...estoque,

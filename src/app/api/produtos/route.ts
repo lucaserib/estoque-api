@@ -4,6 +4,7 @@ import { serializeWithEAN } from "@/utils/api";
 import { prepareBigIntEAN } from "@/utils/api";
 import { prisma } from "@/lib/prisma";
 import { normalizeSku } from "@/lib/sku";
+import { normalizeImageUrl } from "@/lib/imageUrl";
 import { Prisma } from "@prisma/client";
 
 const safeEANConversion = (ean: string | null): bigint | null => {
@@ -83,10 +84,11 @@ function enriquecerProduto(produto: ProdutoComRelacoes) {
   const fornecedorPrincipal =
     produto.fornecedores.find((f) => f.principal) ?? produto.fornecedores[0];
 
-  const imagemResolvida =
+  const imagemResolvida = normalizeImageUrl(
     produto.imagemUrl ??
-    produto.ProdutoMercadoLivre.find((ml) => ml.mlThumbnail)?.mlThumbnail ??
-    null;
+      produto.ProdutoMercadoLivre.find((ml) => ml.mlThumbnail)?.mlThumbnail ??
+      null
+  );
 
   return {
     ...produto,

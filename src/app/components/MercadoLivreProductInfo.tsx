@@ -1,9 +1,7 @@
-// src/components/MercadoLivreProductInfo.tsx
-
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
+import { ProductImage } from "@/components/ui/product-image";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +18,6 @@ import {
 } from "lucide-react";
 import { ProdutoMercadoLivre } from "@/types/mercadolivre";
 import { exibirValorEmReais } from "@/utils/currency";
-import { toast } from "sonner";
 
 interface MercadoLivreProductInfoProps {
   produtoId: string;
@@ -45,7 +42,6 @@ export default function MercadoLivreProductInfo({
       setLoading(true);
       setError(null);
 
-      // Buscar produtos ML vinculados a este produto
       const response = await fetch(
         `/api/produtos/mercadolivre?produtoId=${produtoId}`
       );
@@ -69,22 +65,22 @@ export default function MercadoLivreProductInfo({
       active: {
         label: "Ativo",
         variant: "default" as const,
-        color: "text-green-600",
+        color: "text-success",
       },
       paused: {
         label: "Pausado",
         variant: "secondary" as const,
-        color: "text-yellow-600",
+        color: "text-warning",
       },
       closed: {
         label: "Finalizado",
         variant: "destructive" as const,
-        color: "text-red-600",
+        color: "text-destructive",
       },
       under_review: {
         label: "Em Revisão",
         variant: "outline" as const,
-        color: "text-blue-600",
+        color: "text-info",
       },
       inactive: {
         label: "Inativo",
@@ -130,7 +126,7 @@ export default function MercadoLivreProductInfo({
     return (
       <Card className={className}>
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-          <AlertCircle className="h-8 w-8 text-red-500 mb-2" />
+          <AlertCircle className="h-8 w-8 text-destructive mb-2" />
           <p className="text-sm text-muted-foreground mb-4">{error}</p>
           <Button variant="outline" size="sm" onClick={loadMlProducts}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -146,7 +142,7 @@ export default function MercadoLivreProductInfo({
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Store className="h-4 w-4 text-yellow-500" />
+            <Store className="h-4 w-4 text-warning" />
             Mercado Livre
           </CardTitle>
         </CardHeader>
@@ -169,7 +165,7 @@ export default function MercadoLivreProductInfo({
     <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Store className="h-4 w-4 text-yellow-500" />
+          <Store className="h-4 w-4 text-warning" />
           Mercado Livre
           <Badge variant="outline" className="ml-auto">
             {mlProducts.length}{" "}
@@ -183,18 +179,9 @@ export default function MercadoLivreProductInfo({
             {index > 0 && <Separator />}
 
             <div className="space-y-3">
-              {/* Cabeçalho do produto */}
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-3">
-                  {mlProduct.mlThumbnail && (
-                    <Image
-                      src={mlProduct.mlThumbnail}
-                      alt={mlProduct.mlTitle}
-                      width={48}
-                      height={48}
-                      className="w-12 h-12 object-cover rounded border"
-                    />
-                  )}
+                  <ProductImage src={mlProduct.mlThumbnail} alt={mlProduct.mlTitle} size={48} />
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-sm line-clamp-2 mb-1">
                       {mlProduct.mlTitle}
@@ -226,10 +213,9 @@ export default function MercadoLivreProductInfo({
                 </div>
               </div>
 
-              {/* Informações do produto */}
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-green-600" />
+                  <DollarSign className="h-4 w-4 text-success" />
                   <div>
                     <p className="text-xs text-muted-foreground">Preço</p>
                     <p className="font-medium">
@@ -239,7 +225,7 @@ export default function MercadoLivreProductInfo({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Package className="h-4 w-4 text-blue-600" />
+                  <Package className="h-4 w-4 text-info" />
                   <div>
                     <p className="text-xs text-muted-foreground">Disponível</p>
                     <p className="font-medium">
@@ -249,7 +235,6 @@ export default function MercadoLivreProductInfo({
                 </div>
               </div>
 
-              {/* Categoria e última sincronização */}
               <div className="space-y-2">
                 {mlProduct.mlCategoryId && (
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -270,7 +255,6 @@ export default function MercadoLivreProductInfo({
           </div>
         ))}
 
-        {/* Botão de atualização */}
         <div className="pt-2 border-t">
           <Button
             variant="outline"

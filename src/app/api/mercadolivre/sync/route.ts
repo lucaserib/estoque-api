@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { NotificationService } from "@/services/notificationService";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { pickMlImageUrl } from "@/lib/imageUrl";
 
 export async function GET(request: NextRequest) {
   try {
@@ -228,7 +229,7 @@ export async function POST(request: NextRequest) {
                 mlCondition: item.condition,
                 mlListingType: item.listing_type_id || "gold_special",
                 mlPermalink: item.permalink,
-                mlThumbnail: item.thumbnail,
+                mlThumbnail: pickMlImageUrl(item),
                 mlCategoryId: item.category_id,
                 mlShippingMode:
                   item.shipping?.logistic_type || item.shipping?.mode || null, // ✅ NOVO: Modo de envio (fulfillment, me2, custom)

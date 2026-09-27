@@ -1,5 +1,3 @@
-// src/app/(root)/saidas/components/VendaMLDetalhesDialog.tsx
-import Image from "next/image";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { VendaML } from "../types";
@@ -11,6 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ProductImage } from "@/components/ui/product-image";
 import {
   DataTable,
   DataTableBody,
@@ -295,15 +294,7 @@ export function VendaMLDetalhesDialog({
                       <DataTableRow key={item.id}>
                         <DataTableCell className="pl-4">
                           <div className="flex items-start gap-3">
-                            {item.thumbnail && (
-                              <Image
-                                src={item.thumbnail}
-                                alt={item.title}
-                                width={48}
-                                height={48}
-                                className="w-12 h-12 object-cover rounded border border-border"
-                              />
-                            )}
+                            <ProductImage src={item.thumbnail} alt={item.title} size={48} />
                             <div>
                               <div className="font-medium text-foreground">
                                 {item.title}

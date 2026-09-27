@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NotificationService } from "@/services/notificationService";
 import { JsonValue } from "@prisma/client/runtime/library";
+import { pickMlImageUrl } from "@/lib/imageUrl";
 import {
   MLAuthResponse,
   MLUserInfo,
@@ -750,7 +751,7 @@ export class MercadoLivreService {
         mlCondition: item.condition,
         mlListingType: item.listing_type_id || "gold_special",
         mlPermalink: item.permalink,
-        mlThumbnail: item.thumbnail,
+        mlThumbnail: pickMlImageUrl(item),
         mlCategoryId: item.category_id,
         mlLastUpdated: new Date(item.last_updated || new Date()),
         lastSyncAt: new Date(),

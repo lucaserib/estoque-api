@@ -4,6 +4,7 @@ import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { prisma } from "@/lib/prisma";
 import { withCache, createCacheKey } from "@/lib/cache";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { pickMlImageUrl } from "@/lib/imageUrl";
 
 export async function POST(request: NextRequest) {
   try {
@@ -444,7 +445,7 @@ async function updateProductFromML(item: any, accountId: string, userId: string)
     mlCondition: item.condition,
     mlListingType: item.listing_type_id || "gold_special",
     mlPermalink: item.permalink,
-    mlThumbnail: item.thumbnail,
+    mlThumbnail: pickMlImageUrl(item),
     mlCategoryId: item.category_id,
     mlLastUpdated: new Date(item.last_updated || new Date()),
     lastSyncAt: new Date(),

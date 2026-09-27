@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import Image from "next/image";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,7 +58,7 @@ import {
   MercadoLivreSyncHistory,
 } from "@/types/mercadolivre";
 import { exibirValorEmReais } from "@/utils/currency";
-import MLImage from "@/app/components/shared/MLImage";
+import { ProductImage } from "@/components/ui/product-image";
 import MercadoLivreSmartSync from "@/app/components/MercadoLivreSmartSync";
 import MercadoLivreAutoSync from "@/app/components/MercadoLivreAutoSync";
 
@@ -297,39 +296,6 @@ export default function MercadoLivreConfigPage() {
     return `http://localhost:${currentPort}${path}`;
   }, []);
 
-  // Função para corrigir URLs de imagem com protocolo duplicado
-  const fixImageUrl = (url: string): string => {
-    if (!url) return "";
-
-    let fixedUrl = url.trim();
-
-    // Remover http:// duplicado
-    if (fixedUrl.startsWith("http://http")) {
-      fixedUrl = fixedUrl.replace("http://http", "http");
-    }
-
-    // Remover https:// duplicado
-    if (fixedUrl.startsWith("https://https")) {
-      fixedUrl = fixedUrl.replace("https://https", "https");
-    }
-
-    // Se a URL ainda não tem protocolo mas tem um domínio válido, adicionar https://
-    if (!fixedUrl.startsWith("http://") && !fixedUrl.startsWith("https://")) {
-      // Verificar se é um domínio válido (contém ponto e não tem //)
-      if (fixedUrl.includes(".") && !fixedUrl.startsWith("//")) {
-        fixedUrl = `https://${fixedUrl}`;
-      }
-    }
-
-    // Garantir que URLs do Mercado Livre usem HTTPS
-    if (fixedUrl.includes("mlstatic.com") && fixedUrl.startsWith("http://")) {
-      fixedUrl = fixedUrl.replace("http://", "https://");
-    }
-
-    return fixedUrl;
-  };
-
-  // Função para verificar e processar callback do Mercado Livre
   const processMLCallback = useCallback(async () => {
     if (callbackProcessed) return;
 
@@ -506,7 +472,7 @@ export default function MercadoLivreConfigPage() {
 
             // Notificação mais destacada
             toast.success(
-              `🎉 Conta do Mercado Livre conectada com sucesso!\n✅ Usuário: ${data.account.nickname}\n📊 Agora você pode gerenciar seus produtos e ver estatísticas!`,
+              `Conta do Mercado Livre conectada com sucesso!\nUsuário: ${data.account.nickname}\nAgora você pode gerenciar seus produtos e ver estatísticas!`,
               { duration: 6000 }
             );
 
@@ -773,11 +739,11 @@ export default function MercadoLivreConfigPage() {
 
       if (result.success) {
         const successMessage = [
-          `✅ Sincronização concluída!`,
-          `📦 ${result.totalItems} produtos encontrados`,
-          `🔄 ${result.syncedItems} produtos sincronizados`,
-          result.newItems > 0 ? `🆕 ${result.newItems} produtos novos` : '',
-          result.updatedItems > 0 ? `📝 ${result.updatedItems} produtos atualizados` : '',
+          `Sincronização concluída!`,
+          `${result.totalItems} produtos encontrados`,
+          `${result.syncedItems} produtos sincronizados`,
+          result.newItems > 0 ? `${result.newItems} produtos novos` : '',
+          result.updatedItems > 0 ? `${result.updatedItems} produtos atualizados` : '',
         ].filter(Boolean).join('\n');
 
         toast.success(successMessage, { 
@@ -795,7 +761,7 @@ export default function MercadoLivreConfigPage() {
       }
     } catch (error) {
       console.error("Erro na sincronização:", error);
-      toast.error("💥 Erro durante a sincronização: " + (error instanceof Error ? error.message : 'Erro desconhecido'));
+      toast.error("Erro durante a sincronização: " + (error instanceof Error ? error.message : 'Erro desconhecido'));
     } finally {
       setSyncing(false);
     }
@@ -877,7 +843,7 @@ export default function MercadoLivreConfigPage() {
 
       if (result.success) {
         toast.success(
-          `✅ ${result.imported} produtos importados com sucesso!`
+          `${result.imported} produtos importados com sucesso!`
         );
         
         // Recarregar dados
@@ -1172,7 +1138,7 @@ export default function MercadoLivreConfigPage() {
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-success">
-                  🎉 Mercado Livre conectado com sucesso!
+                  Mercado Livre conectado com sucesso!
                 </h3>
                 <p className="text-sm text-success">
                   Você possui {accounts.length} conta
@@ -1187,7 +1153,7 @@ export default function MercadoLivreConfigPage() {
                   variant="outline"
                   className="text-success border-success"
                 >
-                  ✅ Ativo
+                  Ativo
                 </Badge>
               </div>
             </div>
@@ -1226,11 +1192,11 @@ export default function MercadoLivreConfigPage() {
                   </p>
                   <p>
                     <strong>Modo ngrok:</strong>{" "}
-                    {isNgrokMode ? "✅ Sim" : "❌ Não"}
+                    {isNgrokMode ? "Sim" : "Não"}
                   </p>
                   <p>
                     <strong>Callback processado:</strong>{" "}
-                    {callbackProcessed ? "✅ Sim" : "❌ Não"}
+                    {callbackProcessed ? "Sim" : "Não"}
                   </p>
                   <p>
                     <strong>Status sessão:</strong> {status}
@@ -1238,7 +1204,7 @@ export default function MercadoLivreConfigPage() {
                   {debugInfo.hasCredentials !== undefined && (
                     <p>
                       <strong>Credenciais configuradas:</strong>{" "}
-                      {debugInfo.hasCredentials ? "✅ Sim" : "❌ Não"}
+                      {debugInfo.hasCredentials ? "Sim" : "Não"}
                     </p>
                   )}
                 </div>
@@ -1769,18 +1735,11 @@ export default function MercadoLivreConfigPage() {
                             <DataTableRow key={product.id}>
                               <DataTableCell className="pl-4">
                                 <div className="flex items-center gap-2">
-                                  {product.mlThumbnail ? (
-                                    <MLImage
-                                      src={product.mlThumbnail}
-                                      alt={product.mlTitle || "Produto ML"}
-                                      width={40}
-                                      height={40}
-                                    />
-                                  ) : (
-                                    <div className="w-10 h-10 bg-muted rounded flex items-center justify-center text-xs text-muted-foreground">
-                                      ML
-                                    </div>
-                                  )}
+                                  <ProductImage
+                                    src={product.mlThumbnail}
+                                    alt={product.mlTitle || "Produto ML"}
+                                    size={40}
+                                  />
                                   <div>
                                     <p className="font-medium line-clamp-1">
                                       {product.mlTitle}
@@ -1975,20 +1934,9 @@ export default function MercadoLivreConfigPage() {
                                 onChange={() => toggleProductSelection(product.mlItemId)}
                                 className="w-4 h-4"
                               />
-                              
-                              {product.thumbnail && (
-                                <Image
-                                  src={product.thumbnail}
-                                  alt={product.title}
-                                  width={48}
-                                  height={48}
-                                  className="w-12 h-12 object-cover rounded border"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                  }}
-                                />
-                              )}
-                              
+
+                              <ProductImage src={product.thumbnail} alt={product.title} size={48} />
+
                               <div className="flex-1">
                                 <h4 className="font-medium line-clamp-1">
                                   {product.title}
@@ -2004,7 +1952,7 @@ export default function MercadoLivreConfigPage() {
                                         : "bg-warning/10 text-warning"
                                     }
                                   >
-                                    {product.isFull ? "🚚 Full" : "📦 Flex"}
+                                    {product.isFull ? "Full" : "Flex"}
                                   </Badge>
                                   {getStatusBadge(product.status)}
                                 </div>
@@ -2169,19 +2117,12 @@ export default function MercadoLivreConfigPage() {
                             className="border rounded-lg p-4 hover:bg-background"
                           >
                             <div className="flex items-center gap-4">
-                              {product.mlData?.mlThumbnail && (
-                                <Image
-                                  src={product.mlData.mlThumbnail}
-                                  alt={product.nome}
-                                  width={64}
-                                  height={64}
-                                  className="w-16 h-16 object-cover rounded border"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).style.display = 'none';
-                                  }}
-                                />
-                              )}
-                              
+                              <ProductImage
+                                src={product.mlData?.mlThumbnail}
+                                alt={product.nome}
+                                size={64}
+                              />
+
                               <div className="flex-1">
                                 <div className="flex items-start justify-between">
                                   <div>
@@ -2199,21 +2140,21 @@ export default function MercadoLivreConfigPage() {
                                                 : "bg-warning/10 text-warning"
                                             }
                                           >
-                                            {product.mlData.isFull ? "🚚 Full" : "📦 Flex"}
+                                            {product.mlData.isFull ? "Full" : "Flex"}
                                           </Badge>
                                         </>
                                       )}
                                     </div>
                                   </div>
-                                  
+
                                   <div className="flex items-center gap-2">
                                     {product.needsConfiguration ? (
                                       <Badge variant="destructive">
-                                        ⚠️ Pendente
+                                        Pendente
                                       </Badge>
                                     ) : (
                                       <Badge variant="default" className="bg-success/10 text-success">
-                                        ✅ Configurado
+                                        Configurado
                                       </Badge>
                                     )}
                                     

@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import Header from "@/app/components/Header";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import Image from "next/image";
+import { ProductImage } from "@/components/ui/product-image";
 
 interface MLProduct {
   id: string;
@@ -277,15 +277,11 @@ function VincularProdutosContent() {
                         }`}
                       >
                         <div className="flex items-start gap-3">
-                          {produto.mlThumbnail && (
-                            <Image
-                              src={produto.mlThumbnail}
-                              alt={produto.mlTitle}
-                              width={60}
-                              height={60}
-                              className="rounded object-cover"
-                            />
-                          )}
+                          <ProductImage
+                            src={produto.mlThumbnail}
+                            alt={produto.mlTitle}
+                            size={60}
+                          />
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-sm truncate">
                               {produto.mlTitle}

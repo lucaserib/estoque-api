@@ -13,6 +13,7 @@
     "test": "vitest run",
     "postinstall": "prisma generate",
     "seed": "ts-node prisma/seed.ts",
+    "images:normalize": "ts-node --compiler-options {\"module\":\"CommonJS\"} scripts/normalize-product-images.ts",
     "test:ml": "node scripts/test-ml-config.js",
     "setup:https": "node scripts/setup-https.js",
     "sync:ngrok": "node scripts/sync-ngrok.js",

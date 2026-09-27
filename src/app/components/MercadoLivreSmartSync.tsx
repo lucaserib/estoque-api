@@ -41,7 +41,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import MLImage from "./shared/MLImage";
+import { ProductImage } from "@/components/ui/product-image";
 import { exibirValorEmReais } from "@/utils/currency";
 
 interface SmartProduct {
@@ -291,13 +291,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                   <DataTableRow key={produto.mlItemId}>
                     <DataTableCell className="pl-4">
                       <div className="flex items-center gap-3">
-                        <MLImage
-                          src={produto.thumbnail || ""}
-                          alt={produto.title}
-                          width={48}
-                          height={48}
-                          className="w-12 h-12 rounded-md object-cover"
-                        />
+                        <ProductImage src={produto.thumbnail} alt={produto.title} size={48} />
                         <div>
                           <div className="font-medium text-sm line-clamp-2 max-w-xs">
                             {produto.title}
@@ -396,13 +390,7 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
               <div className="bg-background p-4 rounded-md">
                 <h4 className="font-medium mb-2">Produto Mercado Livre</h4>
                 <div className="flex items-center gap-3">
-                  <MLImage
-                    src={selectedProduct.thumbnail || ""}
-                    alt={selectedProduct.title}
-                    width={64}
-                    height={64}
-                    className="w-16 h-16 rounded-md object-cover"
-                  />
+                  <ProductImage src={selectedProduct.thumbnail} alt={selectedProduct.title} size={64} />
                   <div>
                     <div className="font-medium">{selectedProduct.title}</div>
                     <div className="text-sm text-muted-foreground">{selectedProduct.mlItemId}</div>

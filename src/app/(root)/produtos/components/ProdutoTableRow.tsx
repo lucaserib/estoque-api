@@ -1,7 +1,6 @@
 "use client";
 
 import React, { memo } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { FaTrash, FaEdit, FaEye, FaLink, FaWarehouse } from "react-icons/fa";
 import { AlertTriangle, TrendingUp, Loader2 } from "lucide-react";
@@ -9,7 +8,7 @@ import { Produto } from "../types";
 import { Button } from "@/components/ui/button";
 import { DataTableCell, DataTableRow } from "@/components/ui/data-table";
 import { StatusPill } from "@/components/ui/status-pill";
-import { CubeMark } from "@/components/brand/Logo";
+import { ProductImage } from "@/components/ui/product-image";
 import { formatBRL } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { InlineStockAdjust } from "./InlineStockAdjust";
@@ -76,21 +75,7 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
         )}
       >
         <DataTableCell className="pl-4">
-          {produto.imagemUrl ? (
-            <div className="relative h-10 w-10 overflow-hidden rounded-md border border-border bg-muted">
-              <Image
-                src={produto.imagemUrl}
-                alt={produto.nome}
-                fill
-                sizes="40px"
-                className="object-cover"
-              />
-            </div>
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted">
-              <CubeMark className="h-5 w-5 opacity-40" />
-            </div>
-          )}
+          <ProductImage src={produto.imagemUrl} alt={produto.nome} size={40} />
         </DataTableCell>
 
         <DataTableCell emphasis sticky>

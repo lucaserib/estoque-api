@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import { ProductImage } from "@/components/ui/product-image";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTableCell, DataTableRow } from "@/components/ui/data-table";
@@ -153,18 +153,9 @@ export default function MLProductRow({
 
   return (
     <DataTableRow key={product.mlItemId}>
-      {/* Produto */}
       <DataTableCell>
         <div className="flex items-center space-x-3">
-          {product.mlThumbnail && (
-            <Image
-              src={product.mlThumbnail}
-              alt={product.mlTitle}
-              width={40}
-              height={40}
-              className="w-10 h-10 rounded-md object-cover"
-            />
-          )}
+          <ProductImage src={product.mlThumbnail} alt={product.mlTitle} size={40} />
           <div className="min-w-0 flex-1">
             <div className="font-medium text-sm truncate">
               {product.mlTitle}
@@ -176,21 +167,16 @@ export default function MLProductRow({
         </div>
       </DataTableCell>
 
-      {/* Preço */}
       <DataTableCell>
         <div className="space-y-1">
-          {/* ✅ CORREÇÃO: Exibir preço promocional corretamente */}
           {product.mlHasPromotion && product.mlOriginalPrice ? (
             <div>
-              {/* Preço atual (promocional) */}
               <div className="font-bold text-success">
                 {exibirValorEmReais(product.mlPrice)}
               </div>
-              {/* Preço original riscado */}
               <div className="text-xs text-muted-foreground line-through">
                 {exibirValorEmReais(product.mlOriginalPrice)}
               </div>
-              {/* Badge de desconto */}
               {product.mlPromotionDiscount && (
                 <Badge
                   variant="secondary"
@@ -208,20 +194,16 @@ export default function MLProductRow({
         </div>
       </DataTableCell>
 
-      {/* Status */}
       <DataTableCell>{getStatusBadge(product.mlStatus)}</DataTableCell>
 
-      {/* Estoque ML */}
       <DataTableCell>
         <Badge variant="outline" className="font-mono">
           {product.mlAvailableQuantity}
         </Badge>
       </DataTableCell>
 
-      {/* Vendas */}
       <DataTableCell>
         <div>
-          {/* ✅ NOVO: Vendas deste mês */}
           <div className="font-medium text-sm">
             <span className="text-success font-bold">
               {product.salesData?.quantityThisMonth || 0}
@@ -237,7 +219,6 @@ export default function MLProductRow({
                 {product.salesData.salesVelocity.toFixed(1)}/dia
               </div>
             )}
-          {/* ✅ NOVO: Comparação com mês anterior */}
           {product.salesData?.quantityPreviousMonth &&
             product.salesData.quantityPreviousMonth > 0 && (
               <div className="text-xs text-muted-foreground mt-1">
@@ -260,7 +241,6 @@ export default function MLProductRow({
         </div>
       </DataTableCell>
 
-      {/* Produto Local */}
       <DataTableCell>
         {product.localProduct ? (
           <div>
@@ -276,7 +256,6 @@ export default function MLProductRow({
         )}
       </DataTableCell>
 
-      {/* Estoque Local */}
       <DataTableCell>
         {getStockBadge(
           product.stockStatus || "unlinked",
@@ -284,7 +263,6 @@ export default function MLProductRow({
         )}
       </DataTableCell>
 
-      {/* Última Sync */}
       <DataTableCell>
         <div className="text-xs text-muted-foreground">
           {product.lastSync
@@ -293,7 +271,6 @@ export default function MLProductRow({
         </div>
       </DataTableCell>
 
-      {/* Ações */}
       <DataTableCell>
         <div className="flex gap-1">
           <Button
