@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
-import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
+import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
 import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
@@ -49,16 +49,16 @@ export async function GET(request: NextRequest) {
       "confirmed",
     ];
 
-    const fetchedOrders = await fetchAllOrdersOrThrow({
-      accessToken,
-      sellerId: mlAccount.mlUserId,
-    });
+    const { orders: fetchedOrders, parcial, pedidosFaltantes } =
+      await fetchOrdersWithFallback({
+        accessToken,
+        sellerId: mlAccount.mlUserId,
+        dateFrom: startDate,
+        dateTo: endDate,
+      });
 
-    const allOrders = fetchedOrders.filter(
-      (order) =>
-        validStatuses.includes(order.status) &&
-        new Date(order.date_created) >= startDate &&
-        new Date(order.date_created) <= endDate
+    const allOrders = fetchedOrders.filter((order) =>
+      validStatuses.includes(order.status)
     );
 
 
@@ -218,8 +218,10 @@ export async function GET(request: NextRequest) {
           "pt-BR"
         )} até ${endDate.toLocaleDateString("pt-BR")}`,
       },
+      parcial,
+      pedidosFaltantes,
       totalPedidos: allOrders.length,
-      vendasPorAnuncio, // Vendas por anúncio ML
+      vendasPorAnuncio,
       estoqueFullPorProduto,
     });
   } catch (error) {
@@ -228,7 +230,7 @@ export async function GET(request: NextRequest) {
         {
           code: error.code,
           error:
-            "Não foi possível carregar todos os pedidos do Mercado Livre. Tente novamente em instantes.",
+            "Não foi possível carregar os pedidos do Mercado Livre. Tente novamente em instantes.",
         },
         { status: 503 }
       );

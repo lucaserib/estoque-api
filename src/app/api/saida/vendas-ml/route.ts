@@ -1,9 +1,8 @@
-// src/app/api/saida/vendas-ml/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
-import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
+import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +16,6 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0");
 
 
-    // Buscar conta ativa do Mercado Livre do usuário
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
       where: {
         userId: user.id,
@@ -38,17 +36,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Obter token válido
     const accessToken = await MercadoLivreService.getValidToken(mlAccount.id);
 
-    // Definir período de busca
     const endDate = dateTo ? new Date(dateTo) : new Date();
     const startDate = dateFrom
       ? new Date(dateFrom)
       : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 dias por padrão
 
 
-    // Status válidos para vendas confirmadas (excluindo cancelamentos, devoluções, etc)
     const validStatuses = [
       "paid",
       "delivered",
@@ -58,7 +53,6 @@ export async function GET(request: NextRequest) {
       "confirmed",
     ];
 
-    // Status excluídos (não devem contar como vendas)
     const excludedStatuses = [
       "cancelled",
       "invalid",
@@ -68,13 +62,18 @@ export async function GET(request: NextRequest) {
       "returned",
     ];
 
-    const allOrders = await fetchAllOrdersOrThrow({
+    const {
+      orders: allOrders,
+      parcial,
+      pedidosFaltantes,
+    } = await fetchOrdersWithFallback({
       accessToken,
       sellerId: mlAccount.mlUserId,
+      dateFrom: startDate,
+      dateTo: endDate,
     });
 
     const ordersInPeriod = allOrders.filter((order) => {
-      // Verificar se a ordem tem data válida
       if (!order.date_created) {
         console.warn(`[VENDAS_ML_SAIDA] Pedido sem data: ${order.id}`);
         return false;
@@ -83,7 +82,6 @@ export async function GET(request: NextRequest) {
       try {
         const orderDate = new Date(order.date_created);
 
-        // Verificar se a data é válida
         if (isNaN(orderDate.getTime())) {
           console.warn(
             `[VENDAS_ML_SAIDA] Data inválida para pedido ${order.id}: ${order.date_created}`
@@ -91,17 +89,13 @@ export async function GET(request: NextRequest) {
           return false;
         }
 
-        const isInPeriod = orderDate >= startDate && orderDate <= endDate;
-
-        // Se status foi especificado, filtrar por ele, caso contrário usar status válidos
         const hasValidStatus = status
           ? order.status === status
           : validStatuses.includes(order.status);
 
-        // Sempre excluir status inválidos (cancelados, devolvidos, etc)
         const isNotExcluded = !excludedStatuses.includes(order.status);
 
-        return isInPeriod && hasValidStatus && isNotExcluded;
+        return hasValidStatus && isNotExcluded;
       } catch (error) {
         console.error(
           `[VENDAS_ML_SAIDA] Erro ao processar data do pedido ${order.id}:`,
@@ -126,7 +120,6 @@ export async function GET(request: NextRequest) {
     });
 
 
-    // Criar mapa de mlItemId -> SKU local
     const mlItemToSku = new Map(
       produtosML.map((p) => [
         p.mlItemId,
@@ -137,7 +130,6 @@ export async function GET(request: NextRequest) {
       ])
     );
 
-    // Formatar vendas para o formato da aba de saídas
 
     const vendas = ordersInPeriod.slice(offset, offset + limit).map((order) => {
       const items = order.order_items.map((item) => {
@@ -187,7 +179,6 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Calcular métricas
     const totalItems = ordersInPeriod.reduce(
       (sum, order) =>
         sum +
@@ -204,7 +195,9 @@ export async function GET(request: NextRequest) {
       vendas,
       total: ordersInPeriod.length,
       totalItems,
-      totalRevenue: Math.round(totalRevenue * 100), // Converter para centavos
+      totalRevenue: Math.round(totalRevenue * 100),
+      parcial,
+      pedidosFaltantes,
       period: {
         from: startDate.toISOString(),
         to: endDate.toISOString(),
@@ -224,7 +217,7 @@ export async function GET(request: NextRequest) {
         {
           code: error.code,
           error:
-            "Não foi possível carregar todos os pedidos do Mercado Livre. Tente novamente em instantes.",
+            "Não foi possível carregar os pedidos do Mercado Livre. Tente novamente em instantes.",
           vendas: [],
           total: 0,
           totalItems: 0,

@@ -2,43 +2,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 
-/**
- * GET /api/produtos/pendentes
- * Busca produtos ML sem vínculo local e produtos locais disponíveis
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const { searchParams } = new URL(request.url);
     const mlAccountId = searchParams.get("mlAccountId");
 
-    if (!mlAccountId) {
-      return NextResponse.json(
-        { error: "ID da conta ML não fornecido" },
-        { status: 400 }
-      );
-    }
-
-    // Verificar se a conta pertence ao usuário
-    const account = await prisma.mercadoLivreAccount.findFirst({
-      where: {
-        id: mlAccountId,
-        userId: user.id,
-        isActive: true,
-      },
-    });
+    const account = mlAccountId
+      ? await prisma.mercadoLivreAccount.findFirst({
+          where: { id: mlAccountId, userId: user.id, isActive: true },
+        })
+      : await prisma.mercadoLivreAccount.findFirst({
+          where: { userId: user.id, isActive: true },
+          orderBy: { createdAt: "desc" },
+        });
 
     if (!account) {
       return NextResponse.json(
-        { error: "Conta ML não encontrada" },
+        { error: "Nenhuma conta do Mercado Livre ativa encontrada" },
         { status: 404 }
       );
     }
 
-    // Buscar produtos ML sem vínculo ou com status pending_link
     const produtosPendentes = await prisma.produtoMercadoLivre.findMany({
       where: {
-        mercadoLivreAccountId: mlAccountId,
+        mercadoLivreAccountId: account.id,
         OR: [
           { produtoId: null },
           { syncStatus: "pending_link" },
@@ -60,7 +48,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Buscar produtos locais disponíveis para vinculação
     const produtosLocais = await prisma.produto.findMany({
       where: {
         userId: user.id,
@@ -82,7 +69,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Calcular estoque total para cada produto
     const produtosComEstoque = produtosLocais.map((produto) => ({
       id: produto.id,
       sku: produto.sku,

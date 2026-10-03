@@ -83,4 +83,6 @@ export interface VendasMLResponse {
   total: number;
   totalItems: number;
   totalRevenue: number;
+  parcial: boolean;
+  pedidosFaltantes: number;
 }

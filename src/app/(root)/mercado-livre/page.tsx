@@ -68,6 +68,8 @@ interface SalesCompleteResponse {
         salesCount: number;
       }>;
     };
+    parcial: boolean;
+    pedidosFaltantes: number;
   };
 }
 
@@ -277,7 +279,7 @@ export default function MercadoLivrePage() {
       }
 
       const payload: SalesCompleteResponse = await response.json();
-      setSalesDataPartial(false);
+      setSalesDataPartial(payload.data.parcial);
       setSalesData(mapSalesCompleteToAnalytics(payload));
     } catch (error) {
       console.error("Erro ao carregar dados de vendas:", error);

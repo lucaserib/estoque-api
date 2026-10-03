@@ -138,11 +138,13 @@ export default function DashboardPage() {
       if (salesRes.status === 503) {
         const body = await salesRes.json().catch(() => null);
         setSalesDataPartial(body?.code === "ML_DADOS_PARCIAIS");
-      } else {
-        setSalesDataPartial(false);
       }
 
       const sales = salesRes.ok ? await salesRes.json() : null;
+
+      if (salesRes.ok) {
+        setSalesDataPartial(Boolean(sales?.data?.parcial));
+      }
 
       setHomeData((previous) => ({
         todaySales: metrics?.todaySales ?? 0,

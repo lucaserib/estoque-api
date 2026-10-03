@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
-import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
+import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
 import { MLOrder } from "@/types/mercadolivre";
 
 export async function GET(request: NextRequest) {
@@ -44,10 +44,13 @@ export async function GET(request: NextRequest) {
     const endDateML = endDate.toISOString().split("T")[0];
 
     try {
-      const fetchedOrders = await fetchAllOrdersOrThrow({
-        accessToken,
-        sellerId: account.mlUserId,
-      });
+      const { orders: fetchedOrders, parcial, pedidosFaltantes } =
+        await fetchOrdersWithFallback({
+          accessToken,
+          sellerId: account.mlUserId,
+          dateFrom: startDate,
+          dateTo: endDate,
+        });
 
       const allOrders: MLOrder[] = fetchedOrders.filter((order) => {
         const orderDate = new Date(order.date_created);
@@ -132,6 +135,8 @@ export async function GET(request: NextRequest) {
           start: startDateML,
           end: endDateML
         },
+        parcial,
+        pedidosFaltantes,
         summary: {
           totalOrders: allOrders.length,
           totalProducts: productSales.size,
@@ -167,7 +172,7 @@ export async function GET(request: NextRequest) {
           success: false,
           code: error.code,
           error:
-            "Não foi possível carregar todos os pedidos do Mercado Livre. Tente novamente em instantes.",
+            "Não foi possível carregar os pedidos do Mercado Livre. Tente novamente em instantes.",
         },
         { status: 503 }
       );

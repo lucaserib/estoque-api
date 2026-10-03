@@ -5,6 +5,7 @@ import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { NotificationService } from "@/services/notificationService";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { pickMlImageUrl } from "@/lib/imageUrl";
+import { serializeWithEAN } from "@/utils/api";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
       include: { produto: true },
       orderBy: { lastSyncAt: "desc" },
     });
-    return NextResponse.json(produtos);
+    return NextResponse.json(serializeWithEAN(produtos));
   } catch (error) {
     console.error("[SYNC][GET] Erro:", error);
     return NextResponse.json(

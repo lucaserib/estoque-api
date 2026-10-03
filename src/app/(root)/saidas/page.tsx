@@ -343,7 +343,19 @@ const SaidasPage = () => {
             ) : loadingVendasML ? (
               <SaidaLoadingSkeleton />
             ) : (
-              <VendasMLList vendas={filteredVendasML} />
+              <>
+                {vendasMLData?.parcial && (
+                  <Alert variant="warning" className="mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      Alguns pedidos não puderam ser carregados (
+                      {vendasMLData.pedidosFaltantes} faltantes). Os números
+                      abaixo podem estar incompletos.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <VendasMLList vendas={filteredVendasML} />
+              </>
             )}
           </TabsContent>
         </SectionCard>

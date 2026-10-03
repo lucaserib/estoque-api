@@ -3,8 +3,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { withCache, createCacheKey } from "@/lib/cache";
-import { fetchAllOrdersOrThrow, PartialOrdersError } from "@/lib/mlOrders";
-import type { MLOrder } from "@/types/mercadolivre";
+import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
 
 interface SalesProduct {
   mlItemId: string;
@@ -89,6 +88,8 @@ interface SalesAnalytics {
     count: number;
     items: Array<{ mlItemId: string; title: string }>;
   };
+  parcial: boolean;
+  pedidosFaltantes: number;
   comparison?: {
     previousPeriod: {
       totalRevenue: number;
@@ -171,12 +172,13 @@ export async function GET(request: NextRequest) {
       const analytics = await withCache(
         cacheKey,
         async (): Promise<SalesAnalytics> => {
-
-          const allOrders: MLOrder[] = await fetchAllOrdersOrThrow({
-            accessToken,
-            sellerId: account.mlUserId,
-          });
-
+          const { orders: allOrders, parcial, pedidosFaltantes } =
+            await fetchOrdersWithFallback({
+              accessToken,
+              sellerId: account.mlUserId,
+              dateFrom: startDate,
+              dateTo: endDate,
+            });
 
           const validStatuses = [
             "paid",
@@ -462,6 +464,8 @@ export async function GET(request: NextRequest) {
               orders: cancelledOrdersData.slice(0, 50),
               topCancelledProducts: cancelledProductsList,
             },
+            parcial,
+            pedidosFaltantes,
           };
 
           return analytics;
@@ -484,10 +488,11 @@ export async function GET(request: NextRequest) {
         const previousPeriodData = await withCache(
           prevCacheKey,
           async () => {
-
-            const allPrevOrders: MLOrder[] = await fetchAllOrdersOrThrow({
+            const { orders: allPrevOrders } = await fetchOrdersWithFallback({
               accessToken,
               sellerId: account.mlUserId,
+              dateFrom: prevStartDate,
+              dateTo: prevEndDate,
             });
 
             const validStatuses = [
@@ -664,7 +669,7 @@ export async function GET(request: NextRequest) {
           success: false,
           code: error.code,
           error:
-            "Não foi possível carregar todos os pedidos do Mercado Livre. Tente novamente em instantes.",
+            "Não foi possível carregar os pedidos do Mercado Livre. Tente novamente em instantes.",
         },
         { status: 503 }
       );

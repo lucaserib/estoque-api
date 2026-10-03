@@ -1070,32 +1070,43 @@ export class MercadoLivreService {
       offset?: number;
       limit?: number;
       sort?: string;
+      dateFrom?: Date | string;
+      dateTo?: Date | string;
     } = {}
   ): Promise<{
     results: MLOrder[];
     paging: { total: number; offset: number; limit: number };
   }> {
-    // ✅ CORREÇÃO CRÍTICA: Usar endpoint correto da API ML
-
-    // ✅ ENDPOINT CORRETO: Usar /orders/search COM seller obrigatório
     if (!filters.seller) {
       throw new Error("Seller ID é obrigatório para buscar pedidos");
     }
 
     const params = new URLSearchParams({
       offset: (filters.offset || 0).toString(),
-      limit: Math.min(filters.limit || 50, 50).toString(), // ML limita a 50
-      seller: filters.seller, // ✅ OBRIGATÓRIO: seller sempre presente
+      limit: Math.min(filters.limit || 50, 50).toString(),
+      seller: filters.seller,
     });
 
-    // ✅ STATUS CORRETO: order.status para filtrar status
     if (filters.status && filters.status !== "all") {
       params.append("order.status", filters.status);
     }
 
-    // ✅ SORT CORRETO: date_desc para mais recentes primeiro
     if (filters.sort && filters.sort !== "none") {
       params.append("sort", filters.sort);
+    }
+
+    if (filters.dateFrom) {
+      params.append(
+        "order.date_created.from",
+        this.formatMlDateTime(filters.dateFrom)
+      );
+    }
+
+    if (filters.dateTo) {
+      params.append(
+        "order.date_created.to",
+        this.formatMlDateTime(filters.dateTo)
+      );
     }
 
     const url = `${this.BASE_URL}/orders/search?${params.toString()}`;
@@ -1105,12 +1116,10 @@ export class MercadoLivreService {
     try {
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${accessToken}`, // Token completo para a requisição
+          Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
         },
       });
-
-      const responseTime = Date.now() - startTime;
 
       if (!response.ok) {
         const error = await response.json();
@@ -1120,26 +1129,27 @@ export class MercadoLivreService {
         );
       }
 
-      const data = await response.json();
-
-      // ✅ LOGGING: Estatísticas da resposta
-
-      if (data.results && data.results.length > 0) {
-        const statusBreakdown = data.results.reduce(
-          (acc: Record<string, number>, order: { status: string }) => {
-            acc[order.status] = (acc[order.status] || 0) + 1;
-            return acc;
-          },
-          {}
-        );
-      }
-
-      return data;
+      return await response.json();
     } catch (error) {
       const responseTime = Date.now() - startTime;
       console.error(`[ML_API] Request failed after ${responseTime}ms:`, error);
       throw error;
     }
+  }
+
+  private static formatMlDateTime(value: Date | string): string {
+    const date = typeof value === "string" ? new Date(value) : value;
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const offsetMinutes = -date.getTimezoneOffset();
+    const offsetSign = offsetMinutes >= 0 ? "+" : "-";
+    const offsetHours = pad(Math.floor(Math.abs(offsetMinutes) / 60));
+    const offsetMins = pad(Math.abs(offsetMinutes) % 60);
+
+    return (
+      `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}` +
+      `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}.000` +
+      `${offsetSign}${offsetHours}:${offsetMins}`
+    );
   }
 
   /**

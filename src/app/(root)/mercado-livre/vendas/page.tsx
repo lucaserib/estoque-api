@@ -115,6 +115,8 @@ interface SalesAnalyticsData {
       ticketGrowth: number;
     };
   };
+  parcial: boolean;
+  pedidosFaltantes: number;
 }
 
 type ViewMode = "overview" | "products" | "reports";
@@ -229,8 +231,9 @@ export default function MercadoLivreVendasPage() {
       }
 
       const payload = await response.json();
-      setSalesDataPartial(false);
-      setSalesData(payload.data as SalesAnalyticsData);
+      const data = payload.data as SalesAnalyticsData;
+      setSalesDataPartial(data.parcial);
+      setSalesData(data);
     } catch {
       toast.error("Erro ao carregar dados de vendas");
     } finally {

@@ -149,6 +149,12 @@ const ProdutosPage = () => {
         `Dados atualizados! ${data.totalPedidos} pedidos (${data.periodo.descricao}) | ${totalFull} itens no Full`
       );
 
+      if (data.parcial) {
+        toast.warning(
+          `Alguns pedidos não puderam ser carregados (${data.pedidosFaltantes} faltantes). Os números podem estar incompletos.`
+        );
+      }
+
       // 3. Trigger refresh no ProdutoList para atualizar estoque local e status de reposição
       setRefreshTrigger((prev) => prev + 1);
 

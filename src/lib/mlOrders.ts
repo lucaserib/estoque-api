@@ -16,6 +16,8 @@ export interface FetchAllOrdersOptions {
   maxOrders?: number;
   pageSize?: number;
   maxRetriesPerPage?: number;
+  dateFrom?: Date | string;
+  dateTo?: Date | string;
 }
 
 export interface FetchAllOrdersResult {
@@ -25,7 +27,7 @@ export interface FetchAllOrdersResult {
   failedOffsets: number[];
 }
 
-const DEFAULT_MAX_ORDERS = 2000;
+const DEFAULT_MAX_ORDERS = 5000;
 const DEFAULT_PAGE_SIZE = 50;
 const DEFAULT_MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 600;
@@ -39,6 +41,8 @@ export async function fetchAllOrders({
   maxOrders = DEFAULT_MAX_ORDERS,
   pageSize = DEFAULT_PAGE_SIZE,
   maxRetriesPerPage = DEFAULT_MAX_RETRIES,
+  dateFrom,
+  dateTo,
 }: FetchAllOrdersOptions): Promise<FetchAllOrdersResult> {
   const orders: MLOrder[] = [];
   const failedOffsets: number[] = [];
@@ -61,6 +65,8 @@ export async function fetchAllOrders({
           offset,
           limit: pageSize,
           sort: "date_desc",
+          dateFrom,
+          dateTo,
         });
         results = page.results ?? [];
         break;
@@ -108,4 +114,29 @@ export async function fetchAllOrdersOrThrow(
   }
 
   return result.orders;
+}
+
+export interface FetchOrdersWithFallbackResult {
+  orders: MLOrder[];
+  parcial: boolean;
+  pedidosFaltantes: number;
+}
+
+export async function fetchOrdersWithFallback(
+  options: FetchAllOrdersOptions
+): Promise<FetchOrdersWithFallbackResult> {
+  const result = await fetchAllOrders(options);
+
+  if (result.orders.length === 0 && !result.complete) {
+    throw new PartialOrdersError(
+      "Não foi possível carregar os pedidos do Mercado Livre",
+      result.failedOffsets
+    );
+  }
+
+  return {
+    orders: result.orders,
+    parcial: !result.complete,
+    pedidosFaltantes: result.failedOffsets.length * DEFAULT_PAGE_SIZE,
+  };
 }
