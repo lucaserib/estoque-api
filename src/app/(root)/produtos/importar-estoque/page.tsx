@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   DataTable,
   DataTableBody,
@@ -25,11 +26,13 @@ import {
   Loader2,
 } from "lucide-react";
 
+type ModoImportacao = "completo" | "custo";
+
 interface LinhaPlanilha {
   sku: string;
-  quantidade: number;
+  quantidade?: number;
   custoMedio?: number;
-  armazem: string;
+  armazem?: string;
   valida: boolean;
   motivoInvalida?: string;
 }
@@ -48,7 +51,7 @@ function normalizarCabecalho(valor: string): string {
     .replace(/[^a-z0-9]/g, "");
 }
 
-function extrairLinhas(rows: Record<string, unknown>[]): LinhaPlanilha[] {
+function extrairLinhasCompleto(rows: Record<string, unknown>[]): LinhaPlanilha[] {
   return rows.map((row) => {
     const mapa = new Map<string, unknown>();
     Object.entries(row).forEach(([chave, valor]) => {
@@ -87,9 +90,43 @@ function extrairLinhas(rows: Record<string, unknown>[]): LinhaPlanilha[] {
   });
 }
 
+function extrairLinhasCusto(rows: Record<string, unknown>[]): LinhaPlanilha[] {
+  return rows.map((row) => {
+    const mapa = new Map<string, unknown>();
+    Object.entries(row).forEach(([chave, valor]) => {
+      mapa.set(normalizarCabecalho(chave), valor);
+    });
+
+    const sku = String(mapa.get("sku") ?? "").trim();
+    const custoBruto = mapa.get("customedio") ?? mapa.get("custo");
+
+    let valida = true;
+    let motivoInvalida: string | undefined;
+
+    if (!sku) {
+      valida = false;
+      motivoInvalida = "SKU vazio";
+    } else if (custoBruto === undefined || custoBruto === "") {
+      valida = false;
+      motivoInvalida = "Custo médio vazio";
+    } else if (!Number.isFinite(Number(custoBruto)) || Number(custoBruto) < 0) {
+      valida = false;
+      motivoInvalida = "Custo médio inválido";
+    }
+
+    const custoMedio =
+      custoBruto !== undefined && custoBruto !== "" && valida
+        ? Math.round(Number(custoBruto) * 100)
+        : undefined;
+
+    return { sku, custoMedio, valida, motivoInvalida };
+  });
+}
+
 export default function ImportarEstoquePage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [modo, setModo] = useState<ModoImportacao>("completo");
   const [linhas, setLinhas] = useState<LinhaPlanilha[]>([]);
   const [fileName, setFileName] = useState<string | null>(null);
   const [importando, setImportando] = useState(false);
@@ -97,6 +134,13 @@ export default function ImportarEstoquePage() {
     aceitas: number;
     rejeitadas: RejeitadaResposta[];
   } | null>(null);
+
+  const handleModoChange = (novoModo: ModoImportacao) => {
+    setModo(novoModo);
+    setLinhas([]);
+    setFileName(null);
+    setResultado(null);
+  };
 
   const handleFile = async (file: File) => {
     setResultado(null);
@@ -116,7 +160,9 @@ export default function ImportarEstoquePage() {
         return;
       }
 
-      setLinhas(extrairLinhas(rows));
+      setLinhas(
+        modo === "completo" ? extrairLinhasCompleto(rows) : extrairLinhasCusto(rows)
+      );
     } catch (error) {
       console.error("Erro ao ler planilha:", error);
       toast.error(
@@ -133,17 +179,22 @@ export default function ImportarEstoquePage() {
 
     setImportando(true);
     try {
-      const response = await fetch("/api/estoque/importar", {
+      const url =
+        modo === "completo" ? "/api/estoque/importar" : "/api/produtos/importar-custos";
+      const linhasEnviadas =
+        modo === "completo"
+          ? linhasValidas.map(({ sku, quantidade, custoMedio, armazem }) => ({
+              sku,
+              quantidade,
+              custoMedio,
+              armazem,
+            }))
+          : linhasValidas.map(({ sku, custoMedio }) => ({ sku, custoMedio }));
+
+      const response = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          linhas: linhasValidas.map(({ sku, quantidade, custoMedio, armazem }) => ({
-            sku,
-            quantidade,
-            custoMedio,
-            armazem,
-          })),
-        }),
+        body: JSON.stringify({ linhas: linhasEnviadas }),
       });
 
       if (!response.ok) {
@@ -170,7 +221,7 @@ export default function ImportarEstoquePage() {
     <div className="container mx-auto max-w-4xl p-6 space-y-6">
       <PageHeader
         title="Importar Estoque"
-        subtitle="Suba uma planilha com sku, quantidade, custoMedio e armazem"
+        subtitle="Suba uma planilha para atualizar estoque, custo ou só custo em lote"
         actions={
           <Button variant="outline" onClick={() => router.push("/produtos")}>
             <ArrowLeft className="h-4 w-4 mr-2" />
@@ -179,34 +230,75 @@ export default function ImportarEstoquePage() {
         }
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Planilha</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Colunas esperadas: <strong>sku</strong>, <strong>quantidade</strong>,{" "}
-            <strong>custoMedio</strong> (em reais, opcional) e{" "}
-            <strong>armazem</strong> (nome — criado automaticamente se não
-            existir). O SKU precisa já existir em Produtos.
-          </p>
+      <Tabs value={modo} onValueChange={(value) => handleModoChange(value as ModoImportacao)}>
+        <TabsList>
+          <TabsTrigger value="completo">Estoque e custo</TabsTrigger>
+          <TabsTrigger value="custo">Somente custo</TabsTrigger>
+        </TabsList>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls,.csv"
-            className="hidden"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) handleFile(file);
-            }}
-          />
-          <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4 mr-2" />
-            {fileName || "Selecionar arquivo"}
-          </Button>
-        </CardContent>
-      </Card>
+        <TabsContent value="completo" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Planilha</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Colunas esperadas: <strong>sku</strong>, <strong>quantidade</strong>,{" "}
+                <strong>custoMedio</strong> (em reais, opcional) e{" "}
+                <strong>armazem</strong> (nome — criado automaticamente se não
+                existir). O SKU precisa já existir em Produtos.
+              </p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) handleFile(file);
+                }}
+              />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-2" />
+                {fileName || "Selecionar arquivo"}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="custo" className="mt-4 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Planilha</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Colunas esperadas: <strong>sku</strong> e{" "}
+                <strong>custoMedio</strong> (em reais). Atualiza só o custo
+                médio dos produtos, sem tocar em estoque ou armazém. Use
+                depois de receber uma lista de preços atualizada do
+                fornecedor.
+              </p>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) handleFile(file);
+                }}
+              />
+              <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                <Upload className="h-4 w-4 mr-2" />
+                {fileName || "Selecionar arquivo"}
+              </Button>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {linhas.length > 0 && (
         <Card>
@@ -229,9 +321,13 @@ export default function ImportarEstoquePage() {
                 <DataTableHeader>
                   <DataTableRow>
                     <DataTableHead className="pl-4">SKU</DataTableHead>
-                    <DataTableHead>Quantidade</DataTableHead>
+                    {modo === "completo" && (
+                      <DataTableHead>Quantidade</DataTableHead>
+                    )}
                     <DataTableHead>Custo médio</DataTableHead>
-                    <DataTableHead>Armazém</DataTableHead>
+                    {modo === "completo" && (
+                      <DataTableHead>Armazém</DataTableHead>
+                    )}
                     <DataTableHead className="pr-4">Status</DataTableHead>
                   </DataTableRow>
                 </DataTableHeader>
@@ -239,13 +335,17 @@ export default function ImportarEstoquePage() {
                   {linhas.map((linha, index) => (
                     <DataTableRow key={index} className={!linha.valida ? "bg-destructive/5" : undefined}>
                       <DataTableCell className="pl-4">{linha.sku || "—"}</DataTableCell>
-                      <DataTableCell numeric>{linha.quantidade}</DataTableCell>
+                      {modo === "completo" && (
+                        <DataTableCell numeric>{linha.quantidade}</DataTableCell>
+                      )}
                       <DataTableCell numeric>
                         {linha.custoMedio !== undefined
                           ? (linha.custoMedio / 100).toFixed(2)
                           : "—"}
                       </DataTableCell>
-                      <DataTableCell>{linha.armazem || "—"}</DataTableCell>
+                      {modo === "completo" && (
+                        <DataTableCell>{linha.armazem || "—"}</DataTableCell>
+                      )}
                       <DataTableCell className="pr-4">
                         {linha.valida ? (
                           <span className="text-success text-xs">OK</span>

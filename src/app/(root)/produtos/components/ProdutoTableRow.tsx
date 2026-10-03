@@ -6,6 +6,7 @@ import { FaTrash, FaEdit, FaEye, FaLink, FaWarehouse } from "react-icons/fa";
 import { AlertTriangle, TrendingUp, Loader2 } from "lucide-react";
 import { Produto } from "../types";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DataTableCell, DataTableRow } from "@/components/ui/data-table";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ProductImage } from "@/components/ui/product-image";
@@ -25,6 +26,8 @@ interface ProdutoTableRowProps {
   isLoadingStock: boolean;
   replenishmentStatus?: "ok" | "atencao" | "critico";
   armazens: ArmazemOption[];
+  selected: boolean;
+  onToggleSelected: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (produto: Produto) => void;
   onViewSuppliers: (produto: Produto) => void;
@@ -50,6 +53,8 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
     isLoadingStock,
     replenishmentStatus,
     armazens,
+    selected,
+    onToggleSelected,
     onDelete,
     onEdit,
     onViewSuppliers,
@@ -75,6 +80,14 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
         )}
       >
         <DataTableCell className="pl-4">
+          <Checkbox
+            checked={selected}
+            onCheckedChange={() => onToggleSelected(produto.id)}
+            aria-label={`Selecionar ${produto.nome}`}
+          />
+        </DataTableCell>
+
+        <DataTableCell>
           <ProductImage src={produto.imagemUrl} alt={produto.nome} size={40} />
         </DataTableCell>
 
@@ -240,7 +253,8 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
       prevProps.stockQuantity === nextProps.stockQuantity &&
       prevProps.stockMinimum === nextProps.stockMinimum &&
       prevProps.isLoadingStock === nextProps.isLoadingStock &&
-      prevProps.replenishmentStatus === nextProps.replenishmentStatus
+      prevProps.replenishmentStatus === nextProps.replenishmentStatus &&
+      prevProps.selected === nextProps.selected
     );
   }
 );

@@ -20,13 +20,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Search } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { AlertTriangle, Search, Truck, X } from "lucide-react";
 import { ProdutoEstoqueDialog } from "./dialogs/ProdutoEstoqueDialog";
 import { ProdutoPagination } from "./ProdutoPagination";
 import { ProdutoEditarDialog } from "./dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "./dialogs/ProdutoFornecedorDialog";
+import { BulkAssignDialog } from "./dialogs/BulkAssignDialog";
 import { ReposicaoModal } from "./ReposicaoModal";
 import { ProdutoTableRow } from "./ProdutoTableRow";
+import { Button } from "@/components/ui/button";
 
 interface ProdutoListProps {
   produtos: Produto[];
@@ -34,6 +37,7 @@ interface ProdutoListProps {
   onEdit: (produto: Produto) => void;
   refreshTrigger?: number;
   onRefreshReplenishment?: () => void;
+  onBulkApplied?: () => void;
 }
 
 interface StockItem {
@@ -54,7 +58,10 @@ const ProdutoList = ({
   onEdit,
   refreshTrigger = 0,
   onRefreshReplenishment,
+  onBulkApplied,
 }: ProdutoListProps) => {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
   const [filterOptions, setFilterOptions] = useState({
     searchTerm: "",
     stockFilter: "all" as "all" | "low" | "none" | "available",
@@ -131,12 +138,10 @@ const ProdutoList = ({
     fetchArmazens();
   }, []);
 
-  // Função para buscar status de reposição com cache
   const fetchReplenishmentStatus = async (forceRefresh = false) => {
     const now = Date.now();
     const cacheValid = now - lastReplenishmentFetch < REPLENISHMENT_CACHE_TTL;
 
-    // Se o cache ainda é válido e não é um refresh forçado, não faz nada
     if (cacheValid && !forceRefresh) {
       return;
     }
@@ -172,22 +177,8 @@ const ProdutoList = ({
     }
   };
 
-  // DESABILITADO: Fetch automático de status de reposição
-  // Isso faz 40+ chamadas API e deixa a página muito lenta
-  // O status será carregado apenas quando o usuário abrir o modal
-  // useEffect(() => {
-  //   let isMounted = true;
-  //   if (produtos.length > 0 && lastReplenishmentFetch === 0) {
-  //     if (isMounted) {
-  //       fetchReplenishmentStatus();
-  //     }
-  //   }
-  //   return () => { isMounted = false; };
-  // }, []);
-
-  // Expõe a função de refresh via callback - APENAS configuração, não execução
+  // Status de reposição não é buscado automaticamente: seriam 40+ chamadas de API por carregamento. Carrega só quando o usuário abre o modal.
   useEffect(() => {
-    // Armazena a referência da função no window para ser chamada externamente
     (window as WindowWithReplenishment).__refreshReplenishment = () =>
       fetchReplenishmentStatus(true);
 
@@ -195,9 +186,8 @@ const ProdutoList = ({
       delete (window as WindowWithReplenishment).__refreshReplenishment;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only set once
+  }, []);
 
-  // Memoized callbacks to prevent re-renders
   const fetchStockDetails = useCallback(async (produto: Produto) => {
     try {
       setSelectedProduto(produto);
@@ -230,6 +220,23 @@ const ProdutoList = ({
     setSelectedProduto(produto);
     setShowReposicaoModal(true);
   }, []);
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const handleBulkApplied = useCallback(() => {
+    setSelectedIds(new Set());
+    onBulkApplied?.();
+  }, [onBulkApplied]);
 
   const fornecedoresDisponiveis = useMemo(() => {
     const mapa = new Map<string, string>();
@@ -443,11 +450,51 @@ const ProdutoList = ({
         </Select>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
+          <span className="text-sm font-medium">
+            {selectedIds.size} produto(s) selecionado(s)
+          </span>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              <X className="h-4 w-4 mr-1" />
+              Limpar seleção
+            </Button>
+            <Button size="sm" onClick={() => setShowBulkAssignModal(true)}>
+              <Truck className="h-4 w-4 mr-1" />
+              Atribuir custo/fornecedor
+            </Button>
+          </div>
+        </div>
+      )}
+
       <SectionCard contentClassName="p-0">
         <DataTable>
           <DataTableHeader>
             <DataTableRow className="hover:bg-transparent">
-              <DataTableHead className="pl-4">Imagem</DataTableHead>
+              <DataTableHead className="pl-4">
+                <Checkbox
+                  checked={
+                    currentItems.length > 0 &&
+                    currentItems.every((p) => selectedIds.has(p.id))
+                  }
+                  onCheckedChange={(checked) => {
+                    setSelectedIds((prev) => {
+                      const next = new Set(prev);
+                      currentItems.forEach((p) =>
+                        checked ? next.add(p.id) : next.delete(p.id)
+                      );
+                      return next;
+                    });
+                  }}
+                  aria-label="Selecionar todos os produtos visíveis"
+                />
+              </DataTableHead>
+              <DataTableHead>Imagem</DataTableHead>
               <DataTableHead sticky>Produto</DataTableHead>
               <DataTableHead>Fornecedor</DataTableHead>
               <DataTableHead>Estoque Local</DataTableHead>
@@ -468,6 +515,8 @@ const ProdutoList = ({
                   isLoadingStock={stockData[produto.id] === undefined}
                   replenishmentStatus={replenishmentStatus[produto.id]}
                   armazens={armazens}
+                  selected={selectedIds.has(produto.id)}
+                  onToggleSelected={toggleSelected}
                   onDelete={onDelete}
                   onEdit={handleEdit}
                   onViewSuppliers={handleViewSuppliers}
@@ -479,7 +528,7 @@ const ProdutoList = ({
             ) : (
               <DataTableRow className="hover:bg-transparent">
                 <DataTableCell
-                  colSpan={8}
+                  colSpan={9}
                   className="text-center py-8 text-muted-foreground"
                 >
                   {filterOptions.searchTerm
@@ -535,6 +584,13 @@ const ProdutoList = ({
           )}
         </>
       )}
+
+      <BulkAssignDialog
+        isOpen={showBulkAssignModal}
+        onClose={() => setShowBulkAssignModal(false)}
+        produtoIds={Array.from(selectedIds)}
+        onApplied={handleBulkApplied}
+      />
     </div>
   );
 };

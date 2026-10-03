@@ -99,6 +99,7 @@ function MercadoLivreProdutosContent() {
 
   const [accounts, setAccounts] = useState<MLAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -219,6 +220,7 @@ function MercadoLivreProdutosContent() {
 
       const data = await response.json();
       setProducts(data.products || []);
+      setLastUpdate(new Date());
 
       if (showToast) {
         toast.success(
@@ -404,7 +406,14 @@ function MercadoLivreProdutosContent() {
     <div className="container mx-auto p-6 space-y-6">
       <PageHeader
         title="Produtos Mercado Livre"
-        subtitle="Gestão integrada de produtos"
+        subtitle={`Gestão integrada de produtos${
+          lastUpdate
+            ? ` · atualizado às ${lastUpdate.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`
+            : ""
+        }`}
         actions={
           <Button variant="outline" onClick={() => window.history.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />

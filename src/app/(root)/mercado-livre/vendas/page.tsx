@@ -175,6 +175,7 @@ export default function MercadoLivreVendasPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("overview");
   const [salesDataPartial, setSalesDataPartial] = useState(false);
   const [evolutionMetric, setEvolutionMetric] = useState<EvolutionMetric>("revenue");
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
   useEffect(() => {
     if (status !== "authenticated") return;
@@ -234,6 +235,7 @@ export default function MercadoLivreVendasPage() {
       const data = payload.data as SalesAnalyticsData;
       setSalesDataPartial(data.parcial);
       setSalesData(data);
+      setLastUpdate(new Date());
     } catch {
       toast.error("Erro ao carregar dados de vendas");
     } finally {
@@ -387,6 +389,13 @@ export default function MercadoLivreVendasPage() {
         title="Análise de Vendas"
         subtitle={`Mercado Livre${
           currentAccount ? ` — ${currentAccount.nickname}` : ""
+        }${
+          lastUpdate
+            ? ` · atualizado às ${lastUpdate.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`
+            : ""
         }`}
         actions={
           <div className="flex flex-wrap items-center justify-end gap-2">

@@ -80,12 +80,8 @@ const ProdutosPage = () => {
     loadBlingStatus();
   }, []);
 
-  // Initialize produtos when data is loaded or refetched
-  // This updates produtos when initialProdutos changes (e.g., after refetch)
   useEffect(() => {
     if (initialProdutos && initialProdutos.length > 0) {
-      // Garantir que todos os produtos tenham o campo EAN como string
-      // A API já retorna _mlTotalVendas e _mlEstoqueFull calculados
       const formattedProdutos = initialProdutos.map((p) => ({
         ...p,
         codigoEAN: p.codigoEAN?.toString() || "",
@@ -94,30 +90,23 @@ const ProdutosPage = () => {
       setProdutos(formattedProdutos);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialProdutos]); // Update when initialProdutos changes
+  }, [initialProdutos]);
 
-  // Buscar quantidade de produtos pendentes (produtos ML sem vínculo)
-  // Desabilitado por ora - não é crítico e está causando 404
   useEffect(() => {
     setPendingCount(0);
-    // TODO: Implementar busca de produtos pendentes quando necessário
   }, [refreshTrigger]);
 
-  // Separar produtos e kits
   const kits = produtos.filter((p) => p.isKit);
   const regularProducts = produtos.filter((p) => !p.isKit);
 
-  // Função para atualizar todo o estado após mudanças
   const refreshData = async () => {
     await refetch();
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  // Atualizar dados ML (vendas dos últimos 90 dias + estoque Full + status de reposição)
   const atualizarDadosML = async () => {
     setUpdatingVendas(true);
     try {
-      // 1. Chamar API para atualizar vendas e estoque no banco de dados
       const response = await fetch("/api/produtos/vendas-ml");
       if (response.status === 503) {
         toast.error(
@@ -137,8 +126,6 @@ const ProdutosPage = () => {
 
       const data = await response.json();
 
-      // 2. Re-fetch produtos do banco para pegar TODOS os dados atualizados
-      // A API /api/produtos já calcula _mlTotalVendas e _mlEstoqueFull
       await refetch();
 
       const totalFull = (
@@ -155,10 +142,8 @@ const ProdutosPage = () => {
         );
       }
 
-      // 3. Trigger refresh no ProdutoList para atualizar estoque local e status de reposição
       setRefreshTrigger((prev) => prev + 1);
 
-      // 4. Atualizar status de reposição
       const replenishmentWindow = window as Window & {
         __refreshReplenishment?: () => void;
       };
@@ -173,7 +158,6 @@ const ProdutosPage = () => {
     }
   };
 
-  // Reconectar Bling (token expirado/revogado)
   const reconectarBling = async () => {
     try {
       const response = await fetch("/api/bling/auth?action=connect");
@@ -186,7 +170,6 @@ const ProdutosPage = () => {
     }
   };
 
-  // Atualizar estoque local com dados do Bling
   const atualizarEstoqueBling = async () => {
     setUpdatingBlingStock(true);
     try {
@@ -219,7 +202,6 @@ const ProdutosPage = () => {
         `Estoque sincronizado! ${data.stats.updated}/${data.stats.total} produtos atualizados`
       );
 
-      // Trigger refresh para atualizar estoque na tela
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       console.error("Erro ao atualizar estoque do Bling:", error);
@@ -275,10 +257,8 @@ const ProdutosPage = () => {
   };
 
   const handleSave = (newProduto: Produto) => {
-    // Adicionar o novo produto ao estado local
     setProdutos((prev) => [...prev, newProduto]);
 
-    // Mostrar mensagem de sucesso
     toast.success(
       `${newProduto.isKit ? "Kit" : "Produto"} cadastrado com sucesso`
     );
@@ -436,6 +416,7 @@ const ProdutosPage = () => {
             onEdit={handleEdit}
             refreshTrigger={refreshTrigger}
             onRefreshReplenishment={() => {}}
+            onBulkApplied={refreshData}
           />
         </TabsContent>
         <TabsContent value="kits" className="mt-6">
@@ -459,7 +440,6 @@ const ProdutosPage = () => {
         />
       )}
 
-      {/* Delete Dialog */}
       {produtoToDelete && (
         <ProdutoDeleteDialog
           isOpen={!!produtoToDelete}
