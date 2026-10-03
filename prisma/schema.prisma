@@ -21,6 +21,26 @@ enum InvitationStatus {
   REVOKED
 }
 
+enum PrecoOrigem {
+  BLING
+  MANUAL
+  ML
+}
+
+enum CustoOrigem {
+  MANUAL
+  PEDIDO_COMPRA
+  BLING_FORNECEDOR
+  BLING_PRODUTO
+  PLANILHA
+}
+
+enum ArmazemTipo {
+  LOCAL
+  FULL_ML
+  OUTRO
+}
+
 model User {
   id                       String                     @id @default(uuid())
   name                     String?
@@ -192,7 +212,12 @@ model Produto {
   isKit                Boolean               @default(false)
   ean                  BigInt?
   userId               String
-  custoMedio           Int?                  @default(0)
+  custoMedio           Int?
+  custoOrigem          CustoOrigem?
+  custoAtualizadoEm    DateTime?
+  precoVenda           Int?
+  precoOrigem          PrecoOrigem?
+  blingId              String?
   imagemUrl            String?
   imagemThumbUrl       String?
   descricao            String?
@@ -216,6 +241,7 @@ model Produto {
   movimentacoesEstoque EstoqueMovimentacao[]
 
   @@unique([sku, userId])
+  @@unique([userId, blingId])
 }
 
 model Componente {
@@ -242,6 +268,7 @@ enum OrigemMovimentacaoEstoque {
   IMPORTACAO_PLANILHA
   AJUSTE_MANUAL
   SINCRONIZACAO_FULL_ML
+  SINCRONIZACAO_BLING
 }
 
 model EstoqueMovimentacao {
@@ -288,12 +315,16 @@ model Armazem {
   id                    String                 @id @default(uuid())
   nome                  String
   userId                String
+  blingDepositoId       String?
+  tipo                  ArmazemTipo            @default(LOCAL)
   user                  User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   estoques              Estoque[]
   saidas                Saida[]
   transferenciasDestino TransferenciaEstoque[] @relation("TransferenciaDestino")
   transferenciasOrigem  TransferenciaEstoque[] @relation("TransferenciaOrigem")
   movimentacoes         EstoqueMovimentacao[]
+
+  @@unique([userId, blingDepositoId])
 }
 
 model Fornecedor {
@@ -304,9 +335,12 @@ model Fornecedor {
   contato           String?
   endereco          String?
   userId            String
+  blingContatoId    String?
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   pedidos           PedidoCompra[]
   produtos          ProdutoFornecedor[]
+
+  @@unique([userId, blingContatoId])
 }
 
 model PedidoCompra {
@@ -380,17 +414,19 @@ model TransferenciaItem {
 }
 
 model BlingAccount {
-  id              String             @id @default(uuid())
-  userId          String
-  accessToken     String
-  refreshToken    String
-  expiresAt       DateTime
-  isActive        Boolean            @default(true)
-  blingCompanyId  String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  syncHistories   BlingSyncHistory[]
+  id                          String             @id @default(uuid())
+  userId                      String
+  accessToken                 String
+  refreshToken                String
+  expiresAt                   DateTime
+  isActive                    Boolean            @default(true)
+  blingCompanyId              String?
+  ultimaSincronizacaoProdutos DateTime?
+  ultimaSincronizacaoEstoque  DateTime?
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
+  user                        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncHistories               BlingSyncHistory[]
 
   @@map("bling_accounts")
 }

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
-import { getProductCost } from "@/helpers/productCostHelper";
+import { resolverCustoProduto } from "@/lib/custo";
 import { pickMlImageUrl } from "@/lib/imageUrl";
 
 export async function GET(request: NextRequest) {
@@ -172,7 +172,10 @@ export async function POST(request: NextRequest) {
           counter++;
         }
 
-        const custoMedio = await getProductCost(undefined, sku, user.id);
+        const resultadoCusto = await resolverCustoProduto({
+          sku,
+          userId: user.id,
+        });
         const imagemUrl = pickMlImageUrl(item);
 
         const localProduct = await prisma.produto.create({
@@ -181,7 +184,10 @@ export async function POST(request: NextRequest) {
             sku: sku,
             isKit: false,
             userId: user.id,
-            custoMedio,
+            custoMedio: resultadoCusto.custoMedio,
+            custoOrigem: resultadoCusto.custoOrigem,
+            custoAtualizadoEm:
+              resultadoCusto.custoMedio !== null ? new Date() : null,
             ean: null,
             imagemUrl,
           },

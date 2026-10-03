@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { pollBlingSyncHistory } from "@/lib/pollBlingSyncHistory";
 
 interface ImportStep {
   id: string;
@@ -201,12 +202,23 @@ export default function ImportarProdutosPage() {
         throw new Error(errorData?.error || "Erro na importação");
       }
 
-      const result: ImportResumo = await response.json();
-      setImportResumo(result);
+      const { syncHistoryId } = await response.json();
+      const resultado = await pollBlingSyncHistory(syncHistoryId);
+
+      if (resultado.status === "error") {
+        throw new Error(resultado.errors?.[0] || "Erro na importação");
+      }
+
+      setImportResumo({
+        criados: resultado.newItems,
+        atualizados: resultado.updatedItems,
+        ignorados: 0,
+        erros: resultado.errors || [],
+      });
 
       updateStepStatus("import", "completed");
       toast.success(
-        `Importação concluída: ${result.criados} criados, ${result.atualizados} atualizados`
+        `Importação concluída: ${resultado.newItems} criados, ${resultado.updatedItems} atualizados`
       );
 
       if (mlConnected) {

@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
-import { BlingService, BlingReconnectError } from "@/services/blingService";
+import { BlingService, BlingReconnectError, BlingProduct } from "@/services/blingService";
 import { blingErrorResponse } from "@/lib/blingApi";
-import { getProductCost } from "@/helpers/productCostHelper";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { normalizeSku } from "@/lib/sku";
 
 interface SyncDetail {
   sku: string;
   nome: string;
-  estoqueAnterior: number;
-  estoqueNovo: number;
-  status: "updated" | "not_found" | "error";
+  armazem: string;
+  quantidadeAnterior: number;
+  quantidadeNova: number;
+  status: "atualizado" | "sem_mudanca" | "nao_encontrado" | "erro";
 }
 
 export async function POST(request: NextRequest) {
@@ -43,19 +44,13 @@ export async function POST(request: NextRequest) {
     }
 
     const localProducts = await prisma.produto.findMany({
-      where: {
-        userId: user.id,
-        isKit: false,
-      },
+      where: { userId: user.id, isKit: false },
       select: {
         id: true,
         sku: true,
         nome: true,
-        estoques: {
-          include: {
-            armazem: true,
-          },
-        },
+        blingId: true,
+        estoques: { select: { armazemId: true, quantidade: true } },
       },
     });
 
@@ -63,144 +58,196 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: "Nenhum produto para sincronizar",
-        stats: { total: 0, updated: 0, notFound: 0, errors: 0 },
+        stats: { total: 0, atualizados: 0, naoEncontrados: 0, erros: 0 },
+        detalhes: [],
       });
     }
 
     const blingProducts = await BlingService.getAllProducts(blingAccount.id);
+    const blingById = new Map(blingProducts.map((p) => [p.id, p]));
+    const blingByNormalizedSku = new Map(
+      blingProducts.map((p) => [normalizeSku(p.codigo), p])
+    );
 
-    const blingDataMap = new Map<
-      string,
-      { estoque: number; precoCusto: number | undefined }
-    >();
+    const matched: Array<{
+      local: (typeof localProducts)[number];
+      bling: BlingProduct;
+    }> = [];
+    const detalhes: SyncDetail[] = [];
+    let naoEncontrados = 0;
 
-    blingProducts.forEach((blingProduct) => {
-      blingDataMap.set(blingProduct.codigo, {
-        estoque: Math.round(blingProduct.estoque?.saldoFisicoTotal || 0),
-        precoCusto: blingProduct.precoCusto,
-      });
-    });
+    for (const local of localProducts) {
+      const bling =
+        (local.blingId ? blingById.get(Number(local.blingId)) : undefined) ??
+        blingByNormalizedSku.get(normalizeSku(local.sku));
 
-    let defaultWarehouse = await prisma.armazem.findFirst({
-      where: {
-        userId: user.id,
-        nome: { contains: "Principal", mode: "insensitive" },
-      },
-    });
+      if (!bling) {
+        naoEncontrados++;
+        detalhes.push({
+          sku: local.sku,
+          nome: local.nome,
+          armazem: "",
+          quantidadeAnterior: local.estoques.reduce(
+            (soma, e) => soma + e.quantidade,
+            0
+          ),
+          quantidadeNova: 0,
+          status: "nao_encontrado",
+        });
+        continue;
+      }
 
-    if (!defaultWarehouse) {
-      defaultWarehouse = await prisma.armazem.findFirst({
-        where: { userId: user.id },
-      });
+      matched.push({ local, bling });
     }
 
-    if (!defaultWarehouse) {
-      defaultWarehouse = await prisma.armazem.create({
-        data: {
-          nome: "Armazém Principal",
-          userId: user.id,
-        },
-      });
+    const deposits = await BlingService.getDeposits(blingAccount.id);
+    const armazensExistentes = await prisma.armazem.findMany({
+      where: { userId: user.id },
+    });
+    const armazemPorDeposito = new Map(
+      armazensExistentes
+        .filter((a) => a.blingDepositoId)
+        .map((a) => [a.blingDepositoId as string, a])
+    );
+
+    for (const deposit of deposits) {
+      const depositoId = String(deposit.id);
+      if (!armazemPorDeposito.has(depositoId)) {
+        const novoArmazem = await prisma.armazem.create({
+          data: {
+            userId: user.id,
+            nome: deposit.descricao,
+            blingDepositoId: depositoId,
+            tipo: "LOCAL",
+          },
+        });
+        armazemPorDeposito.set(depositoId, novoArmazem);
+      }
     }
 
-    const stats = {
-      total: localProducts.length,
-      updated: 0,
-      notFound: 0,
-      errors: 0,
-      details: [] as SyncDetail[],
-    };
+    const blingIds = matched.map((m) => m.bling.id);
+    const stockItems = await BlingService.getStockForProducts(
+      blingAccount.id,
+      blingIds
+    );
+    const stockByBlingId = new Map(stockItems.map((s) => [s.produto.id, s]));
 
-    for (const localProduct of localProducts) {
+    let atualizados = 0;
+    let erros = 0;
+
+    for (const { local, bling } of matched) {
       try {
-        const blingData = blingDataMap.get(localProduct.sku);
+        if (!local.blingId) {
+          await prisma.produto.update({
+            where: { id: local.id },
+            data: { blingId: String(bling.id) },
+          });
+        }
 
-        if (blingData === undefined) {
-          stats.notFound++;
-          stats.details.push({
-            sku: localProduct.sku,
-            nome: localProduct.nome,
-            estoqueAnterior: localProduct.estoques.reduce(
-              (sum, e) => sum + e.quantidade,
+        const stock = stockByBlingId.get(bling.id);
+        if (!stock) {
+          naoEncontrados++;
+          detalhes.push({
+            sku: local.sku,
+            nome: local.nome,
+            armazem: "",
+            quantidadeAnterior: local.estoques.reduce(
+              (soma, e) => soma + e.quantidade,
               0
             ),
-            estoqueNovo: 0,
-            status: "not_found",
+            quantidadeNova: 0,
+            status: "nao_encontrado",
           });
           continue;
         }
 
-        const { estoque: blingStock, precoCusto } = blingData;
+        for (const depositoSaldo of stock.depositos) {
+          const armazem = armazemPorDeposito.get(String(depositoSaldo.id));
+          if (!armazem) continue;
 
-        const custoMedio = await getProductCost(
-          precoCusto,
-          localProduct.sku,
-          user.id
-        );
+          const quantidadeAnterior =
+            local.estoques.find((e) => e.armazemId === armazem.id)
+              ?.quantidade ?? 0;
+          const quantidadeNova = Math.round(depositoSaldo.saldoFisico);
 
-        await prisma.produto.update({
-          where: { id: localProduct.id },
-          data: { custoMedio },
-        });
+          if (quantidadeAnterior === quantidadeNova) {
+            detalhes.push({
+              sku: local.sku,
+              nome: local.nome,
+              armazem: armazem.nome,
+              quantidadeAnterior,
+              quantidadeNova,
+              status: "sem_mudanca",
+            });
+            continue;
+          }
 
-        const estoqueAnterior =
-          localProduct.estoques.find(
-            (e) => e.armazemId === defaultWarehouse!.id
-          )?.quantidade || 0;
+          await prisma.$transaction([
+            prisma.estoque.upsert({
+              where: {
+                produtoId_armazemId: {
+                  produtoId: local.id,
+                  armazemId: armazem.id,
+                },
+              },
+              update: { quantidade: quantidadeNova },
+              create: {
+                produtoId: local.id,
+                armazemId: armazem.id,
+                quantidade: quantidadeNova,
+              },
+            }),
+            prisma.estoqueMovimentacao.create({
+              data: {
+                userId: user.id,
+                produtoId: local.id,
+                armazemId: armazem.id,
+                quantidadeAnterior,
+                quantidadeNova,
+                origem: "SINCRONIZACAO_BLING",
+              },
+            }),
+          ]);
 
-        await prisma.estoque.upsert({
-          where: {
-            produtoId_armazemId: {
-              produtoId: localProduct.id,
-              armazemId: defaultWarehouse.id,
-            },
-          },
-          update: { quantidade: blingStock },
-          create: {
-            produtoId: localProduct.id,
-            armazemId: defaultWarehouse.id,
-            quantidade: blingStock,
-          },
-        });
-
-        stats.updated++;
-        stats.details.push({
-          sku: localProduct.sku,
-          nome: localProduct.nome,
-          estoqueAnterior,
-          estoqueNovo: blingStock,
-          status: "updated",
-        });
+          atualizados++;
+          detalhes.push({
+            sku: local.sku,
+            nome: local.nome,
+            armazem: armazem.nome,
+            quantidadeAnterior,
+            quantidadeNova,
+            status: "atualizado",
+          });
+        }
       } catch (error) {
-        stats.errors++;
-        stats.details.push({
-          sku: localProduct.sku,
-          nome: localProduct.nome,
-          estoqueAnterior: 0,
-          estoqueNovo: 0,
-          status: "error",
+        erros++;
+        detalhes.push({
+          sku: local.sku,
+          nome: local.nome,
+          armazem: "",
+          quantidadeAnterior: 0,
+          quantidadeNova: 0,
+          status: "erro",
         });
-        console.error(
-          `[BLING_SYNC] Erro ao atualizar ${localProduct.sku}:`,
-          error
-        );
+        console.error(`[BLING_SYNC] Erro ao atualizar ${local.sku}:`, error);
       }
     }
 
+    await prisma.blingAccount.update({
+      where: { id: blingAccount.id },
+      data: { ultimaSincronizacaoEstoque: new Date() },
+    });
+
     return NextResponse.json({
       success: true,
-      message: `Estoque sincronizado com sucesso! ${stats.updated} produtos atualizados.`,
+      message: `Estoque sincronizado! ${atualizados} divergência(s) corrigida(s).`,
       stats: {
-        total: stats.total,
-        updated: stats.updated,
-        notFound: stats.notFound,
-        errors: stats.errors,
+        total: localProducts.length,
+        atualizados,
+        naoEncontrados,
+        erros,
       },
-      armazem: {
-        id: defaultWarehouse.id,
-        nome: defaultWarehouse.nome,
-      },
-      details: stats.details,
+      detalhes,
     });
   } catch (error) {
     return blingErrorResponse(error);

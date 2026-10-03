@@ -1,6 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { NotificationService } from "@/services/notificationService";
 import { normalizeImageUrl } from "@/lib/imageUrl";
+import { throttleBlingRequest } from "@/lib/blingRateLimiter";
+
+export interface BlingProductSupplierRef {
+  id: number;
+}
 
 export interface BlingProduct {
   id: number;
@@ -16,6 +21,7 @@ export interface BlingProduct {
   unidade?: string;
   pesoBruto?: number;
   pesoLiquido?: number;
+  marca?: string;
   estoque?: {
     saldoFisicoTotal?: number;
     saldoVirtualTotal?: number;
@@ -37,6 +43,17 @@ export interface BlingProduct {
       imagensURL?: string[];
     };
   };
+  estrutura?: {
+    componentes?: Array<{
+      produto: BlingProductSupplierRef;
+      quantidade: number;
+    }>;
+  };
+}
+
+export interface BlingImageInfo {
+  url: string;
+  temporaria: boolean;
 }
 
 export interface BlingProductsResponse {
@@ -68,6 +85,28 @@ export interface BlingStockResponse {
   data: BlingStockItem[];
 }
 
+export interface BlingDeposit {
+  id: number;
+  descricao: string;
+  padrao: boolean;
+}
+
+export interface BlingProductSupplier {
+  fornecedor: { id: number };
+  codigo?: string;
+  precoCusto?: number;
+  precoCompra?: number;
+  padrao: boolean;
+}
+
+export interface BlingContact {
+  id: number;
+  nome: string;
+  numeroDocumento?: string;
+  telefone?: string;
+  email?: string;
+}
+
 export class BlingReconnectError extends Error {
   readonly code = "BLING_RECONNECT_REQUIRED";
 
@@ -84,12 +123,32 @@ export class BlingTransientError extends Error {
   }
 }
 
+export class BlingRateLimitError extends Error {
+  constructor() {
+    super("O Bling está limitando as requisições. Tente novamente em alguns instantes.");
+    this.name = "BlingRateLimitError";
+  }
+}
+
+export class BlingApiError extends Error {
+  readonly status: number;
+  readonly endpoint: string;
+
+  constructor(status: number, endpoint: string, mensagem: string) {
+    super(mensagem || `Erro ao chamar a API do Bling (${status}) em ${endpoint}`);
+    this.name = "BlingApiError";
+    this.status = status;
+    this.endpoint = endpoint;
+  }
+}
+
 type TokenFormat = "jwt" | "opaco";
 
 const BLING_JWT_HEADER = { "enable-jwt": "1" } as const;
 const TOKEN_RENEWAL_WINDOW_MS = 10 * 60 * 1000;
-const RATE_LIMIT_DELAY_MS = 350;
+const PAGE_DELAY_MS = 100;
 const MAX_RETRIES_429 = 4;
+const MAX_CONSECUTIVE_ERRORS = 20;
 const REFRESH_LOCK_TIMEOUT_MS = 15000;
 const REFRESH_LOCK_MAX_WAIT_MS = 10000;
 
@@ -327,16 +386,18 @@ export class BlingService {
     });
   }
 
-  private static async apiFetch(
+  private static async requestRaw(
     path: string,
     accountId: string,
     init?: RequestInit
   ): Promise<Response> {
+    await throttleBlingRequest(accountId);
     const accessToken = await this.getValidToken(accountId);
     let response = await this.rawFetch(path, accessToken, init);
 
     if (response.status === 401) {
       const refreshedToken = await this.forceRefreshToken(accountId);
+      await throttleBlingRequest(accountId);
       response = await this.rawFetch(path, refreshedToken, init);
       if (response.status === 401) {
         throw new BlingReconnectError();
@@ -346,37 +407,60 @@ export class BlingService {
     let attempt = 0;
     while (response.status === 429 && attempt < MAX_RETRIES_429) {
       attempt++;
-      await this.sleep(1000 * 2 ** attempt);
+      const retryAfterHeader = response.headers.get("Retry-After");
+      const waitMs = retryAfterHeader
+        ? Number(retryAfterHeader) * 1000
+        : 1000 * 2 ** attempt + Math.random() * 250;
+      await this.sleep(waitMs);
+      await throttleBlingRequest(accountId);
       const currentToken = await this.getValidToken(accountId);
       response = await this.rawFetch(path, currentToken, init);
+    }
+
+    if (response.status === 429) {
+      throw new BlingRateLimitError();
+    }
+
+    if (!response.ok) {
+      const mensagem = await response.text();
+      throw new BlingApiError(response.status, path, mensagem);
     }
 
     return response;
   }
 
+  private static async requestJson<T>(
+    path: string,
+    accountId: string,
+    init?: RequestInit
+  ): Promise<T> {
+    const response = await this.requestRaw(path, accountId, init);
+    const text = await response.text();
+    return text ? JSON.parse(text) : ({} as T);
+  }
+
   static async getProducts(
     accountId: string,
     page: number = 1,
-    limit: number = 100
+    limit: number = 100,
+    dataAlteracaoInicial?: string
   ): Promise<BlingProductsResponse> {
     const params = new URLSearchParams({
       pagina: page.toString(),
       limite: limit.toString(),
-      criterio: "1",
+      criterio: "5",
       tipo: "P",
     });
 
-    const response = await this.apiFetch(
+    if (dataAlteracaoInicial) {
+      params.set("dataAlteracaoInicial", dataAlteracaoInicial);
+    }
+
+    const data = await this.requestJson<{ data?: BlingProduct[] }>(
       `/produtos?${params.toString()}`,
       accountId
     );
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Erro ao buscar produtos do Bling: ${error}`);
-    }
-
-    const data = await response.json();
     return { data: data.data || [] };
   }
 
@@ -384,28 +468,40 @@ export class BlingService {
     accountId: string,
     productId: number
   ): Promise<BlingProduct> {
-    const response = await this.apiFetch(`/produtos/${productId}`, accountId);
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Erro ao buscar produto ${productId} do Bling: ${error}`);
-    }
-
-    const data = await response.json();
+    const data = await this.requestJson<{ data: BlingProduct }>(
+      `/produtos/${productId}`,
+      accountId
+    );
     return data.data;
   }
 
-  static async getAllProducts(accountId: string): Promise<BlingProduct[]> {
+  static async getAllProducts(
+    accountId: string,
+    dataAlteracaoInicial?: string
+  ): Promise<BlingProduct[]> {
     const pageSize = 100;
     const allProducts: BlingProduct[] = [];
     let currentPage = 1;
+    let consecutiveErrors = 0;
 
     for (;;) {
-      const response = await this.getProducts(
-        accountId,
-        currentPage,
-        pageSize
-      );
+      let response: BlingProductsResponse;
+      try {
+        response = await this.getProducts(
+          accountId,
+          currentPage,
+          pageSize,
+          dataAlteracaoInicial
+        );
+        consecutiveErrors = 0;
+      } catch (error) {
+        consecutiveErrors++;
+        if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+          throw error;
+        }
+        await this.sleep(PAGE_DELAY_MS);
+        continue;
+      }
 
       if (!response.data || response.data.length === 0) {
         break;
@@ -418,7 +514,7 @@ export class BlingService {
       }
 
       currentPage++;
-      await this.sleep(RATE_LIMIT_DELAY_MS);
+      await this.sleep(PAGE_DELAY_MS);
     }
 
     return allProducts;
@@ -426,66 +522,99 @@ export class BlingService {
 
   static async getProductsStock(
     accountId: string,
-    productIds: number[],
-    page: number = 1,
-    limit: number = 100
+    productIds: number[]
   ): Promise<BlingStockResponse> {
-    const params = new URLSearchParams({
-      pagina: page.toString(),
-      limite: limit.toString(),
-    });
-
+    const params = new URLSearchParams({ pagina: "1", limite: "100" });
     productIds.forEach((id) => {
       params.append("idsProdutos[]", id.toString());
     });
 
-    const response = await this.apiFetch(
+    const data = await this.requestJson<{ data?: BlingStockItem[] }>(
       `/estoques/saldos?${params.toString()}`,
       accountId
     );
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Erro ao buscar estoque do Bling: ${error}`);
+    return { data: data.data || [] };
+  }
+
+  static async getStockForProducts(
+    accountId: string,
+    productIds: number[]
+  ): Promise<BlingStockItem[]> {
+    const batchSize = 50;
+    const allStock: BlingStockItem[] = [];
+
+    for (let i = 0; i < productIds.length; i += batchSize) {
+      const batch = productIds.slice(i, i + batchSize);
+      const { data } = await this.getProductsStock(accountId, batch);
+      allStock.push(...data);
+
+      if (i + batchSize < productIds.length) {
+        await this.sleep(PAGE_DELAY_MS);
+      }
     }
 
-    const data = await response.json();
-    return { data: data.data || [] };
+    return allStock;
+  }
+
+  static async getDeposits(accountId: string): Promise<BlingDeposit[]> {
+    const data = await this.requestJson<{ data?: BlingDeposit[] }>(
+      "/depositos",
+      accountId
+    );
+    return data.data || [];
+  }
+
+  static async getProductSuppliers(
+    accountId: string,
+    produtoId: number
+  ): Promise<BlingProductSupplier[]> {
+    const params = new URLSearchParams({ idProduto: produtoId.toString() });
+    const data = await this.requestJson<{ data?: BlingProductSupplier[] }>(
+      `/produtos/fornecedores?${params.toString()}`,
+      accountId
+    );
+    return data.data || [];
+  }
+
+  static async getContact(
+    accountId: string,
+    contatoId: number
+  ): Promise<BlingContact> {
+    const data = await this.requestJson<{ data: BlingContact }>(
+      `/contatos/${contatoId}`,
+      accountId
+    );
+    return data.data;
   }
 
   static async updateProductStock(
     accountId: string,
-    productId: number,
-    quantity: number
+    produtoId: number,
+    depositoId: number,
+    quantidade: number
   ): Promise<void> {
-    const response = await this.apiFetch(`/produtos/${productId}/estoques`, accountId, {
+    await this.requestRaw("/estoques", accountId, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        produto: { id: produtoId },
+        deposito: { id: depositoId },
         operacao: "B",
-        quantidade: quantity,
-        preco: 0,
+        quantidade,
+        observacoes: "Ajuste Leap Stock",
       }),
     });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(
-        `Erro ao atualizar estoque do produto ${productId}: ${error}`
-      );
-    }
   }
 
   static async getCompanyId(accountId: string): Promise<string | null> {
     try {
-      const response = await this.apiFetch("/empresas", accountId);
-      if (!response.ok) {
-        return null;
-      }
-
-      const body = await response.json();
+      const body = await this.requestJson<{ data?: unknown }>(
+        "/empresas",
+        accountId
+      );
       const empresa = Array.isArray(body?.data) ? body.data[0] : body?.data;
-      const id = empresa?.id;
+      const id = (empresa as { id?: unknown } | undefined)?.id;
       return id !== undefined && id !== null ? String(id) : null;
     } catch (error) {
       console.error("Erro ao buscar dados da empresa no Bling:", error);
@@ -493,15 +622,23 @@ export class BlingService {
     }
   }
 
-  static extractImageUrl(product: BlingProduct): string | null {
-    const candidato =
-      product.midia?.imagens?.externas?.[0]?.link ||
-      product.midia?.imagens?.internas?.[0]?.linkMiniatura ||
-      product.midia?.imagens?.imagensURL?.[0] ||
-      product.imagemURL ||
-      null;
+  static extractImageInfo(product: BlingProduct): BlingImageInfo | null {
+    const externa = normalizeImageUrl(product.midia?.imagens?.externas?.[0]?.link ?? null);
+    if (externa) {
+      return { url: externa, temporaria: false };
+    }
 
-    return normalizeImageUrl(candidato);
+    const interna = normalizeImageUrl(
+      product.midia?.imagens?.internas?.[0]?.linkMiniatura ?? null
+    );
+    if (interna) {
+      return { url: interna, temporaria: true };
+    }
+
+    const generica = normalizeImageUrl(
+      product.midia?.imagens?.imagensURL?.[0] ?? product.imagemURL ?? null
+    );
+    return generica ? { url: generica, temporaria: false } : null;
   }
 
   static extractEAN(product: BlingProduct): string | null {
@@ -514,5 +651,9 @@ export class BlingService {
 
   static isProductActive(product: BlingProduct): boolean {
     return product.situacao === "A";
+  }
+
+  static isKit(product: BlingProduct): boolean {
+    return product.formato === "E";
   }
 }

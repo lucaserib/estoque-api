@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/data-table";
 import { Loader2, RefreshCw, Settings, Unplug } from "lucide-react";
 import { toast } from "sonner";
+import { pollBlingSyncHistory } from "@/lib/pollBlingSyncHistory";
 
 interface MLAccount {
   id: string;
@@ -124,9 +125,15 @@ export default function IntegracoesPage() {
         body: JSON.stringify({ accountId: blingAccount.id }),
       });
       if (!response.ok) throw new Error("Erro na sincronização");
-      const result = await response.json();
+      const { syncHistoryId } = await response.json();
+      const resultado = await pollBlingSyncHistory(syncHistoryId);
+
+      if (resultado.status === "error") {
+        throw new Error(resultado.errors?.[0] || "Erro na sincronização");
+      }
+
       toast.success(
-        `Sincronização concluída! ${result.criados || 0} criados, ${result.atualizados || 0} atualizados`
+        `Sincronização concluída! ${resultado.newItems} criados, ${resultado.updatedItems} atualizados`
       );
       loadData();
     } catch (error) {

@@ -199,7 +199,7 @@ const ProdutosPage = () => {
       const data = await response.json();
 
       toast.success(
-        `Estoque sincronizado! ${data.stats.updated}/${data.stats.total} produtos atualizados`
+        `Estoque sincronizado! ${data.stats.atualizados}/${data.stats.total} divergências corrigidas`
       );
 
       setRefreshTrigger((prev) => prev + 1);
