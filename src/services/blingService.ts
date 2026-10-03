@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NotificationService } from "@/services/notificationService";
+import { normalizeImageUrl } from "@/lib/imageUrl";
 
 export interface BlingProduct {
   id: number;
@@ -27,6 +28,14 @@ export interface BlingProduct {
     altura: number;
     profundidade: number;
     unidadeMedida: number;
+  };
+  imagemURL?: string;
+  midia?: {
+    imagens?: {
+      internas?: Array<{ link?: string }>;
+      externas?: Array<{ link?: string }>;
+      imagensURL?: string[];
+    };
   };
 }
 
@@ -370,6 +379,17 @@ export class BlingService {
         `Erro ao atualizar estoque do produto ${productId}: ${error}`
       );
     }
+  }
+
+  static extractImageUrl(product: BlingProduct): string | null {
+    const candidato =
+      product.midia?.imagens?.internas?.[0]?.link ||
+      product.midia?.imagens?.externas?.[0]?.link ||
+      product.midia?.imagens?.imagensURL?.[0] ||
+      product.imagemURL ||
+      null;
+
+    return normalizeImageUrl(candidato);
   }
 
   static extractEAN(product: BlingProduct): string | null {

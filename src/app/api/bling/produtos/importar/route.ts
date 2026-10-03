@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
 
       try {
         const ean = BlingService.extractEAN(blingProduct);
+        const imagemUrl = BlingService.extractImageUrl(blingProduct);
         const custoMedio = await getProductCost(
           blingProduct.precoCusto,
           sku,
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
               nome: blingProduct.nome,
               ean: ean ? BigInt(ean) : null,
               custoMedio,
+              ...(imagemUrl ? { imagemUrl } : {}),
             },
           });
           resumo.atualizados++;
@@ -120,6 +122,7 @@ export async function POST(request: NextRequest) {
               isKit: false,
               userId: user.id,
               custoMedio,
+              imagemUrl,
             },
           });
           resumo.criados++;
