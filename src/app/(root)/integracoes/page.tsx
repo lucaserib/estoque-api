@@ -36,6 +36,11 @@ interface BlingAccount {
   isActive: boolean;
   expiresAt: string;
   lastSyncAt: string | null;
+  tokenFormato: "jwt" | "opaco";
+  ultimaSincronizacaoProdutos: string | null;
+  ultimaSincronizacaoEstoque: string | null;
+  webhooksRecebidos24h: number;
+  webhooksComErro24h: number;
 }
 
 interface HistoricoItem {
@@ -61,7 +66,8 @@ export default function IntegracoesPage() {
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingML, setSyncingML] = useState(false);
-  const [syncingBling, setSyncingBling] = useState(false);
+  const [syncingBlingProdutos, setSyncingBlingProdutos] = useState(false);
+  const [syncingBlingEstoque, setSyncingBlingEstoque] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -115,9 +121,9 @@ export default function IntegracoesPage() {
     }
   };
 
-  const handleSyncBling = async () => {
+  const handleSyncBlingProdutos = async () => {
     if (!blingAccount) return;
-    setSyncingBling(true);
+    setSyncingBlingProdutos(true);
     try {
       const response = await fetch("/api/bling/produtos/importar", {
         method: "POST",
@@ -133,13 +139,42 @@ export default function IntegracoesPage() {
       }
 
       toast.success(
-        `Sincronização concluída! ${resultado.newItems} criados, ${resultado.updatedItems} atualizados`
+        `Produtos sincronizados! ${resultado.newItems} criados, ${resultado.updatedItems} atualizados`
       );
       loadData();
     } catch (error) {
-      toast.error("Erro ao sincronizar com o Bling");
+      toast.error("Erro ao sincronizar produtos do Bling");
     } finally {
-      setSyncingBling(false);
+      setSyncingBlingProdutos(false);
+    }
+  };
+
+  const handleSyncBlingEstoque = async () => {
+    if (!blingAccount) return;
+    setSyncingBlingEstoque(true);
+    try {
+      const response = await fetch("/api/produtos/estoque-bling", { method: "POST" });
+      if (!response.ok) throw new Error("Erro na sincronização");
+      const data = await response.json();
+      toast.success(
+        `Estoque sincronizado! ${data.stats.atualizados} divergência(s) corrigida(s)`
+      );
+      loadData();
+    } catch (error) {
+      toast.error("Erro ao sincronizar estoque do Bling");
+    } finally {
+      setSyncingBlingEstoque(false);
+    }
+  };
+
+  const handleReconectarBling = async () => {
+    try {
+      const response = await fetch("/api/bling/auth?action=connect");
+      if (!response.ok) throw new Error("Erro ao conectar Bling");
+      const data = await response.json();
+      window.location.href = data.authUrl;
+    } catch (error) {
+      toast.error("Erro ao iniciar reconexão com o Bling");
     }
   };
 
@@ -273,11 +308,21 @@ export default function IntegracoesPage() {
             <div className="min-w-0 flex-1">
               <h2 className="text-[16px] font-semibold text-foreground">Bling</h2>
               <p className="mt-1 truncate text-xs text-faint">
-                {blingAccount ? "Conta conectada" : "Nenhuma conta conectada"}
+                {blingAccount
+                  ? `Token ${blingAccount.tokenFormato === "jwt" ? "JWT" : "opaco"}`
+                  : "Nenhuma conta conectada"}
               </p>
             </div>
-            <StatusPill tone={blingAccount ? "success" : "neutral"}>
-              {blingAccount ? "Conectado" : "Desconectado"}
+            <StatusPill
+              tone={
+                !blingAccount ? "neutral" : blingAccount.isActive ? "success" : "critical"
+              }
+            >
+              {!blingAccount
+                ? "Desconectado"
+                : blingAccount.isActive
+                ? "Conectado"
+                : "Reconexão necessária"}
             </StatusPill>
           </div>
           {blingAccount && (
@@ -288,14 +333,34 @@ export default function IntegracoesPage() {
                   {new Date(blingAccount.expiresAt).toLocaleDateString("pt-BR")}
                 </span>
               </div>
-              <div className="flex justify-between gap-4 py-2.5 text-sm">
-                <span className="text-muted-foreground">Última sincronização</span>
+              <div className="flex justify-between gap-4 border-b border-divider py-2.5 text-sm">
+                <span className="text-muted-foreground">Última sincronização de produtos</span>
                 <span className="font-medium text-foreground">
-                  {blingAccount.lastSyncAt || lastBlingSync
+                  {blingAccount.ultimaSincronizacaoProdutos || lastBlingSync
                     ? new Date(
-                        blingAccount.lastSyncAt || lastBlingSync!.quando
+                        blingAccount.ultimaSincronizacaoProdutos || lastBlingSync!.quando
                       ).toLocaleString("pt-BR")
                     : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4 border-b border-divider py-2.5 text-sm">
+                <span className="text-muted-foreground">Última sincronização de estoque</span>
+                <span className="font-medium text-foreground">
+                  {blingAccount.ultimaSincronizacaoEstoque
+                    ? new Date(blingAccount.ultimaSincronizacaoEstoque).toLocaleString("pt-BR")
+                    : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Webhooks (24h)</span>
+                <span className="font-medium text-foreground">
+                  {blingAccount.webhooksRecebidos24h} recebido(s)
+                  {blingAccount.webhooksComErro24h > 0 && (
+                    <span className="text-destructive">
+                      {" "}
+                      · {blingAccount.webhooksComErro24h} com erro
+                    </span>
+                  )}
                 </span>
               </div>
             </div>
@@ -303,14 +368,42 @@ export default function IntegracoesPage() {
           <div className="flex flex-wrap gap-2 p-5 pt-4">
             {blingAccount ? (
               <>
-                <Button size="sm" onClick={handleSyncBling} disabled={syncingBling} className="gap-2">
-                  {syncingBling ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
+                {blingAccount.isActive ? (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={handleSyncBlingProdutos}
+                      disabled={syncingBlingProdutos}
+                      className="gap-2"
+                    >
+                      {syncingBlingProdutos ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Sincronizar produtos
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSyncBlingEstoque}
+                      disabled={syncingBlingEstoque}
+                      className="gap-2"
+                    >
+                      {syncingBlingEstoque ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Sincronizar estoque
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" onClick={handleReconectarBling} className="gap-2">
                     <RefreshCw className="h-4 w-4" />
-                  )}
-                  Sincronizar agora
-                </Button>
+                    Reconectar
+                  </Button>
+                )}
                 <Button asChild size="sm" variant="outline" className="gap-2">
                   <Link href="/configuracoes-gerais">
                     <Settings className="h-4 w-4" />

@@ -5,6 +5,10 @@ import { BlingService, BlingReconnectError, BlingProduct } from "@/services/blin
 import { blingErrorResponse } from "@/lib/blingApi";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { normalizeSku } from "@/lib/sku";
+import {
+  aplicarEstoqueProdutoBling,
+  garantirArmazensParaDepositos,
+} from "@/services/blingProductSync";
 
 interface SyncDetail {
   sku: string;
@@ -100,30 +104,10 @@ export async function POST(request: NextRequest) {
       matched.push({ local, bling });
     }
 
-    const deposits = await BlingService.getDeposits(blingAccount.id);
-    const armazensExistentes = await prisma.armazem.findMany({
-      where: { userId: user.id },
-    });
-    const armazemPorDeposito = new Map(
-      armazensExistentes
-        .filter((a) => a.blingDepositoId)
-        .map((a) => [a.blingDepositoId as string, a])
+    const armazemPorDeposito = await garantirArmazensParaDepositos(
+      blingAccount.id,
+      user.id
     );
-
-    for (const deposit of deposits) {
-      const depositoId = String(deposit.id);
-      if (!armazemPorDeposito.has(depositoId)) {
-        const novoArmazem = await prisma.armazem.create({
-          data: {
-            userId: user.id,
-            nome: deposit.descricao,
-            blingDepositoId: depositoId,
-            tipo: "LOCAL",
-          },
-        });
-        armazemPorDeposito.set(depositoId, novoArmazem);
-      }
-    }
 
     const blingIds = matched.map((m) => m.bling.id);
     const stockItems = await BlingService.getStockForProducts(
@@ -161,62 +145,23 @@ export async function POST(request: NextRequest) {
           continue;
         }
 
-        for (const depositoSaldo of stock.depositos) {
-          const armazem = armazemPorDeposito.get(String(depositoSaldo.id));
-          if (!armazem) continue;
+        const resultadosDeposito = await aplicarEstoqueProdutoBling({
+          userId: user.id,
+          produtoLocalId: local.id,
+          depositosSaldo: stock.depositos,
+          armazemPorDeposito,
+          estoquesAtuais: local.estoques,
+        });
 
-          const quantidadeAnterior =
-            local.estoques.find((e) => e.armazemId === armazem.id)
-              ?.quantidade ?? 0;
-          const quantidadeNova = Math.round(depositoSaldo.saldoFisico);
-
-          if (quantidadeAnterior === quantidadeNova) {
-            detalhes.push({
-              sku: local.sku,
-              nome: local.nome,
-              armazem: armazem.nome,
-              quantidadeAnterior,
-              quantidadeNova,
-              status: "sem_mudanca",
-            });
-            continue;
-          }
-
-          await prisma.$transaction([
-            prisma.estoque.upsert({
-              where: {
-                produtoId_armazemId: {
-                  produtoId: local.id,
-                  armazemId: armazem.id,
-                },
-              },
-              update: { quantidade: quantidadeNova },
-              create: {
-                produtoId: local.id,
-                armazemId: armazem.id,
-                quantidade: quantidadeNova,
-              },
-            }),
-            prisma.estoqueMovimentacao.create({
-              data: {
-                userId: user.id,
-                produtoId: local.id,
-                armazemId: armazem.id,
-                quantidadeAnterior,
-                quantidadeNova,
-                origem: "SINCRONIZACAO_BLING",
-              },
-            }),
-          ]);
-
-          atualizados++;
+        for (const resultado of resultadosDeposito) {
+          if (resultado.mudou) atualizados++;
           detalhes.push({
             sku: local.sku,
             nome: local.nome,
-            armazem: armazem.nome,
-            quantidadeAnterior,
-            quantidadeNova,
-            status: "atualizado",
+            armazem: resultado.armazemNome,
+            quantidadeAnterior: resultado.quantidadeAnterior,
+            quantidadeNova: resultado.quantidadeNova,
+            status: resultado.mudou ? "atualizado" : "sem_mudanca",
           });
         }
       } catch (error) {

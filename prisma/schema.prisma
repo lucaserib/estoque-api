@@ -431,6 +431,22 @@ model BlingAccount {
   @@map("bling_accounts")
 }
 
+model BlingWebhookEvent {
+  id          String    @id @default(uuid())
+  eventId     String    @unique
+  event       String
+  companyId   String?
+  payload     Json
+  processado  Boolean   @default(false)
+  erro        String?
+  recebidoEm  DateTime  @default(now())
+  processadoEm DateTime?
+
+  @@index([companyId])
+  @@index([processado])
+  @@map("bling_webhook_events")
+}
+
 model BlingSyncHistory {
   id             String       @id @default(uuid())
   blingAccountId String

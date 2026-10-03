@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/bling-refresh",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/bling-sync",
+      "schedule": "30 6 * * *"
     }
   ]
 }

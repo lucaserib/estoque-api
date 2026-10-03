@@ -12,6 +12,10 @@ export interface BlingAccountSummary {
   createdAt: string;
   lastSyncAt: string | null;
   tokenFormato: "jwt" | "opaco";
+  ultimaSincronizacaoProdutos: string | null;
+  ultimaSincronizacaoEstoque: string | null;
+  webhooksRecebidos24h: number;
+  webhooksComErro24h: number;
 }
 
 export async function GET(request: NextRequest) {
@@ -31,6 +35,9 @@ export async function GET(request: NextRequest) {
           expiresAt: true,
           createdAt: true,
           accessToken: true,
+          blingCompanyId: true,
+          ultimaSincronizacaoProdutos: true,
+          ultimaSincronizacaoEstoque: true,
           syncHistories: {
             orderBy: { startedAt: "desc" },
             take: 1,
@@ -39,15 +46,33 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      const summaries: BlingAccountSummary[] = accounts.map(
-        ({ syncHistories, accessToken, ...account }) => ({
-          ...account,
-          expiresAt: account.expiresAt.toISOString(),
-          createdAt: account.createdAt.toISOString(),
-          lastSyncAt: (
-            syncHistories[0]?.completedAt ?? syncHistories[0]?.startedAt ?? null
-          )?.toString() ?? null,
-          tokenFormato: BlingService.detectTokenFormat(accessToken),
+      const desde24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+      const summaries: BlingAccountSummary[] = await Promise.all(
+        accounts.map(async ({ syncHistories, accessToken, blingCompanyId, ...account }) => {
+          const webhooks = blingCompanyId
+            ? await prisma.blingWebhookEvent.findMany({
+                where: { companyId: blingCompanyId, recebidoEm: { gte: desde24h } },
+                select: { erro: true },
+              })
+            : [];
+
+          return {
+            ...account,
+            expiresAt: account.expiresAt.toISOString(),
+            createdAt: account.createdAt.toISOString(),
+            ultimaSincronizacaoProdutos:
+              account.ultimaSincronizacaoProdutos?.toISOString() ?? null,
+            ultimaSincronizacaoEstoque:
+              account.ultimaSincronizacaoEstoque?.toISOString() ?? null,
+            lastSyncAt:
+              (
+                syncHistories[0]?.completedAt ?? syncHistories[0]?.startedAt ?? null
+              )?.toString() ?? null,
+            tokenFormato: BlingService.detectTokenFormat(accessToken),
+            webhooksRecebidos24h: webhooks.length,
+            webhooksComErro24h: webhooks.filter((w) => w.erro).length,
+          };
         })
       );
 

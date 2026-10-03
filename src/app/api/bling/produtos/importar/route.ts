@@ -4,11 +4,14 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { BlingService, BlingReconnectError } from "@/services/blingService";
 import { blingErrorResponse } from "@/lib/blingApi";
-import { resolverCustoProduto } from "@/lib/custo";
 import { normalizeSku } from "@/lib/sku";
-import { stringToBigIntEAN } from "@/utils/ean";
-import { rehostTemporaryImage } from "@/lib/blingImageHost";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import {
+  aplicarDetalheProdutoBling,
+  resolverFornecedorPrincipalBling,
+  sincronizarComponentesKitBling,
+  vincularFornecedorProdutoBling,
+} from "@/services/blingProductSync";
 
 const importarSchema = z.object({
   accountId: z.string().min(1, "ID da conta Bling não fornecido"),
@@ -23,93 +26,6 @@ interface LocalProdutoResumo {
 
 function formatarDataBling(data: Date): string {
   return data.toISOString().slice(0, 19).replace("T", " ");
-}
-
-async function resolverFornecedorPrincipal(
-  accountId: string,
-  blingProdutoId: number,
-  userId: string
-): Promise<{
-  fornecedorId: string | null;
-  precoCusto: number | null;
-}> {
-  const fornecedores = await BlingService.getProductSuppliers(
-    accountId,
-    blingProdutoId
-  );
-  const padrao = fornecedores.find((f) => f.padrao) ?? fornecedores[0];
-  if (!padrao) {
-    return { fornecedorId: null, precoCusto: null };
-  }
-
-  const contato = await BlingService.getContact(
-    accountId,
-    padrao.fornecedor.id
-  );
-
-  const fornecedor = await prisma.fornecedor.upsert({
-    where: {
-      userId_blingContatoId: {
-        userId,
-        blingContatoId: String(contato.id),
-      },
-    },
-    update: { nome: contato.nome, cnpj: contato.numeroDocumento },
-    create: {
-      userId,
-      nome: contato.nome,
-      cnpj: contato.numeroDocumento,
-      blingContatoId: String(contato.id),
-    },
-  });
-
-  return {
-    fornecedorId: fornecedor.id,
-    precoCusto: padrao.precoCompra ?? padrao.precoCusto ?? null,
-  };
-}
-
-async function vincularFornecedorProduto(
-  produtoId: string,
-  fornecedorId: string,
-  precoCusto: number,
-  codigo: string | undefined
-): Promise<void> {
-  const precoCentavos = Math.round(precoCusto * 100);
-
-  const vinculoExistente = await prisma.produtoFornecedor.findFirst({
-    where: { produtoId, fornecedorId },
-  });
-
-  if (vinculoExistente) {
-    await prisma.produtoFornecedor.update({
-      where: { id: vinculoExistente.id },
-      data: {
-        preco: precoCentavos,
-        precoUnitario: precoCentavos,
-        codigoNoFornecedor: codigo,
-        principal: true,
-      },
-    });
-  } else {
-    await prisma.produtoFornecedor.create({
-      data: {
-        produtoId,
-        fornecedorId,
-        preco: precoCentavos,
-        precoUnitario: precoCentavos,
-        multiplicador: 1,
-        codigoNF: codigo ?? null,
-        codigoNoFornecedor: codigo,
-        principal: true,
-      },
-    });
-  }
-
-  await prisma.produtoFornecedor.updateMany({
-    where: { produtoId, fornecedorId: { not: fornecedorId } },
-    data: { principal: false },
-  });
 }
 
 async function processarImportacao(
@@ -171,109 +87,43 @@ async function processarImportacao(
         const existente = existentePorBlingId ?? existentePorSku ?? null;
 
         const detalhe = await BlingService.getProductById(accountId, resumo.id);
-        const ean = stringToBigIntEAN(
-          BlingService.extractEAN(detalhe) ?? undefined
-        );
-        const isKit = BlingService.isKit(detalhe);
 
-        const { fornecedorId, precoCusto: precoCustoFornecedor } =
-          await resolverFornecedorPrincipal(accountId, resumo.id, userId);
+        const { fornecedorId, precoCusto: precoCustoFornecedor, codigo } =
+          await resolverFornecedorPrincipalBling(accountId, resumo.id, userId);
 
-        const resultadoCusto = isKit
-          ? { custoMedio: null, custoOrigem: null, preservado: false }
-          : await resolverCustoProduto({
-              produtoId: existente?.id,
-              sku,
-              userId,
-              precoCustoFornecedorPadraoBling: precoCustoFornecedor,
-              precoCustoProdutoBling: detalhe.precoCusto,
-            });
+        const { produtoId, criado } = await aplicarDetalheProdutoBling({
+          userId,
+          sku,
+          blingIdStr,
+          detalhe,
+          existenteId: existente?.id ?? null,
+          precoCustoFornecedorPadraoBling: precoCustoFornecedor,
+        });
 
-        const imagemInfo = BlingService.extractImageInfo(detalhe);
-        let imagemUrl = imagemInfo?.url ?? null;
-        if (imagemInfo?.temporaria) {
-          imagemUrl =
-            (await rehostTemporaryImage(imagemInfo.url, sku)) ?? imagemInfo.url;
-        }
-
-        const dadosComuns = {
-          nome: detalhe.nome,
-          ean,
-          marca: detalhe.marca ?? null,
-          pesoGramas: detalhe.pesoBruto
-            ? Math.round(detalhe.pesoBruto * 1000)
-            : null,
-          larguraCm: detalhe.dimensoes?.largura ?? null,
-          alturaCm: detalhe.dimensoes?.altura ?? null,
-          comprimentoCm: detalhe.dimensoes?.profundidade ?? null,
-          precoVenda: detalhe.preco ? Math.round(detalhe.preco * 100) : null,
-          precoOrigem: detalhe.preco ? ("BLING" as const) : null,
-          blingId: blingIdStr,
-          isKit,
-          ativo: BlingService.isProductActive(detalhe),
-          ...(imagemUrl ? { imagemUrl } : {}),
-          ...(resultadoCusto.preservado
-            ? {}
-            : {
-                custoMedio: resultadoCusto.custoMedio,
-                custoOrigem: resultadoCusto.custoOrigem,
-                custoAtualizadoEm:
-                  resultadoCusto.custoMedio !== null ? new Date() : null,
-              }),
-        };
-
-        const produto = existente
-          ? await prisma.produto.update({
-              where: { id: existente.id },
-              data: dadosComuns,
-            })
-          : await prisma.produto.create({
-              data: { ...dadosComuns, sku, userId },
-            });
-
-        if (existente) {
-          atualizados++;
-        } else {
+        if (criado) {
           criados++;
-          porSku.set(sku, { id: produto.id, blingId: blingIdStr, sku });
-          porBlingId.set(blingIdStr, { id: produto.id, blingId: blingIdStr, sku });
+          porSku.set(sku, { id: produtoId, blingId: blingIdStr, sku });
+          porBlingId.set(blingIdStr, { id: produtoId, blingId: blingIdStr, sku });
+        } else {
+          atualizados++;
         }
 
         if (fornecedorId && precoCustoFornecedor) {
-          await vincularFornecedorProduto(
-            produto.id,
+          await vincularFornecedorProdutoBling(
+            produtoId,
             fornecedorId,
             precoCustoFornecedor,
-            undefined
+            codigo
           );
         }
 
-        if (isKit && detalhe.estrutura?.componentes) {
-          for (const componenteBling of detalhe.estrutura.componentes) {
-            const componenteLocal = porBlingId.get(
-              String(componenteBling.produto.id)
-            );
-            if (!componenteLocal) continue;
-
-            const vinculoExistente = await prisma.componente.findFirst({
-              where: { kitId: produto.id, produtoId: componenteLocal.id },
-            });
-
-            if (vinculoExistente) {
-              await prisma.componente.update({
-                where: { id: vinculoExistente.id },
-                data: { quantidade: componenteBling.quantidade },
-              });
-            } else {
-              await prisma.componente.create({
-                data: {
-                  kitId: produto.id,
-                  produtoId: componenteLocal.id,
-                  quantidade: componenteBling.quantidade,
-                },
-              });
-            }
-          }
+        if (BlingService.isKit(detalhe)) {
+          await sincronizarComponentesKitBling(
+            produtoId,
+            detalhe,
+            async (blingIdComponente) =>
+              porBlingId.get(blingIdComponente)?.id ?? null
+          );
         }
       } catch (produtoError) {
         erros.push(
