@@ -42,8 +42,6 @@ export async function POST(request: NextRequest) {
       throw new BlingReconnectError();
     }
 
-    const accessToken = await BlingService.getValidToken(blingAccount.id);
-
     const localProducts = await prisma.produto.findMany({
       where: {
         userId: user.id,
@@ -69,7 +67,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const blingProducts = await BlingService.getAllProducts(accessToken);
+    const blingProducts = await BlingService.getAllProducts(blingAccount.id);
 
     const blingDataMap = new Map<
       string,

@@ -110,3 +110,36 @@ Armazéns com "full" no nome: —
 ```
 
 Se houver armazém com "full" no nome, as Fases 2 e 5 precisam tratá-lo como `FULL_ML` no novo campo `Armazem.tipo` e excluí-lo da soma de estoque local — senão o estoque Full é contado em dobro (uma vez pelo saldo local desse armazém, outra pela chamada direta à API do ML).
+
+## Fase 1 — Bling: JWT e token à prova de corrida
+
+### O que foi feito
+
+1. `BLING_JWT_HEADER = { "enable-jwt": "1" }` aplicado em `exchangeCodeForTokens`, `refreshAccessToken` e em toda chamada autenticada via `apiFetch`/`rawFetch`. Confirmado por busca: o campo `enable-jwt` e seu uso em todas as requisições (não só `/oauth/token`) batem com a documentação oficial do Bling (verificado via busca na web antes de implementar — há integrações de terceiros com informação conflitante dizendo que o header só vale em `/oauth/token`, mas a doc oficial e o PROMPT-CICLO-6.md pedem explicitamente nos três pontos; segui a instrução explícita).
+2. Colunas `accessToken`/`refreshToken` de `BlingAccount` já são `String` sem `@db.VarChar`, que o Postgres mapeia como `text` — confirmado na Fase 0, nenhuma migração necessária.
+3. Refresh agora passa por `refreshWithLock`: dentro de `prisma.$transaction`, `SELECT pg_advisory_xact_lock(hashtext(accountId))`, relê a conta, só renova se ainda estiver na janela de 10 minutos e se o `refreshToken` não tiver sido trocado por outra instância nesse meio tempo, grava o novo token na mesma transação. Por cima, `coalescedRefresh` mantém o `Map<accountId, Promise>` em memória (mesmo padrão já usado no `MercadoLivreService` desde o Ciclo 5) para não duplicar chamadas dentro da mesma instância.
+4. Conta só é desativada (`isActive: false`) quando `refreshAccessToken` detecta `invalid_grant`. Qualquer outro erro (rede, 5xx, 429) vira `BlingTransientError` — novo tipo de erro — e a conta continua ativa.
+5. `apiFetch` agora recebe `accountId` em vez de `accessToken`: resolve o token internamente via `getValidToken`, e em 401 força uma renovação (`forceRefreshToken`, que ignora a janela de 10 minutos) e tenta de novo uma vez; se continuar 401, lança `BlingReconnectError`. Isso obrigou a trocar a assinatura de `getProducts`, `getProductById`, `getAllProducts`, `getProductsStock` e `updateProductStock` de `accessToken` para `accountId` — só dois call sites externos (`estoque-bling/route.ts` e `produtos/importar/route.ts`), ambos atualizados.
+6. `api/cron/bling-refresh`: antes renovava **todas** as contas ativas a cada execução; agora filtra só as que expiram nas próximas 12 h (`expiresAt <= now + 12h`) e espaça as chamadas a ~6,5 s cada (≤ 10/minuto), usando a mesma função com trava.
+7. `GET /api/bling/auth?action=accounts` devolve `tokenFormato: "jwt" | "opaco"` por conta (via `BlingService.detectTokenFormat`, que checa os três segmentos separados por ponto) — o token em si nunca sai do backend.
+8. OAuth com `state` assinado: novo módulo `src/lib/blingOAuthState.ts` gera um `state` aleatório (`crypto.randomBytes`), grava num cookie `httpOnly`/`secure`/`sameSite=lax` de 10 minutos junto com o `userId` e uma assinatura HMAC-SHA256 (chave `NEXTAUTH_SECRET`). O callback exige sessão válida (`verifyUser`), confere a assinatura e compara tanto o `state` quanto o `userId` do cookie contra o que veio da sessão/Bling (`crypto.timingSafeEqual` na comparação da assinatura). Callback passou a redirecionar para `/integracoes?bling=conectado` ou `/integracoes?bling_erro=<motivo>` (antes ia para `/produtos` sem nenhum parâmetro lido por ninguém no frontend — confirmado por `grep`, nenhuma tela lia `bling_connected`/`bling_error`, então essa troca não quebra nada hoje; a leitura desses parâmetros na tela de Integrações fica para a Fase 3, que já vai reconstruir o card com status real).
+9. Ao conectar, `BlingService.getCompanyId` chama `GET /empresas` e grava `blingCompanyId` na conta. Implementado como best-effort (`try/catch` retorna `null` em qualquer falha) porque não consegui confirmar com 100% de certeza o formato exato da resposta desse endpoint específico sem acesso à conta real — se falhar, a conexão Bling continua funcionando normalmente e `blingCompanyId` fica `null` até a próxima tentativa (a Fase 3, que depende desse campo para os webhooks, vai precisar confirmar isso com uma conta real antes de prosseguir).
+   **`@@unique([userId])` em `BlingAccount` NÃO foi adicionado.** O item pede para remover duplicatas antes — não há `DATABASE_URL` neste ambiente para verificar se existem contas duplicadas por usuário. Adicionar essa constraint sem checar primeiro poderia falhar a migração em produção se houver duplicatas reais. Fica pendente: rodar `SELECT "userId", COUNT(*) FROM bling_accounts GROUP BY "userId" HAVING COUNT(*) > 1` contra o banco real, resolver duplicatas se houver, e só então adicionar a constraint numa migração separada.
+10. Testes em `src/services/__tests__/blingService.test.ts` (6 testes): header presente nos três pontos (3 testes), duas chamadas concorrentes de `getValidToken` geram uma única chamada a `/oauth/token` (testa a coalescência em memória — a trava `pg_advisory_xact_lock` em si não é testável sem um Postgres real, já que depende de concorrência entre conexões de banco de verdade), `invalid_grant` desativa a conta, erro 503 não desativa.
+
+### Migração
+
+`prisma/migrations/20261003150000_bling_company_id/migration.sql` — aditiva, só adiciona a coluna `blingCompanyId` (nullable) em `bling_accounts`.
+
+### Checks ao final da fase
+
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo.
+- `npm test`: 3 arquivos, 11 testes, todos passando (5 anteriores + 6 novos).
+- `npm run build`: não executado nesta fase (disco local ficou crítico durante a sessão; build completo fica para os pontos de maior risco ou para quando o ambiente tiver mais espaço livre).
+
+### Pendências desta fase para quem tiver acesso a produção/banco real
+
+- Verificar duplicatas de `BlingAccount` por `userId` e então adicionar `@@unique([userId])`.
+- Confirmar o formato real da resposta de `GET /empresas` com uma conta Bling de verdade (hoje é best-effort).
+- Reconectar o Bling em produção (novo fluxo de `state` assinado) e confirmar que a tela mostra o fluxo completo funcionando ponta a ponta — não dá para testar OAuth de verdade sem o client secret real e um navegador.

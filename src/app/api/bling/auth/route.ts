@@ -1,7 +1,9 @@
+import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { BlingService } from "@/services/blingService";
+import { buildBlingOAuthStateCookie } from "@/lib/blingOAuthState";
 
 export interface BlingAccountSummary {
   id: string;
@@ -9,6 +11,7 @@ export interface BlingAccountSummary {
   expiresAt: string;
   createdAt: string;
   lastSyncAt: string | null;
+  tokenFormato: "jwt" | "opaco";
 }
 
 export async function GET(request: NextRequest) {
@@ -27,6 +30,7 @@ export async function GET(request: NextRequest) {
           isActive: true,
           expiresAt: true,
           createdAt: true,
+          accessToken: true,
           syncHistories: {
             orderBy: { startedAt: "desc" },
             take: 1,
@@ -35,11 +39,17 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      const summaries = accounts.map(({ syncHistories, ...account }) => ({
-        ...account,
-        lastSyncAt:
-          syncHistories[0]?.completedAt ?? syncHistories[0]?.startedAt ?? null,
-      }));
+      const summaries: BlingAccountSummary[] = accounts.map(
+        ({ syncHistories, accessToken, ...account }) => ({
+          ...account,
+          expiresAt: account.expiresAt.toISOString(),
+          createdAt: account.createdAt.toISOString(),
+          lastSyncAt: (
+            syncHistories[0]?.completedAt ?? syncHistories[0]?.startedAt ?? null
+          )?.toString() ?? null,
+          tokenFormato: BlingService.detectTokenFormat(accessToken),
+        })
+      );
 
       return NextResponse.json(summaries);
     }
@@ -47,13 +57,20 @@ export async function GET(request: NextRequest) {
     if (action === "connect") {
       const user = await verifyUser(request);
 
-      const state = `${user.id}_${Date.now()}_${Math.random()
-        .toString(36)
-        .substring(7)}`;
-
+      const state = crypto.randomBytes(24).toString("hex");
       const authUrl = BlingService.getAuthorizationUrl(state);
+      const cookie = buildBlingOAuthStateCookie(state, user.id);
 
-      return NextResponse.json({ authUrl, state });
+      const response = NextResponse.json({ authUrl });
+      response.cookies.set(cookie.name, cookie.value, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        maxAge: cookie.maxAge,
+        path: "/",
+      });
+
+      return response;
     }
 
     return NextResponse.json({ error: "Ação inválida" }, { status: 400 });

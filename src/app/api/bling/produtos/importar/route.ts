@@ -69,8 +69,7 @@ export async function POST(request: NextRequest) {
     syncHistoryId = syncHistory.id;
 
     const startTime = Date.now();
-    const accessToken = await BlingService.getValidToken(accountId);
-    const blingProducts = await BlingService.getAllProducts(accessToken);
+    const blingProducts = await BlingService.getAllProducts(accountId);
 
     const resumo: ImportacaoBlingResumo = {
       criados: 0,
