@@ -1,6 +1,4 @@
-// src/app/api/mercadolivre/webhook/route.ts
-
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { prisma } from "@/lib/prisma";
 
@@ -8,7 +6,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // Validar estrutura do webhook do ML
     if (
       !body.resource ||
       !body.user_id ||
@@ -20,12 +17,12 @@ export async function POST(request: NextRequest) {
 
     const { resource, user_id, topic, application_id } = body;
 
-    // Encontrar conta ML correspondente
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         mlUserId: user_id.toString(),
         isActive: true,
       },
+      select: { id: true },
     });
 
     if (!account) {
@@ -35,28 +32,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Processar webhook
-    try {
-      await MercadoLivreService.processWebhook(account.id, {
-        resource,
-        user_id: user_id.toString(),
-        topic,
-        application_id: application_id.toString(),
-      });
+    after(async () => {
+      try {
+        await MercadoLivreService.processWebhook(account.id, {
+          resource,
+          user_id: user_id.toString(),
+          topic,
+          application_id: application_id.toString(),
+        });
+      } catch (error) {
+        console.error("[WEBHOOK] Erro ao processar em background:", error);
+      }
+    });
 
-      return NextResponse.json({
-        success: true,
-        message: "Webhook processado com sucesso",
-      });
-    } catch (error) {
-      console.error("Erro ao processar webhook:", error);
-
-      // Retornar 200 para evitar reenvios desnecessários do ML
-      return NextResponse.json(
-        { success: false, error: "Erro interno" },
-        { status: 200 }
-      );
-    }
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro na rota de webhook ML:", error);
     return NextResponse.json(
@@ -68,7 +57,6 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    // Endpoint para validação do webhook pelo ML
     const { searchParams } = new URL(request.url);
     const challenge = searchParams.get("challenge");
 

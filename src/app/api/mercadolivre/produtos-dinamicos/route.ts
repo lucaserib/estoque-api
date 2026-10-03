@@ -3,6 +3,7 @@ import { getToken } from "next-auth/jwt";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { prisma } from "@/lib/prisma";
 import { pickMlImageUrl } from "@/lib/imageUrl";
+import { fetchMlWithBackoff } from "@/lib/mlFetch";
 
 
 // Cache simples em memória com TTL de 3 minutos
@@ -172,7 +173,7 @@ export async function GET(request: Request) {
     while (offset < 200) {
       // Máximo 200 produtos (4 páginas)
       try {
-        const userItemsResponse = await fetch(
+        const userItemsResponse = await fetchMlWithBackoff(
           `https://api.mercadolibre.com/users/${account.mlUserId}/items/search?offset=${offset}&limit=${limit}`,
           {
             headers: { Authorization: `Bearer ${accessToken}` },
@@ -201,14 +202,14 @@ export async function GET(request: Request) {
 
     const produtos = [];
 
-    // Processar em lotes de 10 para não sobrecarregar a API
-    for (let i = 0; i < Math.min(50, allMLProducts.length); i += 10) {
-      const batch = allMLProducts.slice(i, i + 10);
+    const BATCH_SIZE = 5;
+    for (let i = 0; i < Math.min(50, allMLProducts.length); i += BATCH_SIZE) {
+      const batch = allMLProducts.slice(i, i + BATCH_SIZE);
 
       const batchPromises = batch.map(async (itemId) => {
         try {
           // Buscar dados básicos do item
-          const itemResponse = await fetch(
+          const itemResponse = await fetchMlWithBackoff(
             `https://api.mercadolibre.com/items/${itemId}`,
             {
               headers: { Authorization: `Bearer ${accessToken}` },
@@ -243,7 +244,7 @@ export async function GET(request: Request) {
           let promotionDiscount = 0;
 
           try {
-            const pricesResponse = await fetch(
+            const pricesResponse = await fetchMlWithBackoff(
               `https://api.mercadolibre.com/items/${itemId}/prices`,
               {
                 headers: { Authorization: `Bearer ${accessToken}` },

@@ -6,6 +6,7 @@ import { NotificationService } from "@/services/notificationService";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { pickMlImageUrl } from "@/lib/imageUrl";
 import { serializeWithEAN } from "@/utils/api";
+import { fetchMlWithBackoff } from "@/lib/mlFetch";
 
 export async function GET(request: NextRequest) {
   try {
@@ -105,7 +106,7 @@ export async function POST(request: NextRequest) {
       const errors: string[] = [];
 
 
-      const BATCH_SIZE = 8; // Processar 8 produtos por vez
+      const BATCH_SIZE = 5;
       const productBatches: string[][] = [];
 
       for (let i = 0; i < itemsResponse.results.length; i += BATCH_SIZE) {
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
               if (!originalPrice || originalPrice <= currentPrice) {
                 try {
 
-                  const pricesResponse = await fetch(
+                  const pricesResponse = await fetchMlWithBackoff(
                     `https://api.mercadolibre.com/items/${itemId}/prices`,
                     {
                       headers: { Authorization: `Bearer ${accessToken}` },

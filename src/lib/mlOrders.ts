@@ -31,6 +31,7 @@ const DEFAULT_MAX_ORDERS = 5000;
 const DEFAULT_PAGE_SIZE = 50;
 const DEFAULT_MAX_RETRIES = 3;
 const RETRY_BASE_DELAY_MS = 600;
+const ML_MAX_OFFSET = 10000;
 
 const delay = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -46,12 +47,13 @@ export async function fetchAllOrders({
 }: FetchAllOrdersOptions): Promise<FetchAllOrdersResult> {
   const orders: MLOrder[] = [];
   const failedOffsets: number[] = [];
+  const effectiveMaxOrders = Math.min(maxOrders, ML_MAX_OFFSET);
   let offset = 0;
   let hasMore = true;
   let truncated = false;
 
   while (hasMore) {
-    if (offset >= maxOrders) {
+    if (offset >= effectiveMaxOrders) {
       truncated = true;
       break;
     }

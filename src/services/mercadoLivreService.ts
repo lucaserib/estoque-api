@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { NotificationService } from "@/services/notificationService";
 import { JsonValue } from "@prisma/client/runtime/library";
 import { pickMlImageUrl } from "@/lib/imageUrl";
+import { fetchMlWithBackoff } from "@/lib/mlFetch";
 import {
   MLAuthResponse,
   MLUserInfo,
@@ -37,6 +38,8 @@ export class MercadoLivreService {
     { verifier: string; timestamp: number }
   >();
 
+  private static tokenRefreshPromises = new Map<string, Promise<string>>();
+
   /**
    * Função auxiliar para tratar erros de resposta da API do ML
    */
@@ -71,6 +74,14 @@ export class MercadoLivreService {
     }
 
     throw new Error(errorMessage);
+  }
+
+  private static fetchWithBackoff(
+    url: string,
+    init: RequestInit,
+    maxRetries = 3
+  ): Promise<Response> {
+    return fetchMlWithBackoff(url, init, maxRetries);
   }
 
   // Validar configurações
@@ -400,7 +411,7 @@ export class MercadoLivreService {
     }
 
     // Usar multiget para obter item específico conforme documentação
-    const response = await fetch(`${this.BASE_URL}/items?ids=${itemId}`, {
+    const response = await this.fetchWithBackoff(`${this.BASE_URL}/items?ids=${itemId}`, {
       headers,
     });
 
@@ -599,8 +610,8 @@ export class MercadoLivreService {
           await this.processItemWebhook(accountId, resource);
           break;
 
-        // ✅ NOVO: Processar webhooks de pedidos para vendas em tempo real
         case "orders":
+        case "orders_v2":
           await this.processOrderWebhook(accountId, resource);
           break;
 
@@ -1114,7 +1125,7 @@ export class MercadoLivreService {
     const startTime = Date.now();
 
     try {
-      const response = await fetch(url, {
+      const response = await this.fetchWithBackoff(url, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: "application/json",
@@ -1192,25 +1203,47 @@ export class MercadoLivreService {
    * Obtém ou renova token válido para uma conta
    */
   static async getValidToken(accountId: string): Promise<string> {
-
     const account = await prisma.mercadoLivreAccount.findUniqueOrThrow({
       where: { id: accountId },
     });
 
-
-    // Se o token ainda não expirou, retorna o atual
     if (account.expiresAt > new Date()) {
       return account.accessToken;
     }
 
+    const inFlightRefresh = this.tokenRefreshPromises.get(accountId);
+    if (inFlightRefresh) {
+      return inFlightRefresh;
+    }
 
-    // Renova o token
+    const refreshPromise = this.performTokenRefresh(accountId, account.refreshToken).finally(
+      () => this.tokenRefreshPromises.delete(accountId)
+    );
+    this.tokenRefreshPromises.set(accountId, refreshPromise);
+
+    return refreshPromise;
+  }
+
+  private static async performTokenRefresh(
+    accountId: string,
+    refreshTokenAtCallTime: string
+  ): Promise<string> {
+    const current = await prisma.mercadoLivreAccount.findUniqueOrThrow({
+      where: { id: accountId },
+    });
+
+    if (current.expiresAt > new Date()) {
+      return current.accessToken;
+    }
+
+    if (current.refreshToken !== refreshTokenAtCallTime) {
+      return current.accessToken;
+    }
+
     try {
-      const newTokens = await this.refreshAccessToken(account.refreshToken);
+      const newTokens = await this.refreshAccessToken(current.refreshToken);
 
-
-      // Atualiza no banco
-      await prisma.mercadoLivreAccount.update({
+      const updated = await prisma.mercadoLivreAccount.update({
         where: { id: accountId },
         data: {
           accessToken: newTokens.access_token,
@@ -1219,9 +1252,8 @@ export class MercadoLivreService {
         },
       });
 
-      return newTokens.access_token;
+      return updated.accessToken;
     } catch (error) {
-
       const deactivated = await prisma.mercadoLivreAccount.update({
         where: { id: accountId },
         data: { isActive: false },
@@ -1685,72 +1717,9 @@ export class MercadoLivreService {
     currency: string;
     lastUpdate: string;
   }> {
-    try {
-
-      // Obter informações básicas do usuário primeiro
-      const userInfo = await this.getUserInfo(accessToken);
-
-      // Determinar moeda baseada no país
-      const currency =
-        userInfo.country_id === "BR"
-          ? "BRL"
-          : userInfo.country_id === "AR"
-          ? "ARS"
-          : userInfo.country_id === "MX"
-          ? "MXN"
-          : "BRL";
-
-      // Tentar obter informações de vendas recentes para estimar valores
-      try {
-        const recentOrders = await this.getUserOrders(accessToken, {
-          seller: sellerId,
-          limit: 50,
-          status: "paid",
-        });
-
-        const totalRevenue = recentOrders.results.reduce((sum, order) => {
-          return sum + (order.total_amount || 0);
-        }, 0);
-
-        // Simular dados financeiros baseados em vendas recentes
-        const estimatedPending = totalRevenue * 0.1; // 10% pendente
-        const estimatedAvailable = totalRevenue * 0.8; // 80% disponível
-        const estimatedTotal = estimatedPending + estimatedAvailable;
-
-        return {
-          accountBalance: estimatedTotal,
-          pendingBalance: estimatedPending,
-          availableBalance: estimatedAvailable,
-          totalBalance: estimatedTotal,
-          currency,
-          lastUpdate: new Date().toISOString(),
-        };
-      } catch (orderError) {
-        console.warn(
-          "[DEBUG] Could not fetch orders for financial estimation:",
-          orderError
-        );
-        // Retornar valores padrão se não conseguir obter pedidos
-        return {
-          accountBalance: 0,
-          pendingBalance: 0,
-          availableBalance: 0,
-          totalBalance: 0,
-          currency,
-          lastUpdate: new Date().toISOString(),
-        };
-      }
-    } catch (error) {
-      console.error("Erro ao obter informações financeiras:", error);
-      return {
-        accountBalance: 0,
-        pendingBalance: 0,
-        availableBalance: 0,
-        totalBalance: 0,
-        currency: "BRL",
-        lastUpdate: new Date().toISOString(),
-      };
-    }
+    throw new Error(
+      "Saldo financeiro real não está disponível via API do Mercado Livre nesta integração"
+    );
   }
 
   /**
