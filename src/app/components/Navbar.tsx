@@ -8,6 +8,7 @@ import {
   Search,
   LogOut,
   ChevronDown,
+  User,
 } from "lucide-react";
 import { useLayout } from "../context/LayoutContext";
 import Link from "next/link";
@@ -15,6 +16,7 @@ import { signOut, useSession } from "next-auth/react";
 import { useRef, useState } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import NotificationsBell from "./NotificationsBell";
+import { UserAvatar } from "@/components/ui/user-avatar";
 
 const Navbar = () => {
   const { isDarkMode, toggleSidebar, toggleDarkMode } = useLayout();
@@ -62,15 +64,23 @@ const Navbar = () => {
 
           <div className="relative" ref={dropdownRef}>
             <div
-              className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 hover:bg-muted"
+              className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-muted"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             >
               {status === "loading" ? (
                 <div className="h-4 w-24 animate-pulse rounded bg-muted" />
               ) : (
-                <span className="text-[13px] font-medium text-foreground">
-                  {session?.user?.name || session?.user?.email || "Convidado"}
-                </span>
+                <>
+                  <UserAvatar
+                    name={session?.user?.name}
+                    email={session?.user?.email}
+                    image={session?.user?.image}
+                    size={28}
+                  />
+                  <span className="text-[13px] font-medium text-foreground">
+                    {session?.user?.name || session?.user?.email || "Convidado"}
+                  </span>
+                </>
               )}
               <ChevronDown
                 className={`h-4 w-4 text-faint transition-transform ${
@@ -80,10 +90,26 @@ const Navbar = () => {
             </div>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 z-50 mt-2 w-48 rounded-lg border border-border bg-card shadow-lift">
+              <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg border border-border bg-card shadow-lift">
+                <div className="border-b border-border px-4 py-3">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {session?.user?.name || "Usuário"}
+                  </p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {session?.user?.email}
+                  </p>
+                </div>
+                <Link
+                  href="/perfil"
+                  className="flex items-center gap-2 px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  <User className="h-4 w-4" />
+                  Meu perfil
+                </Link>
                 <Link
                   href="/configuracoes-gerais"
-                  className="flex items-center gap-2 rounded-t-lg px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
+                  className="flex items-center gap-2 px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
                   onClick={() => setIsDropdownOpen(false)}
                 >
                   <Settings className="h-4 w-4" />

@@ -62,7 +62,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id;
         token.name = user.name;
@@ -75,6 +75,12 @@ export const authOptions: NextAuthOptions = {
         });
         token.role = dbUser?.role ?? "ADMIN";
       }
+
+      if (trigger === "update" && session) {
+        if (session.name !== undefined) token.name = session.name;
+        if (session.image !== undefined) token.image = session.image;
+      }
+
       return token;
     },
     async session({ session, token }) {
