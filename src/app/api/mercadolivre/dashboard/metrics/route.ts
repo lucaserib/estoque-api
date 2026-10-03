@@ -46,6 +46,7 @@ export async function GET(request: NextRequest) {
           id: true,
           mlItemId: true,
           mlStatus: true,
+          mlPrice: true,
           mlAvailableQuantity: true,
           mlSoldQuantity: true,
           lastSyncAt: true,
@@ -70,6 +71,9 @@ export async function GET(request: NextRequest) {
       const pausedProducts = produtosML.filter(
         (p) => p.mlStatus === "paused"
       ).length;
+      const pausedValue = produtosML
+        .filter((p) => p.mlStatus === "paused")
+        .reduce((sum, p) => sum + p.mlPrice * p.mlAvailableQuantity, 0);
       const lowStockProducts = produtosML.filter(
         (p) => p.mlAvailableQuantity <= 5 && p.mlStatus === "active"
       ).length;
@@ -258,6 +262,7 @@ export async function GET(request: NextRequest) {
         totalProducts: produtosML.length,
         activeProducts,
         pausedProducts,
+        pausedValue,
         lowStockProducts,
         needsRestockProducts,
 
@@ -339,6 +344,9 @@ export async function GET(request: NextRequest) {
           .length,
         pausedProducts: produtosML.filter((p) => p.mlStatus === "paused")
           .length,
+        pausedValue: produtosML
+          .filter((p) => p.mlStatus === "paused")
+          .reduce((sum, p) => sum + p.mlPrice * p.mlAvailableQuantity, 0),
         lowStockProducts: produtosML.filter((p) => p.mlAvailableQuantity <= 5)
           .length,
         needsRestockProducts: 0,

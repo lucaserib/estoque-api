@@ -23,7 +23,6 @@ import {
   Timer,
   Activity,
   Settings,
-  Play,
   Pause,
   BarChart,
   Loader2,
@@ -33,10 +32,10 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface AutoSyncStats {
-  synced?: number;
-  error?: number;
-  ignored?: number;
-  pending?: number;
+  healthy: number;
+  error: number;
+  needsSync: number;
+  total: number;
 }
 
 interface AutoSyncProps {
@@ -45,11 +44,16 @@ interface AutoSyncProps {
 
 export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
   const [isEnabled, setIsEnabled] = useState(true);
-  const [syncInterval, setSyncInterval] = useState<string>("15"); // minutos
+  const [syncInterval, setSyncInterval] = useState<string>("15");
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [lastSyncStatus, setLastSyncStatus] = useState<string | null>(null);
-  const [stats, setStats] = useState<AutoSyncStats>({});
-  const [staleProducts, setStaleProducts] = useState(0);
+  const [syncHealthPercentage, setSyncHealthPercentage] = useState(0);
+  const [stats, setStats] = useState<AutoSyncStats>({
+    healthy: 0,
+    error: 0,
+    needsSync: 0,
+    total: 0,
+  });
   const [isRunning, setIsRunning] = useState(false);
   const [loading, setLoading] = useState(true);
   const [intervalId, setIntervalId] = useState<NodeJS.Timeout | null>(null);
@@ -57,7 +61,6 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
   useEffect(() => {
     loadAutoSyncStats();
 
-    // Carregar configurações salvas
     const savedInterval = localStorage.getItem(`ml-sync-interval-${accountId}`);
     const savedEnabled = localStorage.getItem(`ml-sync-enabled-${accountId}`);
 
@@ -86,7 +89,6 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
       setIntervalId(id);
     }
 
-    // Salvar configurações
     localStorage.setItem(`ml-sync-interval-${accountId}`, syncInterval);
     localStorage.setItem(`ml-sync-enabled-${accountId}`, isEnabled.toString());
 
@@ -101,14 +103,21 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
   const loadAutoSyncStats = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/mercadolivre/auto-sync?accountId=${accountId}`);
+      const response = await fetch(
+        `/api/mercadolivre/sync/auto-stock?accountId=${accountId}`
+      );
       if (!response.ok) throw new Error('Erro ao carregar estatísticas');
 
       const data = await response.json();
-      setStats(data.stats || {});
-      setLastSync(data.lastSync);
-      setLastSyncStatus(data.lastSyncStatus);
-      setStaleProducts(data.staleProducts || 0);
+      setStats({
+        healthy: data.healthy || 0,
+        error: data.errorProducts || 0,
+        needsSync: data.needsSync || 0,
+        total: data.totalProducts || 0,
+      });
+      setLastSync(data.lastAutoSync || null);
+      setLastSyncStatus(data.lastSyncStatus || null);
+      setSyncHealthPercentage(data.syncHealthPercentage || 0);
     } catch (error) {
       console.error('Erro:', error);
       toast.error('Erro ao carregar dados de sincronização');
@@ -122,10 +131,10 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
 
     setIsRunning(true);
     try {
-      const response = await fetch('/api/mercadolivre/auto-sync', {
+      const response = await fetch('/api/mercadolivre/sync/auto-stock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountId, syncType: 'auto' }),
+        body: JSON.stringify({ accountId, syncAll: false }),
       });
 
       if (!response.ok) throw new Error('Erro na sincronização');
@@ -134,9 +143,9 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
 
       if (result.success) {
         toast.success(
-          `Sincronização concluída! ${result.syncedCount} produtos atualizados em ${result.duration}s`
+          `${result.updatedItems} produto(s) atualizados de ${result.totalProcessed} verificados`
         );
-        loadAutoSyncStats(); // Recarregar estatísticas
+        loadAutoSyncStats();
       } else {
         throw new Error(result.error || 'Erro desconhecido');
       }
@@ -148,24 +157,16 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
     }
   };
 
-  const getTotalProducts = () => {
-    return Object.values(stats).reduce((sum, count) => sum + (count || 0), 0);
-  };
-
-  const getSyncProgress = () => {
-    const total = getTotalProducts();
-    if (total === 0) return 0;
-    return Math.round(((stats.synced || 0) / total) * 100);
-  };
-
   const getStatusBadge = (status: string | null) => {
     switch (status) {
-      case 'synced':
+      case 'success':
         return <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" />Sucesso</Badge>;
+      case 'partial':
+        return <Badge variant="warning" className="gap-1"><AlertCircle className="h-3 w-3" />Parcial</Badge>;
       case 'error':
         return <Badge variant="destructive" className="gap-1"><AlertCircle className="h-3 w-3" />Erro</Badge>;
       default:
-        return <Badge variant="secondary">Desconhecido</Badge>;
+        return <Badge variant="secondary">Nunca sincronizado</Badge>;
     }
   };
 
@@ -199,7 +200,6 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
 
   return (
     <div className="space-y-6">
-      {/* Configurações */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -268,15 +268,13 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           )}
         </CardContent>
       </Card>
-
-      {/* Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Produtos Sincronizados</p>
-                <p className="text-2xl font-bold text-success">{stats.synced || 0}</p>
+                <p className="text-sm text-muted-foreground">Saudáveis</p>
+                <p className="text-2xl font-bold text-success">{stats.healthy}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-success" />
             </div>
@@ -288,7 +286,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Com Erro</p>
-                <p className="text-2xl font-bold text-destructive">{stats.error || 0}</p>
+                <p className="text-2xl font-bold text-destructive">{stats.error}</p>
               </div>
               <AlertCircle className="h-8 w-8 text-destructive" />
             </div>
@@ -299,10 +297,10 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Ignorados</p>
-                <p className="text-2xl font-bold text-muted-foreground">{stats.ignored || 0}</p>
+                <p className="text-sm text-muted-foreground">Precisam Sincronizar</p>
+                <p className="text-2xl font-bold text-warning">{stats.needsSync}</p>
               </div>
-              <Pause className="h-8 w-8 text-muted-foreground" />
+              <Clock className="h-8 w-8 text-warning" />
             </div>
           </CardContent>
         </Card>
@@ -311,16 +309,14 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-muted-foreground">Desatualizados</p>
-                <p className="text-2xl font-bold text-warning">{staleProducts}</p>
+                <p className="text-sm text-muted-foreground">Total Vinculados</p>
+                <p className="text-2xl font-bold">{stats.total}</p>
               </div>
-              <Clock className="h-8 w-8 text-warning" />
+              <BarChart className="h-8 w-8 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Status da Sincronização */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -343,17 +339,19 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           <div>
             <div className="flex justify-between items-center mb-2">
               <p className="text-sm text-muted-foreground">Progresso Geral</p>
-              <span className="text-sm font-medium">{getSyncProgress()}%</span>
+              <span className="text-sm font-medium">{syncHealthPercentage}%</span>
             </div>
-            <Progress value={getSyncProgress()} className="h-2" />
+            <Progress value={syncHealthPercentage} className="h-2" />
           </div>
 
-          {staleProducts > 0 && (
+          {stats.needsSync > 0 && (
             <Alert>
               <Timer className="h-4 w-4" />
               <AlertDescription>
-                {staleProducts} produto(s) precisam de atualização.
-                {isEnabled ? ` Próxima sincronização em ${syncInterval} minutos.` : ' Ative a sincronização automática.'}
+                {stats.needsSync} produto(s) precisam de atualização.
+                {isEnabled
+                  ? ` Próxima sincronização neste navegador em ${syncInterval} minutos, enquanto esta página ficar aberta.`
+                  : " Ative a sincronização automática ou use o botão \"Sincronizar Agora\"."}
               </AlertDescription>
             </Alert>
           )}
@@ -362,14 +360,12 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
             <div className="flex items-center gap-2 text-sm text-success">
               <Zap className="h-4 w-4" />
               <span>
-                Sincronização automática ativa - Intervalo: {syncInterval} minutos
+                Sincronização automática ativa neste navegador - intervalo: {syncInterval} minutos
               </span>
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Informações sobre Webhooks */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -389,8 +385,8 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
                 <li>Informações gerais dos produtos</li>
               </ul>
               <p className="mt-2 text-sm">
-                ✅ Os produtos vinculados são atualizados automaticamente via webhooks.<br/>
-                ⏰ A sincronização automática serve como backup e para produtos não vinculados.
+                Os produtos vinculados são atualizados automaticamente via webhooks.<br/>
+                A sincronização automática serve como backup e para produtos não vinculados.
               </p>
             </AlertDescription>
           </Alert>

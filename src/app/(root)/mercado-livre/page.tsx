@@ -28,6 +28,7 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import { formatBRL } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
 import MercadoLivreAutoSync from "@/app/components/MercadoLivreAutoSync";
 import MLDashboardMetrics from "@/app/components/MercadoLivre/MLDashboardMetrics";
@@ -490,6 +491,25 @@ export default function MercadoLivrePage() {
       )}
 
       {metrics && <MLDashboardMetrics metrics={metrics} />}
+
+      {metrics && metrics.pausedProducts > 0 && (
+        <Alert variant="warning">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between gap-4">
+            <span>
+              {metrics.pausedProducts} anúncio
+              {metrics.pausedProducts > 1 ? "s" : ""} pausado
+              {metrics.pausedProducts > 1 ? "s" : ""} —{" "}
+              {formatBRL(metrics.pausedValue)} em estoque parado.
+            </span>
+            <Link href="/mercado-livre/produtos?status=paused">
+              <Button variant="outline" size="sm">
+                Ver anúncios pausados
+              </Button>
+            </Link>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {salesDataPartial && (
         <PartialDataAlert onRetry={loadSalesData} retrying={loadingSales} />

@@ -25,8 +25,7 @@ interface MLProductsFiltersProps {
   onRefresh: () => void;
   loading: boolean;
   accountsCount: number;
-  totalProducts: number;
-  activeProducts: number;
+  statusCounts: Record<string, number>;
 }
 
 export default function MLProductsFilters({
@@ -43,9 +42,12 @@ export default function MLProductsFilters({
   onRefresh,
   loading,
   accountsCount,
-  totalProducts,
-  activeProducts,
+  statusCounts,
 }: MLProductsFiltersProps) {
+  const totalProducts = Object.values(statusCounts).reduce(
+    (sum, count) => sum + count,
+    0
+  );
   return (
     <div className="flex flex-wrap gap-4 mb-4">
       {/* Busca */}
@@ -102,6 +104,7 @@ export default function MLProductsFilters({
             <SelectItem value="active">Ativos</SelectItem>
             <SelectItem value="paused">Pausados</SelectItem>
             <SelectItem value="closed">Fechados</SelectItem>
+            <SelectItem value="under_review">Em Revisão</SelectItem>
           </SelectContent>
         </Select>
 
@@ -132,15 +135,51 @@ export default function MLProductsFilters({
         Atualizar
       </Button>
 
-      {/* Info de produtos */}
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <div>
-          <span className="font-medium">{totalProducts}</span> produtos
+          <span className="font-medium text-foreground">{totalProducts}</span>{" "}
+          anúncios
         </div>
-        <div>
-          <span className="font-medium text-success">{activeProducts}</span>{" "}
+        <button
+          type="button"
+          onClick={() => setStatusFilter("active")}
+          className="hover:text-success transition-colors"
+        >
+          <span className="font-medium text-success">
+            {statusCounts.active || 0}
+          </span>{" "}
           ativos
-        </div>
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter("paused")}
+          className="hover:text-warning transition-colors"
+        >
+          <span className="font-medium text-warning">
+            {statusCounts.paused || 0}
+          </span>{" "}
+          pausados
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter("closed")}
+          className="hover:text-destructive transition-colors"
+        >
+          <span className="font-medium text-destructive">
+            {statusCounts.closed || 0}
+          </span>{" "}
+          encerrados
+        </button>
+        <button
+          type="button"
+          onClick={() => setStatusFilter("under_review")}
+          className="hover:text-info transition-colors"
+        >
+          <span className="font-medium text-info">
+            {statusCounts.under_review || 0}
+          </span>{" "}
+          em revisão
+        </button>
         {accountsCount > 0 && (
           <div>
             <span className="font-medium">{accountsCount}</span> conta(s)

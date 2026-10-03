@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, RefreshCw, Package, Store } from "lucide-react";
@@ -9,7 +10,6 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { useMercadoLivreOptimized } from "@/hooks/useMercadoLivreOptimized";
 
-// ✅ NOVOS COMPONENTES COMPONENTIZADOS
 import MLProductsFilters from "@/app/components/MercadoLivre/MLProductsFilters";
 import MLProductsTable from "@/app/components/MercadoLivre/MLProductsTable";
 import MLProductLinkModal from "@/app/components/MercadoLivre/MLProductLinkModal";
@@ -72,15 +72,19 @@ interface MLAccount {
   isActive: boolean;
 }
 
-export default function MercadoLivreProdutosPage() {
+function MercadoLivreProdutosContent() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
   const [products, setProducts] = useState<MLProduct[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<MLProduct[]>([]);
   const [localProducts, setLocalProducts] = useState<LocalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("active"); // ✅ PADRÃO: Anúncios ativos
+  const [statusFilter, setStatusFilter] = useState<string>(
+    searchParams.get("status") || "all"
+  );
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [stockFilter, setStockFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("sales"); // ✅ PADRÃO: Mais vendidos
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -106,6 +110,7 @@ export default function MercadoLivreProdutosPage() {
     if (selectedAccount) {
       loadProducts();
       loadLocalProducts();
+      loadStatusCounts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recarrega somente quando a conta selecionada muda
   }, [selectedAccount]);
@@ -250,6 +255,37 @@ export default function MercadoLivreProdutosPage() {
     }
   };
 
+  const loadStatusCounts = async () => {
+    if (!selectedAccount) return;
+
+    try {
+      const params = new URLSearchParams({
+        accountId: selectedAccount,
+        sortBy: "title",
+        sortOrder: "asc",
+        status: "all",
+        stock: "all",
+      });
+
+      const response = await fetch(
+        `/api/mercadolivre/produtos?${params.toString()}`,
+        { credentials: "include" }
+      );
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      setStatusCounts({
+        active: data.summary?.active || 0,
+        paused: data.summary?.paused || 0,
+        closed: data.summary?.closed || 0,
+        under_review: data.summary?.underReview || 0,
+      });
+    } catch (error) {
+      console.error("Erro ao carregar contadores de status:", error);
+    }
+  };
+
   const handleSortChange = (newSortBy: string) => {
     if (sortBy === newSortBy) {
       // Toggle sort order se é o mesmo campo
@@ -280,7 +316,8 @@ export default function MercadoLivreProdutosPage() {
       toast.success(
         `Sincronização concluída! ${result.syncedCount} produtos atualizados`
       );
-      loadProducts(true); // ✅ Com toast após sincronização
+      loadProducts(true);
+      loadStatusCounts();
     } catch (error) {
       console.error("Erro:", error);
       toast.error("Erro na sincronização");
@@ -410,10 +447,7 @@ export default function MercadoLivreProdutosPage() {
             onRefresh={() => loadProducts(true)}
             loading={loading}
             accountsCount={accounts.length}
-            totalProducts={products.length}
-            activeProducts={
-              products.filter((p) => p.mlStatus === "active").length
-            }
+            statusCounts={statusCounts}
           />
         </CardContent>
       </Card>
@@ -443,5 +477,13 @@ export default function MercadoLivreProdutosPage() {
         loading={linking}
       />
     </div>
+  );
+}
+
+export default function MercadoLivreProdutosPage() {
+  return (
+    <Suspense fallback={null}>
+      <MercadoLivreProdutosContent />
+    </Suspense>
   );
 }

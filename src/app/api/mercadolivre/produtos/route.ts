@@ -490,6 +490,9 @@ export async function GET(request: NextRequest) {
         total: products.length,
         active: products.filter((p) => p.mlStatus === "active").length,
         paused: products.filter((p) => p.mlStatus === "paused").length,
+        closed: products.filter((p) => p.mlStatus === "closed").length,
+        underReview: products.filter((p) => p.mlStatus === "under_review")
+          .length,
         lowStock: products.filter((p) => p.stockStatus === "low").length,
         outOfStock: products.filter((p) => p.stockStatus === "out").length,
         unlinked: products.filter((p) => p.stockStatus === "unlinked").length,

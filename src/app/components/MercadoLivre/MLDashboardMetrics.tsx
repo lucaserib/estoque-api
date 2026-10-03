@@ -79,7 +79,9 @@ export default function MLDashboardMetrics({
           title="Produtos Pausados"
           value={metrics.pausedProducts}
           subtitle={
-            metrics.pausedProducts > 0 ? "Reativar para vender" : undefined
+            metrics.pausedProducts > 0
+              ? `${formatBRL(metrics.pausedValue)} em estoque parado`
+              : undefined
           }
           icon={AlertCircle}
         />

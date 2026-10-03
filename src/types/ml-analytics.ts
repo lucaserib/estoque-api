@@ -54,6 +54,7 @@ export interface DashboardMetrics {
   totalProducts: number;
   activeProducts: number;
   pausedProducts: number;
+  pausedValue: number;
   lowStockProducts: number;
   needsRestockProducts: number;
   todaySales: number;
