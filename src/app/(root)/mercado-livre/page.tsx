@@ -28,10 +28,11 @@ import {
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
-import { formatBRL } from "@/lib/format";
+import { formatBRL, formatBRLReais, formatNumberBR } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
+import { HeroMetric } from "@/components/ui/hero-metric";
+import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
 import MercadoLivreAutoSync from "@/app/components/MercadoLivreAutoSync";
-import MLDashboardMetrics from "@/app/components/MercadoLivre/MLDashboardMetrics";
 import MLTopSellingProducts from "@/app/components/MercadoLivre/MLTopSellingProducts";
 import MLRestockSuggestions from "@/app/components/MercadoLivre/MLRestockSuggestions";
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
@@ -442,6 +443,42 @@ export default function MercadoLivrePage() {
 
   const currentAccount = accounts.find((acc) => acc.id === selectedAccount);
 
+  const statStripItems: StatStripItem[] = metrics
+    ? [
+        { label: "Vendas hoje", value: formatNumberBR(metrics.todaySales) },
+        {
+          label: "Pedidos pendentes",
+          value: formatNumberBR(metrics.pendingOrders),
+          note: metrics.pendingOrders > 0 ? "Requer atenção" : undefined,
+        },
+        {
+          label: "Produtos ativos",
+          value: formatNumberBR(metrics.activeProducts),
+          note: `de ${formatNumberBR(metrics.totalProducts)} total`,
+        },
+        {
+          label: "Estoque baixo",
+          value: formatNumberBR(metrics.lowStockProducts),
+          note: metrics.lowStockProducts > 0 ? "Precisa reposição" : undefined,
+        },
+        {
+          label: "Sugestões de reposição",
+          value: formatNumberBR(metrics.needsRestockProducts),
+        },
+        {
+          label: "Produtos pausados",
+          value: formatNumberBR(metrics.pausedProducts),
+          note:
+            metrics.pausedProducts > 0 ? formatBRL(metrics.pausedValue) : undefined,
+        },
+        {
+          label: "Saúde dos produtos",
+          value: `${metrics.productHealth.healthPercentage}%`,
+          note: `${metrics.productHealth.healthy} de ${metrics.productHealth.total} saudáveis`,
+        },
+      ]
+    : [];
+
   return (
     <div className="container mx-auto max-w-7xl p-6 space-y-6">
       <PageHeader
@@ -490,7 +527,18 @@ export default function MercadoLivrePage() {
         </Alert>
       )}
 
-      {metrics && <MLDashboardMetrics metrics={metrics} />}
+      {metrics && (
+        <>
+          <HeroMetric
+            label="Receita semanal"
+            value={formatBRLReais(metrics.totalRevenue)}
+            context={`Ticket médio: ${formatBRL(metrics.averageTicket)} · ${
+              metrics.weekSales
+            } itens vendidos na semana`}
+          />
+          <StatStrip items={statStripItems} />
+        </>
+      )}
 
       {metrics && metrics.pausedProducts > 0 && (
         <Alert variant="warning">

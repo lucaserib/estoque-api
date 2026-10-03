@@ -276,8 +276,12 @@ const TransferenciasPage = () => {
                 Nenhuma transferência registrada
               </h3>
               <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Não há transferências cadastradas. Use o botão &quot;Nova Transferência&quot; para começar.
+                Não há transferências cadastradas entre seus armazéns.
               </p>
+              <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+                <ArrowLeftRight className="h-4 w-4" />
+                Criar primeira transferência
+              </Button>
             </div>
           ) : (
             <DataTable>
