@@ -191,7 +191,7 @@ export async function POST(request: NextRequest) {
     const { accountId, completa } = parsed.data;
 
     const account = await prisma.blingAccount.findFirst({
-      where: { id: accountId, userId: user.id },
+      where: { id: accountId, userId: user.contaId },
     });
 
     if (!account) {
@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
     after(async () => {
       await processarImportacao(
         accountId,
-        user.id,
+        user.contaId,
         dataAlteracaoInicial,
         syncHistory.id
       );
@@ -252,7 +252,7 @@ export async function GET(request: NextRequest) {
     const syncHistory = await prisma.blingSyncHistory.findFirst({
       where: {
         id: syncHistoryId,
-        blingAccount: { userId: user.id },
+        blingAccount: { userId: user.contaId },
       },
     });
 

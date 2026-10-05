@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { verifyUser } from "@/helpers/verifyUser";
 import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
+import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 
 const ajustarSchema = z.object({
   produtoId: z.string().min(1),
@@ -14,6 +15,7 @@ const ajustarSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "ESTOQUE_AJUSTAR");
     const parsed = ajustarSchema.safeParse(await request.json());
 
     if (!parsed.success) {
@@ -26,8 +28,8 @@ export async function POST(request: NextRequest) {
     const { produtoId, armazemId, quantidade, observacao } = parsed.data;
 
     const [produto, armazem] = await Promise.all([
-      prisma.produto.findFirst({ where: { id: produtoId, userId: user.id } }),
-      prisma.armazem.findFirst({ where: { id: armazemId, userId: user.id } }),
+      prisma.produto.findFirst({ where: { id: produtoId, userId: user.contaId } }),
+      prisma.armazem.findFirst({ where: { id: armazemId, userId: user.contaId } }),
     ]);
 
     if (!produto) {
@@ -81,6 +83,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, estoque: estoqueAtualizado });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao ajustar estoque:", error);
     return NextResponse.json(
       { error: "Erro ao ajustar estoque" },

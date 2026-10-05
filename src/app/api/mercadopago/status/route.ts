@@ -6,7 +6,7 @@ import { isMercadoPagoConfigured } from "@/services/mercadoPagoService";
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
-    const subscription = await getOrCreateSubscription(user.id);
+    const subscription = await getOrCreateSubscription(user.contaId);
 
     return NextResponse.json({
       status: subscription.status,

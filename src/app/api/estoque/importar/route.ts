@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     const { linhas } = parsed.data;
 
     const produtos = await prisma.produto.findMany({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
       select: { id: true, sku: true },
     });
     const produtoPorSku = new Map(
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     );
 
     const armazens = await prisma.armazem.findMany({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
       select: { id: true, nome: true },
     });
     const armazemPorNome = new Map(
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
       if (!armazemId) {
         try {
           const novoArmazem = await prisma.armazem.create({
-            data: { nome: nomeArmazem, userId: user.id },
+            data: { nome: nomeArmazem, userId: user.contaId },
           });
           armazemId = novoArmazem.id;
           armazemPorNome.set(nomeArmazem.toLowerCase(), armazemId);

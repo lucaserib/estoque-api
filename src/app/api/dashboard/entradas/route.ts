@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
     const compras = await prisma.pedidoProduto.findMany({
       where: {
         pedido: {
-          userId: user.id,
+          userId: user.contaId,
           dataConclusao: { gte: startDate, lte: endDate },
         },
       },

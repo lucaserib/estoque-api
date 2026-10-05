@@ -25,7 +25,7 @@ export async function GET(
     const produto = await prisma.produto.findFirst({
       where: {
         id,
-        userId: user.id,
+        userId: user.contaId,
       },
       include: {
         estoques: {

@@ -77,7 +77,7 @@ export async function GET(
     const produto = await prisma.produto.findFirst({
       where: {
         id: produtoId,
-        userId: user.id,
+        userId: user.contaId,
       },
       include: {
         estoques: true,
@@ -104,7 +104,7 @@ export async function GET(
     // 2. Buscar configuração do produto (ou usar padrão)
     const config = await prisma.stockReplenishmentConfig.findFirst({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         produtoId: produtoId,
       },
     });
@@ -120,7 +120,7 @@ export async function GET(
     // 3. Buscar conta ativa do Mercado Livre
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         isActive: true,
       },
     });

@@ -1,13 +1,15 @@
 import NextAuth, { NextAuthOptions, Session } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import Credentials from "next-auth/providers/credentials";
-import { prisma } from "../../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
 
 declare module "next-auth/jwt" {
   interface JWT {
     role?: UserRole;
+    contaId?: string | null;
+    roleCheckedAt?: number;
   }
 }
 
@@ -63,17 +65,43 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, trigger, session }) {
+      const ROLE_RECHECK_INTERVAL_MS = 5 * 60 * 1000;
+
       if (user) {
         token.id = user.id;
         token.name = user.name;
         token.email = user.email;
         token.image = user.image;
 
-        const dbUser = await prisma.user.findUnique({
-          where: { email: user.email as string },
-          select: { role: true },
+        let dbUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { role: true, contaId: true },
         });
+
+        if (!dbUser && user.email) {
+          dbUser = await prisma.user.create({
+            data: { id: user.id, email: user.email, name: user.name || "Usuário" },
+            select: { role: true, contaId: true },
+          });
+        }
+
         token.role = dbUser?.role ?? "ADMIN";
+        token.contaId = dbUser?.contaId ?? null;
+        token.roleCheckedAt = Date.now();
+      } else if (
+        token.id &&
+        (!token.roleCheckedAt || Date.now() - token.roleCheckedAt > ROLE_RECHECK_INTERVAL_MS)
+      ) {
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true, contaId: true },
+        });
+
+        if (dbUser) {
+          token.role = dbUser.role;
+          token.contaId = dbUser.contaId;
+        }
+        token.roleCheckedAt = Date.now();
       }
 
       if (trigger === "update" && session) {
@@ -90,6 +118,7 @@ export const authOptions: NextAuthOptions = {
         email: token.email,
         image: token.image as string | null | undefined,
         role: token.role ?? "ADMIN",
+        contaId: token.contaId ?? (token.id as string),
       };
       return session;
     },

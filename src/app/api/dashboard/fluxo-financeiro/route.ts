@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const produtos = await prisma.pedidoProduto.findMany({
       where: {
         pedido: {
-          userId: user.id,
+          userId: user.contaId,
           dataConclusao: { gte: startDate, lte: endDate },
         },
       },
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     const saidas = await prisma.detalhesSaida.aggregate({
       where: {
         saida: {
-          userId: user.id,
+          userId: user.contaId,
           data: { gte: startDate, lte: endDate },
         },
       },
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     const custoSaidas = await prisma.detalhesSaida.findMany({
       where: {
         saida: {
-          userId: user.id,
+          userId: user.contaId,
           data: { gte: startDate, lte: endDate },
         },
       },
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     const saidasAnterior = await prisma.detalhesSaida.aggregate({
       where: {
         saida: {
-          userId: user.id,
+          userId: user.contaId,
           data: { gte: previousStartDate, lte: previousEndDate },
         },
       },

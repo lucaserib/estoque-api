@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     const armazem = await prisma.armazem.create({
-      data: { nome, userId: user.id },
+      data: { nome, userId: user.contaId },
     });
     return NextResponse.json(armazem, { status: 201 });
   } catch (error) {
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await verifyUser(req);
     const armazens = await prisma.armazem.findMany({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
     });
     return NextResponse.json(armazens, { status: 200 });
   } catch (error) {

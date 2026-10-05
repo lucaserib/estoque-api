@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "accounts") {
-      const accounts = await MercadoLivreService.getUserAccounts(user.id);
+      const accounts = await MercadoLivreService.getUserAccounts(user.contaId);
 
       const accountsWithDetails = await Promise.all(
         accounts.map(async (account) => {
@@ -123,6 +123,7 @@ export async function POST(request: NextRequest) {
 
 
     let userId: string;
+    let contaId: string;
 
     if (isFromNgrok) {
       userId = state;
@@ -138,9 +139,11 @@ export async function POST(request: NextRequest) {
           { status: 400 }
         );
       }
+      contaId = user.contaId ?? user.id;
     } else {
       const user = await verifyUser(request);
       userId = user.id;
+      contaId = user.contaId;
 
       if (state !== userId) {
         console.error(
@@ -164,7 +167,7 @@ export async function POST(request: NextRequest) {
       );
 
       const account = await MercadoLivreService.saveAccount(
-        userId,
+        contaId,
         authResponse,
         userInfo
       );
@@ -234,7 +237,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await MercadoLivreService.disconnectAccount(accountId, user.id);
+    await MercadoLivreService.disconnectAccount(accountId, user.contaId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

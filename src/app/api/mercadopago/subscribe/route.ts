@@ -9,6 +9,7 @@ import {
   isMercadoPagoConfigured,
   planToRecurringConfig,
 } from "@/services/mercadoPagoService";
+import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 
 const subscribeSchema = z.object({
   plan: z.enum(["MONTHLY", "ANNUAL"]),
@@ -17,6 +18,7 @@ const subscribeSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
 
     if (!isMercadoPagoConfigured()) {
       return NextResponse.json(
@@ -34,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { plan } = parsed.data;
-    const subscription = await getOrCreateSubscription(user.id);
+    const subscription = await getOrCreateSubscription(user.contaId);
 
     if (subscription.status === "ACTIVE") {
       return NextResponse.json(
@@ -53,11 +55,11 @@ export async function POST(request: NextRequest) {
       frequency: recurring.frequency,
       frequencyType: recurring.frequencyType,
       backUrl: `${origin}/assinatura`,
-      externalReference: user.id,
+      externalReference: user.contaId,
     });
 
     await prisma.subscription.update({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
       data: {
         plan,
         mpPreapprovalId: preapproval.id,
@@ -67,6 +69,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ checkoutUrl: preapproval.init_point });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     if (error instanceof MercadoPagoNotConfiguredError) {
       return NextResponse.json({ error: error.message }, { status: 503 });
     }

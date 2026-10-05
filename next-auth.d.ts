@@ -9,9 +9,10 @@ declare module "next-auth" {
     email?: string | null;
     image?: string | null;
     role?: UserRole;
+    contaId?: string | null;
   }
 
   interface Session {
-    user: User & { role: UserRole };
+    user: User & { role: UserRole; contaId: string };
   }
 }

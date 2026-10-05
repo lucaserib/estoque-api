@@ -4,6 +4,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { BlingService } from "@/services/blingService";
 import { buildBlingOAuthStateCookie } from "@/lib/blingOAuthState";
+import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 
 export interface BlingAccountSummary {
   id: string;
@@ -25,9 +26,10 @@ export async function GET(request: NextRequest) {
 
     if (action === "accounts") {
       const user = await verifyUser(request);
+      exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
 
       const accounts = await prisma.blingAccount.findMany({
-        where: { userId: user.id },
+        where: { userId: user.contaId },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,
@@ -81,6 +83,7 @@ export async function GET(request: NextRequest) {
 
     if (action === "connect") {
       const user = await verifyUser(request);
+      exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
 
       const state = crypto.randomBytes(24).toString("hex");
       const authUrl = BlingService.getAuthorizationUrl(state);
@@ -100,6 +103,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ error: "Ação inválida" }, { status: 400 });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro na autenticação Bling:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
@@ -111,6 +117,7 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
 
@@ -124,7 +131,7 @@ export async function DELETE(request: NextRequest) {
     const account = await prisma.blingAccount.findFirst({
       where: {
         id: accountId,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 
@@ -144,6 +151,9 @@ export async function DELETE(request: NextRequest) {
       message: "Conta Bling desconectada com sucesso",
     });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao desconectar conta Bling:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verificar se a conta ML pertence ao usuário
-    if (mlProduct.mercadoLivreAccount.userId !== user.id) {
+    if (mlProduct.mercadoLivreAccount.userId !== user.contaId) {
       return NextResponse.json(
         { error: "Sem permissão para este produto ML" },
         { status: 403 }
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     const localProduct = await prisma.produto.findFirst({
       where: {
         id: localProductId,
-        userId: user.id,
+        userId: user.contaId,
       },
       include: {
         estoques: true,

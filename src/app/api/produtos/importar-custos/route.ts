@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const { linhas } = parsed.data;
 
     const produtos = await prisma.produto.findMany({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
       select: { id: true, sku: true },
     });
     const produtoPorSku = new Map(

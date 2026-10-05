@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   try {
     const user = await verifyUser(req);
     const armazens = await prisma.armazem.findMany({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
     });
     return NextResponse.json(armazens, { status: 200 });
   } catch (error) {
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     const armazem = await prisma.armazem.findFirst({
       where: {
         id: armazemId,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 
@@ -106,7 +106,7 @@ export async function PUT(request: NextRequest) {
     const armazem = await prisma.armazem.findFirst({
       where: {
         id: armazemId,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 
@@ -179,7 +179,7 @@ export async function DELETE(request: NextRequest) {
     const armazem = await prisma.armazem.findFirst({
       where: {
         id: armazemId,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 

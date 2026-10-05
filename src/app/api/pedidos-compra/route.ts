@@ -2,10 +2,11 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "../../../../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { Prisma, PedidoCompra } from "@prisma/client";
 import { serializeWithEAN } from "@/utils/api";
 import { NotificationService } from "@/services/notificationService";
+import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
@@ -86,6 +87,7 @@ interface RequestBodyDelete {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "PEDIDOS_COMPRA_EDITAR");
     const body: RequestBodyPost = await request.json();
     const { fornecedorId, produtos, comentarios, dataPrevista } = body;
 
@@ -107,7 +109,7 @@ export async function POST(request: NextRequest) {
 
     const pedido = await prisma.pedidoCompra.create({
       data: {
-        userId: user.id,
+        userId: user.contaId,
         fornecedorId,
         comentarios,
         status: "pendente",
@@ -133,6 +135,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(serializeWithEAN(pedido), { status: 201 });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao criar pedido de compra:", error);
     return NextResponse.json(
       { error: "Erro ao criar pedido de compra" },
@@ -149,6 +154,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
+    exigirVisualizacao(session.user.role, "PEDIDOS_COMPRA_VER");
+
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get("status");
     const startDate = searchParams.get("startDate");
@@ -157,7 +164,7 @@ export async function GET(request: NextRequest) {
 
     const baseQuery: Prisma.PedidoCompraFindManyArgs = {
       where: {
-        userId: session.user.id,
+        userId: session.user.contaId,
         ...(status && { status: status }),
         ...(fornecedorId && { fornecedorId: fornecedorId }),
       },
@@ -257,6 +264,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(serializeWithEAN(pedidosWithProducts));
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao buscar pedidos:", error);
     return NextResponse.json(
       { error: "Erro ao buscar pedidos" },
@@ -268,6 +278,7 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "PEDIDOS_COMPRA_EDITAR");
     const body: RequestBodyPut = await request.json();
     const { pedidoId, armazemId, produtosRecebidos, comentarios } = body;
 
@@ -312,7 +323,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (pedidoExiste.userId !== user.id) {
+    if (pedidoExiste.userId !== user.contaId) {
       return NextResponse.json(
         { error: "Não autorizado a modificar este pedido" },
         { status: 403 }
@@ -397,7 +408,7 @@ export async function PUT(request: NextRequest) {
     if (produtosNaoRecebidos.length > 0) {
       const novoPedido = await prisma.pedidoCompra.create({
         data: {
-          userId: user.id,
+          userId: user.contaId,
           fornecedorId: pedidoExiste.fornecedorId,
           comentarios: `Produtos não recebidos do pedido #${pedidoExiste.id}`,
           status: "pendente",
@@ -445,6 +456,9 @@ export async function PUT(request: NextRequest) {
       novoPedidoId,
     });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao confirmar pedido:", error);
     return NextResponse.json(
       { error: "Erro ao confirmar pedido e atualizar estoque" },
@@ -456,6 +470,7 @@ export async function PUT(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "PEDIDOS_COMPRA_EDITAR");
     const body: RequestBodyDelete = await request.json();
     const { pedidoId } = body;
 
@@ -477,7 +492,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    if (pedido.userId !== user.id) {
+    if (pedido.userId !== user.contaId) {
       return NextResponse.json(
         { error: "Não autorizado a excluir este pedido" },
         { status: 403 }
@@ -493,6 +508,9 @@ export async function DELETE(request: NextRequest) {
       pedidoId,
     });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao deletar pedido:", error);
     return NextResponse.json(
       { error: "Erro ao deletar pedido" },

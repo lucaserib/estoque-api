@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { prisma } from "@/lib/prisma";
 import { pickMlImageUrl } from "@/lib/imageUrl";
 import { fetchMlWithBackoff } from "@/lib/mlFetch";
+import { verifyUser } from "@/helpers/verifyUser";
 
 
 // Cache simples em memória com TTL de 3 minutos
@@ -52,65 +52,13 @@ function getCache(key: string): CachedResult | null {
   return cached.data;
 }
 
-// ✅ HELPER: Verificar usuário para API routes
-async function verifyUserForAPI(request: Request) {
-  try {
-
-    // Criar um NextRequest simulado para getToken
-    const url = new URL(request.url);
-    const headers = new Headers(request.headers);
-
-    // Detectar se é HTTPS
-    const isSecure =
-      url.protocol === "https:" || headers.get("x-forwarded-proto") === "https";
-
-    const token = await getToken({
-      req: request as unknown as NextRequest, // Next.js pode lidar com Request regular
-      secret: process.env.NEXTAUTH_SECRET,
-      secureCookie: isSecure,
-      cookieName: isSecure
-        ? "__Secure-next-auth.session-token"
-        : "next-auth.session-token",
-    });
-
-    if (!token || !token.id) {
-      throw new Error("Token inválido ou ausente");
-    }
-
-    const userId = token.id as string;
-
-    // Verificar/criar usuário no banco
-    let user = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      if (!token.email) {
-        throw new Error("Email necessário para criar usuário");
-      }
-
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          email: token.email,
-          name: token.name || "Usuário",
-        },
-      });
-    }
-
-    return user;
-  } catch (error) {
-    throw error;
-  }
-}
-
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
 
     // Verificar autenticação
     let user;
     try {
-      user = await verifyUserForAPI(request);
+      user = await verifyUser(request);
     } catch (authError) {
       return NextResponse.json(
         { success: false, error: "Acesso não autorizado. Token ausente." },
@@ -152,7 +100,7 @@ export async function GET(request: Request) {
 
     // Buscar conta do ML
     const account = await prisma.mercadoLivreAccount.findFirst({
-      where: { id: accountId, userId: user.id },
+      where: { id: accountId, userId: user.contaId },
     });
 
     if (!account) {

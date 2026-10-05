@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         isActive: true,
       },
     });

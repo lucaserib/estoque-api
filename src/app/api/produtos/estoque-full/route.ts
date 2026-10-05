@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     // Buscar conta ML ativa do usuário
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         isActive: true,
       },
     });

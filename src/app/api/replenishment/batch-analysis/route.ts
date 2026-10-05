@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     // 1. Buscar todos os produtos do usuário
     const produtos = await prisma.produto.findMany({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         isKit: false,
       },
       include: {
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
     // 2. Buscar conta ML ativa
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         isActive: true,
       },
     });
@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
         // Buscar configuração (ou usar padrão)
         const config = await prisma.stockReplenishmentConfig.findFirst({
           where: {
-            userId: user.id,
+            userId: user.contaId,
             produtoId: produto.id,
           },
         });

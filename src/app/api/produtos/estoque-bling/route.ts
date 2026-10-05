@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     const blingAccount = await prisma.blingAccount.findFirst({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
       orderBy: { createdAt: "desc" },
     });
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const localProducts = await prisma.produto.findMany({
-      where: { userId: user.id, isKit: false },
+      where: { userId: user.contaId, isKit: false },
       select: {
         id: true,
         sku: true,
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
 
     const armazemPorDeposito = await garantirArmazensParaDepositos(
       blingAccount.id,
-      user.id
+      user.contaId
     );
 
     const blingIds = matched.map((m) => m.bling.id);

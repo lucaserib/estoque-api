@@ -2,6 +2,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { prisma } from "@/lib/prisma";
+import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 
 
 interface TransferenciaItem {
@@ -19,6 +20,7 @@ interface RequestBody {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "ESTOQUE_AJUSTAR");
     const body: RequestBody = await request.json();
 
     const { armazemOrigemId, armazemDestinoId, observacoes, itens } = body;
@@ -38,11 +40,11 @@ export async function POST(request: NextRequest) {
     }
 
     const armazemOrigem = await prisma.armazem.findFirst({
-      where: { id: armazemOrigemId, userId: user.id },
+      where: { id: armazemOrigemId, userId: user.contaId },
     });
 
     const armazemDestino = await prisma.armazem.findFirst({
-      where: { id: armazemDestinoId, userId: user.id },
+      where: { id: armazemDestinoId, userId: user.contaId },
     });
 
     if (!armazemOrigem || !armazemDestino) {
@@ -61,7 +63,7 @@ export async function POST(request: NextRequest) {
         }
 
         const produto = await tx.produto.findFirst({
-          where: { id: produtoId, userId: user.id },
+          where: { id: produtoId, userId: user.contaId },
         });
 
         if (!produto) {
@@ -134,7 +136,7 @@ export async function POST(request: NextRequest) {
 
       const transferencia = await tx.transferenciaEstoque.create({
         data: {
-          userId: user.id,
+          userId: user.contaId,
           armazemOrigemId,
           armazemDestinoId,
           observacoes,
@@ -161,6 +163,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(serializeWithEAN(result), { status: 201 });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao realizar transferência:", error);
 
     const errorMessage =
@@ -177,7 +182,7 @@ export async function GET(request: NextRequest) {
     const user = await verifyUser(request);
 
     const transferencias = await prisma.transferenciaEstoque.findMany({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
       include: {
         armazemOrigem: true,
         armazemDestino: true,

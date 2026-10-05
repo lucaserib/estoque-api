@@ -34,6 +34,18 @@ export async function PATCH(
       return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
     }
 
+    const targetContaId = targetUser.contaId ?? targetUser.id;
+    if (targetContaId !== currentUser.contaId) {
+      return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
+    }
+
+    if (id === currentUser.contaId) {
+      return NextResponse.json(
+        { error: "Não é possível alterar o papel do dono da conta" },
+        { status: 400 }
+      );
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id },
       data: { role },

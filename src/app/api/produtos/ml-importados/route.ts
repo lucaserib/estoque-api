@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
     // Buscar produtos importados do ML
     const products = await prisma.produto.findMany({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         ProdutoMercadoLivre: {
           some: {}, // Tem vinculação com ML
         },
@@ -140,7 +140,7 @@ export async function PATCH(request: NextRequest) {
     const existingProduct = await prisma.produto.findFirst({
       where: {
         id: productId,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 

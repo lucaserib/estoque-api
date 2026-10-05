@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     // Buscar conta ML ativa do usuário
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         isActive: true,
       },
     });
@@ -124,10 +124,10 @@ export async function GET(request: NextRequest) {
     if (produtosComFull.length > 0) {
       const armazemFull =
         (await prisma.armazem.findFirst({
-          where: { userId: user.id, nome: FULL_ARMAZEM_NOME },
+          where: { userId: user.contaId, nome: FULL_ARMAZEM_NOME },
         })) ??
         (await prisma.armazem.create({
-          data: { nome: FULL_ARMAZEM_NOME, userId: user.id },
+          data: { nome: FULL_ARMAZEM_NOME, userId: user.contaId },
         }));
 
       for (const [produtoId, quantidade] of produtosComFull) {
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
             }),
             prisma.estoqueMovimentacao.create({
               data: {
-                userId: user.id,
+                userId: user.contaId,
                 produtoId,
                 armazemId: armazemFull.id,
                 quantidadeAnterior: estoqueAtual?.quantidade ?? 0,

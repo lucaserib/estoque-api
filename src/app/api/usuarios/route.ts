@@ -14,33 +14,34 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Acesso restrito a administradores" }, { status: 403 });
     }
 
-    const [users, invitations] = await Promise.all([
-      prisma.user.findMany({
-        select: {
-          id: true,
-          name: true,
-          email: true,
-          image: true,
-          role: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.invitation.findMany({
-        where: { status: "PENDING" },
-        select: {
-          id: true,
-          email: true,
-          role: true,
-          token: true,
-          expiresAt: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: "desc" },
-      }),
-    ]);
+    const membros = await prisma.user.findMany({
+      where: { OR: [{ id: currentUser.contaId }, { contaId: currentUser.contaId }] },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        image: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
 
-    return NextResponse.json({ users, invitations });
+    const membrosIds = membros.map((m) => m.id);
+
+    const invitations = await prisma.invitation.findMany({
+      where: { status: "PENDING", invitedById: { in: membrosIds } },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        expiresAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ users: membros, invitations });
   } catch (error) {
     console.error("Erro ao listar usuários:", error);
     return NextResponse.json({ error: "Erro ao listar usuários" }, { status: 500 });

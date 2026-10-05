@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
       by: ["produtoId"],
       where: {
         saida: {
-          userId: user.id,
+          userId: user.contaId,
           data: {
             gte: new Date(startDate),
             lte: new Date(endDate),

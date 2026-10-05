@@ -42,9 +42,11 @@ export async function GET(request: NextRequest) {
     }
 
     let userId: string;
+    let contaId: string;
     try {
       const user = await verifyUser(request);
       userId = user.id;
+      contaId = user.contaId;
     } catch (sessionError) {
       console.error("[BLING] Sessão inválida no callback:", sessionError);
       return redirectToIntegracoes(request, { bling_erro: "sessao_invalida" });
@@ -60,7 +62,7 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
     const existingAccount = await prisma.blingAccount.findFirst({
-      where: { userId },
+      where: { userId: contaId },
     });
 
     const account = existingAccount
@@ -75,7 +77,7 @@ export async function GET(request: NextRequest) {
         })
       : await prisma.blingAccount.create({
           data: {
-            userId,
+            userId: contaId,
             accessToken: tokens.access_token,
             refreshToken: tokens.refresh_token,
             expiresAt,

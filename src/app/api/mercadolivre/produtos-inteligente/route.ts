@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
     }
 
     const account = await prisma.mercadoLivreAccount.findFirst({
-      where: { id: accountId, userId: user.id },
+      where: { id: accountId, userId: user.contaId },
     });
     if (!account) {
       return NextResponse.json(
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
         orderBy: { lastSyncAt: "desc" },
       }),
       prisma.produto.findMany({
-        where: { userId: user.id },
+        where: { userId: user.contaId },
         select: { id: true, nome: true, sku: true },
       }),
     ]);
@@ -184,7 +184,7 @@ export async function POST(request: NextRequest) {
     }
 
     const account = await prisma.mercadoLivreAccount.findFirst({
-      where: { id: accountId, userId: user.id },
+      where: { id: accountId, userId: user.contaId },
     });
     if (!account) {
       return NextResponse.json(
@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
       }
       // Garantir que o produto local pertence ao usuário
       const local = await prisma.produto.findFirst({
-        where: { id: localProductId, userId: user.id },
+        where: { id: localProductId, userId: user.contaId },
       });
       if (!local) {
         return NextResponse.json(

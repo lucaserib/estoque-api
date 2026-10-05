@@ -4,17 +4,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { NotificationService } from "@/services/notificationService";
 import { prisma } from "@/lib/prisma";
+import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 
 
 async function notificarEstoquesCriticos(
-  userId: string,
-  armazemId: string
+  contaId: string,
+  armazemId: string,
+  notificarUserId: string
 ): Promise<void> {
   const criticos = await prisma.estoque.findMany({
     where: {
       armazemId,
       estoqueSeguranca: { not: null, gt: 0 },
-      produto: { userId },
+      produto: { userId: contaId },
     },
     include: { produto: { select: { id: true, nome: true } } },
   });
@@ -25,7 +27,7 @@ async function notificarEstoquesCriticos(
 
   for (const estoque of atingiramMinimo) {
     await NotificationService.notifyEstoqueCritico(
-      userId,
+      notificarUserId,
       estoque.produto.nome,
       estoque.produto.id
     );
@@ -48,6 +50,7 @@ interface RequestBody {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "ESTOQUE_AJUSTAR");
     const body: RequestBody = await request.json();
 
 
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest) {
     }
 
     const armazem = await prisma.armazem.findUnique({
-      where: { id: armazemId, userId: user.id },
+      where: { id: armazemId, userId: user.contaId },
     });
 
     if (!armazem) {
@@ -74,7 +77,7 @@ export async function POST(request: NextRequest) {
     const result = await prisma.$transaction(async (tx) => {
       const saida = await tx.saida.create({
         data: {
-          userId: user.id,
+          userId: user.contaId,
           armazemId: armazemId,
           data: new Date(),
         },
@@ -87,7 +90,7 @@ export async function POST(request: NextRequest) {
         const produtoInfo = (await tx.produto.findFirst({
           where: {
             id: produtoId,
-            userId: user.id,
+            userId: user.contaId,
           },
           include: isKit
             ? {
@@ -212,12 +215,15 @@ export async function POST(request: NextRequest) {
       return saidaCompleta;
     });
 
-    await notificarEstoquesCriticos(user.id, armazemId).catch((error) =>
+    await notificarEstoquesCriticos(user.contaId, armazemId, user.id).catch((error) =>
       console.error("Erro ao verificar estoques críticos:", error)
     );
 
     return NextResponse.json(serializeWithEAN(result), { status: 201 });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao registrar saída:", error);
 
     const errorMessage =
@@ -234,7 +240,7 @@ export async function GET(request: NextRequest) {
     const user = await verifyUser(request);
 
     const saidas = await prisma.saida.findMany({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
       include: {
         armazem: true,
         detalhes: {

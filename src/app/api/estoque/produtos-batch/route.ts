@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     const estoques = await prisma.estoque.findMany({
       where: {
         produtoId: { in: ids },
-        produto: { userId: user.id },
+        produto: { userId: user.contaId },
       },
       select: {
         produtoId: true,

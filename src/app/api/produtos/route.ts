@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeSku } from "@/lib/sku";
 import { normalizeImageUrl } from "@/lib/imageUrl";
 import { Prisma } from "@prisma/client";
+import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 
 const safeEANConversion = (ean: string | null): bigint | null => {
   if (!ean) return null;
@@ -122,7 +123,7 @@ export async function GET(req: NextRequest) {
       const produto = await prisma.produto.findUnique({
         where: {
           id,
-          userId: user.id,
+          userId: user.contaId,
         },
         include: produtoListInclude,
       });
@@ -139,7 +140,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const where: Prisma.ProdutoWhereInput = { userId: user.id };
+    const where: Prisma.ProdutoWhereInput = { userId: user.contaId };
 
     if (search) {
       where.OR = [
@@ -172,6 +173,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const user = await verifyUser(req);
+    exigirPermissao(user.role, "EDITAR_PRODUTO");
 
     const body = await req.json();
     const {
@@ -201,7 +203,7 @@ export async function POST(req: NextRequest) {
     const existingProduto = await prisma.produto.findFirst({
       where: {
         sku,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 
@@ -216,7 +218,7 @@ export async function POST(req: NextRequest) {
       // Criar um kit
       const novoKit = await prisma.produto.create({
         data: {
-          userId: user.id,
+          userId: user.contaId,
           nome,
           sku,
           ean: prepareBigIntEAN(ean),
@@ -259,7 +261,7 @@ export async function POST(req: NextRequest) {
       // Criar um produto simples
       const novoProduto = await prisma.produto.create({
         data: {
-          userId: user.id,
+          userId: user.contaId,
           nome,
           sku,
           ean: safeEANConversion(ean),
@@ -279,6 +281,9 @@ export async function POST(req: NextRequest) {
       });
     }
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao criar produto ou kit:", error);
     return new Response(
       JSON.stringify({ error: "Erro ao criar produto ou kit" }),
@@ -290,6 +295,7 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const user = await verifyUser(req);
+    exigirPermissao(user.role, "EDITAR_PRODUTO");
     const body = await req.json();
 
     const {
@@ -316,7 +322,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const produtoExistente = await prisma.produto.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: user.contaId },
     });
 
     if (!produtoExistente) {
@@ -330,7 +336,7 @@ export async function PUT(req: NextRequest) {
 
     if (sku !== produtoExistente.sku) {
       const skuEmUso = await prisma.produto.findFirst({
-        where: { sku, userId: user.id, NOT: { id } },
+        where: { sku, userId: user.contaId, NOT: { id } },
       });
 
       if (skuEmUso) {
@@ -362,6 +368,9 @@ export async function PUT(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao atualizar produto:", error);
     return NextResponse.json(
       { error: "Erro ao atualizar produto" },
@@ -373,6 +382,7 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "EDITAR_PRODUTO");
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const forceDelete = searchParams.get("forceDelete") === "true";
@@ -388,7 +398,7 @@ export async function DELETE(request: NextRequest) {
     const produto = await prisma.produto.findFirst({
       where: {
         id,
-        userId: user.id,
+        userId: user.contaId,
       },
       include: {
         _count: {
@@ -480,6 +490,9 @@ export async function DELETE(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao excluir produto:", error);
     return NextResponse.json(
       { message: "Erro ao excluir produto" },

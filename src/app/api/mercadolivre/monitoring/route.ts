@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
-        userId: user.id,
+        userId: user.contaId,
         isActive: true,
       },
     });
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
       async () => {
         const metrics = await collectPerformanceMetrics(
           accountId,
-          user.id,
+          user.contaId,
           period,
           includeDetails
         );

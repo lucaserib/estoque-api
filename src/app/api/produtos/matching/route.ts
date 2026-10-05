@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     // Executar matching
     const matches = await ProductMatchingService.matchProducts(
-      user.id,
+      user.contaId,
       mlAccountId
     );
 

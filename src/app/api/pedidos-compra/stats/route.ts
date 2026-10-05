@@ -12,21 +12,21 @@ export async function GET(request: NextRequest) {
 
     const pendingOrdersCount = await prisma.pedidoCompra.count({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         status: "pendente",
       },
     });
 
     const completedOrdersCount = await prisma.pedidoCompra.count({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         status: "confirmado",
       },
     });
 
     const recentCompletedOrders = await prisma.pedidoCompra.findMany({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         status: "confirmado",
         dataConclusao: {
           gte: thirtyDaysAgo,

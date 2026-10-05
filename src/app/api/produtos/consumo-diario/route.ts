@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
         produtoId,
         saida: {
           armazemId,
-          userId: user.id,
+          userId: user.contaId,
           data: {
             gte: dataInicio,
           },

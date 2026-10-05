@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
 
     const account = await prisma.mercadoLivreAccount.findFirst({
-      where: { id: accountId, userId: user.id, isActive: true },
+      where: { id: accountId, userId: user.contaId, isActive: true },
     });
 
     if (!account) {

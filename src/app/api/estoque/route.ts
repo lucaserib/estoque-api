@@ -20,7 +20,7 @@ export async function DELETE(request: NextRequest) {
     const armazem = await prisma.armazem.findFirst({
       where: {
         id: armazemId,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 

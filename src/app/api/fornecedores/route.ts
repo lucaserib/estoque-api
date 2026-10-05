@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "../../../../lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { verifyUser } from "@/helpers/verifyUser";
 
 export async function POST(req: NextRequest) {
@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
         inscricaoEstadual,
         contato,
         endereco,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     const user = await verifyUser(req);
 
     const fornecedores = await prisma.fornecedor.findMany({
-      where: { userId: user.id },
+      where: { userId: user.contaId },
     });
     return NextResponse.json(fornecedores, { status: 200 });
   } catch {
@@ -67,7 +67,7 @@ export async function DELETE(req: NextRequest) {
     const fornecedor = await prisma.fornecedor.findFirst({
       where: {
         id: id,
-        userId: user.id,
+        userId: user.contaId,
       },
       include: {
         pedidos: {
@@ -171,7 +171,7 @@ export async function PUT(req: NextRequest) {
     const fornecedor = await prisma.fornecedor.findFirst({
       where: {
         id: id,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 

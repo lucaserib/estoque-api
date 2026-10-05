@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     const produto = await prisma.produto.findFirst({
-      where: { userId: user.id, ean },
+      where: { userId: user.contaId, ean },
       include: { estoques: { select: { quantidade: true } } },
     });
 

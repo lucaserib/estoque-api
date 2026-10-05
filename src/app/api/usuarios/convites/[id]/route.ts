@@ -14,8 +14,16 @@ export async function DELETE(
 
     const { id } = await params;
 
-    const invitation = await prisma.invitation.findUnique({ where: { id } });
+    const invitation = await prisma.invitation.findUnique({
+      where: { id },
+      include: { invitedBy: { select: { id: true, contaId: true } } },
+    });
     if (!invitation) {
+      return NextResponse.json({ error: "Convite não encontrado" }, { status: 404 });
+    }
+
+    const invitationContaId = invitation.invitedBy.contaId ?? invitation.invitedBy.id;
+    if (invitationContaId !== currentUser.contaId) {
       return NextResponse.json({ error: "Convite não encontrado" }, { status: 404 });
     }
 

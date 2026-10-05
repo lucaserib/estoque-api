@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
         where: {
           id: id,
           isKit: true,
-          userId: user.id,
+          userId: user.contaId,
         },
         include: {
           componentes: {
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
           sku: {
             contains: sku,
           },
-          userId: user.id,
+          userId: user.contaId,
         },
         include: {
           componentes: {
@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
               armazemId: armazemId,
             },
           },
-          userId: user.id,
+          userId: user.contaId,
         },
         include: {
           componentes: {
@@ -111,7 +111,7 @@ export async function GET(req: NextRequest) {
       produtos = await prisma.produto.findMany({
         where: {
           isKit: true,
-          userId: user.id,
+          userId: user.contaId,
         },
         include: {
           componentes: {
@@ -152,7 +152,7 @@ export async function POST(req: NextRequest) {
 
     // Verificar se já existe um produto com o mesmo SKU
     const existingProduto = await prisma.produto.findFirst({
-      where: { sku, userId: user.id },
+      where: { sku, userId: user.contaId },
     });
 
     if (existingProduto) {
@@ -201,7 +201,7 @@ export async function POST(req: NextRequest) {
     // Criar o kit
     const novoKit = await prisma.produto.create({
       data: {
-        userId: user.id,
+        userId: user.contaId,
         nome,
         sku,
         ean: safeEANConversion(ean),
@@ -286,7 +286,7 @@ export async function DELETE(req: NextRequest) {
     const kit = await prisma.produto.findFirst({
       where: {
         id: id,
-        userId: user.id,
+        userId: user.contaId,
         isKit: true,
       },
     });

@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
 
     const produtosCriticos = await prisma.estoque.findMany({
       where: {
-        armazem: { userId: user.id },
+        armazem: { userId: user.contaId },
         quantidade: { lte: prisma.estoque.fields.estoqueSeguranca },
       },
       include: {

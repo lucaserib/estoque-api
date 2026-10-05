@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     // Buscar configuração específica do produto
     const config = await prisma.stockReplenishmentConfig.findFirst({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         produtoId,
       },
     });
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     const config = await prisma.stockReplenishmentConfig.upsert({
       where: {
         userId_produtoId: {
-          userId: user.id,
+          userId: user.contaId,
           produtoId: produtoId,
         },
       },
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
         analysisPeriodDays,
       },
       create: {
-        userId: user.id,
+        userId: user.contaId,
         produtoId: produtoId,
         avgDeliveryDays,
         fullReleaseDays,
@@ -158,7 +158,7 @@ export async function DELETE(request: NextRequest) {
 
     await prisma.stockReplenishmentConfig.deleteMany({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         produtoId,
       },
     });

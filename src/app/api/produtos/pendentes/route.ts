@@ -10,10 +10,10 @@ export async function GET(request: NextRequest) {
 
     const account = mlAccountId
       ? await prisma.mercadoLivreAccount.findFirst({
-          where: { id: mlAccountId, userId: user.id, isActive: true },
+          where: { id: mlAccountId, userId: user.contaId, isActive: true },
         })
       : await prisma.mercadoLivreAccount.findFirst({
-          where: { userId: user.id, isActive: true },
+          where: { userId: user.contaId, isActive: true },
           orderBy: { createdAt: "desc" },
         });
 
@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
 
     const produtosLocais = await prisma.produto.findMany({
       where: {
-        userId: user.id,
+        userId: user.contaId,
         isKit: false,
       },
       select: {

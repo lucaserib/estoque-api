@@ -21,9 +21,11 @@ export async function POST(req: NextRequest) {
   }
 
   let invitation = null;
+  let contaId: string | null = null;
   if (inviteToken) {
     invitation = await prisma.invitation.findUnique({
       where: { token: inviteToken },
+      include: { invitedBy: { select: { id: true, contaId: true } } },
     });
 
     if (
@@ -37,6 +39,8 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
+
+    contaId = invitation.invitedBy.contaId ?? invitation.invitedBy.id;
   }
 
   const hashedPassword = await bcrypt.hash(password, 10);
@@ -46,7 +50,7 @@ export async function POST(req: NextRequest) {
       email,
       name,
       password: hashedPassword,
-      ...(invitation ? { role: invitation.role } : {}),
+      ...(invitation ? { role: invitation.role, contaId } : {}),
     },
   });
 

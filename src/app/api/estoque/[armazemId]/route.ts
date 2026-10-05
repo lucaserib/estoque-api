@@ -18,7 +18,7 @@ export async function GET(
     }
 
     const armazem = await prisma.armazem.findFirst({
-      where: { id: armazemId, userId: user.id },
+      where: { id: armazemId, userId: user.contaId },
       select: { id: true },
     });
 
@@ -30,7 +30,7 @@ export async function GET(
     }
 
     const estoque = await prisma.estoque.findMany({
-      where: { armazemId, produto: { userId: user.id } },
+      where: { armazemId, produto: { userId: user.contaId } },
       include: { produto: true },
     });
 

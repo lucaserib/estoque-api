@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
 
     const [mlHistory, blingHistory] = await Promise.all([
       prisma.mercadoLivreSyncHistory.findMany({
-        where: { mercadoLivreAccount: { userId: user.id } },
+        where: { mercadoLivreAccount: { userId: user.contaId } },
         orderBy: { startedAt: "desc" },
         take: 15,
         select: {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
         },
       }),
       prisma.blingSyncHistory.findMany({
-        where: { blingAccount: { userId: user.id } },
+        where: { blingAccount: { userId: user.contaId } },
         orderBy: { startedAt: "desc" },
         take: 15,
         select: {

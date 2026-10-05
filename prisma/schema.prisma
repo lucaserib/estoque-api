@@ -48,8 +48,11 @@ model User {
   password                 String?
   image                    String?
   role                     UserRole                   @default(ADMIN)
+  contaId                  String?
   createdAt                DateTime                   @default(now())
   updatedAt                DateTime                   @updatedAt
+  conta                    User?                      @relation("MembrosDaConta", fields: [contaId], references: [id], onDelete: SetNull)
+  membros                  User[]                     @relation("MembrosDaConta")
   accounts                 Account[]
   armazens                 Armazem[]
   Fornecedor               Fornecedor[]

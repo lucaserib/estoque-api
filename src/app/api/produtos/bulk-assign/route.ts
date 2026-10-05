@@ -70,14 +70,14 @@ export async function POST(
     }
 
     const produtosDoUsuario = await prisma.produto.findMany({
-      where: { id: { in: produtoIds }, userId: user.id },
+      where: { id: { in: produtoIds }, userId: user.contaId },
       select: { id: true },
     });
     const produtoIdsValidos = new Set(produtosDoUsuario.map((p) => p.id));
 
     if (fornecedor) {
       const fornecedorValido = await prisma.fornecedor.findFirst({
-        where: { id: fornecedor.fornecedorId, userId: user.id },
+        where: { id: fornecedor.fornecedorId, userId: user.contaId },
         select: { id: true },
       });
 

@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const produto = await prisma.produto.findFirst({
       where: { 
         id: produtoId,
-        userId: user.id 
+        userId: user.contaId 
       },
     });
 
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
     const fornecedor = await prisma.fornecedor.findFirst({
       where: { 
         id: fornecedorId,
-        userId: user.id 
+        userId: user.contaId 
       },
     });
 
@@ -207,7 +207,7 @@ export async function GET(request: NextRequest) {
       const fornecedor = await prisma.fornecedor.findFirst({
         where: {
           id: fornecedorId,
-          userId: user.id,
+          userId: user.contaId,
         },
       });
 
@@ -225,7 +225,7 @@ export async function GET(request: NextRequest) {
         where: {
           fornecedorId: fornecedorId,
           produto: {
-            userId: user.id,
+            userId: user.contaId,
           },
         },
         include: {
@@ -242,7 +242,7 @@ export async function GET(request: NextRequest) {
       const produto = await prisma.produto.findFirst({
         where: {
           id: produtoId,
-          userId: user.id,
+          userId: user.contaId,
         },
       });
 
@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
         where: {
           produtoId: produtoId,
           fornecedor: {
-            userId: user.id, // Garantir que o fornecedor pertence ao usuário
+            userId: user.contaId, // Garantir que o fornecedor pertence ao usuário
           },
         },
         include: {
@@ -308,7 +308,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Verificar se o produto e fornecedor pertencem ao usuário
-    if (vinculoExistente.produto.userId !== user.id || vinculoExistente.fornecedor.userId !== user.id) {
+    if (vinculoExistente.produto.userId !== user.contaId || vinculoExistente.fornecedor.userId !== user.contaId) {
       return NextResponse.json(
         { error: "Não autorizado" },
         { status: 403 }
@@ -381,7 +381,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Verificar se o produto e fornecedor pertencem ao usuário
-    if (vinculoExistente.produto.userId !== user.id || vinculoExistente.fornecedor.userId !== user.id) {
+    if (vinculoExistente.produto.userId !== user.contaId || vinculoExistente.fornecedor.userId !== user.contaId) {
       console.error(
         `API PUT /produto-fornecedor - Vínculo não autorizado para usuário: ${user.id}`
       );

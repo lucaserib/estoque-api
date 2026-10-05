@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
-        userId: user.id,
+        userId: user.contaId,
         isActive: true,
       },
     });
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
-        userId: user.id,
+        userId: user.contaId,
         isActive: true,
       },
     });
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
 
         while (
           await prisma.produto.findFirst({
-            where: { sku, userId: user.id },
+            where: { sku, userId: user.contaId },
           })
         ) {
           sku = `${baseSku}_${counter}`;
@@ -174,7 +174,7 @@ export async function POST(request: NextRequest) {
 
         const resultadoCusto = await resolverCustoProduto({
           sku,
-          userId: user.id,
+          userId: user.contaId,
         });
         const imagemUrl = pickMlImageUrl(item);
 
@@ -183,7 +183,7 @@ export async function POST(request: NextRequest) {
             nome: item.title,
             sku: sku,
             isKit: false,
-            userId: user.id,
+            userId: user.contaId,
             custoMedio: resultadoCusto.custoMedio,
             custoOrigem: resultadoCusto.custoOrigem,
             custoAtualizadoEm:

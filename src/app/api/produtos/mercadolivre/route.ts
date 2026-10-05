@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const produto = await prisma.produto.findFirst({
       where: {
         id: produtoId,
-        userId: user.id,
+        userId: user.contaId,
       },
     });
 
@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       where: {
         produtoId,
         mercadoLivreAccount: {
-          userId: user.id,
+          userId: user.contaId,
           isActive: true,
         },
       },

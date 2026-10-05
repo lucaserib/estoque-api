@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
 
     // Garantir que o produto pertence ao usuário
     const produto = await prisma.produto.findFirst({
-      where: { id: produtoId, userId: user.id },
+      where: { id: produtoId, userId: user.contaId },
       select: { id: true },
     });
     if (!produto) {
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       where: {
         produtoId,
         saida: {
-          userId: user.id,
+          userId: user.contaId,
           data: { gte: inicio },
         },
       },
