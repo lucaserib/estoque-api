@@ -31,6 +31,9 @@ import { ProdutoEditarDialog } from "../components/dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "../components/dialogs/ProdutoFornecedorDialog";
 import { ProdutoEstoqueDialog } from "../components/dialogs/ProdutoEstoqueDialog";
 import type { Produto } from "../types";
+import type { Pendencia } from "@/lib/pendencias";
+import { calcularMargemUnitaria } from "@/lib/margem";
+import { StatusPill } from "@/components/ui/status-pill";
 
 interface ProdutoFicha extends Produto {
   descricao?: string | null;
@@ -50,6 +53,10 @@ interface ProdutoFicha extends Produto {
     mlPrice: number | null;
     mlPermalink: string | null;
     mlThumbnail: string | null;
+    mlTarifaVenda?: number | null;
+    mlCustoFrete?: number | null;
+    mlCustosAtualizadosEm?: string | null;
+    mlFreeShipping?: boolean;
   }>;
   fornecedores?: Array<{
     id: number;
@@ -97,6 +104,30 @@ export default function ProdutoFichaPage() {
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockDetails, setStockDetails] = useState<StockItem[]>([]);
   const [loadingStock, setLoadingStock] = useState(false);
+  const [pendencias, setPendencias] = useState<Pendencia[]>([]);
+  const [aliquotaImposto, setAliquotaImposto] = useState(0);
+
+  const loadPendencias = useCallback(async () => {
+    try {
+      const response = await fetch(
+        `/api/produtos/pendencias?produtoId=${params.id}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setPendencias(data.pendencias || []);
+      }
+    } catch (error) {
+      console.error("Erro ao buscar pendências:", error);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    loadPendencias();
+    fetch("/api/configuracoes-gerais")
+      .then((res) => res.json())
+      .then((data) => setAliquotaImposto(data.aliquotaImposto ?? 0))
+      .catch(() => undefined);
+  }, [loadPendencias]);
 
   const loadProduto = useCallback(async () => {
     setLoading(true);
@@ -243,6 +274,142 @@ export default function ProdutoFichaPage() {
           </div>
         </CardContent>
       </Card>
+
+      {pendencias.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Cadastro</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {pendencias.map((p) => (
+              <div
+                key={p.codigo}
+                className="flex items-center justify-between gap-3 py-2 border-b last:border-b-0"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <StatusPill
+                    tone={
+                      p.severidade === "critica"
+                        ? "critical"
+                        : p.severidade === "atencao"
+                        ? "warning"
+                        : "neutral"
+                    }
+                  >
+                    {p.codigo}
+                  </StatusPill>
+                  <span className="text-sm text-muted-foreground truncate">
+                    {p.mensagem}
+                  </span>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    if (p.codigo === "SEM_FORNECEDOR" || p.codigo === "SEM_FORNECEDOR_PRINCIPAL" || p.codigo === "SEM_PRAZO_FORNECEDOR") {
+                      setShowFornecedorModal(true);
+                    } else if (p.codigo === "ESTOQUE_DIVERGENTE") {
+                      setShowStockModal(true);
+                      loadStockDetails();
+                    } else if (p.codigo === "SEM_VINCULO_ML") {
+                      router.push("/produtos/vincular");
+                    } else {
+                      setShowEditModal(true);
+                    }
+                  }}
+                >
+                  {p.acao}
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
+      {(produto.ProdutoMercadoLivre?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Margem por canal</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <DataTable>
+              <DataTableHeader>
+                <DataTableRow>
+                  <DataTableHead>Anúncio</DataTableHead>
+                  <DataTableHead>Preço</DataTableHead>
+                  <DataTableHead>Tarifa</DataTableHead>
+                  <DataTableHead>Frete</DataTableHead>
+                  <DataTableHead>Custo</DataTableHead>
+                  <DataTableHead>Imposto</DataTableHead>
+                  <DataTableHead>Margem</DataTableHead>
+                </DataTableRow>
+              </DataTableHeader>
+              <DataTableBody>
+                {(produto.ProdutoMercadoLivre || []).map((anuncio) => {
+                  const margem = calcularMargemUnitaria({
+                    precoVenda: anuncio.mlPrice,
+                    tarifa: anuncio.mlTarifaVenda ?? null,
+                    frete: anuncio.mlCustoFrete ?? null,
+                    custo: produto.custoMedio ?? null,
+                    aliquotaImposto,
+                  });
+                  return (
+                    <DataTableRow key={anuncio.mlItemId}>
+                      <DataTableCell className="max-w-[180px] truncate">
+                        {anuncio.mlTitle}
+                      </DataTableCell>
+                      <DataTableCell>
+                        {anuncio.mlPrice != null ? formatBRL(anuncio.mlPrice) : "—"}
+                      </DataTableCell>
+                      <DataTableCell>
+                        {anuncio.mlTarifaVenda != null
+                          ? formatBRL(anuncio.mlTarifaVenda)
+                          : "— (não sincronizada)"}
+                      </DataTableCell>
+                      <DataTableCell>
+                        {anuncio.mlCustoFrete != null
+                          ? formatBRL(anuncio.mlCustoFrete)
+                          : "— (não sincronizado)"}
+                      </DataTableCell>
+                      <DataTableCell>
+                        {produto.custoMedio != null
+                          ? formatBRL(produto.custoMedio)
+                          : "— (sem custo)"}
+                      </DataTableCell>
+                      <DataTableCell>
+                        {aliquotaImposto > 0
+                          ? `${(aliquotaImposto * 100).toFixed(2)}%`
+                          : "0%"}
+                      </DataTableCell>
+                      <DataTableCell>
+                        {margem.completo ? (
+                          <span
+                            className={
+                              margem.margemValor! < 0
+                                ? "text-destructive font-medium"
+                                : "text-success font-medium"
+                            }
+                          >
+                            {formatBRL(margem.margemValor!)} (
+                            {(margem.margemPercentual! * 100).toFixed(1)}%)
+                          </span>
+                        ) : (
+                          <span
+                            className="text-muted-foreground text-xs"
+                            title={`Faltando: ${margem.faltando.join(", ")}`}
+                          >
+                            — (faltando {margem.faltando.join(", ")})
+                          </span>
+                        )}
+                      </DataTableCell>
+                    </DataTableRow>
+                  );
+                })}
+              </DataTableBody>
+            </DataTable>
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="dados">
         <TabsList>

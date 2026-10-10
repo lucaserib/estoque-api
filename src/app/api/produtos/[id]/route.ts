@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { normalizeImageUrl } from "@/lib/imageUrl";
+import { serializeWithEAN } from "@/utils/api";
 
 /**
  * GET /api/produtos/[id]
@@ -38,6 +39,12 @@ export async function GET(
             },
           },
         },
+        componentes: {
+          select: {
+            quantidade: true,
+            produto: { select: { id: true, nome: true, custoMedio: true } },
+          },
+        },
         ProdutoMercadoLivre: {
           select: {
             mlItemId: true,
@@ -49,6 +56,10 @@ export async function GET(
             mlPrice: true,
             mlPermalink: true,
             mlThumbnail: true,
+            mlTarifaVenda: true,
+            mlCustoFrete: true,
+            mlCustosAtualizadosEm: true,
+            mlFreeShipping: true,
           },
         },
         fornecedores: {
@@ -108,7 +119,7 @@ export async function GET(
 
     return NextResponse.json({
       success: true,
-      produto: produtoSerialized,
+      produto: serializeWithEAN(produtoSerialized),
     });
   } catch (error) {
     console.error("Erro ao buscar produto:", error);

@@ -26,14 +26,6 @@ export async function middleware(req: NextRequest) {
     req.headers.get("host")?.includes(".ngrok.io") ||
     req.headers.get("host")?.includes(".ngrok-free.app");
 
-  console.log("🔍 Middleware:", {
-    pathname,
-    isMLCallback,
-    isFromNgrok,
-    hasToken: !!token,
-    host: req.headers.get("host"),
-  });
-
   // Permitir acesso às rotas públicas
   if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
     return NextResponse.next();
@@ -41,7 +33,6 @@ export async function middleware(req: NextRequest) {
 
   // Permitir callback do ML vindos do ngrok (mesmo sem token, pois será processado no frontend)
   if (isMLCallback && isFromNgrok && pathname === "/configuracoes") {
-    console.log("✅ Permitindo callback ML do ngrok");
     return NextResponse.next();
   }
 
@@ -56,8 +47,6 @@ export async function middleware(req: NextRequest) {
 
     if (fallbackToken) {
       // Token encontrado no cookie não-seguro, permitir acesso
-      console.log("✅ Token encontrado via fallback para ngrok");
-
       const requestHeaders = new Headers(req.headers);
       if (fallbackToken?.id) {
         requestHeaders.set("x-user-id", fallbackToken.id as string);
@@ -73,7 +62,6 @@ export async function middleware(req: NextRequest) {
 
   // Redirecionar se o usuário não estiver autenticado
   if (!token) {
-    console.log("❌ Token não encontrado, redirecionando para login");
     return NextResponse.redirect(new URL("/login", req.url));
   }
 

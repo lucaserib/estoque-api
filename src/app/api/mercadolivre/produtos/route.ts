@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
         mlPermalink: true,
         lastSyncAt: true,
         syncStatus: true,
+        mlAutoStockPausado: true,
         produto: {
           select: {
             id: true,
@@ -297,9 +298,11 @@ export async function GET(request: NextRequest) {
       };
 
       const product = {
+        id: produtoML.id,
         mlItemId: produtoML.mlItemId,
         mlTitle: produtoML.mlTitle,
         mlPrice: produtoML.mlPrice,
+        mlAutoStockPausado: produtoML.mlAutoStockPausado,
 
         // ✅ NOVO: Informações de preços promocionais
         mlOriginalPrice: produtoML.mlOriginalPrice,

@@ -79,44 +79,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Lê o snapshot de estoque Full já gravado na sincronização de anúncios
+    // (sync/route.ts, processItemWebhook) em vez de chamar a API do ML
+    // produto a produto a cada atualização desta tela.
     const estoqueFullPorProduto: { [key: string]: number } = {};
 
-    const produtosMLVinculados = await prisma.produtoMercadoLivre.findMany({
+    const produtosMLFull = await prisma.produtoMercadoLivre.findMany({
       where: {
         mercadoLivreAccountId: mlAccount.id,
         produtoId: { not: null },
+        mlLogisticType: "fulfillment",
       },
       select: {
         produtoId: true,
-        mlItemId: true,
+        mlFullDisponivel: true,
       },
     });
 
-
-    // Buscar dados atualizados de cada item do ML em tempo real
-    for (const produtoML of produtosMLVinculados) {
-      try {
-        const item = await MercadoLivreService.getItem(
-          produtoML.mlItemId,
-          accessToken
-        );
-
-        // Verificar se é Full (logistic_type = fulfillment)
-        if (
-          item.shipping?.logistic_type === "fulfillment" &&
-          produtoML.produtoId
-        ) {
-          estoqueFullPorProduto[produtoML.produtoId] =
-            (estoqueFullPorProduto[produtoML.produtoId] || 0) +
-            item.available_quantity;
-
-        }
-      } catch (itemError) {
-        console.error(
-          `[VENDAS_ML] Erro ao buscar item ${produtoML.mlItemId}:`,
-          itemError
-        );
+    for (const produtoML of produtosMLFull) {
+      if (!produtoML.produtoId || produtoML.mlFullDisponivel == null) {
+        continue;
       }
+      estoqueFullPorProduto[produtoML.produtoId] =
+        (estoqueFullPorProduto[produtoML.produtoId] || 0) +
+        produtoML.mlFullDisponivel;
     }
 
 

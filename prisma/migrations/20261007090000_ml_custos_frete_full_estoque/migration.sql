@@ -1,0 +1,11 @@
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlTarifaVenda" INTEGER;
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlCustoFrete" INTEGER;
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlLogisticType" TEXT;
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlInventoryId" TEXT;
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlCustosAtualizadosEm" TIMESTAMP(3);
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlFullDisponivel" INTEGER;
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlFullEmTransito" INTEGER;
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlFullIndisponivel" INTEGER;
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlFullAtualizadoEm" TIMESTAMP(3);
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlUltimoEnvioEstoqueEm" TIMESTAMP(3);
+ALTER TABLE "produtos_mercado_livre" ADD COLUMN "mlAutoStockPausado" BOOLEAN NOT NULL DEFAULT false;

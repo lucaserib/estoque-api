@@ -1,10 +1,11 @@
 import { PrismaClient } from "@prisma/client";
+import { accountTokenEncryptionExtension } from "@/lib/accountTokenEncryption";
 
 // Adicionar logs para debug no ambiente de produção
 const prismaClientSingleton = () => {
   return new PrismaClient({
     log: ["error", "warn"], // ✅ CORREÇÃO: Removido "query" para limpar logs
-  });
+  }).$extends(accountTokenEncryptionExtension);
 };
 
 // Implementação recomendada para Next.js em ambientes serverless

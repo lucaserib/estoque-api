@@ -69,6 +69,7 @@ interface BatchAnalysisResponse {
     custoTotalAtencao: number;
     custoTotalGeral: number;
   };
+  parcial?: boolean;
 }
 
 const ReposicaoPage = () => {
@@ -136,6 +137,34 @@ const ReposicaoPage = () => {
     refetch();
   };
 
+  const [gerandoPedidos, setGerandoPedidos] = useState(false);
+
+  const handleGerarPedidos = async () => {
+    setGerandoPedidos(true);
+    try {
+      const response = await fetch("/api/replenishment/gerar-pedidos", {
+        method: "POST",
+      });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+
+      if (data.pedidosCriados === 0) {
+        toast.info("Nenhum pedido criado: nenhum item com fornecedor principal precisa de compra.");
+      } else {
+        toast.success(
+          `${data.pedidosCriados} pedido(s) de compra gerado(s) como rascunho.` +
+            (data.itensIgnoradosSemFornecedor > 0
+              ? ` ${data.itensIgnoradosSemFornecedor} item(ns) sem fornecedor principal foram ignorados.`
+              : "")
+        );
+      }
+    } catch {
+      toast.error("Erro ao gerar pedidos de compra");
+    } finally {
+      setGerandoPedidos(false);
+    }
+  };
+
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -156,19 +185,31 @@ const ReposicaoPage = () => {
         title="Reposição"
         subtitle="Produtos que precisam de reposição urgente"
         actions={
-          <Button onClick={handleAnalyze} disabled={analyzing || loading} className="gap-2">
-            {analyzing || loading ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Analisando...
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4" />
-                Verificar Estoque
-              </>
-            )}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={handleGerarPedidos}
+              disabled={
+                gerandoPedidos || !analysisData || analysisData.results.length === 0
+              }
+              className="gap-2"
+            >
+              {gerandoPedidos ? "Gerando..." : "Gerar pedidos de compra"}
+            </Button>
+            <Button onClick={handleAnalyze} disabled={analyzing || loading} className="gap-2">
+              {analyzing || loading ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Analisando...
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4" />
+                  Verificar Estoque
+                </>
+              )}
+            </Button>
+          </div>
         }
       />
 
@@ -201,12 +242,28 @@ const ReposicaoPage = () => {
       )}
 
       {/* Success State - Com Dados */}
+      {analysisData?.parcial && !loading && (
+        <Alert variant="warning">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Alguns pedidos do Mercado Livre não puderam ser carregados. A
+            demanda calculada pode estar incompleta.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {analysisData && !loading && analysisData.summary && (
         <>
           <HeroMetric
             label="Custo total para reposição completa"
             value={formatCurrency(analysisData.summary.custoTotalGeral)}
-            context="Investimento estimado para repor todos os produtos em alerta ao nível ideal."
+            context={
+              analysisData.results.some((r) => r.custoIndefinido)
+                ? `Investimento estimado. ${
+                    analysisData.results.filter((r) => r.custoIndefinido).length
+                  } item(ns) sem custo não somados ao total.`
+                : "Investimento estimado para repor todos os produtos em alerta ao nível ideal."
+            }
           />
 
           <StatStrip items={statItems} />

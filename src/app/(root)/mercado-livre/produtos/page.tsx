@@ -15,9 +15,11 @@ import MLProductsTable from "@/app/components/MercadoLivre/MLProductsTable";
 import MLProductLinkModal from "@/app/components/MercadoLivre/MLProductLinkModal";
 
 interface MLProduct {
+  id: string;
   mlItemId: string;
   mlTitle: string;
   mlPrice: number;
+  mlAutoStockPausado?: boolean;
   mlOriginalPrice?: number | null;
   mlBasePrice?: number | null;
   mlHasPromotion?: boolean;
@@ -474,6 +476,30 @@ function MercadoLivreProdutosContent() {
         onUnlinkProduct={(product) =>
           console.log("Desvincular produto:", product)
         }
+        onTogglePause={async (product) => {
+          try {
+            const res = await fetch(
+              "/api/mercadolivre/produtos/auto-stock-toggle",
+              {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  produtoMercadoLivreId: product.id,
+                  pausado: !product.mlAutoStockPausado,
+                }),
+              }
+            );
+            if (!res.ok) throw new Error();
+            toast.success(
+              !product.mlAutoStockPausado
+                ? "Envio automático de estoque pausado para este anúncio"
+                : "Envio automático de estoque retomado para este anúncio"
+            );
+            loadProducts();
+          } catch {
+            toast.error("Erro ao atualizar pausa de envio automático");
+          }
+        }}
       />
 
       {/* ✅ NOVO: Modal de Vinculação Componentizado */}

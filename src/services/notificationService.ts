@@ -92,6 +92,21 @@ export class NotificationService {
     );
   }
 
+  static async notifyCadastroIncompleto(
+    userId: string,
+    quantidadePendenciasCriticas: number
+  ): Promise<void> {
+    await this.create({
+      userId,
+      type: "CADASTRO_INCOMPLETO",
+      title: "Pendências de cadastro aumentaram",
+      body: `${quantidadePendenciasCriticas} produto(s) com pendências críticas (sem custo, sem fornecedor, sem preço ou margem negativa).`,
+      link: "/produtos",
+    }).catch((error) =>
+      console.error("[NOTIF] Falha ao criar notificação de cadastro:", error)
+    );
+  }
+
   static async notifyPedidoConcluido(
     userId: string,
     fornecedorNome: string

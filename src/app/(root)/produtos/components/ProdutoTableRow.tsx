@@ -13,6 +13,7 @@ import { ProductImage } from "@/components/ui/product-image";
 import { formatBRL } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { InlineStockAdjust } from "./InlineStockAdjust";
+import type { Pendencia } from "@/lib/pendencias";
 
 interface ArmazemOption {
   id: string;
@@ -27,6 +28,7 @@ interface ProdutoTableRowProps {
   replenishmentStatus?: "ok" | "atencao" | "critico";
   armazens: ArmazemOption[];
   selected: boolean;
+  pendencias?: Pendencia[];
   onToggleSelected: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (produto: Produto) => void;
@@ -35,6 +37,15 @@ interface ProdutoTableRowProps {
   onViewReplenishment: (produto: Produto) => void;
   onStockAdjusted: () => void;
 }
+
+const TONE_POR_SEVERIDADE: Record<
+  Pendencia["severidade"],
+  "critical" | "warning" | "neutral"
+> = {
+  critica: "critical",
+  atencao: "warning",
+  informativa: "neutral",
+};
 
 const STATUS_BORDER: Record<"ok" | "atencao" | "critico", string> = {
   critico: "border-l-[3px] border-l-destructive",
@@ -54,6 +65,7 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
     replenishmentStatus,
     armazens,
     selected,
+    pendencias = [],
     onToggleSelected,
     onDelete,
     onEdit,
@@ -173,6 +185,26 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
           {produto.custoMedio ? formatBRL(produto.custoMedio) : "Não definido"}
         </DataTableCell>
 
+        <DataTableCell>
+          {pendencias.length === 0 ? (
+            <span className="text-xs text-muted-foreground">—</span>
+          ) : (
+            <div
+              className="flex flex-wrap gap-1"
+              title={pendencias.map((p) => p.mensagem).join("\n")}
+            >
+              {pendencias.slice(0, 3).map((p) => (
+                <StatusPill key={p.codigo} tone={TONE_POR_SEVERIDADE[p.severidade]}>
+                  {p.codigo}
+                </StatusPill>
+              ))}
+              {pendencias.length > 3 && (
+                <StatusPill tone="neutral">+{pendencias.length - 3}</StatusPill>
+              )}
+            </div>
+          )}
+        </DataTableCell>
+
         <DataTableCell className="pr-4 text-right">
           <div className="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
@@ -254,7 +286,11 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
       prevProps.stockMinimum === nextProps.stockMinimum &&
       prevProps.isLoadingStock === nextProps.isLoadingStock &&
       prevProps.replenishmentStatus === nextProps.replenishmentStatus &&
-      prevProps.selected === nextProps.selected
+      prevProps.selected === nextProps.selected &&
+      (prevProps.pendencias ?? [])
+        .map((p) => p.codigo)
+        .join(",") ===
+        (nextProps.pendencias ?? []).map((p) => p.codigo).join(",")
     );
   }
 );

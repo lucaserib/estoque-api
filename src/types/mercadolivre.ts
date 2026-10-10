@@ -227,6 +227,7 @@ export interface MLItem {
   last_updated: string;
   health: number;
   catalog_listing: boolean;
+  inventory_id?: string | null;
 }
 
 export interface MLItemsResponse {

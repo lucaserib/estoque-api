@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Produto } from "../types";
+import type { Pendencia } from "@/lib/pendencias";
 import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
 import {
   DataTable,
@@ -87,6 +89,13 @@ const ProdutoList = ({
   const [lastReplenishmentFetch, setLastReplenishmentFetch] = useState<number>(0);
   const [isLoadingReplenishment, setIsLoadingReplenishment] = useState(false);
   const [armazens, setArmazens] = useState<{ id: string; nome: string }[]>([]);
+  const [pendenciasPorProduto, setPendenciasPorProduto] = useState<
+    Record<string, Pendencia[]>
+  >({});
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+  const pendenciaFiltroURL = searchParams.get("pendencia");
   const itemsPerPage = 10;
   const REPLENISHMENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutos em milissegundos
 
@@ -121,6 +130,28 @@ const ProdutoList = ({
     fetchStockTotals();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [produtos.length, refreshTrigger]);
+
+  const fetchPendencias = useCallback(async () => {
+    try {
+      const response = await fetch(
+        "/api/produtos/pendencias?pageSize=2000"
+      );
+      if (!response.ok) return;
+      const data: { itens: { produtoId: string; pendencias: Pendencia[] }[] } =
+        await response.json();
+      const mapa: Record<string, Pendencia[]> = {};
+      for (const item of data.itens) {
+        mapa[item.produtoId] = item.pendencias;
+      }
+      setPendenciasPorProduto(mapa);
+    } catch (error) {
+      console.error("Erro ao buscar pendências:", error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPendencias();
+  }, [fetchPendencias, refreshTrigger]);
 
   useEffect(() => {
     const fetchArmazens = async () => {
@@ -311,6 +342,13 @@ const ProdutoList = ({
       return false;
     }
 
+    if (pendenciaFiltroURL) {
+      const pendenciasDoProduto = pendenciasPorProduto[produto.id] || [];
+      if (!pendenciasDoProduto.some((p) => p.codigo === pendenciaFiltroURL)) {
+        return false;
+      }
+    }
+
     return true;
   });
 
@@ -328,6 +366,25 @@ const ProdutoList = ({
 
   return (
     <div className="space-y-4">
+      {pendenciaFiltroURL && (
+        <Alert variant="warning">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
+            <span>
+              Mostrando apenas produtos com a pendência{" "}
+              <strong>{pendenciaFiltroURL}</strong>.
+            </span>
+            <button
+              type="button"
+              className="text-sm font-medium underline underline-offset-2"
+              onClick={() => router.replace(pathname)}
+            >
+              Limpar filtro
+            </button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {produtosSemCustoOuFornecedor.length > 0 && (
         <Alert variant="warning">
           <AlertTriangle className="h-4 w-4" />
@@ -501,6 +558,7 @@ const ProdutoList = ({
               <DataTableHead className="text-right">Full</DataTableHead>
               <DataTableHead className="text-right">Vendas ML</DataTableHead>
               <DataTableHead>Custo Médio</DataTableHead>
+              <DataTableHead>Pendências</DataTableHead>
               <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
             </DataTableRow>
           </DataTableHeader>
@@ -516,6 +574,7 @@ const ProdutoList = ({
                   replenishmentStatus={replenishmentStatus[produto.id]}
                   armazens={armazens}
                   selected={selectedIds.has(produto.id)}
+                  pendencias={pendenciasPorProduto[produto.id] || []}
                   onToggleSelected={toggleSelected}
                   onDelete={onDelete}
                   onEdit={handleEdit}
@@ -528,7 +587,7 @@ const ProdutoList = ({
             ) : (
               <DataTableRow className="hover:bg-transparent">
                 <DataTableCell
-                  colSpan={9}
+                  colSpan={10}
                   className="text-center py-8 text-muted-foreground"
                 >
                   {filterOptions.searchTerm

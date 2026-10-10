@@ -12,9 +12,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import MLProductRow from "./MLProductRow";
 
 interface Product {
+  id: string;
   mlItemId: string;
   mlTitle: string;
   mlPrice: number;
+  mlAutoStockPausado?: boolean;
   mlOriginalPrice?: number | null;
   mlBasePrice?: number | null;
   mlHasPromotion?: boolean;
@@ -58,6 +60,7 @@ interface MLProductsTableProps {
   onEditProduct: (product: Product) => void;
   onLinkProduct: (product: Product) => void;
   onUnlinkProduct: (product: Product) => void;
+  onTogglePause: (product: Product) => void;
 }
 
 // Skeleton para loading
@@ -117,6 +120,7 @@ export default function MLProductsTable({
   onEditProduct,
   onLinkProduct,
   onUnlinkProduct,
+  onTogglePause,
 }: MLProductsTableProps) {
   return (
     <Card>
@@ -176,6 +180,7 @@ export default function MLProductsTable({
                     onEditProduct={onEditProduct}
                     onLinkProduct={onLinkProduct}
                     onUnlinkProduct={onUnlinkProduct}
+                    onTogglePause={onTogglePause}
                   />
                 ))
               )}

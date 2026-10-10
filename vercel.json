@@ -7,6 +7,14 @@
     {
       "path": "/api/cron/bling-sync",
       "schedule": "30 6 * * *"
+    },
+    {
+      "path": "/api/cron/ml-webhook-retry",
+      "schedule": "0 7 * * *"
+    },
+    {
+      "path": "/api/cron/cadastro-incompleto",
+      "schedule": "0 8 * * *"
     }
   ]
 }

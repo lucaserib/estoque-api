@@ -49,13 +49,15 @@ export async function GET(request: NextRequest) {
 
       const accountsWithDetails = await Promise.all(
         accounts.map(async (account) => {
+          const { accessToken, refreshToken, ...accountSemTokens } = account;
+
           try {
             const userInfo = await MercadoLivreService.getUserInfo(
-              account.accessToken
+              accessToken
             );
 
             return {
-              ...account,
+              ...accountSemTokens,
               userInfo: {
                 id: userInfo.id,
                 nickname: userInfo.nickname,
@@ -83,7 +85,7 @@ export async function GET(request: NextRequest) {
               `[ML_AUTH] Erro ao buscar detalhes da conta ${account.id}:`,
               error
             );
-            return account;
+            return accountSemTokens;
           }
         })
       );

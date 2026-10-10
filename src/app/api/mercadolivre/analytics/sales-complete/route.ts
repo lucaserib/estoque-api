@@ -54,6 +54,8 @@ interface SalesAnalytics {
     averageTicket: number;
     averageItemsPerOrder: number;
     totalSaleFees: number;
+    totalShippingCostReal: number;
+    shippingCostsIncompletos: number;
     netRevenue: number;
   };
   trends: {
@@ -231,8 +233,37 @@ export async function GET(request: NextRequest) {
           let totalRevenue = 0;
           let totalProductRevenue = 0;
           let totalSaleFees = 0;
+          let totalShippingCostReal = 0;
+          let shippingCostsIncompletos = 0;
           let totalItems = 0;
           const totalOrders = periodOrders.length;
+
+          const shipmentIds = Array.from(
+            new Set(
+              periodOrders
+                .map(
+                  (order) =>
+                    (order.shipping as { id?: number | string } | undefined)
+                      ?.id
+                )
+                .filter((id): id is number | string => id != null)
+                .map(String)
+            )
+          );
+
+          const shipmentCostById = new Map<string, number | null>();
+          const SHIPMENT_BATCH_SIZE = 10;
+          for (let i = 0; i < shipmentIds.length; i += SHIPMENT_BATCH_SIZE) {
+            const batch = shipmentIds.slice(i, i + SHIPMENT_BATCH_SIZE);
+            const results = await Promise.all(
+              batch.map((id) =>
+                MercadoLivreService.getShipmentCost(id, accessToken)
+              )
+            );
+            batch.forEach((id, idx) =>
+              shipmentCostById.set(id, results[idx])
+            );
+          }
 
           periodOrders.forEach((order) => {
             const orderDate = new Date(order.date_created);
@@ -279,10 +310,22 @@ export async function GET(request: NextRequest) {
             });
 
             const orderTotalAmount = order.total_amount || 0;
-            const orderShippingCost = orderTotalAmount - orderProductRevenue;
-            
+
             totalRevenue += orderTotalAmount;
             totalProductRevenue += orderProductRevenue;
+
+            const shipmentId = (
+              order.shipping as { id?: number | string } | undefined
+            )?.id;
+            const shipmentCost =
+              shipmentId != null
+                ? shipmentCostById.get(String(shipmentId))
+                : undefined;
+            if (shipmentCost != null) {
+              totalShippingCostReal += shipmentCost;
+            } else {
+              shippingCostsIncompletos += 1;
+            }
 
             const existing = dailyData.get(dayKey);
             if (existing) {
@@ -447,7 +490,10 @@ export async function GET(request: NextRequest) {
               averageItemsPerOrder:
                 totalOrders > 0 ? totalItems / totalOrders : 0,
               totalSaleFees,
-              netRevenue: totalProductRevenue - totalSaleFees,
+              totalShippingCostReal,
+              shippingCostsIncompletos,
+              netRevenue:
+                totalProductRevenue - totalSaleFees - totalShippingCostReal,
             },
             trends: {
               dailyRevenue,

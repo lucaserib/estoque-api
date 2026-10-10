@@ -21,9 +21,12 @@ import {
   Store,
   ArrowRight,
   ShoppingBag,
+  Percent,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useLayout } from "@/app/context/LayoutContext";
 import { formatRelativeTime } from "@/lib/format";
 
@@ -95,6 +98,36 @@ export default function ConfiguracoesGeraisPage() {
   const [loading, setLoading] = useState(true);
   const [mlAccounts, setMlAccounts] = useState<MLAccountInfo[]>([]);
   const [blingAccounts, setBlingAccounts] = useState<BlingAccountInfo[]>([]);
+  const [aliquotaImposto, setAliquotaImposto] = useState(0);
+  const [salvandoAliquota, setSalvandoAliquota] = useState(false);
+
+  const podeVerCusto =
+    session?.user?.role === "ADMIN" || session?.user?.role === "COMPRAS";
+
+  useEffect(() => {
+    if (!podeVerCusto) return;
+    fetch("/api/configuracoes-gerais")
+      .then((res) => res.json())
+      .then((data) => setAliquotaImposto((data.aliquotaImposto ?? 0) * 100))
+      .catch(() => toast.error("Erro ao carregar configurações financeiras"));
+  }, [podeVerCusto]);
+
+  const salvarAliquota = useCallback(async () => {
+    setSalvandoAliquota(true);
+    try {
+      const res = await fetch("/api/configuracoes-gerais", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aliquotaImposto: aliquotaImposto / 100 }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success("Alíquota de imposto atualizada");
+    } catch {
+      toast.error("Erro ao salvar alíquota de imposto");
+    } finally {
+      setSalvandoAliquota(false);
+    }
+  }, [aliquotaImposto]);
 
   const loadIntegrations = useCallback(async () => {
     setLoading(true);
@@ -211,6 +244,47 @@ export default function ConfiguracoesGeraisPage() {
           </div>
         </CardContent>
       </Card>
+
+      {podeVerCusto && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Percent className="h-5 w-5" />
+              Financeiro
+            </CardTitle>
+            <CardDescription>
+              Alíquota de imposto usada no cálculo de margem (Simples Nacional
+              etc.)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="aliquota-imposto">Alíquota de imposto (%)</Label>
+                <Input
+                  id="aliquota-imposto"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={0.01}
+                  value={aliquotaImposto}
+                  onChange={(e) =>
+                    setAliquotaImposto(Number(e.target.value))
+                  }
+                  className="w-32"
+                />
+              </div>
+              <Button onClick={salvarAliquota} disabled={salvandoAliquota}>
+                {salvandoAliquota ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Padrão: 0%. Se não configurada, a margem é calculada sem desconto
+              de imposto — ajuste aqui para refletir o regime tributário real.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

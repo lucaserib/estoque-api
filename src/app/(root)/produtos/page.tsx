@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useFetch } from "@/app/hooks/useFetch";
 import ProdutoList from "./components/ProdutoList";
@@ -42,7 +42,7 @@ interface BlingAccountStatus {
   isActive: boolean;
 }
 
-const ProdutosPage = () => {
+const ProdutosPageContent = () => {
   const [activeTab, setActiveTab] = useState<"produtos" | "kits">("produtos");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [produtoToDelete, setProdutoToDelete] =
@@ -452,5 +452,11 @@ const ProdutosPage = () => {
     </div>
   );
 };
+
+const ProdutosPage = () => (
+  <Suspense fallback={null}>
+    <ProdutosPageContent />
+  </Suspense>
+);
 
 export default ProdutosPage;

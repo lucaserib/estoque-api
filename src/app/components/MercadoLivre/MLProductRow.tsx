@@ -12,13 +12,17 @@ import {
   AlertTriangle,
   CheckCircle,
   Store,
+  Pause,
+  Play,
 } from "lucide-react";
 import { exibirValorEmReais } from "@/utils/currency";
 
 interface Product {
+  id: string;
   mlItemId: string;
   mlTitle: string;
   mlPrice: number;
+  mlAutoStockPausado?: boolean;
   mlOriginalPrice?: number | null;
   mlHasPromotion?: boolean;
   mlPromotionDiscount?: number | null;
@@ -58,6 +62,7 @@ interface MLProductRowProps {
   onEditProduct: (product: Product) => void;
   onLinkProduct: (product: Product) => void;
   onUnlinkProduct: (product: Product) => void;
+  onTogglePause: (product: Product) => void;
 }
 
 export default function MLProductRow({
@@ -66,6 +71,7 @@ export default function MLProductRow({
   onEditProduct,
   onLinkProduct,
   onUnlinkProduct,
+  onTogglePause,
 }: MLProductRowProps) {
   const getStatusBadge = (status: string) => {
     const variants: Record<
@@ -315,6 +321,22 @@ export default function MLProductRow({
             }
           >
             <Store className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            title={
+              product.mlAutoStockPausado
+                ? "Retomar envio automático de estoque"
+                : "Pausar envio automático de estoque"
+            }
+            onClick={() => onTogglePause(product)}
+          >
+            {product.mlAutoStockPausado ? (
+              <Play className="h-4 w-4 text-warning" />
+            ) : (
+              <Pause className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </DataTableCell>

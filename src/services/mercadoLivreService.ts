@@ -18,6 +18,30 @@ import {
   MercadoLivreSyncHistory,
 } from "@/types/mercadolivre";
 
+export class MLReconnectError extends Error {
+  readonly code = "ML_RECONNECT_REQUIRED";
+
+  constructor() {
+    super("Sua conexão com o Mercado Livre expirou. Reconecte para continuar.");
+    this.name = "MLReconnectError";
+  }
+}
+
+export class MLTransientError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "MLTransientError";
+  }
+}
+
+const ML_TOKEN_RENEWAL_WINDOW_MS = 10 * 60 * 1000;
+const ML_REFRESH_LOCK_TIMEOUT_MS = 15000;
+const ML_REFRESH_LOCK_MAX_WAIT_MS = 10000;
+
+type MLLockedRefreshResult =
+  | { kind: "ok"; accessToken: string }
+  | { kind: "reconnect" };
+
 export class MercadoLivreService {
   private static readonly BASE_URL = "https://api.mercadolibre.com";
 
@@ -316,7 +340,11 @@ export class MercadoLivreService {
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(
+      const errorCode = error.error || "";
+      if (errorCode === "invalid_grant") {
+        throw new MLReconnectError();
+      }
+      throw new MLTransientError(
         `Erro ao renovar token ML: ${error.message || response.statusText}`
       );
     }
@@ -433,6 +461,190 @@ export class MercadoLivreService {
   }
 
   /**
+   * Busca tarifa de venda real (sites/{site}/listing_prices → sale_fee_amount)
+   * e custo de frete pago pelo vendedor (users/{seller}/shipping_options/free
+   * → coverage.all_country.list_cost) para um anúncio ativo. Nunca estima:
+   * se a chamada falhar, o campo correspondente fica `null` (pendência
+   * visível) em vez de inventar um percentual fixo.
+   */
+  static async fetchCustosAnuncio(
+    item: MLItem,
+    accessToken: string,
+    siteId: string,
+    sellerId: string
+  ): Promise<{
+    mlTarifaVenda: number | null;
+    mlCustoFrete: number | null;
+    mlLogisticType: string | null;
+  }> {
+    let mlTarifaVenda: number | null = null;
+    try {
+      const params = new URLSearchParams({
+        price: String(item.price),
+        listing_type_id: item.listing_type_id || "gold_special",
+      });
+      if (item.category_id) {
+        params.set("category_id", item.category_id);
+      }
+
+      const response = await this.fetchWithBackoff(
+        `${this.BASE_URL}/sites/${siteId}/listing_prices?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        const match = Array.isArray(data) ? data[0] : data;
+        if (typeof match?.sale_fee_amount === "number") {
+          mlTarifaVenda = Math.round(match.sale_fee_amount * 100);
+        }
+      }
+    } catch (error) {
+      console.error(
+        `[CUSTOS_ANUNCIO] Erro ao buscar tarifa de venda de ${item.id}:`,
+        error
+      );
+    }
+
+    const mlLogisticType = item.shipping?.logistic_type ?? null;
+    let mlCustoFrete: number | null = item.shipping?.free_shipping ? null : 0;
+
+    if (item.shipping?.free_shipping) {
+      try {
+        const params = new URLSearchParams({
+          item_id: item.id,
+          item_price: String(item.price),
+        });
+
+        const response = await this.fetchWithBackoff(
+          `${this.BASE_URL}/users/${sellerId}/shipping_options/free?${params.toString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const listCost = data?.coverage?.all_country?.list_cost;
+          if (typeof listCost === "number") {
+            mlCustoFrete = Math.round(listCost * 100);
+          }
+        }
+      } catch (error) {
+        console.error(
+          `[CUSTOS_ANUNCIO] Erro ao buscar frete de ${item.id}:`,
+          error
+        );
+      }
+    }
+
+    return { mlTarifaVenda, mlCustoFrete, mlLogisticType };
+  }
+
+  /**
+   * Busca o custo de envio real pago pelo vendedor para um pedido
+   * (GET /shipments/{id}/costs → senders[0].cost). Retorna null se a
+   * chamada falhar ou o shipment não tiver custo de vendedor — nunca estima.
+   */
+  static async getShipmentCost(
+    shipmentId: string | number,
+    accessToken: string
+  ): Promise<number | null> {
+    try {
+      const response = await this.fetchWithBackoff(
+        `${this.BASE_URL}/shipments/${shipmentId}/costs`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      const senderCost = Array.isArray(data?.senders)
+        ? data.senders[0]?.cost
+        : undefined;
+
+      return typeof senderCost === "number"
+        ? Math.round(senderCost * 100)
+        : null;
+    } catch (error) {
+      console.error(
+        `[SHIPMENT_COST] Erro ao buscar custo do envio ${shipmentId}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Busca o estoque Full (fulfillment) real de um anúncio via
+   * GET /inventories/{inventory_id}/stock/fulfillment. `indisponivel` soma
+   * todo `not_available_detail`; `emTransito` isola só o status "transfer"
+   * (o mais próximo de "em trânsito entre centros" documentado pela API —
+   * não há um campo dedicado). Retorna null se a chamada falhar.
+   */
+  static async getFulfillmentStock(
+    inventoryId: string,
+    accessToken: string
+  ): Promise<{
+    disponivel: number;
+    emTransito: number;
+    indisponivel: number;
+  } | null> {
+    try {
+      const response = await this.fetchWithBackoff(
+        `${this.BASE_URL}/inventories/${inventoryId}/stock/fulfillment`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!response.ok) {
+        return null;
+      }
+
+      const data = await response.json();
+      const notAvailableDetail: Array<{ status: string; quantity: number }> =
+        Array.isArray(data?.not_available_detail)
+          ? data.not_available_detail
+          : [];
+
+      const emTransito = notAvailableDetail
+        .filter((detail) => detail.status === "transfer")
+        .reduce((sum, detail) => sum + (detail.quantity || 0), 0);
+
+      return {
+        disponivel: data?.available_quantity || 0,
+        emTransito,
+        indisponivel: data?.not_available_quantity || 0,
+      };
+    } catch (error) {
+      console.error(
+        `[FULL_STOCK] Erro ao buscar estoque Full do inventory ${inventoryId}:`,
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
    * Extrai o SKU real do produto ML (seller_sku ou seller_custom_field)
    * Prioridade: 1) SELLER_SKU de variações, 2) seller_custom_field de variações,
    * 3) SELLER_SKU do item, 4) seller_custom_field do item
@@ -486,20 +698,27 @@ export class MercadoLivreService {
   static async updateItemStock(
     itemId: string,
     quantity: number,
-    accessToken: string
+    accessToken: string,
+    variationId?: string | null
   ): Promise<boolean> {
     try {
 
       const url = `${this.BASE_URL}/items/${itemId}`;
+      const body = variationId
+        ? {
+            variations: [
+              { id: Number(variationId), available_quantity: quantity },
+            ],
+          }
+        : { available_quantity: quantity };
+
       const response = await fetch(url, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          available_quantity: quantity,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!response.ok) {
@@ -508,7 +727,7 @@ export class MercadoLivreService {
         return false;
       }
 
-      const updatedItem = await response.json();
+      await response.json();
       return true;
     } catch (error) {
       console.error(`Erro ao atualizar estoque do item ${itemId}:`, error);
@@ -583,48 +802,58 @@ export class MercadoLivreService {
   }
 
   /**
-   * Processa notificações de webhook do ML automaticamente
+   * Processa um evento de webhook do ML já gravado em MercadoLivreWebhook
+   * (dedup por mlNotificationId acontece na criação do registro, na rota).
+   * Nunca lança: falha fica registrada em `error` e `processed` permanece
+   * `false`, elegível para reprocessamento futuro.
    */
-  static async processWebhook(
-    accountId: string,
-    webhookData: {
-      resource: string;
-      user_id: string;
-      topic: string;
-      application_id: string;
-    }
-  ): Promise<void> {
+  static async processWebhookEvent(webhookId: string): Promise<void> {
+    const evento = await prisma.mercadoLivreWebhook.findUniqueOrThrow({
+      where: { id: webhookId },
+    });
+
     try {
-      const { resource, topic } = webhookData;
-
-      // Log do evento recebido
-
-      // Salvar evento no histórico
-      await this.saveWebhookEvent(accountId, webhookData);
-
-      // Processar baseado no tópico
-      switch (topic) {
+      switch (evento.topic) {
         case "items":
         case "items_prices":
         case "stock-locations":
-          await this.processItemWebhook(accountId, resource);
+          await this.processItemWebhook(
+            evento.mercadoLivreAccountId,
+            evento.resource
+          );
           break;
 
         case "orders":
         case "orders_v2":
-          await this.processOrderWebhook(accountId, resource);
+          await this.processOrderWebhook(
+            evento.mercadoLivreAccountId,
+            evento.resource
+          );
           break;
 
         case "payments":
-          // Processar notificações de pagamento
-          await this.processPaymentWebhook(accountId, resource);
+          await this.processPaymentWebhook(
+            evento.mercadoLivreAccountId,
+            evento.resource
+          );
           break;
 
         default:
       }
+
+      await prisma.mercadoLivreWebhook.update({
+        where: { id: webhookId },
+        data: { processed: true, processedAt: new Date(), error: null },
+      });
     } catch (error) {
-      console.error(`[WEBHOOK] Erro ao processar webhook:`, error);
-      throw error;
+      console.error(`[WEBHOOK] Erro ao processar webhook ${webhookId}:`, error);
+      await prisma.mercadoLivreWebhook.update({
+        where: { id: webhookId },
+        data: {
+          error: error instanceof Error ? error.message : "Erro desconhecido",
+          attempts: { increment: 1 },
+        },
+      });
     }
   }
 
@@ -748,6 +977,41 @@ export class MercadoLivreService {
         }, 30000); // Retry após 30 segundos
       }
 
+      let mlTarifaVenda: number | null = null;
+      let mlCustoFrete: number | null = null;
+      let mlCustosAtualizadosEm: Date | null = null;
+      if (item.status === "active") {
+        const account = await prisma.mercadoLivreAccount.findUniqueOrThrow({
+          where: { id: accountId },
+          select: { siteId: true, mlUserId: true },
+        });
+        const custos = await this.fetchCustosAnuncio(
+          item,
+          accessToken,
+          account.siteId,
+          account.mlUserId
+        );
+        mlTarifaVenda = custos.mlTarifaVenda;
+        mlCustoFrete = custos.mlCustoFrete;
+        mlCustosAtualizadosEm = new Date();
+      }
+
+      let mlFullDisponivel: number | null = null;
+      let mlFullEmTransito: number | null = null;
+      let mlFullIndisponivel: number | null = null;
+      let mlFullAtualizadoEm: Date | null = null;
+      if (item.inventory_id) {
+        const fullStock = await this.getFulfillmentStock(
+          item.inventory_id,
+          accessToken
+        );
+        if (fullStock) {
+          mlFullDisponivel = fullStock.disponivel;
+          mlFullEmTransito = fullStock.emTransito;
+          mlFullIndisponivel = fullStock.indisponivel;
+          mlFullAtualizadoEm = new Date();
+        }
+      }
 
       const productData = {
         mlTitle: item.title,
@@ -768,6 +1032,15 @@ export class MercadoLivreService {
         lastSyncAt: new Date(),
         syncStatus: "synced",
         syncError: null,
+        mlTarifaVenda,
+        mlCustoFrete,
+        mlLogisticType: item.shipping?.logistic_type ?? null,
+        mlInventoryId: item.inventory_id ?? null,
+        mlCustosAtualizadosEm,
+        mlFullDisponivel,
+        mlFullEmTransito,
+        mlFullIndisponivel,
+        mlFullAtualizadoEm,
       };
 
       if (existingProduct) {
@@ -808,37 +1081,6 @@ export class MercadoLivreService {
     } catch (error) {
       console.error(`[WEBHOOK] Erro ao processar item webhook:`, error);
       throw error;
-    }
-  }
-
-  /**
-   * Salva evento de webhook para auditoria
-   */
-  static async saveWebhookEvent(
-    accountId: string,
-    webhookData: {
-      topic: string;
-      resource: string;
-      user_id: string;
-      application_id: string;
-    }
-  ): Promise<void> {
-    try {
-      await prisma.mercadoLivreWebhook.create({
-        data: {
-          mercadoLivreAccountId: accountId,
-          mlNotificationId: `${webhookData.resource}_${Date.now()}`,
-          topic: webhookData.topic,
-          resource: webhookData.resource,
-          userId: webhookData.user_id,
-          applicationId: webhookData.application_id,
-          processed: true,
-          processedAt: new Date(),
-          attempts: 1,
-        },
-      });
-    } catch (error) {
-      console.error("Erro ao salvar evento de webhook:", error);
     }
   }
 
@@ -1200,71 +1442,119 @@ export class MercadoLivreService {
   }
 
   /**
-   * Obtém ou renova token válido para uma conta
+   * Obtém ou renova token válido para uma conta.
+   * Trava distribuída (pg_advisory_xact_lock) evita corrida entre instâncias
+   * serverless diferentes; Map em memória evita chamadas duplicadas dentro
+   * da mesma instância (mesmo padrão do BlingService, Ciclo 6 Fase 1).
    */
   static async getValidToken(accountId: string): Promise<string> {
     const account = await prisma.mercadoLivreAccount.findUniqueOrThrow({
       where: { id: accountId },
     });
 
-    if (account.expiresAt > new Date()) {
+    if (!account.isActive) {
+      throw new MLReconnectError();
+    }
+
+    const msUntilExpiry = account.expiresAt.getTime() - Date.now();
+    if (msUntilExpiry >= ML_TOKEN_RENEWAL_WINDOW_MS) {
       return account.accessToken;
     }
 
-    const inFlightRefresh = this.tokenRefreshPromises.get(accountId);
-    if (inFlightRefresh) {
-      return inFlightRefresh;
-    }
-
-    const refreshPromise = this.performTokenRefresh(accountId, account.refreshToken).finally(
-      () => this.tokenRefreshPromises.delete(accountId)
-    );
-    this.tokenRefreshPromises.set(accountId, refreshPromise);
-
-    return refreshPromise;
+    return this.coalescedRefresh(accountId, account.refreshToken);
   }
 
-  private static async performTokenRefresh(
+  private static coalescedRefresh(
     accountId: string,
     refreshTokenAtCallTime: string
   ): Promise<string> {
-    const current = await prisma.mercadoLivreAccount.findUniqueOrThrow({
-      where: { id: accountId },
-    });
-
-    if (current.expiresAt > new Date()) {
-      return current.accessToken;
+    const inFlight = this.tokenRefreshPromises.get(accountId);
+    if (inFlight) {
+      return inFlight;
     }
 
-    if (current.refreshToken !== refreshTokenAtCallTime) {
-      return current.accessToken;
-    }
-
-    try {
-      const newTokens = await this.refreshAccessToken(current.refreshToken);
-
-      const updated = await prisma.mercadoLivreAccount.update({
-        where: { id: accountId },
-        data: {
-          accessToken: newTokens.access_token,
-          refreshToken: newTokens.refresh_token,
-          expiresAt: new Date(Date.now() + newTokens.expires_in * 1000),
-        },
+    const refreshPromise = this.refreshWithLock(accountId, refreshTokenAtCallTime)
+      .catch(async (error) => {
+        if (error instanceof MLReconnectError) {
+          const account = await prisma.mercadoLivreAccount.findUnique({
+            where: { id: accountId },
+            select: { userId: true },
+          });
+          if (account) {
+            await NotificationService.notifyMLExpired(account.userId);
+          }
+        }
+        throw error;
+      })
+      .finally(() => {
+        this.tokenRefreshPromises.delete(accountId);
       });
 
-      return updated.accessToken;
-    } catch (error) {
-      const deactivated = await prisma.mercadoLivreAccount.update({
-        where: { id: accountId },
-        data: { isActive: false },
-        select: { userId: true },
-      });
-      await NotificationService.notifyMLExpired(deactivated.userId);
+    this.tokenRefreshPromises.set(accountId, refreshPromise);
+    return refreshPromise;
+  }
 
-      throw new Error(
-        "Token expirado e não foi possível renovar. Reconecte a conta do Mercado Livre."
-      );
+  private static async refreshWithLock(
+    accountId: string,
+    refreshTokenAtCallTime: string
+  ): Promise<string> {
+    const result = await prisma.$transaction(
+      async (tx): Promise<MLLockedRefreshResult> => {
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${accountId}))`;
+
+        const current = await tx.mercadoLivreAccount.findUniqueOrThrow({
+          where: { id: accountId },
+        });
+
+        if (!current.isActive) {
+          return { kind: "reconnect" };
+        }
+
+        const msUntilExpiry = current.expiresAt.getTime() - Date.now();
+        if (msUntilExpiry >= ML_TOKEN_RENEWAL_WINDOW_MS) {
+          return { kind: "ok", accessToken: current.accessToken };
+        }
+
+        if (current.refreshToken !== refreshTokenAtCallTime) {
+          return { kind: "ok", accessToken: current.accessToken };
+        }
+
+        try {
+          const tokens = await this.refreshAccessToken(current.refreshToken);
+          const updated = await tx.mercadoLivreAccount.update({
+            where: { id: accountId },
+            data: {
+              accessToken: tokens.access_token,
+              refreshToken: tokens.refresh_token,
+              expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+            },
+          });
+          return { kind: "ok", accessToken: updated.accessToken };
+        } catch (error) {
+          if (error instanceof MLReconnectError) {
+            await tx.mercadoLivreAccount.update({
+              where: { id: accountId },
+              data: { isActive: false },
+            });
+            return { kind: "reconnect" };
+          }
+          throw error instanceof MLTransientError
+            ? error
+            : new MLTransientError(
+                error instanceof Error
+                  ? error.message
+                  : "Erro ao renovar token do Mercado Livre"
+              );
+        }
+      },
+      { timeout: ML_REFRESH_LOCK_TIMEOUT_MS, maxWait: ML_REFRESH_LOCK_MAX_WAIT_MS }
+    );
+
+    if (result.kind === "reconnect") {
+      throw new MLReconnectError();
     }
+
+    return result.accessToken;
   }
 
   /**
@@ -2100,100 +2390,6 @@ export class MercadoLivreService {
         topSellingProducts: [],
         salesTrend: "estável",
         period: "N/A",
-      };
-    }
-  }
-
-  /**
-   * Obtém taxas e comissões detalhadas do marketplace
-   */
-  static async getMarketplaceFees(
-    accessToken: string,
-    categoryId?: string
-  ): Promise<{
-    listingFee: number;
-    saleFee: number;
-    paymentFee: number;
-    shippingFee: number;
-    totalFeeRate: number;
-    category: string;
-    currency: string;
-    estimatedFeesOnPrice: (price: number) => {
-      listingFee: number;
-      saleFee: number;
-      paymentFee: number;
-      totalFees: number;
-      netAmount: number;
-    };
-  }> {
-    try {
-
-      // Obter informações do usuário para determinar o site
-      const userInfo = await this.getUserInfo(accessToken);
-      const currency =
-        userInfo.country_id === "BR"
-          ? "BRL"
-          : userInfo.country_id === "AR"
-          ? "ARS"
-          : userInfo.country_id === "MX"
-          ? "MXN"
-          : "BRL";
-
-      // Taxas padrão do Mercado Livre (baseadas na documentação oficial)
-      const fees = {
-        listingFee: 0, // Taxa de publicação (geralmente grátis para vendedores básicos)
-        saleFee: 0.12, // Taxa de venda padrão de 12% para produtos gerais
-        paymentFee: 0.049, // Taxa de processamento de pagamento ~4.9%
-        shippingFee: 0, // Taxa de envio (varia por produto)
-        totalFeeRate: 0.169, // Total aproximado de 16.9%
-        category: categoryId || "Geral",
-        currency,
-      };
-
-      // Função para calcular taxas em um preço específico
-      const estimatedFeesOnPrice = (price: number) => {
-        const listingFee = fees.listingFee * price;
-        const saleFee = fees.saleFee * price;
-        const paymentFee = fees.paymentFee * price;
-        const totalFees = listingFee + saleFee + paymentFee;
-        const netAmount = price - totalFees;
-
-        return {
-          listingFee,
-          saleFee,
-          paymentFee,
-          totalFees,
-          netAmount,
-        };
-      };
-
-      return {
-        ...fees,
-        estimatedFeesOnPrice,
-      };
-    } catch (error) {
-      console.error("Erro ao obter taxas do marketplace:", error);
-
-      // Retornar taxas padrão em caso de erro
-      const defaultFees = {
-        listingFee: 0,
-        saleFee: 0.12,
-        paymentFee: 0.049,
-        shippingFee: 0,
-        totalFeeRate: 0.169,
-        category: categoryId || "Geral",
-        currency: "BRL",
-      };
-
-      return {
-        ...defaultFees,
-        estimatedFeesOnPrice: (price: number) => ({
-          listingFee: 0,
-          saleFee: price * 0.12,
-          paymentFee: price * 0.049,
-          totalFees: price * 0.169,
-          netAmount: price * 0.831,
-        }),
       };
     }
   }

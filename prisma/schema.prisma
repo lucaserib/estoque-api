@@ -68,6 +68,22 @@ model User {
   movimentacoesEstoque     EstoqueMovimentacao[]
   subscription             Subscription?
   invitationsSent          Invitation[]               @relation("InvitationsSent")
+  configuracaoGeral        ConfiguracaoGeral?
+
+  @@index([contaId])
+}
+
+model ConfiguracaoGeral {
+  id                               String   @id @default(uuid())
+  userId                           String   @unique
+  aliquotaImposto                  Float    @default(0)
+  avgDeliveryDaysPadrao            Int      @default(7)
+  ultimaContagemPendenciasCriticas Int      @default(0)
+  createdAt                        DateTime @default(now())
+  updatedAt                        DateTime @updatedAt
+  user                             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("configuracoes_gerais")
 }
 
 model Invitation {
@@ -136,6 +152,18 @@ model ProdutoMercadoLivre {
   mlOriginalPrice       Int?
   mlPromotionDiscount   Int?
   mlSold90Days          Int?
+  mlTarifaVenda         Int?
+  mlCustoFrete          Int?
+  mlLogisticType        String?
+  mlInventoryId         String?
+  mlCustosAtualizadosEm DateTime?
+  mlFullDisponivel      Int?
+  mlFullEmTransito      Int?
+  mlFullIndisponivel    Int?
+  mlFullAtualizadoEm    DateTime?
+  mlUltimoEnvioEstoqueEm DateTime?
+  mlAutoStockPausado    Boolean             @default(false)
+  mlVariationId         String?
   mercadoLivreAccount   MercadoLivreAccount @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)
   produto               Produto?            @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
@@ -196,6 +224,8 @@ model Account {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Session {
@@ -206,6 +236,8 @@ model Session {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Produto {
@@ -252,8 +284,10 @@ model Componente {
   quantidade Int
   produtoId  String
   kitId      String
-  kit        Produto @relation("KitToComponente", fields: [kitId], references: [id])
-  produto    Produto @relation("ProdutoToComponente", fields: [produtoId], references: [id])
+  kit        Produto @relation("KitToComponente", fields: [kitId], references: [id], onDelete: Cascade)
+  produto    Produto @relation("ProdutoToComponente", fields: [produtoId], references: [id], onDelete: Cascade)
+
+  @@unique([kitId, produtoId])
 }
 
 model Estoque {
@@ -261,8 +295,8 @@ model Estoque {
   armazemId        String
   quantidade       Int
   estoqueSeguranca Int?
-  armazem          Armazem @relation(fields: [armazemId], references: [id])
-  produto          Produto @relation(fields: [produtoId], references: [id])
+  armazem          Armazem @relation(fields: [armazemId], references: [id], onDelete: Cascade)
+  produto          Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@id([produtoId, armazemId])
 }
@@ -289,6 +323,7 @@ model EstoqueMovimentacao {
   armazem            Armazem                   @relation(fields: [armazemId], references: [id])
 
   @@index([produtoId, armazemId])
+  @@index([userId])
   @@map("estoque_movimentacoes")
 }
 
@@ -300,8 +335,10 @@ model Saida {
   userId    String
   detalhes  DetalhesSaida[]
   armazem   Armazem         @relation(fields: [armazemId], references: [id])
-  produto   Produto?        @relation(fields: [produtoId], references: [id])
+  produto   Produto?        @relation(fields: [produtoId], references: [id], onDelete: SetNull)
   user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model DetalhesSaida {
@@ -310,8 +347,8 @@ model DetalhesSaida {
   produtoId  String
   quantidade Int
   isKit      Boolean
-  produto    Produto @relation(fields: [produtoId], references: [id])
-  saida      Saida   @relation(fields: [saidaId], references: [id])
+  produto    Produto @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  saida      Saida   @relation(fields: [saidaId], references: [id], onDelete: Cascade)
 }
 
 model Armazem {
@@ -358,6 +395,8 @@ model PedidoCompra {
   fornecedor    Fornecedor      @relation(fields: [fornecedorId], references: [id])
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   produtos      PedidoProduto[]
+
+  @@index([userId])
 }
 
 model PedidoProduto {
@@ -367,8 +406,8 @@ model PedidoProduto {
   quantidade    Int
   custo         Int
   multiplicador Int          @default(1)
-  pedido        PedidoCompra @relation(fields: [pedidoId], references: [id])
-  produto       Produto      @relation(fields: [produtoId], references: [id])
+  pedido        PedidoCompra @relation(fields: [pedidoId], references: [id], onDelete: Cascade)
+  produto       Produto      @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 }
 
 model ProdutoFornecedor {
@@ -383,8 +422,8 @@ model ProdutoFornecedor {
   quantidadeMinima   Int?
   principal          Boolean    @default(false)
   codigoNoFornecedor String?
-  fornecedor         Fornecedor @relation(fields: [fornecedorId], references: [id])
-  produto            Produto    @relation(fields: [produtoId], references: [id])
+  fornecedor         Fornecedor @relation(fields: [fornecedorId], references: [id], onDelete: Cascade)
+  produto            Produto    @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@unique([produtoId, fornecedorId])
 }
@@ -402,6 +441,7 @@ model TransferenciaEstoque {
   armazemOrigem    Armazem             @relation("TransferenciaOrigem", fields: [armazemOrigemId], references: [id])
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId])
   @@map("transferencias_estoque")
 }
 
@@ -431,6 +471,7 @@ model BlingAccount {
   user                        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   syncHistories               BlingSyncHistory[]
 
+  @@index([userId])
   @@map("bling_accounts")
 }
 
@@ -492,6 +533,7 @@ enum NotificationType {
   BLING_EXPIRADO
   ML_EXPIRADO
   PEDIDO_CONCLUIDO
+  CADASTRO_INCOMPLETO
 }
 
 model Notification {

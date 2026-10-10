@@ -217,6 +217,37 @@ export async function POST(request: NextRequest) {
                 );
               }
 
+              let mlTarifaVenda: number | null = null;
+              let mlCustoFrete: number | null = null;
+              let mlCustosAtualizadosEm: Date | null = null;
+              if (item.status === "active") {
+                const custos = await MercadoLivreService.fetchCustosAnuncio(
+                  item,
+                  accessToken,
+                  account.siteId,
+                  account.mlUserId
+                );
+                mlTarifaVenda = custos.mlTarifaVenda;
+                mlCustoFrete = custos.mlCustoFrete;
+                mlCustosAtualizadosEm = new Date();
+              }
+
+              let mlFullDisponivel: number | null = null;
+              let mlFullEmTransito: number | null = null;
+              let mlFullIndisponivel: number | null = null;
+              let mlFullAtualizadoEm: Date | null = null;
+              if (item.inventory_id) {
+                const fullStock = await MercadoLivreService.getFulfillmentStock(
+                  item.inventory_id,
+                  accessToken
+                );
+                if (fullStock) {
+                  mlFullDisponivel = fullStock.disponivel;
+                  mlFullEmTransito = fullStock.emTransito;
+                  mlFullIndisponivel = fullStock.indisponivel;
+                  mlFullAtualizadoEm = new Date();
+                }
+              }
 
               const productData = {
                 mlTitle: item.title,
@@ -239,6 +270,15 @@ export async function POST(request: NextRequest) {
                 lastSyncAt: new Date(),
                 syncStatus: "synced",
                 syncError: null,
+                mlTarifaVenda,
+                mlCustoFrete,
+                mlLogisticType: item.shipping?.logistic_type ?? null,
+                mlInventoryId: item.inventory_id ?? null,
+                mlCustosAtualizadosEm,
+                mlFullDisponivel,
+                mlFullEmTransito,
+                mlFullIndisponivel,
+                mlFullAtualizadoEm,
               };
 
               if (existingProduct) {

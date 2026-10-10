@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
-import { MercadoLivreService } from "@/services/mercadoLivreService";
 
 /**
  * GET /api/produtos/estoque-full
- * Busca estoque Full atual em tempo real da API do ML
+ * Lê o snapshot de estoque Full já gravado por produto durante a
+ * sincronização de anúncios (sync/route.ts, processItemWebhook) — em vez
+ * de chamar a API do ML produto a produto a cada carregamento de tela.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -26,48 +27,28 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const accessToken = await MercadoLivreService.getValidToken(mlAccount.id);
-
     const estoqueFullPorProduto: { [key: string]: number } = {};
 
-    const produtosMLVinculados = await prisma.produtoMercadoLivre.findMany({
+    const produtosMLFull = await prisma.produtoMercadoLivre.findMany({
       where: {
         mercadoLivreAccountId: mlAccount.id,
         produtoId: { not: null },
+        mlLogisticType: "fulfillment",
       },
       select: {
         produtoId: true,
-        mlItemId: true,
+        mlFullDisponivel: true,
       },
     });
 
-
-    // Buscar dados atualizados de cada item do ML em tempo real
-    for (const produtoML of produtosMLVinculados) {
-      try {
-        const item = await MercadoLivreService.getItem(
-          produtoML.mlItemId,
-          accessToken
-        );
-
-        // Verificar se é Full (logistic_type = fulfillment)
-        if (
-          item.shipping?.logistic_type === "fulfillment" &&
-          produtoML.produtoId
-        ) {
-          estoqueFullPorProduto[produtoML.produtoId] =
-            (estoqueFullPorProduto[produtoML.produtoId] || 0) +
-            item.available_quantity;
-
-        }
-      } catch (itemError) {
-        console.error(
-          `[ESTOQUE_FULL] Erro ao buscar item ${produtoML.mlItemId}:`,
-          itemError
-        );
+    for (const produtoML of produtosMLFull) {
+      if (!produtoML.produtoId || produtoML.mlFullDisponivel == null) {
+        continue;
       }
+      estoqueFullPorProduto[produtoML.produtoId] =
+        (estoqueFullPorProduto[produtoML.produtoId] || 0) +
+        produtoML.mlFullDisponivel;
     }
-
 
     return NextResponse.json({
       success: true,

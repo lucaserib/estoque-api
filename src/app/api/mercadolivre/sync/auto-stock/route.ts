@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
         mercadoLivreAccountId: accountId,
         produtoId: { not: { equals: null } }, // Apenas produtos vinculados
         mlStatus: "active", // Apenas produtos ativos no ML
+        mlAutoStockPausado: false, // Respeita a pausa manual de envio automático
       };
 
       if (!syncAll) {
@@ -64,8 +65,19 @@ export async function POST(request: NextRequest) {
           produto: {
             include: {
               estoques: {
-                select: {
-                  quantidade: true,
+                where: { armazem: { tipo: "LOCAL" } },
+                select: { quantidade: true },
+              },
+              componentes: {
+                include: {
+                  produto: {
+                    include: {
+                      estoques: {
+                        where: { armazem: { tipo: "LOCAL" } },
+                        select: { quantidade: true },
+                      },
+                    },
+                  },
                 },
               },
             },
@@ -77,68 +89,59 @@ export async function POST(request: NextRequest) {
       let syncedItems = 0;
       let updatedItems = 0;
       const errors: string[] = [];
+      const ENVIO_MIN_INTERVALO_MS = 10 * 60 * 1000;
 
       for (const produtoML of produtosML) {
         if (!produtoML.produto) continue;
 
+        // Nunca enviar estoque para anúncio atendido pelo Full (fulfillment)
+        const isFulfillment =
+          produtoML.mlLogisticType === "fulfillment" ||
+          produtoML.mlShippingMode === "fulfillment";
+        if (isFulfillment) continue;
+
         try {
-          // Calcular estoque local total
-          const totalLocalStock = produtoML.produto.estoques.reduce(
-            (sum, estoque) => sum + estoque.quantidade, 0
-          );
+          // Estoque local (apenas armazéns LOCAL, excluindo FULL_ML)
+          let computedStock: number;
+          if (
+            produtoML.produto.isKit &&
+            produtoML.produto.componentes.length > 0
+          ) {
+            computedStock = Math.min(
+              ...produtoML.produto.componentes.map((componente) => {
+                const estoqueComponente = componente.produto.estoques.reduce(
+                  (sum, estoque) => sum + estoque.quantidade,
+                  0
+                );
+                return Math.floor(estoqueComponente / componente.quantidade);
+              })
+            );
+          } else {
+            computedStock = produtoML.produto.estoques.reduce(
+              (sum, estoque) => sum + estoque.quantidade,
+              0
+            );
+          }
 
           const currentMLStock = produtoML.mlAvailableQuantity;
+          const diff = computedStock - currentMLStock;
 
-          // Determinar se precisa atualizar
-          let shouldUpdate = false;
-          let newQuantity = currentMLStock;
+          const minutesSinceLastSend = produtoML.mlUltimoEnvioEstoqueEm
+            ? Date.now() - produtoML.mlUltimoEnvioEstoqueEm.getTime()
+            : Infinity;
 
-          if (syncAll) {
-            // Se é sync completo, sempre sincronizar com estoque local
-            shouldUpdate = totalLocalStock !== currentMLStock;
-            newQuantity = totalLocalStock;
-          } else {
-            // Regras inteligentes de sincronização automática:
-
-            // 1. Se estoque local é maior que ML e ML está baixo (≤ 5), sincronizar
-            if (totalLocalStock > currentMLStock && currentMLStock <= 5) {
-              shouldUpdate = true;
-              newQuantity = totalLocalStock;
-            }
-
-            // 2. Se produto está esgotado no ML mas tem estoque local
-            if (currentMLStock === 0 && totalLocalStock > 0) {
-              shouldUpdate = true;
-              newQuantity = totalLocalStock;
-            }
-
-            // 3. Se diferença é muito grande (>50% do estoque atual), sincronizar
-            if (currentMLStock > 0) {
-              const difference = Math.abs(totalLocalStock - currentMLStock);
-              const percentageDiff = difference / currentMLStock;
-              if (percentageDiff > 0.5) {
-                shouldUpdate = true;
-                newQuantity = totalLocalStock;
-              }
-            }
-
-            // 4. Se produto vendeu nas últimas horas, garantir sincronização
-            const recentlyUpdated = produtoML.lastSyncAt &&
-              new Date(produtoML.lastSyncAt) > new Date(Date.now() - 2 * 60 * 60 * 1000);
-
-            if (!recentlyUpdated && totalLocalStock > currentMLStock) {
-              shouldUpdate = true;
-              newQuantity = totalLocalStock;
-            }
-          }
+          const shouldUpdate =
+            diff !== 0 &&
+            (syncAll || minutesSinceLastSend > ENVIO_MIN_INTERVALO_MS);
 
           if (shouldUpdate) {
 
-            // Atualizar estoque no ML
+            // Atualizar estoque no ML (variação correta quando o anúncio tiver variações)
             const updateSuccess = await MercadoLivreService.updateItemStock(
               produtoML.mlItemId,
-              newQuantity,
-              accessToken
+              computedStock,
+              accessToken,
+              produtoML.mlVariationId
             );
 
             if (updateSuccess) {
@@ -146,8 +149,9 @@ export async function POST(request: NextRequest) {
               await prisma.produtoMercadoLivre.update({
                 where: { id: produtoML.id },
                 data: {
-                  mlAvailableQuantity: newQuantity,
+                  mlAvailableQuantity: computedStock,
                   lastSyncAt: new Date(),
+                  mlUltimoEnvioEstoqueEm: new Date(),
                   syncStatus: "synced",
                   syncError: null,
                 },

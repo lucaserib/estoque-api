@@ -45,6 +45,10 @@ const mockOrders = Array.from({ length: TOTAL_ORDERS }, (_, i) => ({
   ],
 }));
 
+const getShipmentCostMock = vi.fn(
+  async (_shipmentId: string | number, _accessToken: string) => 500
+);
+
 vi.mock("@/services/mercadoLivreService", () => ({
   MercadoLivreService: {
     getValidToken: vi.fn(async () => "fake-token"),
@@ -58,6 +62,8 @@ vi.mock("@/services/mercadoLivreService", () => ({
         };
       }
     ),
+    getShipmentCost: (shipmentId: string | number, accessToken: string) =>
+      getShipmentCostMock(shipmentId, accessToken),
   },
 }));
 
@@ -92,5 +98,57 @@ describe("GET /api/mercadolivre/analytics/sales-complete", () => {
     expect(new Set(orderCounts).size).toBe(1);
     expect(totals[0]).toBeGreaterThan(0);
     expect(orderCounts[0]).toBe(TOTAL_ORDERS);
+  });
+
+  it("subtrai o custo real de envio (shipments/{id}/costs) da receita líquida", async () => {
+    const mockOrdersComFrete = [
+      {
+        id: "order-frete-1",
+        status: "paid",
+        date_created: new Date(now).toISOString(),
+        total_amount: 100,
+        shipping: { id: 999 },
+        order_items: [
+          {
+            item: { id: "item-frete", title: "Produto frete", seller_sku: "SKUF" },
+            quantity: 1,
+            unit_price: 100,
+            sale_fee: 10,
+          },
+        ],
+      },
+    ];
+
+    const { GET } = await import("../route");
+    const { mlCache } = await import("@/lib/cache");
+    const mercadoLivreServiceModule = await import(
+      "@/services/mercadoLivreService"
+    );
+
+    const getUserOrdersMock =
+      mercadoLivreServiceModule.MercadoLivreService.getUserOrders as ReturnType<
+        typeof vi.fn
+      >;
+    getUserOrdersMock.mockImplementationOnce(async () => ({
+      results: mockOrdersComFrete,
+      paging: { total: mockOrdersComFrete.length },
+    }));
+    getShipmentCostMock.mockResolvedValueOnce(2000);
+
+    await mlCache.invalidatePattern("sales-complete");
+
+    const request = new NextRequest(
+      "http://localhost/api/mercadolivre/analytics/sales-complete?accountId=acc-1&period=30"
+    );
+    const response = await GET(request);
+    const body = await response.json();
+
+    expect(getShipmentCostMock).toHaveBeenCalledWith(
+      "999",
+      "fake-token"
+    );
+    expect(body.data.summary.totalShippingCostReal).toBe(2000);
+    expect(body.data.summary.shippingCostsIncompletos).toBe(0);
+    expect(body.data.summary.netRevenue).toBe(100 - 10 - 2000);
   });
 });

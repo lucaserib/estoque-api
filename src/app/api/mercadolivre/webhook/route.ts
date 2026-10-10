@@ -7,6 +7,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     if (
+      !body._id ||
       !body.resource ||
       !body.user_id ||
       !body.topic ||
@@ -15,7 +16,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Webhook inválido" }, { status: 400 });
     }
 
+    const notificationId = body._id.toString();
     const { resource, user_id, topic, application_id } = body;
+
+    if (application_id.toString() !== process.env.ML_CLIENT_ID) {
+      console.warn(
+        `[WEBHOOK] application_id inesperado recebido: ${application_id}`
+      );
+      return NextResponse.json({ success: true });
+    }
+
+    const existente = await prisma.mercadoLivreWebhook.findUnique({
+      where: { mlNotificationId: notificationId },
+      select: { id: true },
+    });
+
+    if (existente) {
+      return NextResponse.json({ success: true, duplicado: true });
+    }
 
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
@@ -26,20 +44,25 @@ export async function POST(request: NextRequest) {
     });
 
     if (!account) {
-      return NextResponse.json(
-        { error: "Conta não encontrada" },
-        { status: 404 }
-      );
+      return NextResponse.json({ success: true });
     }
+
+    const registro = await prisma.mercadoLivreWebhook.create({
+      data: {
+        mercadoLivreAccountId: account.id,
+        mlNotificationId: notificationId,
+        topic,
+        resource,
+        userId: user_id.toString(),
+        applicationId: application_id.toString(),
+        processed: false,
+        attempts: 1,
+      },
+    });
 
     after(async () => {
       try {
-        await MercadoLivreService.processWebhook(account.id, {
-          resource,
-          user_id: user_id.toString(),
-          topic,
-          application_id: application_id.toString(),
-        });
+        await MercadoLivreService.processWebhookEvent(registro.id);
       } catch (error) {
         console.error("[WEBHOOK] Erro ao processar em background:", error);
       }
@@ -48,10 +71,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro na rota de webhook ML:", error);
-    return NextResponse.json(
-      { error: "Erro interno do servidor" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true });
   }
 }
 

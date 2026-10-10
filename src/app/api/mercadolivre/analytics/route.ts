@@ -72,14 +72,12 @@ export async function GET(request: NextRequest) {
         shippingInfo,
         financialInfo,
         salesPerformance,
-        marketplaceFees,
       ] = await Promise.allSettled([
         MercadoLivreService.getSellerMetrics(accessToken),
         MercadoLivreService.getStockInfo(accessToken),
         MercadoLivreService.getShippingInfo(accessToken),
         MercadoLivreService.getSellerFinancialInfo(accessToken, sellerId),
         MercadoLivreService.getSalesPerformance(accessToken, sellerId),
-        MercadoLivreService.getMarketplaceFees(accessToken),
       ]);
 
       const resolveResult = <T>(
@@ -180,23 +178,6 @@ export async function GET(request: NextRequest) {
         period: "N/A",
       });
 
-      const feesData = resolveResult(marketplaceFees, {
-        listingFee: 0,
-        saleFee: 0.12,
-        paymentFee: 0.049,
-        shippingFee: 0,
-        totalFeeRate: 0.169,
-        category: "Geral",
-        currency: "BRL",
-        estimatedFeesOnPrice: (price: number) => ({
-          listingFee: 0,
-          saleFee: price * 0.12,
-          paymentFee: price * 0.049,
-          totalFees: price * 0.169,
-          netAmount: price * 0.831,
-        }),
-      });
-
       const analyticsData = {
         userInfo: {
           id: userData.id,
@@ -286,23 +267,6 @@ export async function GET(request: NextRequest) {
           period: salesData.period,
         },
 
-        fees: {
-          structure: {
-            listing: feesData.listingFee,
-            sale: feesData.saleFee,
-            payment: feesData.paymentFee,
-            shipping: feesData.shippingFee,
-            total: feesData.totalFeeRate,
-          },
-          currency: feesData.currency,
-          category: feesData.category,
-          calculator: {
-            description:
-              "Use esta função para calcular taxas em qualquer preço",
-            example: feesData.estimatedFeesOnPrice(100), // Exemplo com R$ 100
-          },
-        },
-
         insights: {
           stockHealth:
             stockData.lowStockProducts.length === 0 &&
@@ -311,15 +275,6 @@ export async function GET(request: NextRequest) {
               : stockData.outOfStockProducts.length > 0
               ? "Crítico"
               : "Atenção",
-
-          profitabilityScore:
-            salesData.totalRevenue > 0
-              ? Math.round(
-                  ((salesData.totalRevenue * (1 - feesData.totalFeeRate)) /
-                    salesData.totalRevenue) *
-                    100
-                )
-              : 0,
 
           diversificationIndex:
             metricsData.activeListings > 0
