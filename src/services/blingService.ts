@@ -190,7 +190,7 @@ type LockedRefreshResult =
   | { kind: "reconnect" };
 
 export class BlingService {
-  private static readonly BASE_URL = "https://www.bling.com.br/Api/v3";
+  private static readonly BASE_URL = "https://api.bling.com.br/Api/v3";
   private static readonly AUTH_URL = "https://www.bling.com.br/Api/v3/oauth";
   private static readonly CLIENT_ID = process.env.BLING_CLIENT_ID!;
   private static readonly CLIENT_SECRET = process.env.BLING_CLIENT_SECRET!;
