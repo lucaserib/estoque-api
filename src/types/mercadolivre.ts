@@ -470,12 +470,16 @@ export interface MLOrder {
   status_detail?: string;
   date_created: string;
   date_closed?: string;
+  last_updated?: string;
+  pack_id?: number | string | null;
   order_items: Array<{
     item: {
       id: string;
       title: string;
       category_id?: string;
       seller_custom_field?: string;
+      seller_sku?: string;
+      variation_id?: number | string | null;
       thumbnail?: string;
       price?: number;
     };

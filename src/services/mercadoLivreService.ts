@@ -829,6 +829,10 @@ export class MercadoLivreService {
             evento.mercadoLivreAccountId,
             evento.resource
           );
+          await this.processOrderWebhookFinanceiro(
+            evento.mercadoLivreAccountId,
+            evento.resource
+          );
           break;
 
         case "payments":
@@ -1771,6 +1775,31 @@ export class MercadoLivreService {
         error
       );
       throw error;
+    }
+  }
+
+  /**
+   * Ingestão financeira do pedido (Ciclo 7). Erro aqui nunca derruba o
+   * webhook de estoque/notificações acima — tem sua própria trilha de
+   * retomada via SincronizacaoFinanceira/reprocessamento diário.
+   */
+  private static async processOrderWebhookFinanceiro(
+    accountId: string,
+    resource: string
+  ): Promise<void> {
+    const orderId = resource.split("/").pop();
+    if (!orderId) return;
+
+    try {
+      const { ingerirPedidoMercadoLivre } = await import(
+        "@/modules/financeiro/ingestao/sincronizador"
+      );
+      await ingerirPedidoMercadoLivre(accountId, orderId);
+    } catch (error) {
+      console.error(
+        `[WEBHOOK_ORDER_FINANCEIRO] Erro ao ingerir financeiro do pedido ${orderId}:`,
+        error
+      );
     }
   }
 

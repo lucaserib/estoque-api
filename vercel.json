@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/cadastro-incompleto",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/financeiro-diario",
+      "schedule": "0 9 * * *"
     }
   ]
 }

@@ -73,3 +73,42 @@ Idêntica à registrada em todo o Ciclo 6: este ambiente não tem `DATABASE_URL`
 - `npx tsc --noEmit`: limpo.
 - `npx next lint`: limpo.
 - `npm test`: 24 arquivos, 180 testes, todos passando (45 novos desta fase).
+
+## Fase 3 — Adaptador Mercado Livre e ingestão de vendas
+
+### O que foi feito
+
+1. **`canais/tipos.ts`**: interface `AdaptadorCanalFinanceiro` e os tipos `*Normalizada` exatamente como descritos no prompt, com um desvio registrado: `obterPedido` devolve `VendaCanalNormalizada | null` (não só `VendaCanalNormalizada`) — `null` é o pedido ainda não ser financeiramente relevante (ver decisão 2 abaixo). Também ganhou `origemReal?` opcional, usado pela deduplicação entre canais (item 3).
+2. **`canais/mercadoLivre/mapeador.ts` + `cliente.ts`**: mapeador puro (testável com fixtures, sem rede) e o cliente HTTP que implementa a interface usando `fetchMlWithBackoff` (`mlFetch`) e `MercadoLivreService.getValidToken`/`getOrder` (reaproveitados, não duplicados). Decisões de mapeamento, todas registradas em `docs/financeiro/fontes-mercado-livre.md`:
+   - **Regime de competência real**: só pedidos com `status=paid` (→ `PAGA`) ou `cancelled` com algum pagamento aprovado (→ `CANCELADA`/`DEVOLVIDA`) entram no financeiro. Status transitórios (`confirmed`, `payment_required`, `payment_in_process`, `partially_paid`) ainda não viram linha nenhuma — `obterPedido` devolve `null` e a ingestão não cria nada, tentando de novo no próximo reprocessamento.
+   - **`CANCELADA` × `DEVOLVIDA`**: via `order_request.return` (presença = devolução). Não confirmado contra pedido real — pergunta nova (6ª) em `fontes-mercado-livre.md`. As duas zeram a venda da mesma forma na margem, então o número financeiro não erra mesmo se a categorização dessas duas estiver trocada.
+   - **`sale_fee` por unidade**: mantida a mesma convenção já usada em `sales-complete` e `dashboard/resumo` (× quantidade), para não introduzir uma segunda regra divergente enquanto a Fase 0 não confirma qual é a certa.
+   - **Desconto do pedido**: `/orders/{id}/discounts` tratado como objeto único OU lista (soma a parte `seller` de cada entrada) — os dois formatos aparecem em exemplos da documentação.
+   - **Custo do envio**: `senders[0].cost` menos `compensations[].amount` OU `compensation` (testa os dois formatos).
+3. **`ingestao/sincronizador.ts`** — o núcleo da fase:
+   - **Decisão de modelagem (não estava no prompt, resolvida durante a implementação)**: `VendaCanal.faturamentoBruto` grava sempre o valor **original** do pedido (preço × quantidade pedida), não importa o status — é o "quanto essa venda valia". Já a **margem de contribuição** usa quantidade **zerada** para `CANCELADA`/`DEVOLVIDA` (ver `dominio/formulas.ts`, Fase 2: a fórmula não conhece status, só recebe a quantidade que a ingestão decide passar). Isso permite `ResumoFinanceiroDiario.cancelamentos` somar o valor original perdido (linha própria da DRE, "Cancelamentos e devoluções") sem exigir um segundo campo no schema.
+   - **Custo congelado**: ao reingerir um pedido já existente, o `custoUnitario` de cada item só é recalculado se estiver `null` — nunca sobrescreve um valor já gravado, mesmo que `Produto.custoMedio` tenha mudado depois. Testado explicitamente (reprocessar com custo do produto alterado preserva o valor antigo).
+   - **Vínculo**: `ProdutoMercadoLivre` (por `mlItemId` + conta) primeiro, SKU normalizado (`normalizeSku`, já existente) depois. Sem nenhum dos dois: `produtoId: null`, pendência `SEM_VINCULO`, venda marcada incompleta — a venda entra mesmo assim, como pede o prompt.
+   - **Frete por tipo de logística**: `fulfillment` (Full) → 0 (custo vem da cobrança mensal, Fase 4); `self_service` (Flex) → `ConfiguracaoGeral.custoEnvioFlex` (ou `null`/pendência `SEM_FRETE` se ainda não configurado, nunca 0 inventado); os demais → `obterCustoEnvio` de verdade.
+   - **Pacote (carrinho) com frete único**: quando o pedido tem `pacoteExternoId`, o custo do envio (um só, para o pacote inteiro) é rateado entre todos os pedidos do mesmo pacote já conhecidos (`VendaCanal` com o mesmo `pacoteExternoId`), proporcional ao faturamento de cada um — reaproveitando `ratear`/`ratearCustoVendaPorItem` do domínio. Isso **reescreve o frete de pedidos-irmãos já ingeridos** quando um novo irmão chega (testado: ingerir A sozinho dá 100% do frete pra ele; ingerir B depois reparte entre os dois e atualiza A). Limite reconhecido: se os irmãos de um pacote nunca gerarem webhook próprio e nunca aparecerem na mesma janela de backfill/reprocessamento, o rateio fica incompleto — não há como descobrir os pedidos-irmãos sem consultar pelo menos um deles.
+   - **Backfill retomável** (`continuarBackfill`): cursor em `SincronizacaoFinanceira` (`{desde, ate, offset}`), processa até 10 pedidos por chamada (cabe no tempo de uma função da Vercel) e devolve `EM_ANDAMENTO`/`CONCLUIDO` — a tela (Fase 7) chama de novo enquanto não concluir. 90 dias por padrão, até 365 configurável.
+   - **Incremental**: `ingerirPedidoMercadoLivre(accountId, pedidoExternoId)`, chamada pelo webhook (item 4) e pelo reprocessamento diário.
+   - **Reprocessamento**: `reprocessarUltimosDias` busca por `order.date_last_updated` dos últimos 3 dias e reingere cada um — pega cancelamento, devolução e custo de frete que chegam depois da venda original.
+   - **`ResumoFinanceiroDiario`**: recalculado (não incrementado) a cada ingestão que afeta um dia, direto da soma dos `VendaCanal` daquele dia — simples e sempre consistente, sem acúmulo de erro de arredondamento.
+4. **Deduplicação entre canais** (`ingestao/deduplicacao.ts`): `resolverOrigemCanonica`/`chaveCanonica` — mecanismo genérico testado (origem declarada por um canal-espelho vence a origem do próprio candidato), **sem** uso real ainda porque não há adaptador de ERP/Bling para pedidos neste ciclo. `VendaCanalNormalizada.origemReal` é o gancho para quando existir.
+5. **Webhook incremental**: `MercadoLivreService.processWebhookEvent` (`case "orders"/"orders_v2"`) passa a chamar também `processOrderWebhookFinanceiro` (novo método privado, import dinâmico para não acoplar o service grande ao módulo financeiro em tempo de carregamento) — erro aí nunca derruba o processamento de estoque/notificações que já existia, só loga. Como a rota do webhook já chama `processWebhookEvent` dentro de `after()`, a ingestão financeira automaticamente não atrasa a resposta 200 — não foi preciso adicionar um `after()` próprio.
+6. **Cron `api/cron/financeiro-diario`** (novo, registrado em `vercel.json` às 9h): reprocessa os últimos 3 dias de cada conta ML ativa, mesmo padrão `CRON_SECRET` dos crons existentes. Única rota de cron do financeiro de propósito — fases futuras (ads, cobranças, recorrências, snapshot, alertas) se somam aqui em vez de criar rotas novas, porque o plano Hobby da Vercel só roda cron 1x/dia por rota.
+7. **`POST /api/financeiro/sincronizacao/importar-historico`**: dispara/continua o backfill de uma conta ML ativa da conta logada, atrás de `FINANCEIRO_EDITAR`. É só o backend — o botão com barra de progresso é Fase 7.
+8. **Testes** (46 novos): mapeador com fixtures (pago, pacote com `pack_id`, cancelado, devolvido, Full — os 5 cenários pedidos), ingestão (vínculo nas duas formas, custo congelado nos dois sentidos, Flex sem custo configurado, Full sem chamar `obterCustoEnvio`, pacote reescrevendo o irmão, resumo diário separando cancelamento do faturamento válido), backfill (cria/retoma cursor, conclui), reprocessamento, deduplicação, e a emenda no webhook do `MercadoLivreService`.
+
+### O que ficou pendente desta fase
+
+- As 6 perguntas abertas em `docs/financeiro/fontes-mercado-livre.md` continuam sem confirmação real (nenhuma mudou nesta fase, uma nova foi adicionada: `order_request.return`), dependendo do diagnóstico da Fase 0 rodado em produção.
+- `DEVOLVIDA_PARCIAL` e `EM_MEDIACAO` não são detectados automaticamente — o schema e o domínio suportam os dois, mas o mapeador não tem (ainda) um sinal confiável do ML para preenchê-los sem arriscar inventar dado. Fica para quando houver evidência real (diagnóstico) ou uma necessidade concreta de tratar isso manualmente.
+- Rateio de pacote depende de pelo menos um pedido do pacote passar pela ingestão para os outros serem descobertos — não há chamada à API do ML que liste "todos os pedidos de um pack_id".
+
+### Checks ao final da fase
+
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo.
+- `npm test`: 30 arquivos, 226 testes, todos passando (46 novos desta fase).
