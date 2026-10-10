@@ -17,6 +17,7 @@ import {
   BarChart3,
   Zap,
   Users,
+  Wallet,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -24,6 +25,7 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useLayout } from "../../context/LayoutContext";
 import { Logo } from "@/components/brand/Logo";
+import { podeVer } from "@/lib/permissoes";
 
 interface SidebarLinkProps {
   href: string;
@@ -157,6 +159,8 @@ const Sidebar = () => {
   const { isSidebarCollapsed, toggleSidebar } = useLayout();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "ADMIN";
+  const papel = session?.user?.role;
+  const podeVerFinanceiro = papel ? podeVer(papel, "FINANCEIRO_VER") : false;
   const sidebarClassNames = `fixed flex flex-col ${
     isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
   } bg-card border-r border-border transition-all duration-300 overflow-hidden h-full z-40`;
@@ -263,6 +267,20 @@ const Sidebar = () => {
             label="Configurações"
           />
         </SidebarDropdown>
+
+        {podeVerFinanceiro && (
+          <>
+            <SectionLabel isCollapsed={isSidebarCollapsed}>
+              Financeiro
+            </SectionLabel>
+            <SidebarLink
+              href="/financeiro"
+              icon={Wallet}
+              label="Financeiro"
+              isCollapsed={isSidebarCollapsed}
+            />
+          </>
+        )}
 
         <SectionLabel isCollapsed={isSidebarCollapsed}>Sistema</SectionLabel>
         <SidebarLink

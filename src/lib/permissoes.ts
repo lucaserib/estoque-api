@@ -9,7 +9,9 @@ export type AcaoPermissao =
   | "ESTOQUE_AJUSTAR"
   | "VENDAS_ML_EDITAR"
   | "VENDAS_ML_VER"
-  | "INTEGRACOES_USUARIOS_ASSINATURA";
+  | "INTEGRACOES_USUARIOS_ASSINATURA"
+  | "FINANCEIRO_VER"
+  | "FINANCEIRO_EDITAR";
 
 type NivelAcesso = "SIM" | "VER" | "NAO";
 
@@ -64,6 +66,22 @@ const MATRIZ: Record<AcaoPermissao, Record<UserRole, NivelAcesso>> = {
     LEITURA: "SIM",
   },
   INTEGRACOES_USUARIOS_ASSINATURA: {
+    ADMIN: "SIM",
+    COMPRAS: "NAO",
+    ESTOQUE: "NAO",
+    VENDAS: "NAO",
+    LEITURA: "NAO",
+  },
+  // COMPRAS é NAO por padrão, mas é o papel mais plausível de ganhar acesso
+  // configurável ao financeiro depois (spec Fase 1) — ainda não há tela para isso.
+  FINANCEIRO_VER: {
+    ADMIN: "SIM",
+    COMPRAS: "NAO",
+    ESTOQUE: "NAO",
+    VENDAS: "NAO",
+    LEITURA: "NAO",
+  },
+  FINANCEIRO_EDITAR: {
     ADMIN: "SIM",
     COMPRAS: "NAO",
     ESTOQUE: "NAO",

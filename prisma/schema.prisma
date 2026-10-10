@@ -41,6 +41,94 @@ enum ArmazemTipo {
   OUTRO
 }
 
+enum CanalVenda {
+  MERCADO_LIVRE
+  SHOPEE
+  AMAZON
+  MAGALU
+  LOJA_PROPRIA
+  ERP
+  OUTRO
+}
+
+enum StatusVendaCanal {
+  PAGA
+  CANCELADA
+  DEVOLVIDA
+  DEVOLVIDA_PARCIAL
+  EM_MEDIACAO
+}
+
+enum GrupoDre {
+  RECEITA_BRUTA
+  DEDUCAO_RECEITA
+  IMPOSTO_VENDA
+  CUSTO_VARIAVEL
+  CMV
+  DESPESA_OPERACIONAL
+  RESULTADO_FINANCEIRO
+  IMPOSTO_LUCRO
+  NAO_OPERACIONAL
+}
+
+enum TipoLancamento {
+  RECEITA
+  DESPESA
+  TRANSFERENCIA
+}
+
+enum StatusLancamento {
+  PREVISTO
+  PAGO
+  CANCELADO
+}
+
+enum OrigemLancamento {
+  MANUAL
+  RECORRENCIA
+  PARCELAMENTO
+  CARTAO
+  PEDIDO_COMPRA
+  CANAL_COBRANCA
+  CONCILIACAO
+  ERP
+}
+
+enum Confianca {
+  ESTIMADO
+  CONFIRMADO
+}
+
+enum TipoContaFinanceira {
+  BANCO
+  CARTAO_CREDITO
+  CARTEIRA_MARKETPLACE
+  CAIXA
+}
+
+enum FrequenciaRecorrencia {
+  SEMANAL
+  MENSAL
+  ANUAL
+}
+
+enum RegimeTributario {
+  SIMPLES
+  PRESUMIDO
+  REAL
+}
+
+enum CancelamentoCompetencia {
+  VENDA
+  CANCELAMENTO
+}
+
+enum RateioCustoFixo {
+  FATURAMENTO
+  UNIDADE
+  NENHUM
+}
+
 model User {
   id                       String                     @id @default(uuid())
   name                     String?
@@ -69,6 +157,16 @@ model User {
   subscription             Subscription?
   invitationsSent          Invitation[]               @relation("InvitationsSent")
   configuracaoGeral        ConfiguracaoGeral?
+  vendasCanal              VendaCanal[]
+  categoriasFinanceiras    CategoriaFinanceira[]
+  contasFinanceiras        ContaFinanceira[]
+  lancamentosFinanceiros   LancamentoFinanceiro[]
+  recorrenciasFinanceiras  RecorrenciaFinanceira[]
+  faturasCartao            FaturaCartao[]
+  gastosAdsCanal           GastoAdsCanal[]
+  cobrancasCanal           CobrancaCanal[]
+  resumosFinanceirosDiarios ResumoFinanceiroDiario[]
+  sincronizacoesFinanceiras SincronizacaoFinanceira[]
 
   @@index([contaId])
 }
@@ -79,6 +177,11 @@ model ConfiguracaoGeral {
   aliquotaImposto                  Float    @default(0)
   avgDeliveryDaysPadrao            Int      @default(7)
   ultimaContagemPendenciasCriticas Int      @default(0)
+  regimeTributario                 RegimeTributario         @default(SIMPLES)
+  cancelamentoNaCompetencia        CancelamentoCompetencia  @default(VENDA)
+  rateioCustoFixo                  RateioCustoFixo          @default(FATURAMENTO)
+  custoEnvioFlex                   Int?
+  usarImpostoEstimado              Boolean                  @default(true)
   createdAt                        DateTime @default(now())
   updatedAt                        DateTime @updatedAt
   user                             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -274,6 +377,9 @@ model Produto {
   ProdutoMercadoLivre  ProdutoMercadoLivre[]
   transferenciaItens   TransferenciaItem[]
   movimentacoesEstoque EstoqueMovimentacao[]
+  vendaCanalItens      VendaCanalItem[]
+  lancamentosFinanceiros LancamentoFinanceiro[]
+  gastosAdsCanal       GastoAdsCanal[]
 
   @@unique([sku, userId])
   @@unique([userId, blingId])
@@ -379,6 +485,8 @@ model Fornecedor {
   user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   pedidos           PedidoCompra[]
   produtos          ProdutoFornecedor[]
+  lancamentosFinanceiros LancamentoFinanceiro[]
+  recorrenciasFinanceiras RecorrenciaFinanceira[]
 
   @@unique([userId, blingContatoId])
 }
@@ -395,6 +503,7 @@ model PedidoCompra {
   fornecedor    Fornecedor      @relation(fields: [fornecedorId], references: [id])
   user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   produtos      PedidoProduto[]
+  lancamentosFinanceiros LancamentoFinanceiro[]
 
   @@index([userId])
 }
@@ -579,4 +688,301 @@ model Subscription {
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
+
+model VendaCanal {
+  id                  String           @id @default(uuid())
+  userId              String
+  canal               CanalVenda
+  contaCanalId        String
+  pedidoExternoId     String
+  pacoteExternoId     String?
+  dataVenda           DateTime
+  dataCancelamento    DateTime?
+  dataLiberacao       DateTime?
+  status              StatusVendaCanal
+  logistica           String?
+  envioExternoId      String?
+  faturamentoBruto    Int
+  descontoVendedor    Int
+  tarifaVenda         Int
+  freteVendedor       Int?
+  freteComprador      Int
+  impostoEstimado     Int
+  adsAtribuido        Int
+  cmv                 Int?
+  outrosCustos        Int              @default(0)
+  margemContribuicao  Int?
+  valorLiquidoReceber Int?
+  completo            Boolean          @default(true)
+  faltando            String[]         @default([])
+  freteConfianca      Confianca        @default(ESTIMADO)
+  atualizadoNoCanalEm DateTime
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itens               VendaCanalItem[]
+  lancamentosFinanceiros LancamentoFinanceiro[]
+
+  @@unique([userId, canal, pedidoExternoId])
+  @@index([userId, dataVenda])
+  @@index([userId, dataLiberacao])
+  @@map("vendas_canal")
+}
+
+model VendaCanalItem {
+  id                 String     @id @default(uuid())
+  vendaId            String
+  produtoId          String?
+  sku                String?
+  anuncioExternoId   String
+  variacaoExternaId  String?
+  titulo             String
+  quantidade         Int
+  precoUnitario      Int
+  precoCheio         Int?
+  tarifaVenda        Int
+  freteRateado       Int?
+  descontoRateado    Int        @default(0)
+  impostoRateado     Int        @default(0)
+  adsRateado         Int        @default(0)
+  custoUnitario      Int?
+  margemContribuicao Int?
+  venda              VendaCanal @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+  produto            Produto?   @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+
+  @@index([produtoId])
+  @@index([vendaId])
+  @@map("vendas_canal_itens")
+}
+
+model CategoriaFinanceira {
+  id          String                 @id @default(uuid())
+  userId      String
+  nome        String
+  grupoDre    GrupoDre
+  paiId       String?
+  sistema     Boolean                @default(false)
+  ativo       Boolean                @default(true)
+  ordem       Int                    @default(0)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pai         CategoriaFinanceira?   @relation("CategoriaFinanceiraHierarquia", fields: [paiId], references: [id], onDelete: SetNull)
+  filhas      CategoriaFinanceira[]  @relation("CategoriaFinanceiraHierarquia")
+  lancamentos LancamentoFinanceiro[]
+  recorrencias RecorrenciaFinanceira[]
+
+  @@unique([userId, paiId, nome])
+  @@map("categorias_financeiras")
+}
+
+model ContaFinanceira {
+  id               String                 @id @default(uuid())
+  userId           String
+  nome             String
+  tipo             TipoContaFinanceira
+  saldoInicial     Int                    @default(0)
+  dataSaldoInicial DateTime
+  diaFechamento    Int?
+  diaVencimento    Int?
+  limite           Int?
+  ativo            Boolean                @default(true)
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
+  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lancamentos      LancamentoFinanceiro[]
+  recorrencias     RecorrenciaFinanceira[]
+  faturas          FaturaCartao[]
+
+  @@index([userId])
+  @@map("contas_financeiras")
+}
+
+model LancamentoFinanceiro {
+  id                  String           @id @default(uuid())
+  userId               String
+  tipo                 TipoLancamento
+  descricao            String
+  valor                Int
+  categoriaId          String
+  contaFinanceiraId    String?
+  competencia          DateTime
+  vencimento           DateTime
+  pagamento            DateTime?
+  status               StatusLancamento @default(PREVISTO)
+  origem               OrigemLancamento @default(MANUAL)
+  confianca            Confianca        @default(CONFIRMADO)
+  fornecedorId         String?
+  produtoId            String?
+  pedidoCompraId       Int?
+  vendaId              String?
+  recorrenciaId        String?
+  faturaCartaoId       String?
+  grupoParcelamentoId  String?
+  parcelaNumero        Int?
+  parcelaTotal         Int?
+  chaveExterna         String?
+  anexoUrl             String?
+  observacao           String?
+  criadoPorId          String
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoria       CategoriaFinanceira    @relation(fields: [categoriaId], references: [id])
+  contaFinanceira ContaFinanceira?       @relation(fields: [contaFinanceiraId], references: [id], onDelete: SetNull)
+  fornecedor      Fornecedor?            @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  produto         Produto?               @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+  pedidoCompra    PedidoCompra?          @relation(fields: [pedidoCompraId], references: [id], onDelete: SetNull)
+  venda           VendaCanal?            @relation(fields: [vendaId], references: [id], onDelete: SetNull)
+  recorrencia     RecorrenciaFinanceira? @relation(fields: [recorrenciaId], references: [id], onDelete: SetNull)
+  faturaCartao    FaturaCartao?          @relation(fields: [faturaCartaoId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, chaveExterna])
+  @@index([userId, competencia])
+  @@index([userId, vencimento, status])
+  @@index([categoriaId])
+  @@index([contaFinanceiraId])
+  @@index([grupoParcelamentoId])
+  @@map("lancamentos_financeiros")
+}
+
+model RecorrenciaFinanceira {
+  id                String                @id @default(uuid())
+  userId            String
+  descricao         String
+  valor             Int
+  categoriaId       String
+  contaFinanceiraId String?
+  fornecedorId      String?
+  frequencia        FrequenciaRecorrencia
+  diaVencimento     Int
+  inicio            DateTime
+  fim               DateTime?
+  ativo             Boolean               @default(true)
+  geradoAte         DateTime?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoria       CategoriaFinanceira    @relation(fields: [categoriaId], references: [id])
+  contaFinanceira ContaFinanceira?       @relation(fields: [contaFinanceiraId], references: [id], onDelete: SetNull)
+  fornecedor      Fornecedor?            @relation(fields: [fornecedorId], references: [id], onDelete: SetNull)
+  lancamentos     LancamentoFinanceiro[]
+
+  @@index([userId])
+  @@map("recorrencias_financeiras")
+}
+
+model FaturaCartao {
+  id                    String           @id @default(uuid())
+  userId                String
+  contaFinanceiraId     String
+  mesReferencia         String
+  fechamento            DateTime
+  vencimento            DateTime
+  status                StatusLancamento @default(PREVISTO)
+  lancamentoPagamentoId String?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contaFinanceira ContaFinanceira        @relation(fields: [contaFinanceiraId], references: [id], onDelete: Cascade)
+  lancamentos     LancamentoFinanceiro[]
+
+  @@unique([contaFinanceiraId, mesReferencia])
+  @@map("faturas_cartao")
+}
+
+model GastoAdsCanal {
+  id                String     @id @default(uuid())
+  userId            String
+  canal             CanalVenda
+  contaCanalId      String
+  dia               DateTime
+  campanhaExternaId String?
+  anuncioExternoId  String?
+  produtoId         String?
+  custo             Int
+  cliques           Int?
+  impressoes        Int?
+  vendasAtribuidas  Int?
+  receitaAtribuida  Int?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  produto Produto? @relation(fields: [produtoId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, canal, dia, campanhaExternaId, anuncioExternoId])
+  @@index([userId, dia])
+  @@map("gastos_ads_canal")
+}
+
+model CobrancaCanal {
+  id               String     @id @default(uuid())
+  userId           String
+  canal            CanalVenda
+  contaCanalId     String
+  mesReferencia    String
+  detalheExternoId String
+  tipoExterno      String
+  tipoNormalizado  String
+  valor            Int
+  pedidoExternoId  String?
+  anuncioExternoId String?
+  data             DateTime
+  coberturaPedido  Boolean    @default(false)
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, canal, detalheExternoId])
+  @@index([userId, mesReferencia])
+  @@map("cobrancas_canal")
+}
+
+model ResumoFinanceiroDiario {
+  id                 String     @id @default(uuid())
+  userId             String
+  dia                DateTime
+  canal              CanalVenda
+  pedidos            Int        @default(0)
+  unidades           Int        @default(0)
+  faturamentoBruto   Int        @default(0)
+  cancelamentos      Int        @default(0)
+  descontos          Int        @default(0)
+  impostos           Int        @default(0)
+  tarifas            Int        @default(0)
+  frete              Int        @default(0)
+  ads                Int        @default(0)
+  cmv                Int        @default(0)
+  margemContribuicao Int        @default(0)
+  vendasIncompletas  Int        @default(0)
+  atualizadoEm       DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dia, canal])
+  @@map("resumos_financeiros_diarios")
+}
+
+model SincronizacaoFinanceira {
+  id          String     @id @default(uuid())
+  userId      String
+  canal       CanalVenda
+  tipo        String
+  cursor      Json?
+  status      String
+  iniciadoEm  DateTime   @default(now())
+  concluidoEm DateTime?
+  processados Int        @default(0)
+  erro        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, canal, tipo])
+  @@map("sincronizacoes_financeiras")
 }
