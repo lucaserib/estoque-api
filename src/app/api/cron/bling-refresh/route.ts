@@ -65,10 +65,28 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  const contasSemEmpresa = await prisma.blingAccount.findMany({
+    where: { isActive: true, blingCompanyId: null },
+    select: { id: true },
+  });
+
+  let empresasIdentificadas = 0;
+  for (const conta of contasSemEmpresa) {
+    const blingCompanyId = await BlingService.getCompanyId(conta.id);
+    if (blingCompanyId) {
+      await prisma.blingAccount.update({
+        where: { id: conta.id },
+        data: { blingCompanyId },
+      });
+      empresasIdentificadas++;
+    }
+  }
+
   return NextResponse.json({
     elegiveis: accountsNearingExpiry.length,
     renovadas,
     desativadas,
     erros,
+    empresasIdentificadas,
   });
 }

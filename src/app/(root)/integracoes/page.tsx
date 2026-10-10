@@ -53,6 +53,34 @@ interface HistoricoItem {
   status: string;
 }
 
+interface VerificacaoConfigBling {
+  item: string;
+  ok: boolean;
+  bloqueante: boolean;
+  mensagem: string;
+}
+
+interface DiagnosticoConfigBling {
+  ok: boolean;
+  callbackEsperado: string;
+  verificacoes: VerificacaoConfigBling[];
+}
+
+const MENSAGENS_ERRO_BLING: Record<string, string> = {
+  acesso_negado: "A autorização foi cancelada na tela do Bling.",
+  bling_recusou: "O Bling recusou a autorização. Confira se o aplicativo está ativo no portal de desenvolvedores do Bling.",
+  parametros_ausentes: "O Bling voltou sem o código de autorização. Tente conectar novamente.",
+  sessao_invalida: "Sua sessão não chegou no retorno do Bling. Entre no Leap Stock pelo mesmo endereço do link de redirecionamento cadastrado no Bling e tente de novo.",
+  state_expirado: "A tentativa de conexão expirou (mais de 10 minutos) ou foi iniciada em outro navegador/domínio. Clique em Conectar novamente.",
+  state_invalido: "A tentativa de conexão não confere com a sua sessão. Clique em Conectar novamente.",
+  credenciais_invalidas: "O Bling recusou o Client ID/Client Secret configurados no servidor. Confira BLING_CLIENT_ID e BLING_CLIENT_SECRET na Vercel.",
+  codigo_invalido: "O código de autorização do Bling expirou ou já foi usado. Clique em Conectar novamente.",
+  redirect_uri_divergente: "O link de redirecionamento cadastrado no aplicativo do Bling não confere com este domínio.",
+  bling_indisponivel: "O Bling não respondeu. Tente novamente em alguns minutos.",
+  erro_salvar_conta: "A autorização deu certo, mas o servidor não conseguiu gravar a conta. Verifique a TOKEN_ENCRYPTION_KEY e o banco de dados.",
+  desconhecido: "O Bling recusou a conexão por um motivo não identificado. Veja os logs da função /api/bling/auth/callback na Vercel.",
+};
+
 const RESULT_TONE: Record<string, "success" | "warning" | "critical" | "info"> = {
   success: "success",
   partial: "warning",
@@ -68,6 +96,41 @@ export default function IntegracoesPage() {
   const [syncingML, setSyncingML] = useState(false);
   const [syncingBlingProdutos, setSyncingBlingProdutos] = useState(false);
   const [syncingBlingEstoque, setSyncingBlingEstoque] = useState(false);
+  const [conectandoBling, setConectandoBling] = useState(false);
+  const [erroBling, setErroBling] = useState<string | null>(null);
+  const [diagnosticoBling, setDiagnosticoBling] = useState<DiagnosticoConfigBling | null>(null);
+
+  const carregarDiagnosticoBling = useCallback(async () => {
+    try {
+      const response = await fetch("/api/bling/auth?action=diagnostico");
+      if (response.ok) setDiagnosticoBling(await response.json());
+    } catch {
+      setDiagnosticoBling(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resultado = params.get("bling");
+    const erro = params.get("bling_erro");
+    const aviso = params.get("bling_aviso");
+    if (!resultado && !erro) return;
+
+    if (erro) {
+      const mensagem = MENSAGENS_ERRO_BLING[erro] ?? MENSAGENS_ERRO_BLING.desconhecido;
+      setErroBling(mensagem);
+      toast.error(mensagem);
+      carregarDiagnosticoBling();
+    } else if (resultado === "conectado") {
+      toast.success(
+        aviso === "empresa_nao_identificada"
+          ? "Bling conectado. Não foi possível identificar a empresa agora; os webhooks passam a funcionar depois da próxima renovação automática."
+          : "Bling conectado com sucesso."
+      );
+    }
+
+    window.history.replaceState(null, "", window.location.pathname);
+  }, [carregarDiagnosticoBling]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -167,15 +230,28 @@ export default function IntegracoesPage() {
     }
   };
 
-  const handleReconectarBling = async () => {
+  const handleConectarBling = async () => {
+    setConectandoBling(true);
     try {
       const response = await fetch("/api/bling/auth?action=connect");
-      if (!response.ok) throw new Error("Erro ao conectar Bling");
-      const data = await response.json();
-      window.location.href = data.authUrl;
-    } catch (error) {
-      toast.error("Erro ao iniciar reconexão com o Bling");
+      const data = await response.json().catch(() => null);
+
+      if (response.ok && data?.authUrl) {
+        window.location.href = data.authUrl;
+        return;
+      }
+
+      if (data?.code === "BLING_CONFIG" && data.diagnostico) {
+        setDiagnosticoBling(data.diagnostico);
+        setErroBling(data.error);
+        toast.error(data.error);
+      } else {
+        toast.error(data?.error ?? "Erro ao iniciar a conexão com o Bling");
+      }
+    } catch {
+      toast.error("Erro ao iniciar a conexão com o Bling");
     }
+    setConectandoBling(false);
   };
 
   const handleDisconnect = async (
@@ -399,8 +475,17 @@ export default function IntegracoesPage() {
                     </Button>
                   </>
                 ) : (
-                  <Button size="sm" onClick={handleReconectarBling} className="gap-2">
-                    <RefreshCw className="h-4 w-4" />
+                  <Button
+                    size="sm"
+                    onClick={handleConectarBling}
+                    disabled={conectandoBling}
+                    className="gap-2"
+                  >
+                    {conectandoBling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-4 w-4" />
+                    )}
                     Reconectar
                   </Button>
                 )}
@@ -421,11 +506,49 @@ export default function IntegracoesPage() {
                 </Button>
               </>
             ) : (
-              <Button asChild size="sm" className="gap-2">
-                <Link href="/configuracoes-gerais">Conectar Bling</Link>
+              <Button
+                size="sm"
+                onClick={handleConectarBling}
+                disabled={conectandoBling}
+                className="gap-2"
+              >
+                {conectandoBling && <Loader2 className="h-4 w-4 animate-spin" />}
+                Conectar Bling
               </Button>
             )}
           </div>
+          {(erroBling || diagnosticoBling) && (
+            <div className="border-t border-divider px-5 py-4 text-sm" role="status">
+              {erroBling && <p className="font-medium text-destructive">{erroBling}</p>}
+              {diagnosticoBling && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-muted-foreground">
+                    Link de redirecionamento que deve estar cadastrado no aplicativo do Bling:
+                  </p>
+                  <code className="block break-all rounded-md bg-muted px-3 py-2 text-xs text-foreground">
+                    {diagnosticoBling.callbackEsperado}
+                  </code>
+                  <ul className="space-y-1.5">
+                    {diagnosticoBling.verificacoes
+                      .filter((verificacao) => !verificacao.ok)
+                      .map((verificacao) => (
+                        <li key={verificacao.item} className="flex gap-2">
+                          <StatusPill tone={verificacao.bloqueante ? "critical" : "warning"}>
+                            {verificacao.item}
+                          </StatusPill>
+                          <span className="text-muted-foreground">{verificacao.mensagem}</span>
+                        </li>
+                      ))}
+                  </ul>
+                  {diagnosticoBling.verificacoes.every((verificacao) => verificacao.ok) && (
+                    <p className="text-muted-foreground">
+                      A configuração do servidor está correta. Se o erro continuar, confira o link acima no portal do Bling.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </SectionCard>
       </div>
 

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { BlingService } from "@/services/blingService";
 import { buildBlingOAuthStateCookie } from "@/lib/blingOAuthState";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
+import { diagnosticarConfiguracaoBling, origemDaRequisicao } from "@/lib/blingConfig";
 
 export interface BlingAccountSummary {
   id: string;
@@ -81,9 +82,31 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(summaries);
     }
 
+    if (action === "diagnostico") {
+      const user = await verifyUser(request);
+      exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
+
+      return NextResponse.json(
+        diagnosticarConfiguracaoBling(origemDaRequisicao(request.url, request.headers))
+      );
+    }
+
     if (action === "connect") {
       const user = await verifyUser(request);
       exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
+
+      const origem = origemDaRequisicao(request.url, request.headers);
+      const diagnostico = diagnosticarConfiguracaoBling(origem);
+      if (!diagnostico.ok) {
+        return NextResponse.json(
+          {
+            error: "A configuração do servidor impede a conexão com o Bling.",
+            code: "BLING_CONFIG",
+            diagnostico,
+          },
+          { status: 503 }
+        );
+      }
 
       const state = crypto.randomBytes(24).toString("hex");
       const authUrl = BlingService.getAuthorizationUrl(state);
@@ -92,7 +115,7 @@ export async function GET(request: NextRequest) {
       const response = NextResponse.json({ authUrl });
       response.cookies.set(cookie.name, cookie.value, {
         httpOnly: true,
-        secure: true,
+        secure: origem.startsWith("https://"),
         sameSite: "lax",
         maxAge: cookie.maxAge,
         path: "/",

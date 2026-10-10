@@ -123,6 +123,39 @@ export class BlingTransientError extends Error {
   }
 }
 
+export type BlingOAuthMotivo =
+  | "credenciais_invalidas"
+  | "codigo_invalido"
+  | "redirect_uri_divergente"
+  | "bling_indisponivel"
+  | "desconhecido";
+
+function classificarErroOAuth(status: number, corpo: string): BlingOAuthMotivo {
+  const texto = corpo.toLowerCase();
+  if (status >= 500) return "bling_indisponivel";
+  if (texto.includes("invalid_client") || status === 401) return "credenciais_invalidas";
+  if (texto.includes("redirect")) return "redirect_uri_divergente";
+  if (texto.includes("invalid_grant") || texto.includes("expired") || texto.includes("invalid_request")) {
+    return "codigo_invalido";
+  }
+  return "desconhecido";
+}
+
+export class BlingOAuthError extends Error {
+  readonly status: number;
+  readonly motivo: BlingOAuthMotivo;
+  readonly detalhe: string;
+
+  constructor(status: number, corpo: string) {
+    const motivo = classificarErroOAuth(status, corpo);
+    super(`Bling recusou a troca do código de autorização (${status}, ${motivo})`);
+    this.name = "BlingOAuthError";
+    this.status = status;
+    this.motivo = motivo;
+    this.detalhe = corpo.slice(0, 500);
+  }
+}
+
 export class BlingRateLimitError extends Error {
   constructor() {
     super("O Bling está limitando as requisições. Tente novamente em alguns instantes.");
@@ -199,11 +232,16 @@ export class BlingService {
     });
 
     if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Erro ao obter tokens do Bling: ${error}`);
+      const corpo = await response.text();
+      throw new BlingOAuthError(response.status, corpo);
     }
 
-    return response.json();
+    const tokens = (await response.json()) as BlingAuthTokens;
+    if (!tokens.access_token || !tokens.refresh_token) {
+      throw new BlingOAuthError(response.status, "resposta_sem_tokens");
+    }
+
+    return tokens;
   }
 
   static async refreshAccessToken(
@@ -610,7 +648,7 @@ export class BlingService {
   static async getCompanyId(accountId: string): Promise<string | null> {
     try {
       const body = await this.requestJson<{ data?: unknown }>(
-        "/empresas",
+        "/empresas/me/dados-basicos",
         accountId
       );
       const empresa = Array.isArray(body?.data) ? body.data[0] : body?.data;
