@@ -4,6 +4,7 @@ import Credentials from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { UserRole } from "@prisma/client";
+import { obterSegredoAuth } from "@/lib/authSecret";
 
 declare module "next-auth/jwt" {
   interface JWT {
@@ -127,7 +128,7 @@ export const authOptions: NextAuthOptions = {
     signIn: "/login",
     signOut: "/login",
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: obterSegredoAuth(),
 };
 
 export default NextAuth(authOptions);

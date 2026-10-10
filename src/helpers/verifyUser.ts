@@ -2,6 +2,7 @@ import { getToken } from "next-auth/jwt";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 import { User } from "@prisma/client";
+import { obterSegredoAuth } from "@/lib/authSecret";
 
 export interface VerifiedUser extends User {
   contaId: string;
@@ -17,7 +18,7 @@ export async function verifyUser(req: NextRequest): Promise<VerifiedUser> {
 
   let token = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: obterSegredoAuth(),
     secureCookie: isSecure,
     cookieName: isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token",
   });
@@ -25,7 +26,7 @@ export async function verifyUser(req: NextRequest): Promise<VerifiedUser> {
   if (!token && isFromNgrok) {
     token = await getToken({
       req,
-      secret: process.env.NEXTAUTH_SECRET,
+      secret: obterSegredoAuth(),
       secureCookie: false,
       cookieName: "next-auth.session-token",
     });

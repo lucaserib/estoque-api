@@ -12,6 +12,7 @@ describe("diagnosticarConfiguracaoBling", () => {
     process.env.NEXTAUTH_URL = ORIGEM;
     process.env.TOKEN_ENCRYPTION_KEY = Buffer.alloc(32, 1).toString("base64");
     delete process.env.BLING_REDIRECT_URI;
+    delete process.env.AUTH_SECRET;
   });
 
   afterEach(() => {
@@ -54,6 +55,19 @@ describe("diagnosticarConfiguracaoBling", () => {
     process.env.BLING_REDIRECT_URI = "http://localhost:3000/api/bling/auth/callback";
     const resultado = diagnosticarConfiguracaoBling(ORIGEM);
     expect(resultado.verificacoes.find((v) => v.item === "BLING_REDIRECT_URI")?.ok).toBe(false);
+  });
+
+  it("aceita AUTH_SECRET quando NEXTAUTH_SECRET não existe", () => {
+    delete process.env.NEXTAUTH_SECRET;
+    process.env.AUTH_SECRET = "auth";
+    expect(diagnosticarConfiguracaoBling(ORIGEM).ok).toBe(true);
+  });
+
+  it("explica quando BLING_REDIRECT_URI recebeu o link de convite do Bling", () => {
+    process.env.BLING_REDIRECT_URI = "https://www.bling.com.br/Api/v3/oauth/authorize?response_type=code&client_id=x&state=y";
+    const verificacao = diagnosticarConfiguracaoBling(ORIGEM).verificacoes.find((v) => v.item === "BLING_REDIRECT_URI");
+    expect(verificacao?.ok).toBe(false);
+    expect(verificacao?.mensagem).toContain("Link de convite");
   });
 
   it("bloqueia origem http fora de localhost", () => {

@@ -1,4 +1,5 @@
 import { verificarChaveCriptografia } from "@/lib/tokenCrypto";
+import { obterSegredoAuth } from "@/lib/authSecret";
 
 export interface VerificacaoConfigBling {
   item: string;
@@ -51,13 +52,14 @@ export function diagnosticarConfiguracaoBling(origemRequisicao: string): Diagnos
       : "Variável ausente na Vercel. Copie o Client Secret do aplicativo no portal de desenvolvedores do Bling.",
   });
 
+  const segredoAuth = obterSegredoAuth();
   verificacoes.push({
     item: "NEXTAUTH_SECRET",
-    ok: Boolean(process.env.NEXTAUTH_SECRET),
+    ok: Boolean(segredoAuth),
     bloqueante: true,
-    mensagem: process.env.NEXTAUTH_SECRET
+    mensagem: segredoAuth
       ? "Definido."
-      : "Variável ausente. Ela assina o state da conexão com o Bling.",
+      : "Nem NEXTAUTH_SECRET nem AUTH_SECRET estão definidos. Um deles assina o login e o state da conexão com o Bling.",
   });
 
   const chave = verificarChaveCriptografia();
@@ -96,12 +98,15 @@ export function diagnosticarConfiguracaoBling(origemRequisicao: string): Diagnos
 
   const callbackConfigurado = process.env.BLING_REDIRECT_URI?.trim();
   const callbackOk = !callbackConfigurado || callbackConfigurado === callbackEsperado;
+  const colouLinkDeConvite = Boolean(callbackConfigurado?.includes("bling.com.br"));
   verificacoes.push({
     item: "BLING_REDIRECT_URI",
     ok: callbackOk,
     bloqueante: false,
     mensagem: callbackOk
       ? `O "Link de redirecionamento" do aplicativo no Bling deve ser exatamente ${callbackEsperado}`
+      : colouLinkDeConvite
+      ? `BLING_REDIRECT_URI contém o "Link de convite" do Bling (endereço do bling.com.br). Troque o valor por ${callbackEsperado} ou apague a variável. O link de convite não deve ser usado para conectar: use o botão Conectar do Leap Stock.`
       : `BLING_REDIRECT_URI está como ${callbackConfigurado}, mas o callback deste domínio é ${callbackEsperado}. O Bling devolve o usuário para o link cadastrado no aplicativo; se ele for de outro domínio, a sessão e o state não chegam e a conexão falha.`,
   });
 

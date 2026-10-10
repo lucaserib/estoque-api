@@ -1,11 +1,16 @@
 import crypto from "crypto";
+import { obterSegredoAuth } from "@/lib/authSecret";
 
 const COOKIE_NAME = "bling_oauth_state";
 const COOKIE_MAX_AGE_SECONDS = 10 * 60;
 
 function sign(state: string, userId: string): string {
+  const segredo = obterSegredoAuth();
+  if (!segredo) {
+    throw new Error("NEXTAUTH_SECRET/AUTH_SECRET não configurado");
+  }
   return crypto
-    .createHmac("sha256", process.env.NEXTAUTH_SECRET!)
+    .createHmac("sha256", segredo)
     .update(`${state}.${userId}`)
     .digest("hex");
 }

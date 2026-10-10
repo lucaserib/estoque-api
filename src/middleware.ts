@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { obterSegredoAuth } from "@/lib/authSecret";
 
 export async function middleware(req: NextRequest) {
   // ✅ CORREÇÃO: Configurar token com secureCookie baseado no protocolo
@@ -8,7 +9,7 @@ export async function middleware(req: NextRequest) {
 
   const token = await getToken({
     req,
-    secret: process.env.NEXTAUTH_SECRET,
+    secret: obterSegredoAuth(),
     secureCookie: isSecure,
     cookieName: isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token"
   });
@@ -40,7 +41,7 @@ export async function middleware(req: NextRequest) {
   if (!token && isFromNgrok) {
     const fallbackToken = await getToken({
       req,
-      secret: process.env.NEXTAUTH_SECRET,
+      secret: obterSegredoAuth(),
       secureCookie: false,
       cookieName: "next-auth.session-token"
     });
