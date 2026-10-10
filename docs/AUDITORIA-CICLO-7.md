@@ -53,3 +53,23 @@ Idêntica à registrada em todo o Ciclo 6: este ambiente não tem `DATABASE_URL`
 - `npx tsc --noEmit`: limpo.
 - `npx next lint`: limpo.
 - `npm test`: 21 arquivos, 135 testes, todos passando (4 novos desta fase).
+
+## Fase 2 — Núcleo do domínio (funções puras, 100% testadas)
+
+### O que foi feito
+
+1. **`dominio/dinheiro.ts`**: `somar` (soma simples, só para ter um único lugar canônico), `ratear` (método do maior resto — divide um total em centavos proporcional a pesos sem nunca perder ou sobrar centavo; funciona com total negativo, cai para divisão igual quando todos os pesos são zero, e lança erro só no caso realmente impossível de pedir para dividir um total diferente de zero entre zero destinatários), `formatar` (centavos → "R$ 1.234,56" via `Intl.NumberFormat("pt-BR")`). Pegadinha registrada em comentário: o `Intl` usa espaço não separável (U+00A0) entre "R$" e o número, não espaço comum — os testes normalizam isso antes de comparar.
+2. **`dominio/periodo.ts`**: início/fim de dia, semana (segunda a domingo) e mês, e `competenciaDe`, todos calculados de verdade no fuso de América/São_Paulo via `Intl.DateTimeFormat` (não fixa "-03:00" no código — continua correto se algum dia o Brasil voltar a ter horário de verão). Testado explicitamente o caso do enunciado da regra 4 do prompt: 23h50 em Brasília pertence ao dia anterior em UTC, e a competência de um instante próximo da virada do mês respeita o calendário de SP, não o de UTC.
+3. **`dominio/formulas.ts`**: `calcularResultadoVenda(venda, itens, contexto)`, `ratearCustoVendaPorItem`, `calcularMargemContribuicao`, `calcularPontoEquilibrio`, `ratearCustoFixoPorProduto` (métodos FATURAMENTO/UNIDADE/NENHUM, usando `ConfiguracaoGeral.rateioCustoFixo`). Decisão de design registrada: a função não recebe `status` da venda — cancelamento/devolução não são um "modo especial" da fórmula, são só números diferentes (quantidade líquida, tarifa, frete, custo) que a camada de ingestão (Fase 3) resolve antes de chamar o domínio. Isso também significa que uma tarifa não reembolsada numa venda cancelada aparece como perda de verdade, em vez de ser escondida por um zeramento automático — mais fiel à regra "nenhum número inventado".
+4. **`src/lib/margem.ts` passou a delegar para o domínio**: `calcularMargemUnitaria` agora chama `calcularMargemContribuicao` por dentro, em vez de repetir a subtração. Comportamento externo idêntico (mesma assinatura, mesmo resultado) — confirmado pela suíte de testes já existente (`src/lib/__tests__/margem.test.ts`, Ciclo 6), que não precisou de nenhuma alteração e continua passando.
+5. **Testes** (`dominio/__tests__/{dinheiro,periodo,formulas}.test.ts`, 45 casos novos): os nove cenários pedidos no prompt — kit, 2 itens com frete único (rateio), cancelada, devolução parcial, produto sem custo, Flex, Full, item abaixo da taxa fixa, desconto custeado pelo ML × pelo vendedor — mais `calcularPontoEquilibrio` e `ratearCustoFixoPorProduto` nos três métodos.
+
+### O que ficou pendente desta fase
+
+- Nenhuma. A Fase 2 é só domínio puro; a ligação com dados reais (Prisma, API do ML) começa na Fase 3.
+
+### Checks ao final da fase
+
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo.
+- `npm test`: 24 arquivos, 180 testes, todos passando (45 novos desta fase).

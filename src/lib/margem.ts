@@ -1,3 +1,5 @@
+import { calcularMargemContribuicao } from "@/modules/financeiro/dominio/formulas";
+
 export interface MargemUnitariaInput {
   precoVenda: number | null | undefined;
   tarifa: number | null | undefined;
@@ -36,7 +38,15 @@ export function calcularMargemUnitaria({
   }
 
   const imposto = Math.round(precoVenda * (aliquotaImposto ?? 0));
-  const margemValor = precoVenda - tarifa - frete - custo - imposto;
+  const margemValor = calcularMargemContribuicao({
+    faturamentoBruto: precoVenda,
+    descontoVendedor: 0,
+    imposto,
+    tarifa,
+    frete,
+    ads: 0,
+    cmv: custo,
+  });
   const margemPercentual = precoVenda === 0 ? 0 : margemValor / precoVenda;
 
   return { margemValor, margemPercentual, completo: true, faltando: [] };
