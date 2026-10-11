@@ -7,6 +7,7 @@ import {
   inicioDoMes,
   fimDoMes,
   competenciaDe,
+  somarMeses,
 } from "../periodo";
 
 describe("inicioDoDia / fimDoDia", () => {
@@ -73,5 +74,27 @@ describe("competenciaDe", () => {
     const instante = new Date("2026-03-18T15:00:00.000Z");
 
     expect(competenciaDe(instante)).toEqual({ ano: 2026, mes: 3 });
+  });
+});
+
+describe("somarMeses", () => {
+  it("preserva o dia do mês no caso normal", () => {
+    const resultado = somarMeses(new Date("2026-03-10T00:00:00.000Z"), 1);
+    expect(resultado.toISOString()).toBe("2026-04-10T00:00:00.000Z");
+  });
+
+  it("dia 31 de janeiro + 1 mês cai no último dia de fevereiro, não estoura para março", () => {
+    const resultado = somarMeses(new Date("2026-01-31T00:00:00.000Z"), 1);
+    expect(resultado.toISOString()).toBe("2026-02-28T00:00:00.000Z");
+  });
+
+  it("virada de ano", () => {
+    const resultado = somarMeses(new Date("2026-12-15T00:00:00.000Z"), 1);
+    expect(resultado.toISOString()).toBe("2027-01-15T00:00:00.000Z");
+  });
+
+  it("somar zero meses devolve a mesma data", () => {
+    const resultado = somarMeses(new Date("2026-05-20T00:00:00.000Z"), 0);
+    expect(resultado.toISOString()).toBe("2026-05-20T00:00:00.000Z");
   });
 });

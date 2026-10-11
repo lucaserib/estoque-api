@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { reprocessarUltimosDias } from "@/modules/financeiro/ingestao/sincronizador";
 import { ingerirGastosAdsDoDia } from "@/modules/financeiro/ingestao/ingestaoAds";
 import { ingerirCobrancasDoMes } from "@/modules/financeiro/ingestao/ingestaoCobrancas";
+import { gerarLancamentosDeTodasAsRecorrencias } from "@/modules/financeiro/lancamentos/recorrencias";
 
 function mesReferenciaDe(data: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -14,11 +15,12 @@ function mesReferenciaDe(data: Date): string {
 
 /**
  * Único cron diário do financeiro (plano Hobby da Vercel só roda 1x/dia por
- * rota). Reprocessa os últimos 3 dias de cada conta ML (cancelamentos,
+ * rota). Por conta ML: reprocessa os últimos 3 dias (cancelamentos,
  * devoluções, frete que chega depois), o gasto de ads de ontem e a cobrança
  * do mês corrente (idempotente — vai se corrigindo sozinha dia a dia até o
- * ML finalizar a fatura). Fases futuras (recorrências, snapshot, alertas)
- * se somam aqui, não em rotas novas.
+ * ML finalizar a fatura). Por conta (dono), independente de ter ML: gera os
+ * lançamentos PREVISTO das recorrências ativas. Fases futuras (snapshot,
+ * alertas) se somam aqui, não em rotas novas.
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -34,6 +36,10 @@ export async function GET(request: NextRequest) {
     where: { isActive: true },
     select: { id: true },
   });
+  const donosDeConta = await prisma.user.findMany({
+    where: { contaId: null },
+    select: { id: true },
+  });
 
   const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const mesCorrente = mesReferenciaDe(new Date());
@@ -42,6 +48,7 @@ export async function GET(request: NextRequest) {
   let pedidosProcessados = 0;
   let gastosAdsProcessados = 0;
   let cobrancasProcessadas = 0;
+  let lancamentosRecorrentesGerados = 0;
   let erros = 0;
 
   for (const conta of contasAtivas) {
@@ -80,12 +87,26 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  for (const dono of donosDeConta) {
+    try {
+      const resultado = await gerarLancamentosDeTodasAsRecorrencias(dono.id);
+      lancamentosRecorrentesGerados += resultado.gerados;
+    } catch (error) {
+      erros++;
+      console.error(
+        `[CRON_FINANCEIRO_DIARIO] Erro ao gerar recorrências da conta ${dono.id}:`,
+        error
+      );
+    }
+  }
+
   return NextResponse.json({
     contasElegiveis: contasAtivas.length,
     contasProcessadas,
     pedidosProcessados,
     gastosAdsProcessados,
     cobrancasProcessadas,
+    lancamentosRecorrentesGerados,
     erros,
   });
 }

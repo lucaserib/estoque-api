@@ -18,10 +18,18 @@ vi.mock("@/modules/financeiro/ingestao/ingestaoCobrancas", () => ({
   ingerirCobrancasDoMes: (accountId: string, mes: string) => ingerirCobrancasDoMesMock(accountId, mes),
 }));
 
+const gerarLancamentosDeTodasAsRecorrenciasMock = vi.fn();
+vi.mock("@/modules/financeiro/lancamentos/recorrencias", () => ({
+  gerarLancamentosDeTodasAsRecorrencias: (userId: string) => gerarLancamentosDeTodasAsRecorrenciasMock(userId),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     mercadoLivreAccount: {
       findMany: vi.fn(async () => [{ id: "conta-1" }, { id: "conta-2" }]),
+    },
+    user: {
+      findMany: vi.fn(async () => [{ id: "dono-1" }]),
     },
   },
 }));
@@ -38,6 +46,7 @@ beforeEach(() => {
   reprocessarUltimosDiasMock.mockReset();
   ingerirGastosAdsDoDiaMock.mockReset().mockResolvedValue({ processados: 0 });
   ingerirCobrancasDoMesMock.mockReset().mockResolvedValue({ processadas: 0, naoMapeadas: 0 });
+  gerarLancamentosDeTodasAsRecorrenciasMock.mockReset().mockResolvedValue({ gerados: 0 });
 });
 
 describe("GET /api/cron/financeiro-diario", () => {
@@ -98,5 +107,25 @@ describe("GET /api/cron/financeiro-diario", () => {
     expect(response.status).toBe(200);
     expect(body.erros).toBe(1);
     expect(body.gastosAdsProcessados).toBe(1);
+  });
+
+  it("gera lançamentos de recorrência para cada dono de conta, independente de ter ML", async () => {
+    gerarLancamentosDeTodasAsRecorrenciasMock.mockResolvedValue({ gerados: 3 });
+
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    const body = await response.json();
+
+    expect(body.lancamentosRecorrentesGerados).toBe(3);
+    expect(gerarLancamentosDeTodasAsRecorrenciasMock).toHaveBeenCalledWith("dono-1");
+  });
+
+  it("erro ao gerar recorrência de um dono é contado mas não derruba a rota", async () => {
+    gerarLancamentosDeTodasAsRecorrenciasMock.mockRejectedValue(new Error("falha ao gerar"));
+
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.erros).toBeGreaterThan(0);
   });
 });

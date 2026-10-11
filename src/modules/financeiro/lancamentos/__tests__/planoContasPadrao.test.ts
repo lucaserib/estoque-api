@@ -63,12 +63,14 @@ beforeEach(() => {
   proximoId = 1;
 });
 
+const TOTAL_CATEGORIAS_PADRAO = 21;
+
 describe("seedPlanoContasPadrao", () => {
-  it("cria as 20 categorias padrão na primeira chamada, todas marcadas como sistema", async () => {
+  it("cria as categorias padrão na primeira chamada, todas marcadas como sistema", async () => {
     const resultado = await seedPlanoContasPadrao("conta-a");
 
-    expect(resultado.criadas).toBe(20);
-    expect(categorias).toHaveLength(20);
+    expect(resultado.criadas).toBe(TOTAL_CATEGORIAS_PADRAO);
+    expect(categorias).toHaveLength(TOTAL_CATEGORIAS_PADRAO);
     expect(categorias.every((c) => c.sistema)).toBe(true);
   });
 
@@ -77,23 +79,23 @@ describe("seedPlanoContasPadrao", () => {
     const resultado = await seedPlanoContasPadrao("conta-a");
 
     expect(resultado.criadas).toBe(0);
-    expect(resultado.existentes).toBe(20);
-    expect(categorias).toHaveLength(20);
+    expect(resultado.existentes).toBe(TOTAL_CATEGORIAS_PADRAO);
+    expect(categorias).toHaveLength(TOTAL_CATEGORIAS_PADRAO);
   });
 
   it("isola categorias entre contas diferentes", async () => {
     await seedPlanoContasPadrao("conta-a");
     await seedPlanoContasPadrao("conta-b");
 
-    expect(categorias.filter((c) => c.userId === "conta-a")).toHaveLength(20);
-    expect(categorias.filter((c) => c.userId === "conta-b")).toHaveLength(20);
-    expect(categorias).toHaveLength(40);
+    expect(categorias.filter((c) => c.userId === "conta-a")).toHaveLength(TOTAL_CATEGORIAS_PADRAO);
+    expect(categorias.filter((c) => c.userId === "conta-b")).toHaveLength(TOTAL_CATEGORIAS_PADRAO);
+    expect(categorias).toHaveLength(TOTAL_CATEGORIAS_PADRAO * 2);
   });
 
   it("mesmo nome em contas diferentes não é tratado como duplicado", async () => {
     await seedPlanoContasPadrao("conta-a");
     const resultado = await seedPlanoContasPadrao("conta-b");
 
-    expect(resultado.criadas).toBe(20);
+    expect(resultado.criadas).toBe(TOTAL_CATEGORIAS_PADRAO);
   });
 });

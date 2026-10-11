@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { somar, ratear, formatar } from "../dinheiro";
+import { somar, ratear, dividirEmParcelas, formatar } from "../dinheiro";
 
 describe("somar", () => {
   it("soma vários valores", () => {
@@ -64,6 +64,28 @@ describe("ratear", () => {
 
   it("um único destinatário recebe o total inteiro", () => {
     expect(ratear(100, [5])).toEqual([100]);
+  });
+});
+
+describe("dividirEmParcelas", () => {
+  it("divide igualmente quando a conta é exata", () => {
+    expect(dividirEmParcelas(900, 3)).toEqual([300, 300, 300]);
+  });
+
+  it("joga o resto de centavos inteiro na última parcela, não distribuído", () => {
+    const parcelas = dividirEmParcelas(1000, 3);
+
+    expect(parcelas).toEqual([333, 333, 334]);
+    expect(parcelas.reduce((a, b) => a + b, 0)).toBe(1000);
+  });
+
+  it("uma parcela só recebe o total inteiro", () => {
+    expect(dividirEmParcelas(1000, 1)).toEqual([1000]);
+  });
+
+  it("número de parcelas inválido lança erro", () => {
+    expect(() => dividirEmParcelas(1000, 0)).toThrow();
+    expect(() => dividirEmParcelas(1000, -1)).toThrow();
   });
 });
 

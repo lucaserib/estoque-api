@@ -54,6 +54,28 @@ export function ratear(totalCentavos: number, pesos: number[]): number[] {
   return partes;
 }
 
+/**
+ * Divide em N parcelas iguais, com o resto da divisão inteira todo na
+ * última parcela — não pelo maior resto como em `ratear`. É assim que
+ * parcelamento de compra aparece numa fatura: parcelas "redondas", a
+ * diferença de centavos absorvida só na última.
+ */
+export function dividirEmParcelas(
+  totalCentavos: number,
+  numeroDeParcelas: number
+): number[] {
+  if (numeroDeParcelas <= 0) {
+    throw new Error(
+      `dividirEmParcelas: numeroDeParcelas deve ser positivo, recebeu ${numeroDeParcelas}`
+    );
+  }
+
+  const valorParcela = Math.trunc(totalCentavos / numeroDeParcelas);
+  const parcelas = new Array(numeroDeParcelas).fill(valorParcela);
+  parcelas[numeroDeParcelas - 1] += totalCentavos - valorParcela * numeroDeParcelas;
+  return parcelas;
+}
+
 export function formatar(centavos: number): string {
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",

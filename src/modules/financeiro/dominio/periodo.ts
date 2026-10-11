@@ -118,3 +118,19 @@ export function competenciaDe(data: Date): Competencia {
   const cal = dataCalendarioNoFuso(data);
   return { ano: cal.ano, mes: cal.mes };
 }
+
+/**
+ * Soma meses a uma data de calendário (vencimento, dia de fatura…), não a um
+ * instante — por isso usa UTC puro, não o fuso de SP: "todo dia 10" não
+ * depende de fuso, é só aritmética de calendário. Preserva o dia do mês,
+ * com piso no último dia se o mês de destino for mais curto (ex.: dia 31 de
+ * janeiro + 1 mês = 28/29 de fevereiro, não março).
+ */
+export function somarMeses(data: Date, quantidadeDeMeses: number): Date {
+  const ano = data.getUTCFullYear();
+  const mes = data.getUTCMonth();
+  const dia = data.getUTCDate();
+
+  const ultimoDiaDoMesDestino = new Date(Date.UTC(ano, mes + quantidadeDeMeses + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(ano, mes + quantidadeDeMeses, Math.min(dia, ultimoDiaDoMesDestino)));
+}
