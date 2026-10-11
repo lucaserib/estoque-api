@@ -446,6 +446,15 @@ describe("ingerirPedidoMercadoLivre", () => {
     expect(vendas[0].itens[0].produtoId).toBe("produto-1");
     expect(vendas[0].itens[0].custoUnitario).toBe(5000);
     expect(vendas[0].completo).toBe(true);
+    expect(vendas[0].valorLiquidoReceber).toBe(8200); // 10000 - 0 (desconto) - 1000 (tarifa) - 800 (frete)
+  });
+
+  it("valorLiquidoReceber fica null quando a tarifa ou o frete ainda são desconhecidos", async () => {
+    adaptadorFake.atual = { obterPedido: vi.fn(async () => normalizado()) }; // sem obterCustoEnvio: frete desconhecido
+
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+
+    expect(vendas[0].valorLiquidoReceber).toBeNull();
   });
 
   it("vincula por SKU normalizado quando não há ProdutoMercadoLivre", async () => {

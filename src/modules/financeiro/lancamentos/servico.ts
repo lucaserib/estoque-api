@@ -5,6 +5,7 @@ import {
   TipoLancamento,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { invalidarCacheFinanceiro } from "../relatorios/cache";
 
 export interface DadosLancamento {
   tipo: TipoLancamento;
@@ -26,7 +27,7 @@ export async function criarLancamento(
   criadoPorId: string,
   dados: DadosLancamento
 ) {
-  return prisma.lancamentoFinanceiro.create({
+  const lancamento = await prisma.lancamentoFinanceiro.create({
     data: {
       userId,
       criadoPorId,
@@ -47,6 +48,8 @@ export async function criarLancamento(
       observacao: dados.observacao ?? null,
     },
   });
+  await invalidarCacheFinanceiro(userId);
+  return lancamento;
 }
 
 export interface FiltrosLancamento {
@@ -103,12 +106,15 @@ export async function atualizarLancamento(
   dados: Partial<DadosLancamento> & { status?: StatusLancamento }
 ) {
   await exigirLancamentoDaConta(userId, id);
-  return prisma.lancamentoFinanceiro.update({ where: { id }, data: dados });
+  const lancamento = await prisma.lancamentoFinanceiro.update({ where: { id }, data: dados });
+  await invalidarCacheFinanceiro(userId);
+  return lancamento;
 }
 
 export async function excluirLancamento(userId: string, id: string): Promise<void> {
   await exigirLancamentoDaConta(userId, id);
   await prisma.lancamentoFinanceiro.delete({ where: { id } });
+  await invalidarCacheFinanceiro(userId);
 }
 
 export async function marcarComoPagoEmLote(
@@ -120,6 +126,7 @@ export async function marcarComoPagoEmLote(
     where: { id: { in: ids }, userId },
     data: { status: StatusLancamento.PAGO, pagamento: dataPagamento },
   });
+  await invalidarCacheFinanceiro(userId);
   return { atualizados: resultado.count };
 }
 
@@ -132,6 +139,7 @@ export async function alterarCategoriaEmLote(
     where: { id: { in: ids }, userId },
     data: { categoriaId },
   });
+  await invalidarCacheFinanceiro(userId);
   return { atualizados: resultado.count };
 }
 
@@ -143,5 +151,6 @@ export async function excluirPrevistosEmLote(
   const resultado = await prisma.lancamentoFinanceiro.deleteMany({
     where: { id: { in: ids }, userId, status: StatusLancamento.PREVISTO },
   });
+  await invalidarCacheFinanceiro(userId);
   return { excluidos: resultado.count };
 }

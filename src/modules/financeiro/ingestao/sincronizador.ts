@@ -17,6 +17,7 @@ import { inicioDoDia, fimDoDia } from "../dominio/periodo";
 import { ratear } from "../dominio/dinheiro";
 import { resolverOrigemCanonica } from "./deduplicacao";
 import { vincularProduto } from "./vinculo";
+import { invalidarCacheFinanceiro } from "../relatorios/cache";
 
 const PENDENCIA_SEM_VINCULO = "SEM_VINCULO";
 const LOTE_MAXIMO_POR_CHAMADA = 10;
@@ -26,6 +27,18 @@ const DIAS_MAXIMO_BACKFILL = 365;
 
 function statusZeraQuantidade(status: StatusVendaCanal): boolean {
   return status === StatusVendaCanal.CANCELADA || status === StatusVendaCanal.DEVOLVIDA;
+}
+
+/**
+ * O que o Mercado Pago libera para a venda: faturamento menos só as
+ * deduções do próprio canal (desconto do vendedor, tarifa, frete) — NÃO
+ * subtrai o imposto (é estimativa interna do vendedor, o ML não retém) nem
+ * ads (vem de cobrança separada, Fase 4). Null se tarifa ou frete ainda
+ * são desconhecidos — melhor "—" do que fingir que a taxa foi zero.
+ */
+function calcularValorLiquidoReceber(resultado: ResultadoVenda): number | null {
+  if (resultado.tarifa == null || resultado.freteVendedor == null) return null;
+  return resultado.faturamentoBruto - resultado.descontoVendedor - resultado.tarifa - resultado.freteVendedor;
 }
 
 async function resolverCustoAtualDoProduto(produtoId: string): Promise<number | null> {
@@ -166,6 +179,7 @@ export async function recalcularEPersistirMargem(
         freteVendedor: resultado.freteVendedor,
         adsAtribuido: resultado.adsAtribuido,
         margemContribuicao: resultado.margemContribuicao,
+        valorLiquidoReceber: calcularValorLiquidoReceber(resultado),
         completo: resultado.completo && !semVinculo,
         faltando: semVinculo
           ? [...new Set([...resultado.faltando, PENDENCIA_SEM_VINCULO])]
@@ -308,7 +322,7 @@ async function persistirVendaNormalizada(
     cmv: resultado.cmv,
     outrosCustos: 0,
     margemContribuicao: resultado.margemContribuicao,
-    valorLiquidoReceber: null,
+    valorLiquidoReceber: calcularValorLiquidoReceber(resultado),
     completo,
     faltando,
     freteConfianca: freteTotalPedido == null ? Confianca.ESTIMADO : Confianca.CONFIRMADO,
@@ -440,6 +454,8 @@ export async function atualizarResumoDoDia(
     create: { userId, dia, canal, ...resumo },
     update: { ...resumo, atualizadoEm: new Date() },
   });
+
+  await invalidarCacheFinanceiro(userId);
 }
 
 export async function ingerirPedidoMercadoLivre(

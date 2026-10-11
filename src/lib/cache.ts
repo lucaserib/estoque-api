@@ -20,6 +20,7 @@ type SmartDataType =
   | "categories"
   | "fees"
   | "pendencias"
+  | "financeiro"
   | "default";
 
 const BASE_TTL_MS: Record<SmartDataType, number> = {
@@ -37,6 +38,7 @@ const BASE_TTL_MS: Record<SmartDataType, number> = {
   fees: 12 * 60 * 60 * 1000,
   default: 5 * 60 * 1000,
   pendencias: 60 * 1000,
+  financeiro: 60 * 1000,
 };
 
 function getSmartTTL(dataType: string, context?: string): number {

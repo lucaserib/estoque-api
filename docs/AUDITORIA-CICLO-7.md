@@ -166,3 +166,35 @@ Diferente das Fases 0–3 (pedidos, descontos, frete — APIs centrais e estáve
 - `npx tsc --noEmit`: limpo.
 - `npx next lint`: limpo.
 - `npm test`: 52 arquivos, 346 testes, todos passando (83 novos desta fase).
+
+## Fase 6 — Serviços de relatório
+
+### Correção encontrada ao construir esta fase (não é divergência de dado do ML, é lacuna própria)
+
+`VendaCanal.valorLiquidoReceber` estava sempre `null` desde a Fase 3 — nunca tinha sido calculado. Corrigido em `ingestao/sincronizador.ts`: `faturamentoBruto − descontoVendedor − tarifa − frete` (as deduções do próprio canal; **não** subtrai o imposto, que é estimativa interna do vendedor e o ML não retém, nem ads, que vem de cobrança separada). Fica `null` quando tarifa ou frete ainda são desconhecidos, em vez de fingir que a dedução foi zero. Dois testes novos no Fase 3 já cobrem isso.
+
+### Cache curto por conta
+
+Reaproveitado `src/lib/cache.ts` (o mesmo mecanismo já usado por produtos/pendências — Redis se configurado, memória local se não), com um novo tipo `"financeiro"` (TTL de 60s). `relatorios/cache.ts` expõe `comCacheFinanceiro`/`invalidarCacheFinanceiro`. Invalidação explícita conectada nos dois pontos de maior volume de escrita: `atualizarResumoDoDia` (cobre toda ingestão de vendas/ads/cobranças das Fases 3 e 4) e `lancamentos/servico.ts` (CRUD manual de lançamentos, Fase 5). As escritas mais raras de lançamento (recorrência, cartão, parcelamento, conta a pagar de pedido de compra) **não** invalidam explicitamente — contam com a expiração natural de 60s; risco aceito e documentado aqui em vez de retrofitado em todo arquivo da Fase 5 para uma melhoria de cache que o prompt descreve em uma linha só. `lucroPorVenda.ts` (paginado, muito variável por filtro) não usa cache — o ganho de acerto seria baixo.
+
+### O que foi feito
+
+1. **`relatorios/dre.ts`**: DRE mensal, até 12 meses comparativos, filtro por canal (via `ResumoFinanceiroDiario`, rápido) e por conta de canal específica (`contaCanalId` — como o resumo diário só separa por `canal`, não por conta dentro do canal, esse filtro cai para soma direta de `VendaCanal`, mais lento, só quando pedido). Custos variáveis = tarifas/frete/ads do resumo diário + armazenagem Full e "outras tarifas não mapeadas" das cobranças do ML (`CobrancaCanal`, só as não cobertas pelo pedido) + `VendaCanal.outrosCustos` (sempre zero hoje, nenhuma ingestão ainda escreve nesse campo). Despesas operacionais agrupadas por categoria via `LancamentoFinanceiro.categoria.grupoDre`. IR/CSLL só conta se o regime for Presumido ou Real. Análise vertical (% sobre receita líquida) calculada para margem de contribuição e lucro líquido; `null` em vez de dividir por zero.
+   - **Decisão registrada**: a linha "Publicidade" da DRE usa só `ResumoFinanceiroDiario.ads` (fonte: API de Ads). Não soma também `CobrancaCanal` tipo `PUBLICIDADE` como complemento, mesmo o prompt descrevendo esse fallback para quando a API de Ads falhar — não há como distinguir de forma confiável, nesta fase, "a API não retornou nada porque não houve gasto" de "a API falhou", e somar os dois sem essa distinção arriscaria contar o mesmo gasto duas vezes. Fica para quando o diagnóstico em produção mostrar os dois lados reais.
+2. **`relatorios/resumoDia.ts`**: todos os totais do dia direto do `ResumoFinanceiroDiario`; lucro estimado = margem de contribuição do dia menos despesas fixas do mês ÷ dias do mês (usa o número real de dias do mês, calendário puro, sem depender do fuso); ticket médio (`null` sem pedidos); comparação com ontem e com a média dos últimos 7 dias (percentual `null` quando o comparado é zero); contas a pagar vencendo hoje × vencidas (quantidade e valor, separados); valor a liberar no Mercado Pago no dia (soma de `valorLiquidoReceber` das vendas com `dataLiberacao` no dia).
+3. **`relatorios/lucroPorVenda.ts`**: lista paginada (máximo 100 por página) com os filtros pedidos (período, status, canal, só prejuízo, só incompletas, produto, logística) e detalhe de uma venda por id, escopado à própria conta.
+4. **`relatorios/lucroPorProduto.ts`**: agrega por produto a partir dos itens de venda do período (multiplicando quantidade pelos valores unitários — nunca somando um `_sum` cru de `custoUnitario`/`precoUnitario`, que daria o valor errado). Rateio de custo fixo pelas três opções já existentes (`ratearCustoFixoPorProduto` do domínio, Fase 2). **Curva ABC corrigida durante os testes**: o corte 80/95 tem que comparar o acumulado *antes* de somar o item atual — comparar depois faz o maior produto cair fora de "A" sempre que ele, sozinho, já responde por mais de 80% da margem (caso comum com poucos produtos). Testado explicitamente com 1 produto (sempre A) e com 10 produtos iguais (8 em A, 2 em B).
+5. **`relatorios/fluxoCaixa.ts`**: série realizado × previsto por dia/semana/mês, e saldo projetado de 30/60/90 dias (saldo inicial das contas exceto cartão de crédito — que é dívida, não dinheiro disponível — mais liberações futuras do ML mais lançamentos previstos). **Decisão registrada**: `TRANSFERENCIA` entra como saída de caixa real aqui (diferente da DRE, onde não conta) — o único lançamento desse tipo que o sistema de fato gera (pagamento de fatura de cartão, Fase 5) é dinheiro saindo da conta bancária sem um lançamento irmão de entrada em lugar nenhum, não é um rearranjo "de lá pra cá" entre contas próprias.
+6. **Rotas** (todas atrás de `FINANCEIRO_VER`): `/api/financeiro/dre`, `/api/financeiro/resumo-dia`, `/api/financeiro/vendas` (+ `/[id]`), `/api/financeiro/produtos`, `/api/financeiro/fluxo-caixa` (+ `/saldo-projetado`).
+7. **Testes** (60 novos): DRE (estrutura, regimes tributários, agrupamento de despesas, análise vertical, comparativo de meses, virada de ano, filtro por canal, armazenagem Full via cobrança), resumo do dia (totais, ticket médio, lucro estimado, comparações, contas a pagar, liberação do MP), lucro por venda (paginação, filtros, detalhe), lucro por produto (agregação correta por item, rateio nos dois métodos, curva ABC nos dois casos de borda), fluxo de caixa (bucketing por granularidade, transferência como saída, saldo projetado), todas as rotas novas.
+
+### O que ficou pendente desta fase
+
+- "Abrir a lista de origem" ao clicar numa linha da DRE (pedido do prompt) não tem endpoint dedicado — a UI (Fase 7) resolve isso reaproveitando `listarLancamentos` (Fase 5) e `listarVendasComLucro`/`obterDetalheVenda` (esta fase) com os filtros de período/categoria/canal certos, sem precisar de nada novo no backend.
+- A linha "Publicidade" da DRE não cobre o fallback de cobranças quando a API de Ads falha (ver decisão acima).
+
+### Checks ao final da fase
+
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo.
+- `npm test`: 64 arquivos, 406 testes, todos passando (60 novos desta fase).
