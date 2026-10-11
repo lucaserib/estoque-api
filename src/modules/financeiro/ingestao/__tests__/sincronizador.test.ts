@@ -70,6 +70,7 @@ let configuracoes: Array<{ userId: string; aliquotaImposto: number; custoEnvioFl
 let vinculosMl: Array<{ mlItemId: string; mercadoLivreAccountId: string; produtoId: string | null }> = [];
 let produtos: Array<{ id: string; sku: string; userId: string; isKit: boolean; custoMedio: number | null }> = [];
 let vendas: FakeVenda[] = [];
+let gastosAds: Array<{ userId: string; canal: CanalVenda; dia: Date; custo: number }> = [];
 let resumos: Array<{ userId: string; dia: Date; canal: CanalVenda } & Record<string, number>> = [];
 let sincronizacoes: FakeSincronizacao[] = [];
 let proximoId = 1;
@@ -81,6 +82,7 @@ function resetFakeDb() {
   vinculosMl = [];
   produtos = [];
   vendas = [];
+  gastosAds = [];
   resumos = [];
   sincronizacoes = [];
   proximoId = 1;
@@ -143,6 +145,26 @@ vi.mock("@/lib/prisma", () => ({
     },
     componente: {
       findMany: vi.fn(async () => []),
+    },
+    gastoAdsCanal: {
+      aggregate: vi.fn(
+        async ({
+          where,
+        }: {
+          where: { userId: string; canal: CanalVenda; dia: { gte: Date; lte: Date } };
+        }) => {
+          const soma = gastosAds
+            .filter(
+              (g) =>
+                g.userId === where.userId &&
+                g.canal === where.canal &&
+                g.dia.getTime() >= where.dia.gte.getTime() &&
+                g.dia.getTime() <= where.dia.lte.getTime()
+            )
+            .reduce((total, g) => total + g.custo, 0);
+          return { _sum: { custo: soma } };
+        }
+      ),
     },
     vendaCanal: {
       findUnique: vi.fn(

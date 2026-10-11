@@ -4,16 +4,25 @@ import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchMlWithBackoff } from "@/lib/mlFetch";
 import type {
   AdaptadorCanalFinanceiro,
+  CobrancaNormalizada,
   ContaCanal,
   CustoEnvioNormalizado,
+  GastoAdsNormalizado,
   PaginaPedidos,
   VendaCanalNormalizada,
 } from "../tipos";
 import { mapearCustoEnvio, mapearPedido } from "./mapeador";
+import { mapearGastoAds, type GastoAdsBruto } from "./mapeadorAds";
+import { mapearCobranca, type CobrancaBruta } from "./mapeadorCobrancas";
 
 const BASE_URL = "https://api.mercadolibre.com";
 const LIMITE_POR_PAGINA = 50;
 const ML_MAX_OFFSET = 10000;
+const LIMITE_COBRANCAS_POR_PAGINA = 1000;
+
+function formatarDataCurtaSp(data: Date): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(data);
+}
 
 async function obterAccessTokenEMlUserId(
   contaCanalId: string
@@ -122,5 +131,99 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
     }
 
     return mapearCustoEnvio(await resposta.json());
+  },
+
+  /**
+   * Endpoint de melhor esforço (Product Ads) — menor confiança de todo o
+   * adaptador, nem o caminho da URL foi confirmado contra uma conta real.
+   * Qualquer falha devolve lista vazia em vez de derrubar a ingestão do dia.
+   */
+  async listarGastosAds(conta: ContaCanal, dia: Date): Promise<GastoAdsNormalizado[]> {
+    try {
+      const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
+      const dataStr = formatarDataCurtaSp(dia);
+
+      const respostaAnunciante = await fetchMlWithBackoff(
+        `${BASE_URL}/advertising/advertisers?product_id=PADS`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Api-Version": "2",
+            Accept: "application/json",
+          },
+        }
+      );
+      if (!respostaAnunciante.ok) return [];
+
+      const anunciantes = (await respostaAnunciante.json()) as {
+        advertisers?: Array<{ advertiser_id: number | string }>;
+      };
+      const advertiserId = anunciantes.advertisers?.[0]?.advertiser_id;
+      if (advertiserId == null) return [];
+
+      const params = new URLSearchParams({
+        advertiser_id: String(advertiserId),
+        date_from: dataStr,
+        date_to: dataStr,
+      });
+      const resposta = await fetchMlWithBackoff(
+        `${BASE_URL}/advertising/product_ads/ads?${params.toString()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "Api-Version": "2",
+            Accept: "application/json",
+          },
+        }
+      );
+      if (!resposta.ok) return [];
+
+      const dados = (await resposta.json()) as {
+        ads?: GastoAdsBruto[];
+        results?: GastoAdsBruto[];
+      };
+      return (dados.ads ?? dados.results ?? []).map(mapearGastoAds);
+    } catch (erro) {
+      console.error("[ADS_ML] Erro ao buscar gastos de ads:", erro);
+      return [];
+    }
+  },
+
+  async listarCobrancas(
+    conta: ContaCanal,
+    mesReferencia: string
+  ): Promise<CobrancaNormalizada[]> {
+    const cobrancas: CobrancaNormalizada[] = [];
+
+    try {
+      const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
+      const chavePeriodo = `${mesReferencia}-01`;
+      let fromId: string | undefined;
+
+      do {
+        const params = new URLSearchParams({
+          document_type: "BILL",
+          limit: String(LIMITE_COBRANCAS_POR_PAGINA),
+        });
+        if (fromId) params.set("from_id", fromId);
+
+        const resposta = await fetchMlWithBackoff(
+          `${BASE_URL}/billing/integration/periods/key/${chavePeriodo}/group/ML/details?${params.toString()}`,
+          { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+        );
+        if (!resposta.ok) break;
+
+        const dados = (await resposta.json()) as {
+          results?: CobrancaBruta[];
+          paging?: { next_from_id?: string };
+        };
+        cobrancas.push(...(dados.results ?? []).map(mapearCobranca));
+        fromId = dados.paging?.next_from_id;
+      } while (fromId);
+    } catch (erro) {
+      console.error("[COBRANCAS_ML] Erro ao buscar cobranças:", erro);
+    }
+
+    return cobrancas;
   },
 };

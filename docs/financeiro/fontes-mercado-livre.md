@@ -25,6 +25,20 @@ Este ambiente de desenvolvimento não alcança `api.mercadolibre.com` (bloqueado
 5. `money_release_date` está mesmo dentro de `order.payments[]`, ou precisa de uma chamada separada a `/payments/{id}`?
 6. `order_request.return` é mesmo o campo que indica devolução? Que valores ele assume (string de status? presença já basta?) — a Fase 3 implementou a melhor hipótese disponível (qualquer valor truthy = devolução), sem conseguir testar contra um pedido devolvido de verdade. Enquanto não confirmado, toda devolução real provavelmente está sendo registrada como `CANCELADA` em vez de `DEVOLVIDA` — as duas zeram a venda da mesma forma na margem, então o número financeiro não erra, só a categorização.
 
+## Product Ads e Billing (Fase 4) — menor confiança de todo o ciclo
+
+Diferente de pedidos/descontos/frete (APIs centrais e estáveis do ML, já usadas desde o Ciclo 6), estas duas integrações foram escritas de memória, contra documentação pública, **sem nenhuma confirmação de que o endpoint em si existe no caminho usado**. Qualquer falha (404, formato inesperado) já é tratada sem quebrar o cron — a lista fica vazia e a conta simplesmente não tem dado de ads/cobrança naquele dia, até alguém corrigir o endpoint com dado real.
+
+| Campo | Endpoint (melhor esforço) | Confiança | Status |
+|---|---|---|---|
+| Anunciante (advertiser_id) | `GET /advertising/advertisers?product_id=PADS` | Caminho da URL não confirmado | Pendente de confirmação real |
+| Métricas de ads por dia | `GET /advertising/product_ads/ads?advertiser_id=&date_from=&date_to=` (header `Api-Version: 2`) | Caminho da URL e nomes de métrica (`cost`, `clicks`, `prints`, `direct_amount`, `direct_items_quantity`) não confirmados | Pendente de confirmação real |
+| Detalhe de cobrança mensal | `GET /billing/integration/periods/key/{AAAA-MM-01}/group/ML/details?document_type=BILL`, paginado por `from_id` (limite 1000) | Endpoint veio do prompt do ciclo (confiança maior que ads), mas os nomes de campo de cada linha (`charge_type`/`amount`/`order_id`) são um palpite | Pendente de confirmação real |
+| Notas de crédito da fatura | — | **Não implementado.** O prompt pede para somar também as notas de crédito; sem confiança nem no endpoint principal, não arrisquei um segundo endpoint de crédito sem nenhuma base. Fica como pendência explícita, não como bug escondido. | Pendente |
+| Relatório de liberação do Mercado Pago | `GET https://api.mercadopago.com/v1/account/release_report?begin_date=&end_date=` usando o mesmo token OAuth da conta ML | Host diferente (`api.mercadopago.com`), nem se o token do ML é aceito aqui foi confirmado. Etapa opcional, desligada por padrão (`ConfiguracaoGeral.usarRelatorioLiberacaoMercadoPago`), só para conferência manual — nunca alimenta a DRE. | Pendente de confirmação real |
+
+Mapeamento de `charge_type` → `tipoNormalizado` em `canais/mercadoLivre/mapeadorCobrancas.ts`: qualquer código fora do mapa cai em `NAO_MAPEADO` com o valor preservado (nunca descartado), para a tela de configurações (Fase 7) listar para revisão manual — exatamente como o prompt pede.
+
 ## Como usar o diagnóstico
 
 ```

@@ -1,12 +1,10 @@
 import { CanalVenda, Confianca, StatusVendaCanal } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { normalizeSku } from "@/lib/sku";
 import { calcularCustoKit } from "@/lib/custo";
 import { obterAdaptador } from "../canais/registro";
 import type {
   AdaptadorCanalFinanceiro,
   ContaCanal,
-  ItemVendaCanalNormalizado,
   VendaCanalNormalizada,
 } from "../canais/tipos";
 import {
@@ -18,6 +16,7 @@ import {
 import { inicioDoDia, fimDoDia } from "../dominio/periodo";
 import { ratear } from "../dominio/dinheiro";
 import { resolverOrigemCanonica } from "./deduplicacao";
+import { vincularProduto } from "./vinculo";
 
 const PENDENCIA_SEM_VINCULO = "SEM_VINCULO";
 const LOTE_MAXIMO_POR_CHAMADA = 10;
@@ -27,32 +26,6 @@ const DIAS_MAXIMO_BACKFILL = 365;
 
 function statusZeraQuantidade(status: StatusVendaCanal): boolean {
   return status === StatusVendaCanal.CANCELADA || status === StatusVendaCanal.DEVOLVIDA;
-}
-
-async function vincularProduto(
-  userId: string,
-  accountId: string,
-  item: Pick<ItemVendaCanalNormalizado, "anuncioExternoId" | "sku">
-): Promise<string | null> {
-  const vinculo = await prisma.produtoMercadoLivre.findUnique({
-    where: {
-      mlItemId_mercadoLivreAccountId: {
-        mlItemId: item.anuncioExternoId,
-        mercadoLivreAccountId: accountId,
-      },
-    },
-    select: { produtoId: true },
-  });
-  if (vinculo?.produtoId) return vinculo.produtoId;
-
-  if (!item.sku) return null;
-
-  const skuNormalizado = normalizeSku(item.sku);
-  const produto = await prisma.produto.findUnique({
-    where: { sku_userId: { sku: skuNormalizado, userId } },
-    select: { id: true },
-  });
-  return produto?.id ?? null;
 }
 
 async function resolverCustoAtualDoProduto(produtoId: string): Promise<number | null> {
@@ -136,21 +109,36 @@ async function ratearFreteDoPacoteEAtualizarIrmaos(
   const partes = ratear(custoTotalEnvio, pesos);
 
   for (let i = 0; i < irmaos.length; i++) {
-    await reaplicarFreteEmVendaExistente(irmaos[i].id, partes[i]);
+    await recalcularEPersistirMargem(irmaos[i].id, { freteTotal: partes[i] });
   }
 
   return partes[partes.length - 1];
 }
 
-async function reaplicarFreteEmVendaExistente(
+interface SobrescritasRecalculo {
+  freteTotal?: number;
+  adsAtribuido?: number;
+}
+
+/**
+ * Recarrega uma VendaCanal já persistida, aplica a mesma regra de "zerar
+ * quantidade se cancelada/devolvida" e recalcula a margem com frete e/ou ads
+ * atualizados — usado quando um dado que chega depois (frete de um pacote
+ * cujo irmão só agora apareceu, ads do dia) muda um número que já tinha sido
+ * gravado. Idempotente: não re-escreve nada se o valor não mudou.
+ */
+export async function recalcularEPersistirMargem(
   vendaId: string,
-  novoFreteTotal: number
+  sobrescritas: SobrescritasRecalculo
 ): Promise<void> {
   const venda = await prisma.vendaCanal.findUniqueOrThrow({
     where: { id: vendaId },
     include: { itens: true },
   });
-  if (venda.freteVendedor === novoFreteTotal) return;
+
+  const freteTotal = sobrescritas.freteTotal ?? venda.freteVendedor;
+  const adsAtribuido = sobrescritas.adsAtribuido ?? venda.adsAtribuido;
+  if (freteTotal === venda.freteVendedor && adsAtribuido === venda.adsAtribuido) return;
 
   const config = await obterConfigIngestao(venda.userId);
   const zerar = statusZeraQuantidade(venda.status);
@@ -165,7 +153,7 @@ async function reaplicarFreteEmVendaExistente(
   }));
 
   const resultado = calcularResultadoVenda(
-    { freteTotal: novoFreteTotal, adsAtribuido: venda.adsAtribuido },
+    { freteTotal, adsAtribuido },
     itensEntrada,
     { aliquotaImposto: config.aliquotaImposto }
   );
@@ -176,6 +164,7 @@ async function reaplicarFreteEmVendaExistente(
       where: { id: vendaId },
       data: {
         freteVendedor: resultado.freteVendedor,
+        adsAtribuido: resultado.adsAtribuido,
         margemContribuicao: resultado.margemContribuicao,
         completo: resultado.completo && !semVinculo,
         faltando: semVinculo
@@ -188,6 +177,7 @@ async function reaplicarFreteEmVendaExistente(
         where: { id: venda.itens[i].id },
         data: {
           freteRateado: resultado.itens[i].freteRateado,
+          adsRateado: resultado.itens[i].adsRateado,
           margemContribuicao: resultado.itens[i].margemContribuicao,
         },
       });
@@ -410,9 +400,12 @@ export async function atualizarResumoDoDia(
     vendasIncompletas: 0,
   };
 
+  let adsAlocadoEmVendas = 0;
+
   for (const venda of vendas) {
     resumo.pedidos += 1;
     if (!venda.completo) resumo.vendasIncompletas += 1;
+    adsAlocadoEmVendas += venda.adsAtribuido; // conta mesmo cancelada: ads não é reembolsado
 
     if (statusZeraQuantidade(venda.status)) {
       resumo.cancelamentos += venda.faturamentoBruto;
@@ -425,12 +418,22 @@ export async function atualizarResumoDoDia(
     resumo.impostos += venda.impostoEstimado;
     resumo.tarifas += venda.tarifaVenda;
     resumo.frete += venda.freteVendedor ?? 0;
-    resumo.ads += venda.adsAtribuido;
     resumo.cmv += venda.cmv ?? 0;
     if (venda.margemContribuicao != null) {
       resumo.margemContribuicao += venda.margemContribuicao;
     }
   }
+
+  // Ads sem venda no dia não pode somar — o custo de GastoAdsCanal é a fonte
+  // de verdade do total; a parte não alocada a nenhuma venda ainda reduz a
+  // margem do dia (foi um gasto real), mesmo sem uma venda específica pra descontar.
+  const totalAdsDoDia = await prisma.gastoAdsCanal.aggregate({
+    where: { userId, canal, dia: { gte: dia, lte: fimDia } },
+    _sum: { custo: true },
+  });
+  resumo.ads = totalAdsDoDia._sum.custo ?? 0;
+  const adsNaoAlocado = Math.max(0, resumo.ads - adsAlocadoEmVendas);
+  resumo.margemContribuicao -= adsNaoAlocado;
 
   await prisma.resumoFinanceiroDiario.upsert({
     where: { userId_dia_canal: { userId, dia, canal } },

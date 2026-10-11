@@ -112,3 +112,31 @@ Idêntica à registrada em todo o Ciclo 6: este ambiente não tem `DATABASE_URL`
 - `npx tsc --noEmit`: limpo.
 - `npx next lint`: limpo.
 - `npm test`: 30 arquivos, 226 testes, todos passando (46 novos desta fase).
+
+## Fase 4 — Publicidade, cobranças do ML e liberações
+
+### Aviso de confiança
+
+Diferente das Fases 0–3 (pedidos, descontos, frete — APIs centrais e estáveis do ML, já usadas desde o Ciclo 6), **Product Ads e Billing são a parte de menor confiança de todo o Ciclo 7**: nem os caminhos de URL foram confirmados contra uma conta real, só a documentação pública. Isso está registrado explicitamente em `docs/financeiro/fontes-mercado-livre.md` (nova seção) e todo o código é escrito para falhar graciosamente — qualquer endpoint errado vira lista vazia (log de erro, sem derrubar o cron), nunca um número inventado.
+
+### O que foi feito
+
+1. **Product Ads** (`canais/mercadoLivre/mapeadorAds.ts` + `listarGastosAds` em `cliente.ts`): busca o anunciante (`/advertising/advertisers`) e as métricas do dia (`/advertising/product_ads/ads`), grava em `GastoAdsCanal`, vincula ao produto pelo anúncio (reaproveitando o mesmo vínculo de vendas, extraído para `ingestao/vinculo.ts`). Rateio (`ingestao/ingestaoAds.ts`): recalculado do zero a cada ingestão do dia (nunca incrementado — reprocessar dá o mesmo resultado), cada anúncio rateia seu próprio custo só entre os itens dele no dia; um pedido com itens de anúncios diferentes recebe a soma de cada parte. Ads sem venda no dia não some: `GastoAdsCanal` é a fonte de verdade do total em `ResumoFinanceiroDiario.ads` (não mais a soma de `VendaCanal.adsAtribuido`), e a parte não alocada a nenhuma venda ainda reduz a margem do dia.
+2. **Cobranças mensais** (`mapeadorCobrancas.ts` + `listarCobrancas`, paginado por `from_id`): grava em `CobrancaCanal` com `tipoNormalizado` (mapa fixo; qualquer código fora do mapa cai em `NAO_MAPEADO`, valor preservado, nada descartado). `coberturaPedido=true` para `TARIFA_VENDA`/`FRETE` (já aparecem no pedido, essa cobrança serve só para conciliação); as demais entram na DRE direto pela cobrança. **Não implementado**: notas de crédito (pedido explícito do prompt) — sem confiança nem no endpoint principal de billing, não arrisquei um segundo endpoint sem nenhuma base; fica como pendência explícita.
+3. **Conciliação** (`relatorios/conciliacao.ts`): relatório mensal "Pedidos × Fatura" para `TARIFA_VENDA` e `FRETE` (os dois tipos que existem nos dois lados), diferença absoluta e percentual, alerta acima de 1%. Botão de ajuste (`gerarLancamentoAjusteConciliacao`) cria um `LancamentoFinanceiro` com `origem=CONCILIACAO`, `tipo=DESPESA` (fatura maior que o registrado) ou `RECEITA` (fatura menor), idempotente por `chaveExterna` (clicar de novo depois que a fatura mudar atualiza o mesmo lançamento). Resolve a categoria pelo nome do plano de contas padrão, chamando `seedPlanoContasPadrao` antes como garantia (Fase 1), já que o botão pode ser o primeiro contato da conta com o financeiro.
+4. **Liberações do Mercado Pago** (`canais/mercadoPago/liberacoes.ts`): `ConfiguracaoGeral.usarRelatorioLiberacaoMercadoPago` novo (migração `20261011090000_financeiro_fase4_ads_cobrancas`, default `false`). Com a flag desligada, não chama a API nenhuma vez. Ligada, lê `/v1/account/release_report` da API do **Mercado Pago** (host diferente de `api.mercadolibre.com` — nem se o token do ML funciona lá foi confirmado) e devolve a lista normalizada **só para conferência manual** (Fase 7) — não alimenta nenhuma fórmula, não é persistido, não entra na DRE.
+5. **Cron `financeiro-diario` estendido**: além do reprocessamento de 3 dias (Fase 3), agora também ingere os ads de ontem e a cobrança do mês corrente para cada conta, cada etapa com seu próprio try/catch (erro em ads de uma conta não impede a cobrança da mesma conta nem o processamento das outras contas).
+6. **Rotas novas**: `GET /api/financeiro/conciliacao` (FINANCEIRO_VER), `POST /api/financeiro/conciliacao/ajuste` (FINANCEIRO_EDITAR), `GET /api/financeiro/liberacoes` (FINANCEIRO_VER, devolve `habilitado=false` sem chamar nada se a flag estiver desligada).
+7. **Testes** (37 novos): mapeadores de ads/cobranças com fixtures, ingestão de ads (vínculo, idempotência, rateio simples, ads sem venda, item de dois anúncios diferentes na mesma venda, venda cancelada), ingestão de cobranças (idempotência, não mapeadas, capacidade ausente), conciliação (alerta, divisão por zero, DESPESA × RECEITA, idempotência do ajuste), liberações do Mercado Pago (flag desligada não chama a API, falha da API não quebra), cron estendido.
+
+### O que ficou pendente desta fase
+
+- Nenhum dos endpoints novos (Ads, Billing, release_report do MP) foi confirmado contra uma conta real — todos dependem do diagnóstico em produção, com risco maior que o das Fases 0–3 porque nem o caminho da URL é garantido.
+- Notas de crédito da fatura mensal não são lidas.
+- `DEVOLVIDA_PARCIAL`/`EM_MEDIACAO` continuam sem detecção automática (mesma pendência da Fase 3).
+
+### Checks ao final da fase
+
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo.
+- `npm test`: 39 arquivos, 263 testes, todos passando (37 novos desta fase).
