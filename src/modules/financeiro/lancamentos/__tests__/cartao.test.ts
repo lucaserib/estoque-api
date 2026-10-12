@@ -45,6 +45,7 @@ interface FakeConta {
   id: string;
   userId: string;
   tipo: string;
+  nome?: string;
   diaFechamento: number | null;
   diaVencimento: number | null;
 }
@@ -62,11 +63,13 @@ interface FakeLancamento {
   id: string;
   userId: string;
   faturaCartaoId: string | null;
+  descricao: string;
   valor: number;
   status: string;
   tipo: string;
   categoriaId: string;
   contaFinanceiraId: string | null;
+  competencia: Date;
   pagamento: Date | null;
 }
 
@@ -121,6 +124,29 @@ vi.mock("@/lib/prisma", () => ({
           return fatura;
         }
       ),
+      findMany: vi.fn(
+        async ({ where }: { where: { userId: string; contaFinanceiraId?: string } }) =>
+          faturas
+            .filter(
+              (f) =>
+                f.userId === where.userId &&
+                (!where.contaFinanceiraId || f.contaFinanceiraId === where.contaFinanceiraId)
+            )
+            .map((f) => ({
+              ...f,
+              contaFinanceira: { nome: contas.find((c) => c.id === f.contaFinanceiraId)?.nome ?? "" },
+              lancamentos: lancamentos
+                .filter((l) => l.faturaCartaoId === f.id)
+                .map((l) => ({
+                  id: l.id,
+                  descricao: l.descricao,
+                  valor: l.valor,
+                  competencia: l.competencia,
+                  categoria: { nome: categorias.find((c) => c.id === l.categoriaId)?.nome ?? "" },
+                })),
+            }))
+            .sort((a, b) => (a.mesReferencia < b.mesReferencia ? 1 : -1))
+      ),
     },
     categoriaFinanceira: {
       findFirst: vi.fn(
@@ -161,7 +187,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-const { registrarCompraNoCartao, pagarFatura, FaturaJaPagaError } = await import("../cartao");
+const { registrarCompraNoCartao, pagarFatura, listarFaturas, FaturaJaPagaError } = await import("../cartao");
 
 beforeEach(() => {
   contas = [{ id: "cartao-1", userId: "user-1", tipo: "CARTAO_CREDITO", diaFechamento: 10, diaVencimento: 17 }];
@@ -234,5 +260,36 @@ describe("pagarFatura", () => {
     await pagarFatura("user-1", faturas[0].id, "banco-1");
 
     await expect(pagarFatura("user-1", faturas[0].id, "banco-1")).rejects.toThrow(FaturaJaPagaError);
+  });
+});
+
+describe("listarFaturas", () => {
+  it("soma o total de cada fatura a partir dos lançamentos nela", async () => {
+    await registrarCompraNoCartao("user-1", "user-1", "cartao-1", {
+      descricao: "Compra 1", valor: 5000, categoriaId: "cat-1", dataCompra: new Date("2026-05-01T00:00:00.000Z"),
+    });
+    await registrarCompraNoCartao("user-1", "user-1", "cartao-1", {
+      descricao: "Compra 2", valor: 3000, categoriaId: "cat-1", dataCompra: new Date("2026-05-05T00:00:00.000Z"),
+    });
+
+    const [fatura] = await listarFaturas("user-1");
+
+    expect(fatura.total).toBe(8000);
+    expect(fatura.lancamentos).toHaveLength(2);
+  });
+
+  it("filtra por contaFinanceiraId quando informado", async () => {
+    contas.push({ id: "cartao-2", userId: "user-1", tipo: "CARTAO_CREDITO", diaFechamento: 5, diaVencimento: 15 });
+    await registrarCompraNoCartao("user-1", "user-1", "cartao-1", {
+      descricao: "Compra cartão 1", valor: 1000, categoriaId: "cat-1", dataCompra: new Date("2026-05-01T00:00:00.000Z"),
+    });
+    await registrarCompraNoCartao("user-1", "user-1", "cartao-2", {
+      descricao: "Compra cartão 2", valor: 2000, categoriaId: "cat-1", dataCompra: new Date("2026-05-01T00:00:00.000Z"),
+    });
+
+    const resultado = await listarFaturas("user-1", "cartao-2");
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].contaFinanceiraId).toBe("cartao-2");
   });
 });

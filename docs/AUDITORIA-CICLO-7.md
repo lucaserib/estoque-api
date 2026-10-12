@@ -198,3 +198,51 @@ Reaproveitado `src/lib/cache.ts` (o mesmo mecanismo já usado por produtos/pend�
 - `npx tsc --noEmit`: limpo.
 - `npx next lint`: limpo.
 - `npm test`: 64 arquivos, 406 testes, todos passando (60 novos desta fase).
+
+## Fase 7 — Telas
+
+### Convenções visuais reaproveitadas (sem componente novo de composição)
+
+Toda tela nova segue exatamente o padrão já usado no resto do app, descoberto por leitura do código antes de escrever qualquer página: `PageHeader` (breadcrumb + título + ações), `SectionCard`, `DataTable`/`DataTableHeader`/`DataTableBody`/`DataTableRow`/`DataTableHead`/`DataTableCell` (`numeric`/`emphasis`/`sticky` — **`DataTableHead` não tem `numeric`**, só `className="text-right"`), `StatusPill` (tons `critical`/`warning`/`success`/`info`/`primary`/`neutral`), `Skeleton` para loading, `Dialog` no lugar de um `Sheet` lateral (não existe no projeto), Recharts importado direto (não existe wrapper de gráfico compartilhado), `toast` do `sonner` para feedback de ação. Dois componentes só existiam no projeto sem nenhum consumidor até esta fase: `KpiCard` e `chart-colors.ts` — ambos usados agora pela primeira vez.
+
+Dois pedaços de UI não existiam em lugar nenhum e foram construídos nesta fase, reaproveitados por todas as subpáginas:
+- **`SeletorPeriodo`** (`financeiro/components/SeletorPeriodo.tsx`): Select de presets (Hoje/7 dias/Mês atual/Mês anterior/Personalizado) + `DatePickerWithRange` condicional para o personalizado.
+- **`useAcessoFinanceiro`** (`financeiro/components/useAcessoFinanceiro.ts`): hook client-side que redireciona para `/` quando o papel da sessão não tem `FINANCEIRO_VER`, e expõe `papel` para cada página decidir sozinha se mostra ações de edição (`podeEditar(papel, "FINANCEIRO_EDITAR")`).
+
+A Sidebar trocou o item único "Financeiro" por um `SidebarDropdown` com 8 sub-rotas (mesma convenção já usada pelo Mercado Livre).
+
+### Lacunas de backend descobertas ao construir as telas (não eram sobre dado do ML, eram sobre funcionalidade que nunca foi exposta)
+
+Construir a tela expõe o que o backend das Fases 1–6 não cobria — nenhuma é mudança de fórmula ou de dado, todas são aditivas:
+
+1. **`CategoriaFinanceira` e `ContaFinanceira` nunca tiveram CRUD nenhum** além do seed da Fase 1. Criados `lancamentos/categorias.ts` e `lancamentos/contasFinanceiras.ts` (listar/criar/atualizar, exclusão de categoria bloqueada se `sistema=true`) com rotas novas (`/api/financeiro/categorias` + `/[id]`, `/api/financeiro/contas-financeiras` + `/[id]`) — sem isso nenhum formulário de lançamento teria o que colocar nos selects.
+2. **Não existia rota para `criarCompraParcelada`** (`lancamentos/parcelamento.ts`, pronta desde a Fase 5): criada `POST /api/financeiro/lancamentos/parcelado`.
+3. **Criar uma recorrência não gerava nenhum lançamento** — só o cron diário chamava `gerarLancamentosDaRecorrencia`. Quem criasse uma recorrência não veria nada na tela até o dia seguinte. Corrigido no `POST /api/financeiro/recorrencias`: chama `gerarLancamentosDaRecorrencia` uma vez, na hora — seguro porque a função já é idempotente (chaveExterna + `geradoAte`), o cron rodar depois não duplica.
+4. **Não existia rota para listar faturas de cartão.** Criada `listarFaturas` em `lancamentos/cartao.ts` (soma o total a partir dos lançamentos da própria fatura, inclui os itens para a tela expandir sem precisar de uma segunda chamada) e `GET /api/financeiro/cartoes/faturas`.
+5. **Nenhum campo de `ConfiguracaoGeral` específico do financeiro** (`regimeTributario`, `cancelamentoNaCompetencia`, `rateioCustoFixo`, `custoEnvioFlex`, `usarImpostoEstimado`, `usarRelatorioLiberacaoMercadoPago` — todos já consumidos por `dre.ts`/`lucroPorProduto.ts`/`sincronizador.ts` desde fases anteriores) tinha rota de leitura/escrita; a rota pré-existente `/api/configuracoes-gerais` só cobre `aliquotaImposto`, atrás de `VER_CUSTO`, e é de uso geral do app. Criada `GET`/`PATCH /api/financeiro/configuracoes`, atrás de `FINANCEIRO_VER`/`FINANCEIRO_EDITAR`, com validação de cada enum e do intervalo de `aliquotaImposto`.
+6. **"Cobranças não mapeadas"** (pedido explícito do prompt para a tela de configurações) não tinha relatório — só um contador efêmero (`naoMapeadas`) devolvido na hora da ingestão (Fase 4), nunca persistido como algo consultável depois. Criado `relatorios/cobrancasNaoMapeadas.ts` (agrupa `CobrancaCanal` com `tipoNormalizado=NAO_MAPEADO` por `tipoExterno`, soma e conta, ordenado do maior total para o menor) e `GET /api/financeiro/cobrancas-nao-mapeadas`.
+7. Todas as 6 lacunas acima ganharam teste (unitário do módulo + rota), seguindo o mesmo padrão já usado em todo o ciclo (`vi.hoisted` para o mock de `verifyUser`, 403 sem permissão, 400 em campo obrigatório faltando, caminho feliz validando os argumentos passados para o serviço).
+
+### Subpáginas (`src/app/(root)/financeiro/`)
+
+1. **Visão geral** (`page.tsx`): busca 8 endpoints em paralelo (resumo-dia, resumo-periodo, serie-diaria, produtos, vendas com prejuízo, vendas incompletas, saldo projetado, conciliação). Gráfico cascata (Faturamento → Cancel./desc. → Impostos → Tarifas → Frete → Ads → CMV → Desp. fixas → Lucro líquido) via Recharts `BarChart` com barra-base invisível e barra-delta colorida por `<Cell>` — Recharts não tem waterfall nativo. Linha diária faturamento × margem, top/bottom 10 produtos, alertas de vendas incompletas e divergência de conciliação.
+2. **DRE** (`dre/page.tsx`): mês + quantidade de meses comparativos, linhas montadas dinamicamente (inclusive uma sub-linha por categoria de despesa operacional), exportação para Excel/PDF reaproveitando `exportToExcel`/`loadPDF`+`addTableToPDF` (únicas ferramentas de exportação já existentes no projeto, cliente-side as duas — nenhuma rota de exportação nova).
+3. **Lucro por venda** (`vendas/page.tsx`): lista filtrada (status, só prejuízo, só incompletas) + paginação real (a rota suporta) + painel de detalhe em `Dialog` por venda. **Simplificação deliberada**: sem filtro por produto nesta tela — não existe nenhum componente de autocomplete de produto reaproveitável no projeto, e construir um só para este filtro ficou fora do escopo desta rodada.
+4. **Lucro por produto** (`produtos/page.tsx`): tabela ordenável, pill da curva ABC, aviso de margem negativa.
+5. **Lançamentos** (`lancamentos/page.tsx`): filtros (período por vencimento, status, tipo, categoria), seleção em lote (marcar pago / mudar categoria / excluir previstos — mesma trava do backend, só previstos), e um diálogo de criação com três abas (Único / Recorrente / Parcelado), cada uma só com os campos que a respectiva rota precisa. Edição reaproveita o mesmo formulário do "Único" mais um seletor de status direto. Pill "Vencido" (amarelo) calculada no cliente para `PREVISTO` com vencimento no passado — o backend não tem esse status, é só uma leitura de UI sobre `status`+`vencimento`. Conta de cartão de crédito **não aparece** no seletor de conta financeira destes formulários — lançamento manual numa conta de cartão passaria por fora do fluxo de fatura (`cartao.ts`), que é o único caminho correto para dívida de cartão.
+6. **Fluxo de caixa** (`fluxo-de-caixa/page.tsx`): `BarChart` realizado × previsto por dia/semana/mês, e os 4 componentes do saldo projetado (30/60/90 dias) em `StatStrip`.
+7. **Cartões** (`cartoes/page.tsx`): grid de cartões com atalho "Nova compra" por cartão, tabela de faturas (com filtro por cartão) que expande inline para mostrar os lançamentos da fatura sem precisar de uma segunda tela, "Pagar fatura" com seletor de conta bancária de origem. Criar um cartão novo é só uma `ContaFinanceira` com `tipo=CARTAO_CREDITO` — o formulário fica nesta tela mesmo (fluxo natural de quem está vendo os cartões), não na tela de Configurações.
+8. **Configurações** (`configuracoes/page.tsx`): CRUD de plano de contas e de contas financeiras (tabelas com toggle de ativo/inativo inline), formulário das regras do financeiro (regime tributário, alíquota, competência do cancelamento, rateio de custo fixo, custo fixo do Flex, estimar imposto, habilitar liberações do MP), importação de histórico (chama `importar-historico` em loop até `CONCLUIDO`, somando `processados` de cada lote no cliente — a rota não devolve um total acumulado, só o lote da chamada atual), conciliação de fatura por mês com botão de ajuste por linha, cobranças não mapeadas do mês, conferência de liberações do MP (só aparece se a flag estiver ligada) e diagnóstico Mercado Livre por número de pedido (só para `ADMIN`, mesmo padrão de permissão do endpoint).
+
+### O que ficou pendente desta fase
+
+- Nenhuma verificação visual foi feita — este ambiente não tem navegador. A verificação foi por leitura de código, `tsc`, `lint` e os testes automatizados; abrir cada tela no `npm run dev` e navegar fica para quem revisar antes de ir para produção.
+- Sem testes de página (`page.tsx`) — consistente com o que `CLAUDE.md` já documenta para este projeto ("Tests live beside the code they cover... services, lib, and API routes all have coverage"), nenhuma tela em nenhuma parte do app tem teste de componente React.
+- Filtro por produto na tela "Lucro por venda" (ver simplificação acima).
+- Seletor de conta do Mercado Livre na importação de histórico: a rota já teria suporte (`accountId` opcional), mas a tela não construiu um seletor — contas com mais de uma integração ML ativa sempre importam pela primeira conta ativa encontrada, mesmo comportamento que a rota já tinha por padrão desde a Fase 3.
+
+### Checks ao final da fase
+
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo.
+- `npm test`: 77 arquivos, 465 testes, todos passando (59 novos desta fase).

@@ -121,6 +121,31 @@ export async function registrarCompraNoCartao(
   });
 }
 
+export async function listarFaturas(userId: string, contaFinanceiraId?: string) {
+  const faturas = await prisma.faturaCartao.findMany({
+    where: { userId, ...(contaFinanceiraId && { contaFinanceiraId }) },
+    include: {
+      contaFinanceira: { select: { nome: true } },
+      lancamentos: {
+        select: {
+          id: true,
+          descricao: true,
+          valor: true,
+          competencia: true,
+          categoria: { select: { nome: true } },
+        },
+        orderBy: { competencia: "asc" },
+      },
+    },
+    orderBy: { mesReferencia: "desc" },
+  });
+
+  return faturas.map((fatura) => ({
+    ...fatura,
+    total: fatura.lancamentos.reduce((soma, l) => soma + l.valor, 0),
+  }));
+}
+
 async function resolverCategoriaGenerica(userId: string): Promise<string> {
   await seedPlanoContasPadrao(userId);
   const categoria = await prisma.categoriaFinanceira.findFirst({

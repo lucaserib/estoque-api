@@ -1,6 +1,7 @@
 import { CanalVenda, GrupoDre, StatusLancamento, TipoLancamento } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { inicioDoDia, fimDoDia, competenciaDe, type Competencia } from "../dominio/periodo";
+import { inicioDoDia, fimDoDia, inicioDoMes, fimDoMes, competenciaDe, type Competencia } from "../dominio/periodo";
+import { calcularPontoEquilibrio } from "../dominio/formulas";
 import { comCacheFinanceiro } from "./cache";
 
 function diasNoMes(competencia: Competencia): number {
@@ -183,5 +184,138 @@ export async function gerarResumoDia(
       contasAPagar,
       valorALiberarMercadoPago: valorALiberar,
     };
+  });
+}
+
+/** Mesma lógica de rateio diário do "lucro estimado do dia", só que somada dia a dia por um intervalo que pode cruzar meses (cada mês com sua própria despesa fixa). */
+async function despesaFixaRateadaNoPeriodo(userId: string, desde: Date, ate: Date): Promise<number> {
+  let total = 0;
+  let cursor = desde;
+  while (cursor <= ate) {
+    const competencia = competenciaDe(cursor);
+    const fimDoMesAtual = fimDoMes(cursor);
+    const fimDoSegmento = fimDoMesAtual < ate ? fimDoMesAtual : ate;
+    // Conta por dia de calendário (início do dia a início do dia), não por
+    // duração em ms — cursor e fimDoSegmento raramente são ambos meia-noite
+    // exata (fimDoSegmento é 23:59:59.999), e dividir a duração bruta por
+    // 24h sofre erro de "cerca" (um segmento de 1 dia dá ~0.9999, não 1).
+    const diasNesseSegmento =
+      Math.round((inicioDoDia(fimDoSegmento).getTime() - inicioDoDia(cursor).getTime()) / (24 * 60 * 60 * 1000)) + 1;
+
+    const despesasDoMes = await despesasFixasDoMes(userId, competencia);
+    total += (despesasDoMes / diasNoMes(competencia)) * diasNesseSegmento;
+
+    cursor = new Date(fimDoSegmento.getTime() + 1);
+  }
+  return Math.round(total);
+}
+
+export interface PontoEquilibrioMes {
+  pontoEquilibrio: number | null;
+  faturamentoBrutoAteAgora: number;
+  faltaVender: number | null;
+}
+
+async function calcularPontoEquilibrioDoMes(
+  userId: string,
+  algumDiaDoMes: Date,
+  canal?: CanalVenda
+): Promise<PontoEquilibrioMes> {
+  const competencia = competenciaDe(algumDiaDoMes);
+  const inicioMes = inicioDoMes(algumDiaDoMes);
+  const fimMes = fimDoMes(algumDiaDoMes);
+
+  const [totaisDoMes, despesasFixas] = await Promise.all([
+    somarPeriodo(userId, inicioMes, fimMes, canal),
+    despesasFixasDoMes(userId, competencia),
+  ]);
+
+  const receitaLiquidaDoMes =
+    totaisDoMes.faturamentoBruto - totaisDoMes.cancelamentos - totaisDoMes.descontos - totaisDoMes.impostos;
+  const margemContribuicaoPercentual =
+    receitaLiquidaDoMes === 0 ? null : totaisDoMes.margemContribuicao / receitaLiquidaDoMes;
+
+  const pontoEquilibrio =
+    margemContribuicaoPercentual == null ? null : calcularPontoEquilibrio(despesasFixas, margemContribuicaoPercentual);
+  const faltaVender = pontoEquilibrio == null ? null : Math.max(0, pontoEquilibrio - totaisDoMes.faturamentoBruto);
+
+  return { pontoEquilibrio, faturamentoBrutoAteAgora: totaisDoMes.faturamentoBruto, faltaVender };
+}
+
+export interface ResumoPeriodo extends TotaisResumo {
+  desde: Date;
+  ate: Date;
+  margemContribuicaoPercentual: number | null;
+  ticketMedio: number | null;
+  lucroLiquido: number;
+  pontoEquilibrioMes: PontoEquilibrioMes;
+}
+
+/**
+ * Generaliza o "resumo do dia" para um intervalo arbitrário (o período
+ * escolhido na Visão Geral, que não precisa ser um mês cheio — por isso não
+ * reaproveita `gerarDre`, que é sempre por mês de calendário).
+ */
+export async function gerarResumoPeriodo(
+  userId: string,
+  desde: Date,
+  ate: Date,
+  canal?: CanalVenda
+): Promise<ResumoPeriodo> {
+  const chave = `resumo-periodo:${desde.toISOString()}:${ate.toISOString()}:${canal ?? "todos"}`;
+
+  return comCacheFinanceiro(userId, chave, async () => {
+    const [totais, despesaFixaRateada, pontoEquilibrioMes] = await Promise.all([
+      somarPeriodo(userId, desde, ate, canal),
+      despesaFixaRateadaNoPeriodo(userId, desde, ate),
+      calcularPontoEquilibrioDoMes(userId, ate, canal),
+    ]);
+
+    const receitaLiquida = totais.faturamentoBruto - totais.cancelamentos - totais.descontos - totais.impostos;
+
+    return {
+      desde,
+      ate,
+      ...totais,
+      margemContribuicaoPercentual: receitaLiquida === 0 ? null : totais.margemContribuicao / receitaLiquida,
+      ticketMedio: totais.pedidos === 0 ? null : totais.faturamentoBruto / totais.pedidos,
+      lucroLiquido: totais.margemContribuicao - despesaFixaRateada,
+      pontoEquilibrioMes,
+    };
+  });
+}
+
+export interface PontoSerieDiaria {
+  dia: Date;
+  faturamentoBruto: number;
+  margemContribuicao: number;
+}
+
+/** Linha a linha do ResumoFinanceiroDiario no intervalo — sem agregação, é exatamente o que o gráfico diário da Visão Geral precisa. */
+export async function gerarSerieDiaria(
+  userId: string,
+  desde: Date,
+  ate: Date,
+  canal?: CanalVenda
+): Promise<PontoSerieDiaria[]> {
+  const chave = `serie-diaria:${desde.toISOString()}:${ate.toISOString()}:${canal ?? "todos"}`;
+
+  return comCacheFinanceiro(userId, chave, async () => {
+    const resumos = await prisma.resumoFinanceiroDiario.findMany({
+      where: { userId, dia: { gte: inicioDoDia(desde), lte: fimDoDia(ate) }, ...(canal && { canal }) },
+      select: { dia: true, faturamentoBruto: true, margemContribuicao: true },
+      orderBy: { dia: "asc" },
+    });
+
+    const porDia = new Map<string, PontoSerieDiaria>();
+    for (const r of resumos) {
+      const chaveDia = r.dia.toISOString();
+      const atual = porDia.get(chaveDia) ?? { dia: r.dia, faturamentoBruto: 0, margemContribuicao: 0 };
+      atual.faturamentoBruto += r.faturamentoBruto;
+      atual.margemContribuicao += r.margemContribuicao;
+      porDia.set(chaveDia, atual);
+    }
+
+    return [...porDia.values()].sort((a, b) => a.dia.getTime() - b.dia.getTime());
   });
 }

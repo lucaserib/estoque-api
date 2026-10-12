@@ -101,7 +101,7 @@ vi.mock("@/lib/cache", () => ({
   mlCache: { invalidatePattern: vi.fn(async () => 0) },
 }));
 
-const { gerarResumoDia } = await import("../resumoDia");
+const { gerarResumoDia, gerarResumoPeriodo, gerarSerieDiaria } = await import("../resumoDia");
 
 const HOJE = new Date("2026-05-15T15:00:00.000Z"); // 12h em SP, bem dentro do dia 15
 
@@ -194,5 +194,77 @@ describe("gerarResumoDia", () => {
     const resultadoResumo = await gerarResumoDia("user-1", HOJE);
 
     expect(resultadoResumo.valorALiberarMercadoPago).toBe(10000);
+  });
+});
+
+describe("gerarResumoPeriodo", () => {
+  it("soma os totais do intervalo informado", async () => {
+    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), faturamentoBruto: 10000, pedidos: 2, margemContribuicao: 3000 }));
+    resumos.push(resumo({ dia: new Date("2026-05-11T03:00:00.000Z"), faturamentoBruto: 20000, pedidos: 3, margemContribuicao: 6000 }));
+
+    const resultado = await gerarResumoPeriodo("user-1", new Date("2026-05-10T00:00:00.000Z"), new Date("2026-05-11T23:59:59.999Z"));
+
+    expect(resultado.faturamentoBruto).toBe(30000);
+    expect(resultado.pedidos).toBe(5);
+    expect(resultado.ticketMedio).toBe(6000);
+  });
+
+  it("rateia a despesa fixa diária corretamente quando o período cruza dois meses", async () => {
+    // abril tem 30 dias (despesa fixa de 3000/dia), maio tem 31 (despesa fixa de 3100/dia)
+    lancamentos.push(
+      { userId: "user-1", tipo: "DESPESA", status: "PAGO", valor: 90000, vencimento: new Date("2026-04-10"), competencia: new Date("2026-04-15T12:00:00.000Z"), categoriaGrupoDre: "DESPESA_OPERACIONAL" },
+      { userId: "user-1", tipo: "DESPESA", status: "PAGO", valor: 96100, vencimento: new Date("2026-05-10"), competencia: new Date("2026-05-15T12:00:00.000Z"), categoriaGrupoDre: "DESPESA_OPERACIONAL" }
+    );
+    resumos.push(resumo({ dia: new Date("2026-04-30T03:00:00.000Z"), margemContribuicao: 5000 }));
+    resumos.push(resumo({ dia: new Date("2026-05-01T03:00:00.000Z"), margemContribuicao: 5000 }));
+
+    // período: 30/abr e 1/mai — 1 dia em cada mês
+    const resultado = await gerarResumoPeriodo(
+      "user-1",
+      new Date("2026-04-30T03:00:00.000Z"),
+      new Date("2026-05-01T23:59:59.000Z")
+    );
+
+    // lucro = margem (10000) - despesa fixa rateada (3000 de abril + 3100 de maio = 6100)
+    expect(resultado.lucroLiquido).toBe(10000 - 6100);
+  });
+
+  it("ponto de equilíbrio do mês: faltaVender é zero quando já bateu a meta", async () => {
+    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), faturamentoBruto: 1000000, cancelamentos: 0, descontos: 0, impostos: 0, margemContribuicao: 1000000 }));
+    lancamentos.push({
+      userId: "user-1", tipo: "DESPESA", status: "PAGO", valor: 1000,
+      vencimento: new Date("2026-05-10"), competencia: new Date("2026-05-10T12:00:00.000Z"),
+      categoriaGrupoDre: "DESPESA_OPERACIONAL",
+    });
+
+    const resultado = await gerarResumoPeriodo(
+      "user-1",
+      new Date("2026-05-10T00:00:00.000Z"),
+      new Date("2026-05-10T23:59:59.000Z")
+    );
+
+    expect(resultado.pontoEquilibrioMes.faltaVender).toBe(0);
+  });
+});
+
+describe("gerarSerieDiaria", () => {
+  it("devolve um ponto por dia, ordenado do mais antigo pro mais recente", async () => {
+    resumos.push(resumo({ dia: new Date("2026-05-12T03:00:00.000Z"), faturamentoBruto: 300, margemContribuicao: 30 }));
+    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), faturamentoBruto: 100, margemContribuicao: 10 }));
+    resumos.push(resumo({ dia: new Date("2026-05-11T03:00:00.000Z"), faturamentoBruto: 200, margemContribuicao: 20 }));
+
+    const serie = await gerarSerieDiaria("user-1", new Date("2026-05-10T00:00:00.000Z"), new Date("2026-05-12T23:59:59.000Z"));
+
+    expect(serie.map((p) => p.faturamentoBruto)).toEqual([100, 200, 300]);
+  });
+
+  it("soma dias com mais de um canal quando nenhum canal é filtrado", async () => {
+    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), canal: CanalVenda.MERCADO_LIVRE, faturamentoBruto: 100, margemContribuicao: 10 }));
+    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), canal: CanalVenda.SHOPEE, faturamentoBruto: 50, margemContribuicao: 5 }));
+
+    const serie = await gerarSerieDiaria("user-1", new Date("2026-05-10T00:00:00.000Z"), new Date("2026-05-10T23:59:59.000Z"));
+
+    expect(serie).toHaveLength(1);
+    expect(serie[0].faturamentoBruto).toBe(150);
   });
 });

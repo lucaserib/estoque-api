@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
-import { criarRecorrencia, type DadosRecorrencia } from "@/modules/financeiro/lancamentos/recorrencias";
+import {
+  criarRecorrencia,
+  gerarLancamentosDaRecorrencia,
+  type DadosRecorrencia,
+} from "@/modules/financeiro/lancamentos/recorrencias";
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,6 +52,10 @@ export async function POST(request: NextRequest) {
       inicio: new Date(body.inicio),
       fim: body.fim ? new Date(body.fim) : null,
     });
+
+    // Gera já o primeiro lote (próximos meses) em vez de esperar o cron
+    // diário — idempotente, então o cron rodar depois não duplica nada.
+    await gerarLancamentosDaRecorrencia(recorrencia.id);
 
     return NextResponse.json(recorrencia, { status: 201 });
   } catch (error) {

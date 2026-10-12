@@ -5,8 +5,10 @@ const { verifyUserMock } = vi.hoisted(() => ({ verifyUserMock: vi.fn() }));
 vi.mock("@/helpers/verifyUser", () => ({ verifyUser: verifyUserMock }));
 
 const criarRecorrenciaMock = vi.fn();
+const gerarLancamentosDaRecorrenciaMock = vi.fn();
 vi.mock("@/modules/financeiro/lancamentos/recorrencias", () => ({
   criarRecorrencia: (...args: unknown[]) => criarRecorrenciaMock(...args),
+  gerarLancamentosDaRecorrencia: (...args: unknown[]) => gerarLancamentosDaRecorrenciaMock(...args),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -29,6 +31,8 @@ const { GET, POST } = await import("../route");
 beforeEach(() => {
   verifyUserMock.mockReset();
   criarRecorrenciaMock.mockReset();
+  gerarLancamentosDaRecorrenciaMock.mockReset();
+  gerarLancamentosDaRecorrenciaMock.mockResolvedValue({ gerados: 0 });
 });
 
 describe("GET /api/financeiro/recorrencias", () => {
@@ -68,5 +72,6 @@ describe("POST /api/financeiro/recorrencias", () => {
       "conta-1",
       expect.objectContaining({ inicio: new Date("2026-05-01") })
     );
+    expect(gerarLancamentosDaRecorrenciaMock).toHaveBeenCalledWith("rec-1");
   });
 });

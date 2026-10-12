@@ -18,6 +18,8 @@ import {
   Zap,
   Users,
   Wallet,
+  FileBarChart,
+  CreditCard,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -273,12 +275,21 @@ const Sidebar = () => {
             <SectionLabel isCollapsed={isSidebarCollapsed}>
               Financeiro
             </SectionLabel>
-            <SidebarLink
+            <SidebarDropdown
               href="/financeiro"
               icon={Wallet}
               label="Financeiro"
               isCollapsed={isSidebarCollapsed}
-            />
+            >
+              <SidebarSubLink href="/financeiro" icon={Layout} label="Visão geral" />
+              <SidebarSubLink href="/financeiro/dre" icon={FileBarChart} label="DRE" />
+              <SidebarSubLink href="/financeiro/vendas" icon={BarChart3} label="Lucro por venda" />
+              <SidebarSubLink href="/financeiro/produtos" icon={Package} label="Lucro por produto" />
+              <SidebarSubLink href="/financeiro/lancamentos" icon={ClipboardPaste} label="Lançamentos" />
+              <SidebarSubLink href="/financeiro/fluxo-de-caixa" icon={ArrowLeftRight} label="Fluxo de caixa" />
+              <SidebarSubLink href="/financeiro/cartoes" icon={CreditCard} label="Cartões" />
+              <SidebarSubLink href="/financeiro/configuracoes" icon={Settings} label="Configurações" />
+            </SidebarDropdown>
           </>
         )}
 
