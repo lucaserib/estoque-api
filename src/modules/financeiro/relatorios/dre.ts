@@ -263,7 +263,14 @@ async function gerarDreDeUmMes(
   const resultadoOperacional = margemContribuicao - despesasOperacionais.total;
   const impostoLucro =
     regimeTributario === RegimeTributario.SIMPLES ? 0 : impostoLucroBruto.total;
-  const lucroLiquido = resultadoOperacional + resultadoFinanceiro.total - impostoLucro;
+  // somarLancamentosPorGrupo devolve no padrão "despesa é positivo, a
+  // deduzir" (certo para despesasOperacionais/impostoLucro, que só somam
+  // DESPESA e são sempre subtraídos). RESULTADO_FINANCEIRO mistura RECEITA
+  // ("Rendimentos") e DESPESA ("Juros e tarifas") por desenho do plano de
+  // contas padrão, e entra somando no lucro líquido — por isso o sinal
+  // precisa ser invertido de volta aqui: rendimento aumenta o lucro, juro paga reduz.
+  const resultadoFinanceiroLiquido = -resultadoFinanceiro.total;
+  const lucroLiquido = resultadoOperacional + resultadoFinanceiroLiquido - impostoLucro;
 
   return {
     competencia,
@@ -280,7 +287,7 @@ async function gerarDreDeUmMes(
     despesasOperacionais: despesasOperacionais.porCategoria,
     totalDespesasOperacionais: despesasOperacionais.total,
     resultadoOperacional,
-    resultadoFinanceiro: resultadoFinanceiro.total,
+    resultadoFinanceiro: resultadoFinanceiroLiquido,
     impostoLucro,
     lucroLiquido,
     lucroLiquidoPercentual: receitaLiquida === 0 ? null : lucroLiquido / receitaLiquida,

@@ -220,4 +220,11 @@ describe("atualizarRecorrencia", () => {
 
     expect(lancamentos.every((l) => l.valor === 200000)).toBe(true);
   });
+
+  it("rejeita atualizar recorrência de outra conta", async () => {
+    recorrencias.push(recorrenciaMensal({ id: "rec-1", userId: "outra-conta" }));
+
+    await expect(atualizarRecorrencia("user-1", "rec-1", { valor: 999 }, false)).rejects.toThrow();
+    expect(recorrencias[0].valor).toBe(150000);
+  });
 });

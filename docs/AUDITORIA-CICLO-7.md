@@ -285,3 +285,39 @@ Toda a lógica de quando disparar cada alerta foi isolada em `src/modules/financ
 - `npx tsc --noEmit`: limpo.
 - `npx next lint`: limpo.
 - `npm test`: 81 arquivos, 489 testes, todos passando (24 novos desta fase).
+
+## Fase 9 — Extensibilidade, qualidade e verificação
+
+### Bug encontrado e corrigido pelo teste de DRE sintética (não é divergência de dado do ML, é lacuna própria)
+
+Escrever o teste "mês sintético, cada linha conferida à mão" (pedido explícito desta fase) achou um sinal invertido em `gerarDreDeUmMes` (`relatorios/dre.ts`): `resultadoFinanceiro` misturava lançamentos `RECEITA` ("Rendimentos") e `DESPESA` ("Juros e tarifas financeiras") — por desenho do próprio plano de contas padrão (Fase 1) — mas reaproveitava `somarLancamentosPorGrupo`, cuja convenção de sinal (`despesa = positivo, a deduzir`) foi pensada para `despesasOperacionais`/`impostoLucro`, os dois únicos outros consumidores, ambos subtraídos no final. `resultadoFinanceiro`, ao contrário, **soma** no lucro líquido — com a mesma convenção, um rendimento de verdade diminuía o lucro líquido exibido, e uma despesa financeira aumentava. Corrigido invertendo o sinal uma segunda vez (`resultadoFinanceiroLiquido = -resultadoFinanceiro.total`) antes de somar e antes de devolver no relatório (o campo exposto para a tela também estava com o sinal errado, não só o total interno). Nenhum teste existente cobria esse campo — a lacuna em si já era o sintoma. Teste novo em `dre.test.ts` fixa os dois lados (rendimento positivo, juro negativo) para não regredir.
+
+### Isolamento entre contas — auditoria, não reescrita
+
+Conferido à mão (não só por teste) todo `findUnique`/`update`/`delete` do módulo financeiro que recebe um `id` vindo de fora: toda função `atualizarX`/`excluirX`/`pagarFatura` já fazia `findFirst({where:{id,userId}})` (ou equivalente) antes de mutar, e toda rota `/api/financeiro/*` com `[id]` já passa `user.contaId` (nunca `user.id`) para o serviço — o padrão estabelecido desde a Fase 1 (`verifyUser` resolvendo `contaId`, serviços sempre recebendo o id da conta como primeiro parâmetro) se manteve consistente nas nove fases. Duas lacunas de **teste** (não de código) foram fechadas: `atualizarRecorrencia` e `pagarFatura` tinham o `findFirst`/`where` correto mas nenhum teste que tentasse explicitamente acessar o registro de outra conta — adicionado um teste de cada em `recorrencias.test.ts`/`cartao.test.ts`. `criarCompraParcelada` (parcelamento) não tem essa superfície de risco: não lê nada existente antes de criar, então não tem como "encontrar" o dado de outra conta.
+
+### Documentação de extensibilidade (sem implementação)
+
+1. **`docs/financeiro/como-adicionar-um-canal.md`**: passo a passo com a Shopee como exemplo (o enum `CanalVenda` já tem `SHOPEE`, nenhuma migração necessária só por isso) — contrato `AdaptadorCanalFinanceiro`, layout de arquivos esperado, os 5 cenários de fixture obrigatórios no mapeador (pago, cancelado com/sem pagamento aprovado, devolvido, pacote/carrinho, modalidade de fulfillment própria), o passo de registro em `canais/registro.ts`, e o que explicitamente **não** precisa mudar (ingestão, domínio, cron — exceto o loop de contas elegíveis, se o canal novo tiver conta própria a iterar —, telas).
+2. **`src/modules/financeiro/canais/erp/tipos.ts`**: interface `AdaptadorErpFinanceiro` (export de contas a pagar e categorias para o Bling via `POST /contas/pagar` e `POST /categorias/receitas-despesas`, endpoints citados no prompt original, não confirmados contra a API real nesta sessão — mesma ressalva de `fontes-mercado-livre.md`). **Sem nenhuma implementação, nenhuma rota, nenhum botão na UI** — só o contrato, documentado via docblock extenso no próprio arquivo. A direção oposta do pedido original ("importar pedidos de outros canais") não ganhou interface nova: documentado que isso já é só implementar `AdaptadorCanalFinanceiro` com `canal: CanalVenda.ERP` (valor que já existe no enum), igual a qualquer canal novo — ver o guia do item 1.
+
+### Checks finais do ciclo
+
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo.
+- `npm test`: 81 arquivos, 492 testes, todos passando (3 novos desta fase: 1 DRE sintética, 2 isolamento entre contas).
+- `npx next build` (direto, sem o `node scripts/migrate-deploy.mjs` que antecede no script `npm run build` — este ambiente não tem `DATABASE_URL`, migração continua restrita ao build do Vercel, mesma restrição de todo o ciclo): compilou com sucesso, 141/141 páginas estáticas geradas, type-check do `next build` sem erro. Dois avisos do webpack sobre cache de strings grandes (performance, não correção) — pré-existentes, não relacionados a nenhuma mudança deste ciclo.
+
+### Conferência manual em produção (para o Lucas fazer — nada disto pode ser verificado neste ambiente)
+
+Este ambiente não tem `DATABASE_URL` nem alcança `api.mercadolibre.com` desde a Fase 0 — todo o ciclo foi construído e testado com Prisma mockado. Antes de confiar nos números do financeiro em produção:
+
+1. **Diagnóstico de 3 pedidos reais** (`GET /api/financeiro/diagnostico/mercado-livre?pedido=<id>`, só ADMIN): um pedido comum pago, um pedido Full, um pedido cancelado. Para cada um, comparar campo a campo com o "Detalhe da venda" no painel do Mercado Livre:
+   - `sale_fee` é por unidade ou já por linha? (pergunta #1 de `fontes-mercado-livre.md` — crítica, afeta toda tarifa calculada)
+   - O campo de compensação do frete em `/shipments/{id}/costs` é `compensation` ou `compensations[].amount`?
+   - `order_request.return` realmente aparece nos pedidos devolvidos, e só neles?
+   - Full (`logistic_type: "fulfillment"`) tem algum custo de armazenagem embutido no próprio pedido, ou isso só vem da cobrança mensal (Fase 4)?
+2. **Total de tarifas do mês × fatura do Mercado Livre**: abrir `/financeiro/configuracoes`, gerar o relatório de conciliação do mês corrente, comparar a linha "Tarifa de venda" com o valor equivalente na fatura/extrato do ML. Diferença acima de 1% já aparece com alerta na própria tela; qualquer divergência fora disso é sinal de que alguma das perguntas do item 1 tem resposta diferente da assumida no código.
+3. **Liberações do Mercado Pago** (se `usarRelatorioLiberacaoMercadoPago` for ligada em Configurações): confirmar que `GET /v1/account/release_report` aceita o mesmo token OAuth da conta do Mercado Livre — isso nunca foi confirmado, nem que o host `api.mercadopago.com` responde para esse token.
+4. **Navegação ponta a ponta**: abrir cada uma das 8 subpáginas de `/financeiro` com dado real, confirmar que os valores "—" aparecem só onde faz sentido (vendas ainda sem custo, frete ainda não sincronizado) e nunca como zero disfarçado.
+5. **Cron `financeiro-diario`**: confirmar no painel da Vercel que ele está agendado (`vercel.json`, `0 9 * * *`) e que a primeira execução real não devolve `erros > 0` de forma persistente — um erro isolado (ex.: rate limit do ML) é esperado e não trava as demais contas, mas erro recorrente no mesmo passo indica um dos endpoints não confirmados (Ads, Billing) realmente está com o caminho errado.

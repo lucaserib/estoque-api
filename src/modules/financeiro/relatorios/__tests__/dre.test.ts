@@ -245,4 +245,87 @@ describe("gerarDre", () => {
 
     expect(relatorio.meses[0].custosVariaveis.armazenagemFull).toBe(7000);
   });
+
+  it("mês sintético completo: cada linha da DRE confere com o cálculo manual", async () => {
+    regimeTributario = "PRESUMIDO";
+
+    resumos.push(
+      resumo({
+        dia: new Date("2026-05-05T03:00:00.000Z"),
+        faturamentoBruto: 200000, cancelamentos: 10000, descontos: 5000, impostos: 8000,
+        tarifas: 15000, frete: 7000, ads: 3000, cmv: 60000,
+      }),
+      resumo({
+        dia: new Date("2026-05-20T03:00:00.000Z"),
+        faturamentoBruto: 150000, cancelamentos: 0, descontos: 3000, impostos: 5000,
+        tarifas: 10000, frete: 4000, ads: 2000, cmv: 30000,
+      })
+    );
+
+    cobrancas.push(
+      { userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, mesReferencia: "2026-05", tipoNormalizado: "ARMAZENAGEM_FULL", coberturaPedido: false, valor: 4000 },
+      { userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, mesReferencia: "2026-05", tipoNormalizado: "NAO_MAPEADO", coberturaPedido: false, valor: 1500 }
+    );
+
+    const prismaMock = (await import("@/lib/prisma")).prisma as unknown as {
+      vendaCanal: { aggregate: ReturnType<typeof vi.fn> };
+    };
+    prismaMock.vendaCanal.aggregate.mockResolvedValueOnce({ _sum: { outrosCustos: 500 } });
+
+    lancamentos.push(
+      { userId: "user-1", tipo: "DESPESA", valor: 8000, categoriaId: "cat-pessoal", categoriaNome: "Pessoal", categoriaGrupoDre: "DESPESA_OPERACIONAL", competencia: new Date("2026-05-05") },
+      { userId: "user-1", tipo: "DESPESA", valor: 4000, categoriaId: "cat-pessoal", categoriaNome: "Pessoal", categoriaGrupoDre: "DESPESA_OPERACIONAL", competencia: new Date("2026-05-20") },
+      { userId: "user-1", tipo: "DESPESA", valor: 2500, categoriaId: "cat-software", categoriaNome: "Software e assinaturas", categoriaGrupoDre: "DESPESA_OPERACIONAL", competencia: new Date("2026-05-10") },
+      { userId: "user-1", tipo: "RECEITA", valor: 1000, categoriaId: "cat-rendimentos", categoriaNome: "Rendimentos", categoriaGrupoDre: "RESULTADO_FINANCEIRO", competencia: new Date("2026-05-15") },
+      { userId: "user-1", tipo: "DESPESA", valor: 300, categoriaId: "cat-juros", categoriaNome: "Juros e tarifas financeiras", categoriaGrupoDre: "RESULTADO_FINANCEIRO", competencia: new Date("2026-05-15") },
+      { userId: "user-1", tipo: "DESPESA", valor: 6000, categoriaId: "cat-ir", categoriaNome: "IR/CSLL", categoriaGrupoDre: "IMPOSTO_LUCRO", competencia: new Date("2026-05-28") }
+    );
+
+    const relatorio = await gerarDre("user-1", { ano: 2026, mes: 5 }, 1);
+    const mes = relatorio.meses[0];
+
+    // Faturamento e receita
+    expect(mes.faturamentoBruto).toBe(350000);
+    expect(mes.cancelamentosEDevolucoes).toBe(10000);
+    expect(mes.descontos).toBe(8000);
+    expect(mes.receitaOperacionalBruta).toBe(332000); // 350000 - 10000 - 8000
+    expect(mes.impostosSobreVendas).toBe(13000);
+    expect(mes.receitaLiquida).toBe(319000); // 332000 - 13000
+
+    // Custos variáveis
+    expect(mes.custosVariaveis).toEqual({
+      tarifas: 25000,
+      frete: 11000,
+      publicidade: 5000,
+      armazenagemFull: 4000,
+      outrasTarifasNaoMapeadas: 1500,
+      freteDevolucaoEOutros: 500,
+      total: 47000, // 25000+11000+5000+4000+1500+500
+    });
+    expect(mes.cmv).toBe(90000);
+
+    // Margem de contribuição
+    expect(mes.margemContribuicao).toBe(182000); // 319000 - 47000 - 90000
+    expect(mes.margemContribuicaoPercentual).toBeCloseTo(182000 / 319000, 10);
+
+    // Despesas operacionais, por categoria e total
+    expect(mes.despesasOperacionais).toEqual(
+      expect.arrayContaining([
+        { categoriaId: "cat-pessoal", nome: "Pessoal", valor: 12000 },
+        { categoriaId: "cat-software", nome: "Software e assinaturas", valor: 2500 },
+      ])
+    );
+    expect(mes.totalDespesasOperacionais).toBe(14500);
+    expect(mes.resultadoOperacional).toBe(167500); // 182000 - 14500
+
+    // Resultado financeiro: Rendimentos (receita) soma, Juros (despesa) subtrai — líquido +700
+    expect(mes.resultadoFinanceiro).toBe(700);
+
+    // Imposto sobre o lucro (regime PRESUMIDO cobra o que foi lançado)
+    expect(mes.impostoLucro).toBe(6000);
+
+    // Lucro líquido final
+    expect(mes.lucroLiquido).toBe(162200); // 167500 + 700 - 6000
+    expect(mes.lucroLiquidoPercentual).toBeCloseTo(162200 / 319000, 10);
+  });
 });

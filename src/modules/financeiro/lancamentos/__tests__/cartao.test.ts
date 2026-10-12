@@ -261,6 +261,15 @@ describe("pagarFatura", () => {
 
     await expect(pagarFatura("user-1", faturas[0].id, "banco-1")).rejects.toThrow(FaturaJaPagaError);
   });
+
+  it("rejeita pagar fatura de outra conta", async () => {
+    await registrarCompraNoCartao("user-1", "user-1", "cartao-1", {
+      descricao: "Compra", valor: 5000, categoriaId: "cat-1", dataCompra: new Date("2026-05-01T00:00:00.000Z"),
+    });
+
+    await expect(pagarFatura("outra-conta", faturas[0].id, "banco-1")).rejects.toThrow();
+    expect(faturas[0].status).not.toBe("PAGO");
+  });
 });
 
 describe("listarFaturas", () => {
