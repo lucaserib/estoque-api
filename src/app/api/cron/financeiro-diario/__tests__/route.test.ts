@@ -23,6 +23,11 @@ vi.mock("@/modules/financeiro/lancamentos/recorrencias", () => ({
   gerarLancamentosDeTodasAsRecorrencias: (userId: string) => gerarLancamentosDeTodasAsRecorrenciasMock(userId),
 }));
 
+const gerarAlertasFinanceirosMock = vi.fn();
+vi.mock("@/modules/financeiro/alertas", () => ({
+  gerarAlertasFinanceiros: (userId: string) => gerarAlertasFinanceirosMock(userId),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     mercadoLivreAccount: {
@@ -47,6 +52,12 @@ beforeEach(() => {
   ingerirGastosAdsDoDiaMock.mockReset().mockResolvedValue({ processados: 0 });
   ingerirCobrancasDoMesMock.mockReset().mockResolvedValue({ processadas: 0, naoMapeadas: 0 });
   gerarLancamentosDeTodasAsRecorrenciasMock.mockReset().mockResolvedValue({ gerados: 0 });
+  gerarAlertasFinanceirosMock.mockReset().mockResolvedValue({
+    contasAVencer: 0,
+    contasVencidas: 0,
+    vendasComPrejuizo: 0,
+    divergenciasConciliacao: 0,
+  });
 });
 
 describe("GET /api/cron/financeiro-diario", () => {
@@ -121,6 +132,31 @@ describe("GET /api/cron/financeiro-diario", () => {
 
   it("erro ao gerar recorrência de um dono é contado mas não derruba a rota", async () => {
     gerarLancamentosDeTodasAsRecorrenciasMock.mockRejectedValue(new Error("falha ao gerar"));
+
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.erros).toBeGreaterThan(0);
+  });
+
+  it("soma os alertas gerados para cada dono de conta", async () => {
+    gerarAlertasFinanceirosMock.mockResolvedValue({
+      contasAVencer: 1,
+      contasVencidas: 2,
+      vendasComPrejuizo: 1,
+      divergenciasConciliacao: 1,
+    });
+
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    const body = await response.json();
+
+    expect(body.alertasGerados).toBe(5);
+    expect(gerarAlertasFinanceirosMock).toHaveBeenCalledWith("dono-1");
+  });
+
+  it("erro ao gerar alertas de um dono é contado mas não derruba a rota", async () => {
+    gerarAlertasFinanceirosMock.mockRejectedValue(new Error("falha ao gerar alertas"));
 
     const response = await GET(criarRequest("Bearer segredo-cron"));
     const body = await response.json();

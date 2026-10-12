@@ -94,6 +94,13 @@ interface StockItem {
   armazem?: { id: string; nome: string };
 }
 
+interface ResultadoFinanceiro30Dias {
+  unidades: number;
+  margemContribuicao: number;
+  lucroLiquido: number;
+  vendasIncompletas: number;
+}
+
 export default function ProdutoFichaPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -106,6 +113,7 @@ export default function ProdutoFichaPage() {
   const [loadingStock, setLoadingStock] = useState(false);
   const [pendencias, setPendencias] = useState<Pendencia[]>([]);
   const [aliquotaImposto, setAliquotaImposto] = useState(0);
+  const [resultadoFinanceiro, setResultadoFinanceiro] = useState<ResultadoFinanceiro30Dias | null>(null);
 
   const loadPendencias = useCallback(async () => {
     try {
@@ -127,7 +135,11 @@ export default function ProdutoFichaPage() {
       .then((res) => res.json())
       .then((data) => setAliquotaImposto(data.aliquotaImposto ?? 0))
       .catch(() => undefined);
-  }, [loadPendencias]);
+    fetch(`/api/produtos/${params.id}/resultado-financeiro`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => setResultadoFinanceiro(data))
+      .catch(() => undefined);
+  }, [loadPendencias, params.id]);
 
   const loadProduto = useCallback(async () => {
     setLoading(true);
@@ -275,6 +287,35 @@ export default function ProdutoFichaPage() {
         </CardContent>
       </Card>
 
+      {resultadoFinanceiro && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Resultado real dos últimos 30 dias</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Vendas</p>
+                <p className="text-lg font-semibold">{resultadoFinanceiro.unidades} un.</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Margem de contribuição</p>
+                <p className="text-lg font-semibold">{formatBRL(resultadoFinanceiro.margemContribuicao)}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Lucro líquido</p>
+                <p className="text-lg font-semibold">{formatBRL(resultadoFinanceiro.lucroLiquido)}</p>
+              </div>
+            </div>
+            {resultadoFinanceiro.vendasIncompletas > 0 && (
+              <p className="mt-3 text-sm text-warning">
+                {resultadoFinanceiro.vendasIncompletas} venda(s) incompleta(s) no período — os números acima podem estar subestimados.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {pendencias.length > 0 && (
         <Card>
           <CardHeader>
@@ -313,6 +354,8 @@ export default function ProdutoFichaPage() {
                       loadStockDetails();
                     } else if (p.codigo === "SEM_VINCULO_ML") {
                       router.push("/produtos/vincular");
+                    } else if (p.codigo === "VENDA_INCOMPLETA") {
+                      router.push(`/financeiro/vendas?produtoId=${params.id}&soIncompletas=true`);
                     } else {
                       setShowEditModal(true);
                     }

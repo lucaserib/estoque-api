@@ -16,6 +16,7 @@ function produtoBase(
     fornecedores: [{ principal: true, prazoEntregaDias: 7 }],
     produtosMercadoLivre: [],
     estoqueDivergente: false,
+    vendaIncompleta: false,
     ...overrides,
   };
 }
@@ -219,6 +220,18 @@ describe("calcularPendencias", () => {
     expect(
       codigosDe(produtoBase({ estoqueDivergente: true }))
     ).toContain("ESTOQUE_DIVERGENTE");
+  });
+
+  it("VENDA_INCOMPLETA: repassa a flag pré-computada pelo financeiro", () => {
+    expect(
+      codigosDe(produtoBase({ vendaIncompleta: true }))
+    ).toContain("VENDA_INCOMPLETA");
+  });
+
+  it("sem venda incompleta não gera VENDA_INCOMPLETA", () => {
+    expect(
+      codigosDe(produtoBase({ vendaIncompleta: false }))
+    ).not.toContain("VENDA_INCOMPLETA");
   });
 
   it("SEM_EAN: produto sem GTIN", () => {

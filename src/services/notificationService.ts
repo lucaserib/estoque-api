@@ -121,4 +121,72 @@ export class NotificationService {
       console.error("[NOTIF] Falha ao criar notificação de pedido:", error)
     );
   }
+
+  static async notifyContaAVencer(
+    userId: string,
+    lancamentoId: string,
+    descricao: string,
+    valor: number
+  ): Promise<void> {
+    await this.create({
+      userId,
+      type: "CONTA_A_VENCER",
+      title: "Conta vence amanhã",
+      body: `${descricao} (${(valor / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) vence amanhã.`,
+      link: `/financeiro/lancamentos?destaque=${lancamentoId}`,
+    }).catch((error) =>
+      console.error("[NOTIF] Falha ao criar notificação de conta a vencer:", error)
+    );
+  }
+
+  static async notifyContaVencida(
+    userId: string,
+    lancamentoId: string,
+    descricao: string,
+    valor: number
+  ): Promise<void> {
+    await this.create({
+      userId,
+      type: "CONTA_VENCIDA",
+      title: "Conta vencida",
+      body: `${descricao} (${(valor / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}) está vencida e ainda não foi paga.`,
+      link: `/financeiro/lancamentos?destaque=${lancamentoId}`,
+    }).catch((error) =>
+      console.error("[NOTIF] Falha ao criar notificação de conta vencida:", error)
+    );
+  }
+
+  static async notifyVendaComPrejuizo(
+    userId: string,
+    vendaId: string,
+    pedidoExternoId: string,
+    margemContribuicao: number
+  ): Promise<void> {
+    await this.create({
+      userId,
+      type: "VENDA_COM_PREJUIZO",
+      title: "Venda com prejuízo",
+      body: `Pedido #${pedidoExternoId} fechou com margem negativa (${(margemContribuicao / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}).`,
+      link: `/financeiro/vendas?destaque=${vendaId}`,
+    }).catch((error) =>
+      console.error("[NOTIF] Falha ao criar notificação de venda com prejuízo:", error)
+    );
+  }
+
+  static async notifyDivergenciaConciliacao(
+    userId: string,
+    mesReferencia: string,
+    tipo: string,
+    diferenca: number
+  ): Promise<void> {
+    await this.create({
+      userId,
+      type: "DIVERGENCIA_CONCILIACAO",
+      title: "Divergência na conciliação do mês",
+      body: `${tipo} de ${mesReferencia} diverge ${(diferenca / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })} entre os pedidos e a fatura.`,
+      link: `/financeiro/configuracoes?mesConciliacao=${mesReferencia}`,
+    }).catch((error) =>
+      console.error("[NOTIF] Falha ao criar notificação de conciliação:", error)
+    );
+  }
 }

@@ -15,7 +15,7 @@ export interface ItemPendencia {
 export async function calcularTodasPendencias(
   userId: string
 ): Promise<ItemPendencia[]> {
-  const [produtos, armazensBling] = await Promise.all([
+  const [produtos, armazensBling, itensDeVendaIncompleta] = await Promise.all([
     prisma.produto.findMany({
       where: { userId, ativo: true },
       select: {
@@ -49,9 +49,18 @@ export async function calcularTodasPendencias(
       where: { userId, blingDepositoId: { not: null } },
       select: { id: true },
     }),
+    prisma.vendaCanalItem.findMany({
+      where: {
+        produtoId: { not: null },
+        venda: { userId, completo: false, dataVenda: { gte: new Date(Date.now() - TRINTA_DIAS_MS) } },
+      },
+      select: { produtoId: true },
+      distinct: ["produtoId"],
+    }),
   ]);
 
   const armazemBlingIds = new Set(armazensBling.map((a) => a.id));
+  const produtosComVendaIncompleta = new Set(itensDeVendaIncompleta.map((i) => i.produtoId));
 
   const ultimaMovimentacaoPorPar = new Map<
     string,
@@ -109,6 +118,7 @@ export async function calcularTodasPendencias(
       fornecedores: produto.fornecedores,
       produtosMercadoLivre: produto.ProdutoMercadoLivre,
       estoqueDivergente,
+      vendaIncompleta: produtosComVendaIncompleta.has(produto.id),
     });
 
     return {

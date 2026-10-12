@@ -5,16 +5,9 @@ import { withCache, createCacheKey } from "@/lib/cache";
 import { podeVer } from "@/lib/permissoes";
 import { calcularTodasPendencias } from "@/services/pendenciasService";
 import { calcularReposicaoConta } from "@/services/reposicaoService";
-import { MercadoLivreService } from "@/services/mercadoLivreService";
-import { fetchOrdersWithFallback } from "@/lib/mlOrders";
-
-const STATUS_VENDA_VALIDOS = [
-  "paid",
-  "delivered",
-  "ready_to_ship",
-  "shipped",
-  "handling",
-];
+import { gerarResumoPeriodo, gerarSerieDiaria } from "@/modules/financeiro/relatorios/resumoDia";
+import { gerarLucroPorProduto } from "@/modules/financeiro/relatorios/lucroPorProduto";
+import { listarVendasComLucro } from "@/modules/financeiro/relatorios/lucroPorVenda";
 
 type BlocoResultado<T> = { dados: T; parcial: boolean; erro?: string };
 
@@ -41,152 +34,61 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
     inicioPeriodo.getTime() - periodoDias * 24 * 60 * 60 * 1000
   );
 
-  const mlAccount = await prisma.mercadoLivreAccount.findFirst({
-    where: { userId, isActive: true },
-  });
-
+  // Lê do módulo financeiro (Ciclo 7) em vez de buscar pedidos do ML em
+  // tempo real e estimar margem aqui — o financeiro já tem tudo isso
+  // pré-agregado em ResumoFinanceiroDiario (cancelamento, desconto, imposto,
+  // ads, CMV incluídos de verdade, não só tarifa como a estimativa antiga).
   const vendasBloco = await comFallback(
     async () => {
-      if (!mlAccount) {
-        return {
-          totalRevenue: 0,
-          totalItems: 0,
-          totalSaleFees: 0,
-          custoVendido: 0,
-          produtosSemCustoNaVenda: 0,
-          serieDiaria: [] as Array<{
-            data: string;
-            receita: number;
-            unidades: number;
-            pedidos: number;
-          }>,
-          topPorMargem: [] as Array<{ produtoId: string | null; nome: string; margem: number }>,
-          revenueAnterior: 0,
-          parcialPedidos: false,
-        };
-      }
+      const [periodoAtual, periodoAnterior, serieDiariaFinanceiro, lucroPorProduto, vendasIncompletas] =
+        await Promise.all([
+          gerarResumoPeriodo(userId, inicioPeriodo, agora),
+          gerarResumoPeriodo(userId, inicioPeriodoAnterior, inicioPeriodo),
+          gerarSerieDiaria(userId, inicioPeriodo, agora),
+          gerarLucroPorProduto(userId, { desde: inicioPeriodo, ate: agora }),
+          listarVendasComLucro(userId, { desde: inicioPeriodo, ate: agora, soIncompletas: true, porPagina: 1 }),
+        ]);
 
-      const accessToken = await MercadoLivreService.getValidToken(mlAccount.id);
-      const { orders, parcial } = await fetchOrdersWithFallback({
-        accessToken,
-        sellerId: mlAccount.mlUserId,
-        dateFrom: inicioPeriodoAnterior,
-        dateTo: agora,
-      });
+      const receitaLiquida = (periodo: typeof periodoAtual) =>
+        periodo.faturamentoBruto - periodo.cancelamentos - periodo.descontos - periodo.impostos;
 
-      const custoPorMlItem = new Map<string, { custoMedio: number | null; nome: string; produtoId: string | null }>();
-      const produtosMl = await prisma.produtoMercadoLivre.findMany({
-        where: { mercadoLivreAccountId: mlAccount.id },
-        select: {
-          mlItemId: true,
-          mlTitle: true,
-          produtoId: true,
-          produto: { select: { custoMedio: true } },
-        },
-      });
-      for (const p of produtosMl) {
-        custoPorMlItem.set(p.mlItemId, {
-          custoMedio: p.produto?.custoMedio ?? null,
-          nome: p.mlTitle,
-          produtoId: p.produtoId,
-        });
-      }
-
-      let totalRevenue = 0;
-      let totalItems = 0;
-      let totalSaleFees = 0;
-      let custoVendido = 0;
-      let produtosSemCustoNaVenda = 0;
-      let revenueAnterior = 0;
-      const diaMap = new Map<
-        string,
-        { receita: number; unidades: number; pedidos: number }
-      >();
-      const margemPorProduto = new Map<string, { nome: string; margem: number }>();
-
-      for (const order of orders) {
-        if (!STATUS_VENDA_VALIDOS.includes(order.status)) continue;
-        const dataPedido = new Date(order.date_created);
-        const noPeriodoAtual = dataPedido >= inicioPeriodo;
-        const noPeriodoAnterior = !noPeriodoAtual && dataPedido >= inicioPeriodoAnterior;
-
-        if (!noPeriodoAtual && !noPeriodoAnterior) continue;
-
-        if (noPeriodoAnterior) {
-          revenueAnterior += order.total_amount || 0;
-          continue;
-        }
-
-        totalRevenue += order.total_amount || 0;
-        const diaKey = dataPedido.toISOString().split("T")[0];
-        const diaAtual =
-          diaMap.get(diaKey) ?? { receita: 0, unidades: 0, pedidos: 0 };
-        diaAtual.receita += order.total_amount || 0;
-        diaAtual.pedidos += 1;
-
-        for (const item of order.order_items) {
-          totalItems += item.quantity;
-          diaAtual.unidades += item.quantity;
-          totalSaleFees += (item.sale_fee || 0) * item.quantity;
-
-          const info = custoPorMlItem.get(item.item.id);
-          if (info?.custoMedio != null) {
-            const custoItem = info.custoMedio * item.quantity;
-            custoVendido += custoItem;
-            const margemItem =
-              item.unit_price * item.quantity -
-              (item.sale_fee || 0) * item.quantity -
-              custoItem;
-            const chave = info.produtoId ?? item.item.id;
-            const atual = margemPorProduto.get(chave) ?? {
-              nome: info.nome,
-              margem: 0,
-            };
-            atual.margem += margemItem;
-            margemPorProduto.set(chave, atual);
-          } else {
-            produtosSemCustoNaVenda += 1;
-          }
-        }
-        diaMap.set(diaKey, diaAtual);
-      }
-
-      const serieDiaria = Array.from(diaMap.entries())
-        .map(([data, v]) => ({
-          data,
-          receita: v.receita,
-          unidades: v.unidades,
-          pedidos: v.pedidos,
-        }))
-        .sort((a, b) => a.data.localeCompare(b.data));
-
-      const topPorMargem = Array.from(margemPorProduto.entries())
-        .map(([produtoId, v]) => ({ produtoId, nome: v.nome, margem: v.margem }))
-        .sort((a, b) => b.margem - a.margem)
-        .slice(0, 10);
+      const receitaLiquidaAtual = receitaLiquida(periodoAtual);
+      const receitaLiquidaAnterior = receitaLiquida(periodoAnterior);
 
       return {
-        totalRevenue,
-        totalItems,
-        totalSaleFees,
-        custoVendido,
-        produtosSemCustoNaVenda,
-        serieDiaria,
-        topPorMargem,
-        revenueAnterior,
-        parcialPedidos: parcial,
+        receitaLiquida: receitaLiquidaAtual,
+        margemContribuicao: periodoAtual.margemContribuicao,
+        margemContribuicaoPercentual: periodoAtual.margemContribuicaoPercentual,
+        unidades: periodoAtual.unidades,
+        ticketMedio: periodoAtual.ticketMedio,
+        vendasIncompletas: vendasIncompletas.total,
+        serieDiaria: serieDiariaFinanceiro.map((p) => ({
+          data: p.dia.toISOString().split("T")[0],
+          receita: p.faturamentoBruto,
+          unidades: p.unidades,
+          pedidos: p.pedidos,
+        })),
+        topPorMargem: lucroPorProduto.slice(0, 10).map((l) => ({
+          produtoId: l.produtoId as string | null,
+          nome: l.nome,
+          margem: l.margemContribuicao,
+        })),
+        deltaPercentual:
+          receitaLiquidaAnterior > 0
+            ? ((receitaLiquidaAtual - receitaLiquidaAnterior) / receitaLiquidaAnterior) * 100
+            : null,
       };
     },
     {
-      totalRevenue: 0,
-      totalItems: 0,
-      totalSaleFees: 0,
-      custoVendido: 0,
-      produtosSemCustoNaVenda: 0,
-      serieDiaria: [],
-      topPorMargem: [],
-      revenueAnterior: 0,
-      parcialPedidos: false,
+      receitaLiquida: 0,
+      margemContribuicao: 0,
+      margemContribuicaoPercentual: null as number | null,
+      unidades: 0,
+      ticketMedio: null as number | null,
+      vendasIncompletas: 0,
+      serieDiaria: [] as Array<{ data: string; receita: number; unidades: number; pedidos: number }>,
+      topPorMargem: [] as Array<{ produtoId: string | null; nome: string; margem: number }>,
+      deltaPercentual: null as number | null,
     }
   );
 
@@ -305,11 +207,7 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
     p.pendencias.some((pd) => pd.codigo === "SEM_CUSTO")
   ).length;
 
-  const margemContribuicao = verCusto
-    ? vendasBloco.dados.totalRevenue -
-      vendasBloco.dados.totalSaleFees -
-      vendasBloco.dados.custoVendido
-    : null;
+  const margemContribuicao = verCusto ? vendasBloco.dados.margemContribuicao : null;
 
   const sugestoes = reposicaoBloco.dados.sugestoes;
   const topEstoque = [...sugestoes]
@@ -355,32 +253,19 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
     periodo: { dias: periodoDias },
     metricas: {
       faturamentoLiquido: {
-        valor:
-          vendasBloco.dados.totalRevenue -
-          vendasBloco.dados.totalSaleFees,
-        parcial: vendasBloco.parcial || vendasBloco.dados.parcialPedidos,
-        deltaPercentual:
-          vendasBloco.dados.revenueAnterior > 0
-            ? ((vendasBloco.dados.totalRevenue - vendasBloco.dados.revenueAnterior) /
-                vendasBloco.dados.revenueAnterior) *
-              100
-            : null,
+        valor: vendasBloco.dados.receitaLiquida,
+        parcial: vendasBloco.parcial,
+        deltaPercentual: vendasBloco.dados.deltaPercentual,
       },
       margemContribuicao: verCusto
         ? {
             valor: margemContribuicao,
-            percentual:
-              vendasBloco.dados.totalRevenue > 0
-                ? ((margemContribuicao as number) / vendasBloco.dados.totalRevenue) * 100
-                : 0,
-            produtosSemCustoNaVenda: vendasBloco.dados.produtosSemCustoNaVenda,
+            percentual: (vendasBloco.dados.margemContribuicaoPercentual ?? 0) * 100,
+            produtosSemCustoNaVenda: vendasBloco.dados.vendasIncompletas,
           }
         : null,
-      unidadesVendidas: vendasBloco.dados.totalItems,
-      ticketMedio:
-        vendasBloco.dados.totalItems > 0
-          ? vendasBloco.dados.totalRevenue / vendasBloco.dados.totalItems
-          : 0,
+      unidadesVendidas: vendasBloco.dados.unidades,
+      ticketMedio: vendasBloco.dados.ticketMedio ?? 0,
       valorEstoqueCusto: verCusto
         ? {
             valor: estoqueLocalBloco.dados.valorTotal,
@@ -414,7 +299,7 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
       valorTotal: capitalParado.reduce((s, i) => s + (i.valor ?? 0), 0),
     },
     vendas: {
-      parcial: vendasBloco.parcial || vendasBloco.dados.parcialPedidos,
+      parcial: vendasBloco.parcial,
       serieDiaria: vendasBloco.dados.serieDiaria,
       topPorMargem: verCusto ? vendasBloco.dados.topPorMargem : [],
     },

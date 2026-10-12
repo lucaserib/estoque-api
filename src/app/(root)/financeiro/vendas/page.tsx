@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { Button } from "@/components/ui/button";
@@ -73,12 +75,15 @@ interface VendaDetalhe extends VendaLista {
 
 const STATUS_OPCOES = ["PAGA", "CANCELADA", "DEVOLVIDA", "DEVOLVIDA_PARCIAL", "EM_MEDIACAO"];
 
-export default function VendasPage() {
+function VendasPageContent() {
   const { carregando: carregandoSessao, podeVerFinanceiro } = useAcessoFinanceiro();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [produtoId] = useState<string | undefined>(searchParams.get("produtoId") ?? undefined);
   const [periodo, setPeriodo] = useState<PeriodoSelecionado>({ preset: "mesAtual", ...periodoDoPreset("mesAtual") });
   const [status, setStatus] = useState<string>("todos");
   const [soPrejuizo, setSoPrejuizo] = useState(false);
-  const [soIncompletas, setSoIncompletas] = useState(false);
+  const [soIncompletas, setSoIncompletas] = useState(searchParams.get("soIncompletas") === "true");
   const [vendas, setVendas] = useState<VendaLista[]>([]);
   const [total, setTotal] = useState(0);
   const [pagina, setPagina] = useState(1);
@@ -100,6 +105,7 @@ export default function VendasPage() {
       if (status !== "todos") params.set("status", status);
       if (soPrejuizo) params.set("soPrejuizo", "true");
       if (soIncompletas) params.set("soIncompletas", "true");
+      if (produtoId) params.set("produtoId", produtoId);
 
       const resposta = await fetch(`/api/financeiro/vendas?${params.toString()}`);
       if (resposta.ok) {
@@ -112,7 +118,7 @@ export default function VendasPage() {
     } finally {
       setCarregando(false);
     }
-  }, [periodo, status, soPrejuizo, soIncompletas, pagina]);
+  }, [periodo, status, soPrejuizo, soIncompletas, produtoId, pagina]);
 
   useEffect(() => {
     if (podeVerFinanceiro) carregar();
@@ -172,6 +178,11 @@ export default function VendasPage() {
           >
             Só incompletas
           </Button>
+          {produtoId && (
+            <Button variant="ghost" size="sm" onClick={() => router.push("/financeiro/vendas")}>
+              Filtrado por produto — limpar
+            </Button>
+          )}
         </div>
       </SectionCard>
 
@@ -285,5 +296,19 @@ export default function VendasPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function VendasPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto flex h-64 items-center justify-center p-6">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
+      <VendasPageContent />
+    </Suspense>
   );
 }

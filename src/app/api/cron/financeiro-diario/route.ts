@@ -4,6 +4,7 @@ import { reprocessarUltimosDias } from "@/modules/financeiro/ingestao/sincroniza
 import { ingerirGastosAdsDoDia } from "@/modules/financeiro/ingestao/ingestaoAds";
 import { ingerirCobrancasDoMes } from "@/modules/financeiro/ingestao/ingestaoCobrancas";
 import { gerarLancamentosDeTodasAsRecorrencias } from "@/modules/financeiro/lancamentos/recorrencias";
+import { gerarAlertasFinanceiros } from "@/modules/financeiro/alertas";
 
 function mesReferenciaDe(data: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -19,8 +20,11 @@ function mesReferenciaDe(data: Date): string {
  * devoluções, frete que chega depois), o gasto de ads de ontem e a cobrança
  * do mês corrente (idempotente — vai se corrigindo sozinha dia a dia até o
  * ML finalizar a fatura). Por conta (dono), independente de ter ML: gera os
- * lançamentos PREVISTO das recorrências ativas. Fases futuras (snapshot,
- * alertas) se somam aqui, não em rotas novas.
+ * lançamentos PREVISTO das recorrências ativas e os alertas financeiros
+ * (contas a vencer/vencidas, venda com prejuízo, divergência de
+ * conciliação — Ciclo 7 Fase 8). O "snapshot" diário (ResumoFinanceiroDiario)
+ * já é escrito como efeito colateral da própria ingestão acima, não é um
+ * passo separado.
  */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -49,6 +53,7 @@ export async function GET(request: NextRequest) {
   let gastosAdsProcessados = 0;
   let cobrancasProcessadas = 0;
   let lancamentosRecorrentesGerados = 0;
+  let alertasGerados = 0;
   let erros = 0;
 
   for (const conta of contasAtivas) {
@@ -98,6 +103,21 @@ export async function GET(request: NextRequest) {
         error
       );
     }
+
+    try {
+      const resultadoAlertas = await gerarAlertasFinanceiros(dono.id);
+      alertasGerados +=
+        resultadoAlertas.contasAVencer +
+        resultadoAlertas.contasVencidas +
+        resultadoAlertas.vendasComPrejuizo +
+        resultadoAlertas.divergenciasConciliacao;
+    } catch (error) {
+      erros++;
+      console.error(
+        `[CRON_FINANCEIRO_DIARIO] Erro ao gerar alertas da conta ${dono.id}:`,
+        error
+      );
+    }
   }
 
   return NextResponse.json({
@@ -107,6 +127,7 @@ export async function GET(request: NextRequest) {
     gastosAdsProcessados,
     cobrancasProcessadas,
     lancamentosRecorrentesGerados,
+    alertasGerados,
     erros,
   });
 }

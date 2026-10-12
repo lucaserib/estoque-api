@@ -246,3 +246,42 @@ Construir a tela expõe o que o backend das Fases 1–6 não cobria — nenhuma 
 - `npx tsc --noEmit`: limpo.
 - `npx next lint`: limpo.
 - `npm test`: 77 arquivos, 465 testes, todos passando (59 novos desta fase).
+
+## Fase 8 — Integração com o resto do app
+
+### 1. Dashboard principal lendo do financeiro, sem estimativa paralela
+
+`/api/dashboard/resumo` buscava pedidos do Mercado Livre **em tempo real** (`fetchOrdersWithFallback`, uma chamada à API por carregamento de dashboard) e recalculava faturamento/margem ali mesmo, só com tarifa — sem cancelamento, desconto, imposto, ads ou frete de verdade. Substituído por três leituras do financeiro, todas já pré-agregadas em `ResumoFinanceiroDiario` (zero chamada à API do ML): `gerarResumoPeriodo` (período atual e anterior, para o delta), `gerarSerieDiaria` (gráfico diário) e `gerarLucroPorProduto` (top por margem). `faturamentoLiquido` passa a ser receita líquida de verdade (bruto − cancelamento − desconto − imposto), não só "bruto − tarifa". `produtosSemCustoNaVenda` vira `vendasIncompletas` (contagem de `VendaCanal.completo=false` no período, via `listarVendasComLucro`). Contrato JSON da rota **não muda** (mesmo formato que o dashboard já consome) — só a fonte dos números. `PontoSerieDiaria` (`resumoDia.ts`) ganhou `pedidos`/`unidades` (antes só tinha `faturamentoBruto`/`margemContribuicao`) porque o gráfico do dashboard precisa das duas séries que a Visão Geral do financeiro não usava.
+
+Os blocos de estoque, compras e integrações (Bling/ML) do dashboard **não mudaram** — são sobre inventário e sincronização, não sobre dinheiro, fora do escopo desta fase.
+
+### 2. Ficha do produto: resultado real e vendas incompletas nas pendências
+
+Novo endpoint `GET /api/produtos/[id]/resultado-financeiro`: últimos 30 dias, lê `gerarLucroPorProduto` (todos os produtos do período, já filtra a linha do produto pedido — rateio de custo fixo por produto depende do conjunto inteiro do período, filtrar a query principal por um produto só daria um rateio errado) e `listarVendasComLucro` (contagem de vendas incompletas, essa sim já filtrável por `produtoId`). Bloco novo na ficha: vendas (unidades), margem de contribuição, lucro líquido, e um aviso se houver venda incompleta no período.
+
+`src/lib/pendencias.ts` ganhou um código novo, `VENDA_INCOMPLETA`, seguindo exatamente o padrão já usado por `ESTOQUE_DIVERGENTE` (flag booleana pré-computada pelo chamador, a função pura só decide se empurra a pendência). `pendenciasService.ts` ganhou uma terceira query (produtos com item de venda incompleta nos últimos 30 dias, agrupados num `Set`) ao lado das duas que já existiam, e passa a flag por produto. Como a tela de pendências na ficha do produto (`/api/produtos/pendencias`) já renderiza qualquer código genericamente, o novo tipo aparece ali sem nenhuma mudança de UI além do botão de ação ("Ver vendas no Financeiro" → `/financeiro/vendas?produtoId=X&soIncompletas=true`).
+
+Isso expôs que `/financeiro/vendas` (Fase 7) nunca lia filtro nenhum da URL — toda a filtragem era só `useState` local. Adicionado: lê `produtoId`/`soIncompletas` de `useSearchParams` como valor inicial (sem UI de seletor de produto, ainda — só honra o deep link), com um botão "Filtrado por produto — limpar" quando `produtoId` está ativo. Isso exigiu envolver a página em `<Suspense>` (`useSearchParams` em client component exige isso no App Router — mesmo padrão já usado em `produtos/vincular/page.tsx`). Fecha parcialmente a pendência registrada no fim da Fase 7 ("filtro por produto" — ainda não tem seletor na UI, mas o deep link agora funciona de ponta a ponta).
+
+### 3 e 4. Notificações novas e cron
+
+Adicionado `NotificationType`: `CONTA_A_VENCER`, `CONTA_VENCIDA`, `VENDA_COM_PREJUIZO`, `DIVERGENCIA_CONCILIACAO` (migração nova, `ALTER TYPE ... ADD VALUE`, mesmo padrão já usado para adicionar `CADASTRO_INCOMPLETO` no Ciclo 6). `NotificationService` ganhou os 4 métodos correspondentes, seguindo exatamente a mesma convenção dos métodos já existentes (`notifyBlingExpired` etc.) — o dedup contra notificação não lida do mesmo `type`+`link` já existia em `NotificationService.create`, então o `link` de cada alerta novo é **específico por registro** (`?destaque=<id>` do lançamento ou da venda; `?mesConciliacao=<mês>` para a divergência) para que duas contas vencidas diferentes não colidam no dedup e virem uma só.
+
+Toda a lógica de quando disparar cada alerta foi isolada em `src/modules/financeiro/alertas.ts` (`gerarAlertasFinanceiros(userId)`), chamada no loop por dono de conta do cron `financeiro-diario` (não numa rota nova — Vercel Hobby só roda cron 1x/dia por rota, restrição já registrada desde a Fase 3). Regras:
+- **Conta a vencer**: `LancamentoFinanceiro` com `status=PREVISTO` e `vencimento` igual a amanhã (calendário, não "próximas 24h corridas" — usa `inicioDoDia`/`fimDoDia` do domínio).
+- **Conta vencida**: `status=PREVISTO` com `vencimento` antes de hoje. Roda todo dia; se ainda não foi paga nem a notificação foi lida, o dedup já impede duplicar — se a notificação for lida mas a conta continuar vencida, uma nova aparece no dia seguinte (decisão deliberada: cobrança recorrente de conta vencida é o comportamento esperado, diferente de "só avisar uma vez").
+- **Venda com prejuízo**: `VendaCanal` com `completo=true` (nunca a partir de dado incompleto — evita falso positivo) e `margemContribuicao<0`, só dos últimos 3 dias (mesma janela do reprocessamento da Fase 3, evita reabrir alerta de venda antiga).
+- **Divergência de conciliação**: reaproveita `gerarRelatorioConciliacao` (Fase 4) para o mês de competência atual (`competenciaDe`, fuso de SP), notifica as linhas com `alerta=true`.
+
+"Snapshot diário" (citado no comentário original do cron como pendência futura) **não precisou de nenhum código novo**: `ResumoFinanceiroDiario` já é escrito como efeito colateral da própria ingestão (`atualizarResumoDoDia`, Fase 3), não é um passo separado — o comentário do cron foi atualizado para deixar isso explícito.
+
+### O que ficou pendente desta fase
+
+- Seletor de produto na tela "Lucro por venda" continua sem UI própria (só o deep link funciona agora — ver item 2).
+- Nenhuma verificação visual nem execução real do cron (sem `DATABASE_URL` neste ambiente) — toda a cobertura é por `tsc`, `lint` e testes com Prisma mockado.
+
+### Checks ao final da fase
+
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo.
+- `npm test`: 81 arquivos, 489 testes, todos passando (24 novos desta fase).

@@ -259,12 +259,14 @@ describe("gerarSerieDiaria", () => {
   });
 
   it("soma dias com mais de um canal quando nenhum canal é filtrado", async () => {
-    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), canal: CanalVenda.MERCADO_LIVRE, faturamentoBruto: 100, margemContribuicao: 10 }));
-    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), canal: CanalVenda.SHOPEE, faturamentoBruto: 50, margemContribuicao: 5 }));
+    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), canal: CanalVenda.MERCADO_LIVRE, faturamentoBruto: 100, margemContribuicao: 10, pedidos: 3, unidades: 4 }));
+    resumos.push(resumo({ dia: new Date("2026-05-10T03:00:00.000Z"), canal: CanalVenda.SHOPEE, faturamentoBruto: 50, margemContribuicao: 5, pedidos: 1, unidades: 2 }));
 
     const serie = await gerarSerieDiaria("user-1", new Date("2026-05-10T00:00:00.000Z"), new Date("2026-05-10T23:59:59.000Z"));
 
     expect(serie).toHaveLength(1);
     expect(serie[0].faturamentoBruto).toBe(150);
+    expect(serie[0].pedidos).toBe(4);
+    expect(serie[0].unidades).toBe(6);
   });
 });

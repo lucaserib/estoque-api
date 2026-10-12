@@ -289,6 +289,8 @@ export interface PontoSerieDiaria {
   dia: Date;
   faturamentoBruto: number;
   margemContribuicao: number;
+  pedidos: number;
+  unidades: number;
 }
 
 /** Linha a linha do ResumoFinanceiroDiario no intervalo — sem agregação, é exatamente o que o gráfico diário da Visão Geral precisa. */
@@ -303,16 +305,19 @@ export async function gerarSerieDiaria(
   return comCacheFinanceiro(userId, chave, async () => {
     const resumos = await prisma.resumoFinanceiroDiario.findMany({
       where: { userId, dia: { gte: inicioDoDia(desde), lte: fimDoDia(ate) }, ...(canal && { canal }) },
-      select: { dia: true, faturamentoBruto: true, margemContribuicao: true },
+      select: { dia: true, faturamentoBruto: true, margemContribuicao: true, pedidos: true, unidades: true },
       orderBy: { dia: "asc" },
     });
 
     const porDia = new Map<string, PontoSerieDiaria>();
     for (const r of resumos) {
       const chaveDia = r.dia.toISOString();
-      const atual = porDia.get(chaveDia) ?? { dia: r.dia, faturamentoBruto: 0, margemContribuicao: 0 };
+      const atual =
+        porDia.get(chaveDia) ?? { dia: r.dia, faturamentoBruto: 0, margemContribuicao: 0, pedidos: 0, unidades: 0 };
       atual.faturamentoBruto += r.faturamentoBruto;
       atual.margemContribuicao += r.margemContribuicao;
+      atual.pedidos += r.pedidos;
+      atual.unidades += r.unidades;
       porDia.set(chaveDia, atual);
     }
 

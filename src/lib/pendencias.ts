@@ -28,6 +28,8 @@ export interface ProdutoParaPendencias {
   produtosMercadoLivre: ProdutoMLParaPendencias[];
   /** Pré-computado pelo chamador (comparação com a última sincronização do Bling). */
   estoqueDivergente: boolean;
+  /** Pré-computado pelo chamador (módulo financeiro — venda sem custo, frete ou vínculo nos últimos 30 dias). */
+  vendaIncompleta: boolean;
 }
 
 const SETE_DIAS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -154,6 +156,15 @@ export function calcularPendencias(
       severidade: "atencao",
       mensagem: "Saldo local diverge do último valor sincronizado do Bling",
       acao: "Sincronizar estoque",
+    });
+  }
+
+  if (produto.vendaIncompleta) {
+    pendencias.push({
+      codigo: "VENDA_INCOMPLETA",
+      severidade: "atencao",
+      mensagem: "Teve venda sem custo, frete ou vínculo completo nos últimos 30 dias",
+      acao: "Ver vendas no Financeiro",
     });
   }
 
