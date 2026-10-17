@@ -465,7 +465,7 @@ export interface MLItemUpdate {
 }
 
 export interface MLOrder {
-  id: string;
+  id: string | number;
   status: string;
   status_detail?: string;
   date_created: string;

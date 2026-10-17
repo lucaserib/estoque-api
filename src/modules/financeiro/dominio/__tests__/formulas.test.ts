@@ -202,6 +202,31 @@ describe("calcularResultadoVenda", () => {
   });
 });
 
+describe("F5 (Ciclo 8) — desconto do vendedor é informativo, não reduz a margem", () => {
+  it("unit_price já vem líquido do desconto; subtrair descontoVendedorTotal de novo conta a mesma coisa duas vezes", () => {
+    // Pedido real (2000019031090968): unit_price 34,70 já é líquido do
+    // desconto de 34,30 que o vendedor custeou via sale_fee. A margem não
+    // pode subtrair os 34,30 de novo.
+    const resultado = calcularResultadoVenda(
+      { freteTotal: 0, adsAtribuido: 0 },
+      [item({ precoUnitario: 3470, descontoVendedorTotal: 3430, tarifaTotal: 299, custoUnitario: 1000 })],
+      SEM_IMPOSTO
+    );
+
+    expect(resultado.margemContribuicao).toBe(3470 - 299 - 1000);
+  });
+
+  it("o imposto incide sobre o faturamento bruto, sem abater o desconto do vendedor (já embutido no preço)", () => {
+    const resultado = calcularResultadoVenda(
+      { freteTotal: 0, adsAtribuido: 0 },
+      [item({ precoUnitario: 3470, descontoVendedorTotal: 3430, tarifaTotal: 0, custoUnitario: 0 })],
+      IMPOSTO_6
+    );
+
+    expect(resultado.imposto).toBe(Math.round(3470 * 0.06));
+  });
+});
+
 describe("ratearCustoVendaPorItem", () => {
   it("reparte proporcional ao faturamento (preço x quantidade) de cada item", () => {
     const partes = ratearCustoVendaPorItem(1000, [

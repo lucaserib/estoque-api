@@ -1,0 +1,80 @@
+{
+  "pedido": {
+    "id": 2000019029504030,
+    "date_created": "2026-10-17T12:10:04.000-04:00",
+    "date_closed": "2026-10-17T12:10:07.000-04:00",
+    "last_updated": "2026-10-17T12:11:40.000-04:00",
+    "pack_id": null,
+    "status": "paid",
+    "total_amount": 69.4,
+    "paid_amount": 69.4,
+    "order_items": [
+      {
+        "item": {
+          "id": "MLB4019629019",
+          "title": "Kit 2 Adaptador T Dobrável Benjamim Usb C Tomada 10a",
+          "variation_id": 183260262350,
+          "seller_sku": "KITADAPPRE",
+          "seller_custom_field": "",
+          "user_product_id": "MLBU3102905144"
+        },
+        "quantity": 2,
+        "unit_price": 34.7,
+        "gross_price": 140,
+        "sale_fee": 2.99,
+        "listing_type_id": "gold_special",
+        "stock": { "node_id": "BRSP25" }
+      }
+    ],
+    "payments": [
+      {
+        "id": 184707791701,
+        "status": "approved",
+        "status_detail": "accredited",
+        "transaction_amount": 69.4,
+        "transaction_amount_refunded": 0,
+        "shipping_cost": 0,
+        "coupon_amount": 0,
+        "marketplace_fee": 0,
+        "date_approved": "2026-10-17T12:10:06.000-04:00"
+      }
+    ],
+    "shipping": { "id": 48282320011 },
+    "tags": ["order_has_discount", "paid", "not_delivered"],
+    "order_request": { "change": null, "return": null },
+    "cancel_detail": null
+  },
+  "descontos": {
+    "details": [
+      {
+        "type": "discount",
+        "items": [
+          {
+            "element_id": 1,
+            "quantity": 2,
+            "id": "MLB4019629019",
+            "amounts": { "total": 70.6, "seller": 68.6 },
+            "variation_id": 183260262350
+          }
+        ],
+        "supplier": {
+          "offer_id": "OFFER-MLB4019629019-14026280114",
+          "funding_mode": "sale_fee"
+        }
+      }
+    ]
+  },
+  "custosEnvio": {
+    "gross_amount": 53.18,
+    "receiver": { "cost": 0 },
+    "senders": [
+      {
+        "user_id": 2018372828,
+        "cost": 13.71,
+        "compensation": 0,
+        "compensations": [],
+        "discounts": [{ "rate": 0.3, "type": "mandatory", "promoted_amount": 5.88 }]
+      }
+    ]
+  }
+}

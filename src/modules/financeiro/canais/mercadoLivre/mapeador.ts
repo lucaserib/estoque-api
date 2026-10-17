@@ -120,7 +120,7 @@ export function mapearPedido(
     typeof shipping.logistic_type === "string" ? shipping.logistic_type : null;
 
   return {
-    pedidoExternoId: pedido.id,
+    pedidoExternoId: String(pedido.id),
     pacoteExternoId: pedido.pack_id != null ? String(pedido.pack_id) : null,
     dataVenda,
     dataCancelamento:

@@ -1,0 +1,80 @@
+{
+  "pedido": {
+    "id": 2000019031090968,
+    "date_created": "2026-10-17T13:31:16.000-04:00",
+    "date_closed": "2026-10-17T13:31:19.000-04:00",
+    "last_updated": "2026-10-17T13:32:56.000-04:00",
+    "pack_id": 2000015573123037,
+    "status": "paid",
+    "total_amount": 34.7,
+    "paid_amount": 34.7,
+    "order_items": [
+      {
+        "item": {
+          "id": "MLB4019629019",
+          "title": "Kit 2 Adaptador T Dobrável Benjamim Usb C Tomada 10a",
+          "variation_id": 183260262350,
+          "seller_sku": "KITADAPPRE",
+          "seller_custom_field": "",
+          "user_product_id": "MLBU3102905144"
+        },
+        "quantity": 1,
+        "unit_price": 34.7,
+        "gross_price": 70,
+        "sale_fee": 2.99,
+        "listing_type_id": "gold_special",
+        "stock": { "node_id": "BRSP25" }
+      }
+    ],
+    "payments": [
+      {
+        "id": 184707791700,
+        "status": "approved",
+        "status_detail": "accredited",
+        "transaction_amount": 34.7,
+        "transaction_amount_refunded": 0,
+        "shipping_cost": 0,
+        "coupon_amount": 0,
+        "marketplace_fee": 0,
+        "date_approved": "2026-10-17T13:31:18.000-04:00"
+      }
+    ],
+    "shipping": { "id": 48282316083 },
+    "tags": ["order_has_discount", "paid", "not_delivered", "pack_order"],
+    "order_request": { "change": null, "return": null },
+    "cancel_detail": null
+  },
+  "descontos": {
+    "details": [
+      {
+        "type": "discount",
+        "items": [
+          {
+            "element_id": 1,
+            "quantity": 1,
+            "id": "MLB4019629019",
+            "amounts": { "total": 35.3, "seller": 34.3 },
+            "variation_id": 183260262350
+          }
+        ],
+        "supplier": {
+          "offer_id": "OFFER-MLB4019629019-14026280114",
+          "funding_mode": "sale_fee"
+        }
+      }
+    ]
+  },
+  "custosEnvio": {
+    "gross_amount": 26.59,
+    "receiver": { "cost": 0 },
+    "senders": [
+      {
+        "user_id": 2018372828,
+        "cost": 6.85,
+        "compensation": 0,
+        "compensations": [],
+        "discounts": [{ "rate": 0.3, "type": "mandatory", "promoted_amount": 2.94 }]
+      }
+    ]
+  }
+}

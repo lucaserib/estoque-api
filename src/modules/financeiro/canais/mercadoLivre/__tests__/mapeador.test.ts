@@ -8,6 +8,9 @@ import {
   somarDescontoVendedor,
   mapearCustoEnvio,
 } from "../mapeador";
+import fixtureComum from "./fixtures/pedido-comum.json";
+import fixtureDuasUnidades from "./fixtures/pedido-2-unidades.json";
+import fixtureCancelado from "./fixtures/pedido-cancelado.json";
 
 function pedidoBase(parcial: Partial<MLOrder> = {}): MLOrder {
   return {
@@ -183,6 +186,41 @@ describe("somarDescontoVendedor", () => {
   it("sem desconto: zero", () => {
     expect(somarDescontoVendedor(null)).toBe(0);
     expect(somarDescontoVendedor(undefined)).toBe(0);
+  });
+});
+
+describe("F1 (Ciclo 8) — id do pedido vem como número da API real", () => {
+  it("pedidoExternoId é sempre string, mesmo quando a API devolve id numérico", () => {
+    const pedido = fixtureComum.pedido as unknown as MLOrder;
+    const normalizado = mapearPedido(pedido, fixtureComum.descontos);
+
+    expect(typeof normalizado?.pedidoExternoId).toBe("string");
+    expect(normalizado?.pedidoExternoId).toBe("2000019031090968");
+  });
+
+  it("envioExternoId também vem numérico no payload real e precisa virar string", () => {
+    const pedido = fixtureComum.pedido as unknown as MLOrder;
+    const normalizado = mapearPedido(pedido, fixtureComum.descontos);
+
+    expect(normalizado?.envioExternoId).toBe("48282316083");
+  });
+});
+
+describe("F5 (Ciclo 8) — formato real de /orders/{id}/discounts", () => {
+  it("soma amounts.seller dos itens dentro de details, não um campo 'seller' no topo", () => {
+    expect(somarDescontoVendedor(fixtureComum.descontos)).toBe(3430);
+  });
+
+  it("pedido de 2 unidades: desconto do vendedor é 68,60", () => {
+    expect(somarDescontoVendedor(fixtureDuasUnidades.descontos)).toBe(6860);
+  });
+});
+
+describe("F6 (Ciclo 8) — cancelamento depois do pagamento", () => {
+  it("pedido cancelado com pagamento estornado (paid_amount zerado, payment refunded) ainda é CANCELADA", () => {
+    const pedido = fixtureCancelado.pedido as unknown as MLOrder;
+
+    expect(mapearStatus(pedido)).toBe(StatusVendaCanal.CANCELADA);
   });
 });
 

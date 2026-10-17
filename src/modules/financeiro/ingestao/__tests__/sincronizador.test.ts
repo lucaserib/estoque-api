@@ -607,6 +607,34 @@ describe("atualizarResumoDoDia", () => {
     expect(resumo.cancelamentos).toBe(8000); // valor original do cancelamento
     expect(resumo.unidades).toBe(2);
   });
+
+  it("F7 (Ciclo 8): faturamentoBruto inclui a venda depois cancelada; cancelamentos guarda o valor dela à parte", async () => {
+    const dia = new Date("2026-05-11T15:00:00.000Z");
+    vendas.push({
+      id: "v3", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, contaCanalId: "conta-1",
+      pedidoExternoId: "P3", pacoteExternoId: null, dataVenda: dia, dataCancelamento: null, dataLiberacao: null,
+      status: StatusVendaCanal.PAGA, logistica: null, envioExternoId: null,
+      faturamentoBruto: 10000, descontoVendedor: 0, tarifaVenda: 0, freteVendedor: 0, freteComprador: 0,
+      impostoEstimado: 0, adsAtribuido: 0, cmv: 0, outrosCustos: 0, margemContribuicao: 10000,
+      valorLiquidoReceber: null, completo: true, faltando: [], freteConfianca: Confianca.CONFIRMADO,
+      atualizadoNoCanalEm: dia, itens: [],
+    });
+    vendas.push({
+      id: "v4", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, contaCanalId: "conta-1",
+      pedidoExternoId: "P4", pacoteExternoId: null, dataVenda: dia, dataCancelamento: dia, dataLiberacao: null,
+      status: StatusVendaCanal.CANCELADA, logistica: null, envioExternoId: null,
+      faturamentoBruto: 5000, descontoVendedor: 0, tarifaVenda: 0, freteVendedor: 0, freteComprador: 0,
+      impostoEstimado: 0, adsAtribuido: 0, cmv: 0, outrosCustos: 0, margemContribuicao: 0,
+      valorLiquidoReceber: null, completo: true, faltando: [], freteConfianca: Confianca.CONFIRMADO,
+      atualizadoNoCanalEm: dia, itens: [],
+    });
+
+    await atualizarResumoDoDia("user-1", CanalVenda.MERCADO_LIVRE, dia);
+
+    const resumo = resumos[0];
+    expect(resumo.faturamentoBruto).toBe(15000); // 10000 paga + 5000 cancelada
+    expect(resumo.cancelamentos).toBe(5000);
+  });
 });
 
 describe("reprocessarUltimosDias", () => {

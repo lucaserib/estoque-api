@@ -1,0 +1,52 @@
+{
+  "pedido": {
+    "id": 2000018923595910,
+    "date_created": "2026-10-12T09:02:11.000-04:00",
+    "date_closed": "2026-10-12T09:02:14.000-04:00",
+    "last_updated": "2026-10-12T10:39:15.000-04:00",
+    "pack_id": null,
+    "status": "cancelled",
+    "total_amount": 26.7,
+    "paid_amount": 0,
+    "order_items": [
+      {
+        "item": {
+          "id": "MLB4019629019",
+          "title": "Kit 2 Adaptador T Dobrável Benjamim Usb C Tomada 10a",
+          "variation_id": 183260262350,
+          "seller_sku": "KITADAPPRE",
+          "seller_custom_field": ""
+        },
+        "quantity": 1,
+        "unit_price": 26.7,
+        "gross_price": 26.7,
+        "sale_fee": 2.99,
+        "listing_type_id": "gold_special"
+      }
+    ],
+    "payments": [
+      {
+        "id": 184707791650,
+        "status": "refunded",
+        "status_detail": "bpp_refunded",
+        "transaction_amount": 26.7,
+        "transaction_amount_refunded": 26.7,
+        "shipping_cost": 0,
+        "coupon_amount": 0,
+        "marketplace_fee": 0,
+        "date_approved": "2026-10-12T09:02:13.000-04:00"
+      }
+    ],
+    "shipping": { "id": 48282300099 },
+    "tags": ["not_paid", "pack_order"],
+    "order_request": { "change": null, "return": null },
+    "mediations": [{ "id": 5592610296 }],
+    "cancel_detail": {
+      "code": "buyer_cancel_express",
+      "group": "buyer",
+      "date": "2026-10-12T10:39:15.000-04:00"
+    }
+  },
+  "descontos": { "details": [] },
+  "custosEnvio": null
+}

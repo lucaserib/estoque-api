@@ -246,6 +246,32 @@ describe("gerarDre", () => {
     expect(relatorio.meses[0].custosVariaveis.armazenagemFull).toBe(7000);
   });
 
+  it("F7 (Ciclo 8): com contaCanalId, faturamento inclui a venda cancelada e a receita não é descontada em dobro", async () => {
+    const prismaMock = (await import("@/lib/prisma")).prisma as unknown as {
+      vendaCanal: { findMany: ReturnType<typeof vi.fn> };
+    };
+    prismaMock.vendaCanal.findMany.mockResolvedValueOnce([
+      {
+        faturamentoBruto: 10000, status: "PAGA", descontoVendedor: 0, impostoEstimado: 0,
+        tarifaVenda: 0, freteVendedor: 0, adsAtribuido: 0, cmv: 0, margemContribuicao: 10000,
+      },
+      {
+        faturamentoBruto: 5000, status: "CANCELADA", descontoVendedor: 0, impostoEstimado: 0,
+        tarifaVenda: 0, freteVendedor: 0, adsAtribuido: 0, cmv: 0, margemContribuicao: 0,
+      },
+    ]);
+
+    const relatorio = await gerarDre("user-1", { ano: 2026, mes: 5 }, 1, {
+      canal: CanalVenda.MERCADO_LIVRE,
+      contaCanalId: "conta-1",
+    });
+    const mes = relatorio.meses[0];
+
+    expect(mes.faturamentoBruto).toBe(15000);
+    expect(mes.cancelamentosEDevolucoes).toBe(5000);
+    expect(mes.receitaOperacionalBruta).toBe(10000);
+  });
+
   it("mês sintético completo: cada linha da DRE confere com o cálculo manual", async () => {
     regimeTributario = "PRESUMIDO";
 

@@ -84,7 +84,7 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
     }
 
     const dados = (await resposta.json()) as {
-      results: Array<{ id: string; last_updated?: string }>;
+      results: Array<{ id: string | number; last_updated?: string }>;
       paging: { total: number };
     };
 
@@ -95,7 +95,7 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
 
     return {
       pedidos: dados.results.map((r) => ({
-        pedidoExternoId: r.id,
+        pedidoExternoId: String(r.id),
         atualizadoNoCanalEm: r.last_updated ? new Date(r.last_updated) : new Date(),
       })),
       cursor: temMais ? String(proximoOffset) : null,
