@@ -100,3 +100,39 @@ Registro vivo de execução do `PROMPT-CICLO-8-FINANCEIRO-INTEGRACAO.md`, uma se
 - Build (`next build`) e `tsc`/`lint` passaram limpos, mas **as telas não foram abertas num navegador** nesta sessão — não há ferramenta de automação de browser disponível. A verificação visual (responsivo, os dois temas, o fluxo real do botão "Atualizar") é manual, no checklist da Fase 6.
 
 **Resultado ao final da fase:** `tsc`/`lint`/`next build` limpos; `npm test` com 545 testes passando (sem testes novos — mudança de UI pura, cobertura automatizada já existia nos endpoints consumidos).
+
+## Fase 6 — Verificação
+
+**Checklist obrigatório do prompt (Fase 0 item 3 do enunciado da Fase 6):**
+- ✅ `npx tsc --noEmit`, `npx next lint`, `npm test`, `npm run build` — todos limpos (547 testes).
+- ✅ Testes da Fase 0 passando (F1/F5/F6/F7, agora verdes).
+- ✅ Orquestrador retomando do cursor depois de um erro (pedido individual registrado em `SincronizacaoFinanceiraErro`, lote continua) e depois de um "timeout" simulado (orçamento de tempo esgotado no meio do backfill — testes novos em `sincronizador.test.ts`).
+- ✅ Trava por conta (`obterTravaAtiva`, testada em `orquestrador.test.ts` e na rota).
+- ✅ Incremental com sobreposição (janela `última sincronização − 2h`, testada).
+- ✅ Conta a pagar automática idempotente (`gerarContaAPagarDePedidoCompra`, já testada desde o Ciclo 7, agora também chamada automaticamente).
+- ✅ DRE com descontos informativos e cancelamento sem duplicar (F5/F7, testados).
+- ⛔ **Deduplicação Bling × ML**: não aplicável — o adaptador de pedidos de venda do Bling (item 3 da Fase 4) não foi implementado nesta rodada (ver motivo na Fase 4), então não há nada para deduplicar ainda. Quando esse adaptador existir, `src/modules/financeiro/ingestao/deduplicacao.ts` (`resolverOrigemCanonica`) já está pronto para resolver a origem canônica via `VendaCanalNormalizada.origemReal`.
+
+**Documentação atualizada**: `docs/financeiro/fontes-mercado-livre.md` (seção "Ciclo 8 — confirmado em produção") e `docs/financeiro/fontes-bling.md` (novo).
+
+## Pendências do ciclo, consolidadas
+
+Tudo listado como "deixado pendente" em cada fase acima, resumido:
+1. Mapeador de `claims`/`pagamento` do Mercado Livre (dados já expostos no diagnóstico, sem normalizador).
+2. `cancelamentoNaCompetencia` (configuração existe, nenhum cálculo lê ainda).
+3. `DEVOLVIDA_PARCIAL`: classificada corretamente, mas sem proporcionar o valor estornado por item.
+4. Pedidos de venda de outros canais via Bling (novo adaptador `CanalVenda.ERP`, sem dado real para confirmar o formato).
+5. Tela de mapeamento de categorias do Bling.
+6. Reprocessamento automático de CMV quando o custo de um produto é preenchido depois.
+7. Botão "Atualizar" nas telas de Vendas, Produtos, Fluxo de caixa e Cartões (componente já existe, só falta montar).
+8. Painel "Saúde dos dados" completo e importação automática ao abrir a tela (barra de progresso).
+9. Colunas/filtros novos da tela de Vendas (logística, preço cheio × vendido, liberação confirmada/estimada).
+
+## Passos manuais do Lucas (fora do código)
+
+1. No painel de desenvolvedores do Mercado Livre (seu aplicativo → Notificações): confirmar que a URL `https://estoque-api-4iqj.vercel.app/api/mercadolivre/webhook` tem os tópicos **orders_v2, shipments, payments, claims, items** marcados (os três novos — `shipments`, `payments`, `claims` — passam a alimentar o financeiro a partir deste ciclo).
+2. No aplicativo do Bling: incluir os escopos **Contas a pagar, Contas a receber e Categorias de receitas e despesas**, e **Reconectar** o Bling em Integrações — sem isso, `blingContasAtivo` (desligado por padrão) não vai funcionar quando ligado.
+3. Rodar uma vez, manualmente, `npx ts-node scripts/backfill-contas-a-pagar-pedidos-compra.ts` (ou equivalente via `tsx`) para gerar a conta a pagar dos pedidos de compra confirmados nos últimos 90 dias que já existiam antes desta fase.
+4. Depois do deploy: abrir o Financeiro, clicar em "Atualizar dados" na Visão geral e na DRE, e comparar com o "Detalhe da venda" do ML em pelo menos 3 pedidos (um comum, um de 2 unidades, um cancelado) — receita, tarifa, frete, desconto e líquido.
+5. Ligar `blingContasAtivo` em Configurações (depois do passo 2) e confirmar que contas a pagar/receber do Bling aparecem em Lançamentos com origem "ERP".
+6. Ver se o diagnóstico (`?tipo=pagamento`, `?tipo=claims`, `?tipo=envio`) devolve dados reais, para então escrever os mapeadores pendentes (item 1 da lista de pendências).

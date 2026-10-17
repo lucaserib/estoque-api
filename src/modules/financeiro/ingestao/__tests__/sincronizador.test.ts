@@ -939,4 +939,62 @@ describe("continuarBackfill", () => {
     );
     expect(sincronizacoes[0].processados).toBe(21);
   });
+
+  it("F4 (Ciclo 8): timeout simulado (orçamento de tempo esgotado) salva o cursor da página e a próxima chamada retoma dali, até concluir", async () => {
+    const paginas = [
+      { pedidos: [{ pedidoExternoId: "1", atualizadoNoCanalEm: new Date() }], cursor: "50", temMais: true },
+      { pedidos: [{ pedidoExternoId: "2", atualizadoNoCanalEm: new Date() }], cursor: null, temMais: false },
+    ];
+    const listarPedidosAlteradosMock = vi.fn(
+      async (_conta: unknown, _desde: Date, _ate: Date, cursor: string | null) =>
+        cursor === "50" ? paginas[1] : paginas[0]
+    );
+    adaptadorFake.atual = {
+      obterPedido: vi.fn(async (_conta: unknown, id: string) => normalizado({ pedidoExternoId: id })),
+      listarPedidosAlterados: listarPedidosAlteradosMock,
+    };
+
+    const nowMock = vi.spyOn(Date, "now");
+    nowMock.mockReturnValueOnce(1_000_000);
+    nowMock.mockReturnValueOnce(1_000_000);
+    nowMock.mockReturnValue(1_000_000 + Number(process.env.FINANCEIRO_TEMPO_MAXIMO_LOTE_MS) + 1);
+
+    const primeiraChamada = await continuarBackfill("conta-1", 90);
+    nowMock.mockRestore();
+
+    expect(primeiraChamada.status).toBe("EM_ANDAMENTO");
+    expect(sincronizacoes[0].cursor).toEqual(expect.objectContaining({ offset: 50 }));
+    expect(vendas.map((v) => v.pedidoExternoId)).toEqual(["1"]);
+
+    const segundaChamada = await continuarBackfill("conta-1", 90);
+
+    expect(segundaChamada.status).toBe("CONCLUIDO");
+    expect(listarPedidosAlteradosMock).toHaveBeenLastCalledWith(expect.anything(), expect.anything(), expect.anything(), "50");
+    expect(vendas.map((v) => v.pedidoExternoId).sort()).toEqual(["1", "2"]);
+  });
+
+  it("F4 (Ciclo 8): erro num pedido não marca a sincronização inteira como ERRO — registra e segue", async () => {
+    const obterPedidoMock = vi.fn(async (_conta: unknown, id: string) => {
+      if (id === "2") throw new Error("falha simulada");
+      return normalizado({ pedidoExternoId: id });
+    });
+    adaptadorFake.atual = {
+      obterPedido: obterPedidoMock,
+      listarPedidosAlterados: vi.fn(async () => ({
+        pedidos: [
+          { pedidoExternoId: "1", atualizadoNoCanalEm: new Date() },
+          { pedidoExternoId: "2", atualizadoNoCanalEm: new Date() },
+        ],
+        cursor: null,
+        temMais: false,
+      })),
+    };
+
+    const resultado = await continuarBackfill("conta-1", 90);
+
+    expect(resultado.status).toBe("CONCLUIDO");
+    expect(sincronizacoes[0].status).toBe("CONCLUIDO");
+    expect(vendas.map((v) => v.pedidoExternoId)).toEqual(["1"]);
+    expect(errosSincronizacao.find((e) => e.pedidoExternoId === "2")).toBeTruthy();
+  });
 });
