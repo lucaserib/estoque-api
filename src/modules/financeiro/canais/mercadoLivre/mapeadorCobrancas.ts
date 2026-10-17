@@ -27,6 +27,7 @@ const TIPOS_CONHECIDOS: Record<string, string> = {
   storage_fee: "ARMAZENAGEM_FULL",
   advertising_fee: "PUBLICIDADE",
   ads: "PUBLICIDADE",
+  PADS: "PUBLICIDADE",
 };
 
 /** Essas duas já aparecem no pedido (tarifaVenda/freteVendedor) — a cobrança correspondente serve só para conciliação, não soma de novo na DRE. */

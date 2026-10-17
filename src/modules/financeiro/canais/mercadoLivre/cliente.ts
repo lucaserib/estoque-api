@@ -21,6 +21,7 @@ const BASE_URL = "https://api.mercadolibre.com";
 const LIMITE_POR_PAGINA = 50;
 const ML_MAX_OFFSET = 10000;
 const LIMITE_COBRANCAS_POR_PAGINA = 1000;
+const TIPOS_DOCUMENTO_COBRANCA = ["BILL", "CREDIT_NOTE"];
 
 function formatarDataCurtaSp(data: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(data);
@@ -254,28 +255,36 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
     try {
       const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
       const chavePeriodo = `${mesReferencia}-01`;
-      let fromId: string | undefined;
 
-      do {
-        const params = new URLSearchParams({
-          document_type: "BILL",
-          limit: String(LIMITE_COBRANCAS_POR_PAGINA),
-        });
-        if (fromId) params.set("from_id", fromId);
+      for (const documentType of TIPOS_DOCUMENTO_COBRANCA) {
+        let fromId = "0";
 
-        const resposta = await fetchMlWithBackoff(
-          `${BASE_URL}/billing/integration/periods/key/${chavePeriodo}/group/ML/details?${params.toString()}`,
-          { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
-        );
-        if (!resposta.ok) break;
+        while (true) {
+          const params = new URLSearchParams({
+            document_type: documentType,
+            limit: String(LIMITE_COBRANCAS_POR_PAGINA),
+            sort_by: "ID",
+            order_by: "ASC",
+            from_id: fromId,
+          });
 
-        const dados = (await resposta.json()) as {
-          results?: CobrancaBruta[];
-          paging?: { next_from_id?: string };
-        };
-        cobrancas.push(...(dados.results ?? []).map(mapearCobranca));
-        fromId = dados.paging?.next_from_id;
-      } while (fromId);
+          const resposta = await fetchMlWithBackoff(
+            `${BASE_URL}/billing/integration/periods/key/${chavePeriodo}/group/ML/details?${params.toString()}`,
+            { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+          );
+          if (!resposta.ok) break;
+
+          const dados = (await resposta.json()) as { results?: CobrancaBruta[] };
+          const resultados = dados.results ?? [];
+          cobrancas.push(...resultados.map(mapearCobranca));
+
+          if (resultados.length < LIMITE_COBRANCAS_POR_PAGINA) break;
+
+          const ultimoId = resultados[resultados.length - 1]?.id;
+          if (ultimoId == null || String(ultimoId) === fromId) break;
+          fromId = String(ultimoId);
+        }
+      }
     } catch (erro) {
       console.error("[COBRANCAS_ML] Erro ao buscar cobranças:", erro);
     }

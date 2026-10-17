@@ -69,6 +69,9 @@ vi.mock("@/lib/prisma", () => ({
     vendaCanalItem: {
       aggregate: vi.fn(async () => ({ _sum: { descontoCusteadoMl: 0 } })),
     },
+    gastoAdsCanal: {
+      findFirst: vi.fn(async () => ({ id: "gasto-1" })),
+    },
     cobrancaCanal: {
       aggregate: vi.fn(
         async ({
@@ -247,6 +250,34 @@ describe("gerarDre", () => {
     const relatorio = await gerarDre("user-1", { ano: 2026, mes: 5 }, 1);
 
     expect(relatorio.meses[0].custosVariaveis.armazenagemFull).toBe(7000);
+  });
+
+  it("F3 (Ciclo 8): sem dado diário de ads no mês, publicidade vem da cobrança PADS", async () => {
+    const prismaMock = (await import("@/lib/prisma")).prisma as unknown as {
+      gastoAdsCanal: { findFirst: ReturnType<typeof vi.fn> };
+    };
+    prismaMock.gastoAdsCanal.findFirst.mockResolvedValueOnce(null);
+    resumos.push(resumo({ ads: 999 }));
+    cobrancas.push({
+      userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, mesReferencia: "2026-05",
+      tipoNormalizado: "PUBLICIDADE", coberturaPedido: false, valor: 4200,
+    });
+
+    const relatorio = await gerarDre("user-1", { ano: 2026, mes: 5 }, 1);
+
+    expect(relatorio.meses[0].custosVariaveis.publicidade).toBe(4200);
+  });
+
+  it("F3 (Ciclo 8): com dado diário de ads no mês, publicidade vem do resumo (cobrança PADS fica só pra conciliação)", async () => {
+    resumos.push(resumo({ ads: 999 }));
+    cobrancas.push({
+      userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, mesReferencia: "2026-05",
+      tipoNormalizado: "PUBLICIDADE", coberturaPedido: false, valor: 4200,
+    });
+
+    const relatorio = await gerarDre("user-1", { ano: 2026, mes: 5 }, 1);
+
+    expect(relatorio.meses[0].custosVariaveis.publicidade).toBe(999);
   });
 
   it("F7 (Ciclo 8): com contaCanalId, faturamento inclui a venda cancelada e a receita não é descontada em dobro", async () => {

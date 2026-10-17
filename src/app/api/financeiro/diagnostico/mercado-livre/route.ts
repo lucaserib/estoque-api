@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { CanalVenda } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { mapearEnvio } from "@/modules/financeiro/canais/mercadoLivre/mapeador";
+import { obterAdaptador } from "@/modules/financeiro/canais/registro";
 
 const BASE_URL = "https://api.mercadolibre.com";
 
@@ -54,6 +57,79 @@ async function buscarJson(
   return { ok: response.ok, status: response.status, corpo };
 }
 
+async function diagnosticarPorTipo(
+  tipo: string,
+  searchParams: URLSearchParams,
+  accountId: string,
+  accessToken: string
+): Promise<NextResponse> {
+  switch (tipo) {
+    case "envio": {
+      const id = searchParams.get("id");
+      if (!id) return NextResponse.json({ error: "Parâmetro 'id' é obrigatório" }, { status: 400 });
+      const resposta = await buscarJson(`/shipments/${id}`, accessToken);
+      if (!resposta.ok) {
+        return NextResponse.json({ error: "Erro ao buscar o envio", detalhe: resposta.corpo }, { status: resposta.status });
+      }
+      return NextResponse.json({
+        bruto: removerCamposSensiveis(resposta.corpo, CAMPOS_PESSOAIS_PROIBIDOS),
+        mapeado: mapearEnvio(resposta.corpo as { logistic_type?: string }),
+      });
+    }
+
+    case "pagamento": {
+      const id = searchParams.get("id");
+      if (!id) return NextResponse.json({ error: "Parâmetro 'id' é obrigatório" }, { status: 400 });
+      const resposta = await fetch(`https://api.mercadopago.com/v1/payments/${id}`, {
+        headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+      });
+      const corpo = await resposta.json().catch(() => null);
+      if (!resposta.ok) {
+        return NextResponse.json({ error: "Erro ao buscar o pagamento", detalhe: corpo }, { status: resposta.status });
+      }
+      return NextResponse.json({ bruto: removerCamposSensiveis(corpo, CAMPOS_PESSOAIS_PROIBIDOS) });
+    }
+
+    case "claims": {
+      const pedido = searchParams.get("pedido");
+      if (!pedido) return NextResponse.json({ error: "Parâmetro 'pedido' é obrigatório" }, { status: 400 });
+      const resposta = await buscarJson(
+        `/post-purchase/v1/claims/search?resource=order&resource_id=${pedido}`,
+        accessToken
+      );
+      if (!resposta.ok) {
+        return NextResponse.json({ error: "Erro ao buscar claims do pedido", detalhe: resposta.corpo }, { status: resposta.status });
+      }
+      return NextResponse.json({ bruto: removerCamposSensiveis(resposta.corpo, CAMPOS_PESSOAIS_PROIBIDOS) });
+    }
+
+    case "ads": {
+      const dia = searchParams.get("dia");
+      if (!dia) return NextResponse.json({ error: "Parâmetro 'dia' é obrigatório (AAAA-MM-DD)" }, { status: 400 });
+      const adaptador = obterAdaptador(CanalVenda.MERCADO_LIVRE);
+      if (!adaptador.listarGastosAds) {
+        return NextResponse.json({ error: "Adaptador não implementa listarGastosAds" }, { status: 501 });
+      }
+      const mapeado = await adaptador.listarGastosAds({ contaCanalId: accountId, userId: "" }, new Date(dia));
+      return NextResponse.json({ mapeado });
+    }
+
+    case "cobrancas": {
+      const mes = searchParams.get("mes");
+      if (!mes) return NextResponse.json({ error: "Parâmetro 'mes' é obrigatório (AAAA-MM)" }, { status: 400 });
+      const adaptador = obterAdaptador(CanalVenda.MERCADO_LIVRE);
+      if (!adaptador.listarCobrancas) {
+        return NextResponse.json({ error: "Adaptador não implementa listarCobrancas" }, { status: 501 });
+      }
+      const mapeado = await adaptador.listarCobrancas({ contaCanalId: accountId, userId: "" }, mes);
+      return NextResponse.json({ mapeado });
+    }
+
+    default:
+      return NextResponse.json({ error: `Tipo de diagnóstico desconhecido: ${tipo}` }, { status: 400 });
+  }
+}
+
 /**
  * GET /api/financeiro/diagnostico/mercado-livre?pedido=<id>
  * Somente ADMIN. Devolve o pedido, os descontos, o custo do envio e os
@@ -72,10 +148,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
+    const tipo = searchParams.get("tipo");
     const pedidoId = searchParams.get("pedido");
     const accountIdParam = searchParams.get("accountId");
 
-    if (!pedidoId) {
+    if (!tipo && !pedidoId) {
       return NextResponse.json(
         { error: "Parâmetro 'pedido' é obrigatório" },
         { status: 400 }
@@ -98,6 +175,10 @@ export async function GET(request: NextRequest) {
     }
 
     const accessToken = await MercadoLivreService.getValidToken(mlAccount.id);
+
+    if (tipo) {
+      return await diagnosticarPorTipo(tipo, searchParams, mlAccount.id, accessToken);
+    }
 
     const pedidoResp = await buscarJson(`/orders/${pedidoId}`, accessToken);
     if (!pedidoResp.ok) {

@@ -115,4 +115,43 @@ describe("GET /api/financeiro/diagnostico/mercado-livre", () => {
     expect(response.status).toBe(200);
     expect(body.custosEnvio.erro).toBe(true);
   });
+
+  it("F3 (Ciclo 8): tipo=envio devolve o bruto e o mapeado lado a lado", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/shipments/999")) {
+        return new Response(JSON.stringify({ id: 999, logistic_type: "self_service" }), { status: 200 });
+      }
+      throw new Error(`URL inesperada: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { GET } = await import("../route");
+    const response = await GET(criarRequest("?tipo=envio&id=999"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.bruto.logistic_type).toBe("self_service");
+    expect(body.mapeado.logistica).toBe("self_service");
+    expect(body.mapeado.confianca).toBe("CONFIRMADO");
+  });
+
+  it("F3 (Ciclo 8): tipo sem id/pedido/dia/mes correspondente devolve 400", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+
+    const { GET } = await import("../route");
+    const response = await GET(criarRequest("?tipo=envio"));
+
+    expect(response.status).toBe(400);
+  });
+
+  it("F3 (Ciclo 8): tipo desconhecido devolve 400", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+
+    const { GET } = await import("../route");
+    const response = await GET(criarRequest("?tipo=inexistente"));
+
+    expect(response.status).toBe(400);
+  });
 });

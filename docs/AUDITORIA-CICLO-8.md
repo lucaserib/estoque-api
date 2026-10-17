@@ -54,3 +54,17 @@ Registro vivo de execução do `PROMPT-CICLO-8-FINANCEIRO-INTEGRACAO.md`, uma se
 - Notas de crédito e paginação `from_id`/`sort_by=ID` de cobranças (Fase 3) não foram tocadas nesta fase.
 
 **Resultado ao final da fase:** `tsc`/`lint` limpos; `npm test` com 528 testes passando (23 novos: isolamento de erro por pedido, orquestrador, rotas de sincronização, cron).
+
+## Fase 3 — Ads, cobranças e diagnóstico ampliado
+
+**Construído:**
+- **Diagnóstico ampliado**: `GET /api/financeiro/diagnostico/mercado-livre?tipo=envio&id=`, `?tipo=pagamento&id=`, `?tipo=claims&pedido=`, `?tipo=ads&dia=`, `?tipo=cobrancas&mes=` (ADMIN, sem dado pessoal). `envio` devolve bruto e mapeado lado a lado (`mapearEnvio`); `pagamento` e `claims` devolvem o bruto (sem mapeador ainda — ver pendências); `ads`/`cobrancas` devolvem a lista já normalizada pelo adaptador (não há "bruto" para uma lista, só para um registro único).
+- **F10 (paginação de cobranças)**: `cliente.ts` passou a usar `sort_by=ID&order_by=ASC&from_id=<último id da página anterior>` em vez de `paging.next_from_id` (que a API não devolve) — antes só a primeira página de até 1000 itens era lida. Também passou a ler `CREDIT_NOTE` além de `BILL`.
+- **F11/Fase3 item2 (ads)**: `PADS` mapeado para `PUBLICIDADE` em `mapeadorCobrancas.ts`. Na DRE, `custosVariaveis.publicidade` usa o dado diário (`GastoAdsCanal`) quando ele existe naquele mês; sem nenhum dado diário, cai para a cobrança `PADS` do mês — nunca soma os dois.
+
+**Deixado pendente, com motivo:**
+- **Mapeador de `claims`/`pagamento`**: o diagnóstico já expõe o bruto desses dois tipos para inspeção manual em produção, mas nenhum normalizador foi escrito ainda — os nomes de campo (`resource`/`resource_id` em claims, estrutura de `money_release_date`/`transaction_details` em pagamento) continuam só descritos em `docs/financeiro/fontes-mercado-livre.md` como não confirmados. Confirmar com o diagnóstico em produção antes de escrever o mapeador é o próprio objetivo desta fase.
+- **Tipos `CV`/`CXD`** de cobrança (citados no diagnóstico de produção): sem confirmação do que representam, continuam caindo em `NAO_MAPEADO` (correto — o valor não é descartado, só não é categorizado) em vez de ganhar um mapeamento adivinhado.
+- Conciliação mensal recalculada pelo botão "Atualizar" da DRE: UI, fica para a Fase 5.
+
+**Resultado ao final da fase:** `tsc`/`lint` limpos; `npm test` com 537 testes passando.

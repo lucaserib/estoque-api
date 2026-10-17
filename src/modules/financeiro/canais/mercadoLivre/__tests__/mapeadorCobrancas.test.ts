@@ -24,6 +24,13 @@ describe("mapearCobranca", () => {
     expect(resultado.coberturaPedido).toBe(false);
   });
 
+  it("F3 (Ciclo 8): PADS mapeia para PUBLICIDADE", () => {
+    const resultado = mapearCobranca({ id: "det-4", amount: 42, charge_type: "PADS" });
+
+    expect(resultado.tipoNormalizado).toBe("PUBLICIDADE");
+    expect(resultado.coberturaPedido).toBe(false);
+  });
+
   it("tipo desconhecido vira NAO_MAPEADO, com o valor preservado (nada se descarta)", () => {
     const resultado = mapearCobranca({ id: "det-3", amount: 7, charge_type: "um_tipo_novo_qualquer" });
 

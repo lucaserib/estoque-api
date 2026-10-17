@@ -202,6 +202,21 @@ async function somarCobrancasDoMes(
   return resultado._sum.valor ?? 0;
 }
 
+async function existeGastoAdsNoMes(
+  userId: string,
+  competencia: Competencia,
+  canal?: CanalVenda
+): Promise<boolean> {
+  const inicio = inicioDoMes(instanteDoMes(competencia));
+  const fim = fimDoMes(instanteDoMes(competencia));
+
+  const gasto = await prisma.gastoAdsCanal.findFirst({
+    where: { userId, dia: { gte: inicio, lte: fim }, ...(canal && { canal }) },
+    select: { id: true },
+  });
+  return gasto != null;
+}
+
 async function somarLancamentosPorGrupo(
   userId: string,
   competencia: Competencia,
@@ -257,6 +272,8 @@ async function gerarDreDeUmMes(
     impostoLucroBruto,
     descontoCusteadoPeloMl,
     impostoVendaLancado,
+    temAdsDiario,
+    publicidadeCobrancaPads,
   ] = await Promise.all([
     somarCobrancasDoMes(userId, competencia, "ARMAZENAGEM_FULL", filtros.canal),
     somarCobrancasDoMes(userId, competencia, "NAO_MAPEADO", filtros.canal),
@@ -266,7 +283,11 @@ async function gerarDreDeUmMes(
     somarLancamentosPorGrupo(userId, competencia, "IMPOSTO_LUCRO"),
     somarDescontoCusteadoMlDoMes(userId, competencia, filtros.canal),
     usarImpostoEstimado ? null : somarLancamentosPorGrupo(userId, competencia, "IMPOSTO_VENDA"),
+    existeGastoAdsNoMes(userId, competencia, filtros.canal),
+    somarCobrancasDoMes(userId, competencia, "PUBLICIDADE", filtros.canal),
   ]);
+
+  const publicidade = temAdsDiario ? resumoVendas.ads : publicidadeCobrancaPads;
 
   const receitaOperacionalBruta = resumoVendas.faturamentoBruto - resumoVendas.cancelamentos;
   const impostosSobreVendas = usarImpostoEstimado
@@ -277,14 +298,14 @@ async function gerarDreDeUmMes(
   const custosVariaveis = {
     tarifas: resumoVendas.tarifas,
     frete: resumoVendas.frete,
-    publicidade: resumoVendas.ads,
+    publicidade,
     armazenagemFull,
     outrasTarifasNaoMapeadas,
     freteDevolucaoEOutros,
     total:
       resumoVendas.tarifas +
       resumoVendas.frete +
-      resumoVendas.ads +
+      publicidade +
       armazenagemFull +
       outrasTarifasNaoMapeadas +
       freteDevolucaoEOutros,
