@@ -83,3 +83,20 @@ Registro vivo de execução do `PROMPT-CICLO-8-FINANCEIRO-INTEGRACAO.md`, uma se
 - Tipo de retorno `situacao` do Bling (código numérico) não é usado para decidir `PAGO`/`PREVISTO` — ver `fontes-bling.md`.
 
 **Resultado ao final da fase:** `tsc`/`lint` limpos; `npm test` com 545 testes passando.
+
+## Fase 5 — Telas
+
+**Construído:**
+- **Botão "Atualizar dados"** (`BotaoAtualizarFinanceiro`, novo componente compartilhado): chama `POST /api/financeiro/sincronizacao` (continuando enquanto `proximoPasso === "CONTINUAR"`), mostra "Atualizado em" e um selo com a contagem de pendências (`GET /api/financeiro/sincronizacao/status`). Montado na Visão geral (modo `INCREMENTAL`) e na DRE (modo `PERIODO`, com `desde`/`ate` calculados a partir do seletor de mês/quantidade de meses da própria tela).
+- **DRE — desconto informativo**: a linha "Descontos" saiu de cima da subtração (antes aparecia como `(−) Descontos` logo antes de "Receita operacional bruta", o que já não refletia o cálculo real desde a Fase 1) e passou a aparecer depois do subtotal, com o texto "já deduzidos do preço, informativo", mais uma linha nova "dos quais o Mercado Livre bancou" (`descontoCusteadoPeloMl`).
+- **Configurações**: novos campos na tela (todos já existiam no banco e na API desde as Fases 1 e 4, sem UI): dias padrão de liberação, gerar conta a pagar ao confirmar compra (e seu prazo padrão), e o interruptor de importação de contas do Bling.
+
+**Deixado pendente, com motivo:**
+- **Botão "Atualizar" em Vendas, Produtos, Fluxo de caixa e Cartões**: não montado nesta fase — o componente já existe e é reutilizável (só precisa do import + um `onConcluido` que recarregue os dados de cada tela), mas validar o ponto de montagem em cada uma (qual callback recarrega o quê) tela por tela ficou fora do tempo desta fase.
+- **Painel "Saúde dos dados"** completo (cobertura do mês, webhooks das últimas 24h, status de ads/cobranças/liberações): não construído. O `BotaoAtualizarFinanceiro` já mostra a contagem de erros pendentes como um selo simples, mas não o painel dedicado com todos os sinais pedidos no prompt.
+- **Importação automática ao abrir a tela** (barra de progresso "Importando suas vendas…" quando não há backfill concluído): não implementada — a importação continua exigindo o botão manual em Configurações.
+- **Vendas**: colunas novas (logística, preço cheio × vendido, desconto do vendedor × do ML, liberação confirmada/estimada), filtro por logística/status e seletor de produto: não implementados.
+- **Tela de mapeamento de categoria do Bling**: não construída (a tabela e a leitura já existem desde a Fase 4).
+- Build (`next build`) e `tsc`/`lint` passaram limpos, mas **as telas não foram abertas num navegador** nesta sessão — não há ferramenta de automação de browser disponível. A verificação visual (responsivo, os dois temas, o fluxo real do botão "Atualizar") é manual, no checklist da Fase 6.
+
+**Resultado ao final da fase:** `tsc`/`lint`/`next build` limpos; `npm test` com 545 testes passando (sem testes novos — mudança de UI pura, cobertura automatizada já existia nos endpoints consumidos).

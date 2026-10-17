@@ -33,6 +33,7 @@ import { formatBRL, formatPercent, formatDateBR } from "@/lib/format";
 import { chartColor } from "@/lib/chart-colors";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "./components/SeletorPeriodo";
 import { useAcessoFinanceiro } from "./components/useAcessoFinanceiro";
+import { BotaoAtualizarFinanceiro } from "./components/BotaoAtualizarFinanceiro";
 
 interface ResumoDiaResponse {
   faturamentoBruto: number;
@@ -233,7 +234,12 @@ export default function FinanceiroPage() {
         eyebrow="Financeiro"
         title="Visão geral"
         subtitle={atualizadoEm ? `Atualizado às ${atualizadoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : undefined}
-        actions={<SeletorPeriodo valor={periodo} onChange={setPeriodo} />}
+        actions={
+          <>
+            <SeletorPeriodo valor={periodo} onChange={setPeriodo} />
+            <BotaoAtualizarFinanceiro modo="INCREMENTAL" onConcluido={carregar} />
+          </>
+        }
       />
 
       {(alertaConciliacao.length > 0 || vendasIncompletasTotal > 0) && (

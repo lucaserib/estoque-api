@@ -25,6 +25,7 @@ import { formatBRL, formatPercent } from "@/lib/format";
 import { exportToExcel } from "@/utils/excelExport";
 import { loadPDF, addTableToPDF, canUsePDF } from "@/utils/pdfHelper";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
+import { BotaoAtualizarFinanceiro } from "../components/BotaoAtualizarFinanceiro";
 
 interface ItemDespesaOperacional {
   categoriaId: string;
@@ -37,6 +38,7 @@ interface DreMensal {
   faturamentoBruto: number;
   cancelamentosEDevolucoes: number;
   descontos: number;
+  descontoCusteadoPeloMl: number;
   receitaOperacionalBruta: number;
   impostosSobreVendas: number;
   receitaLiquida: number;
@@ -85,8 +87,9 @@ function montarLinhas(meses: DreMensal[]): LinhaExibicao[] {
   return [
     { rotulo: "Faturamento bruto", valores: meses.map((m) => m.faturamentoBruto) },
     { rotulo: "(−) Cancelamentos e devoluções", valores: meses.map((m) => -m.cancelamentosEDevolucoes) },
-    { rotulo: "(−) Descontos", valores: meses.map((m) => -m.descontos) },
     { rotulo: "(=) Receita operacional bruta", negrito: true, valores: meses.map((m) => m.receitaOperacionalBruta) },
+    { rotulo: "Descontos concedidos em campanhas (já deduzidos do preço, informativo)", valores: meses.map((m) => m.descontos) },
+    { rotulo: "   dos quais o Mercado Livre bancou", valores: meses.map((m) => m.descontoCusteadoPeloMl) },
     { rotulo: "(−) Impostos sobre vendas", valores: meses.map((m) => -m.impostosSobreVendas) },
     { rotulo: "(=) Receita líquida", negrito: true, valores: meses.map((m) => m.receitaLiquida) },
     { rotulo: "(−) Tarifas de marketplace", valores: meses.map((m) => -m.custosVariaveis.tarifas) },
@@ -154,6 +157,10 @@ export default function DrePage() {
   const linhas = dre ? montarLinhas(dre) : [];
   const cabecalhos = dre?.map((m) => `${MESES_LABEL[m.competencia.mes - 1]}/${String(m.competencia.ano).slice(2)}`) ?? [];
 
+  const [anoAte, mesAte] = ate.split("-").map(Number);
+  const atePeriodo = new Date(Date.UTC(anoAte, mesAte, 0, 23, 59, 59, 999));
+  const desdePeriodo = new Date(Date.UTC(anoAte, mesAte - Number(quantidadeDeMeses), 1));
+
   const exportarXlsx = () => {
     if (!dre) return;
     const dados = linhas.map((linha) => {
@@ -210,6 +217,7 @@ export default function DrePage() {
             <Button variant="outline" size="sm" onClick={exportarPdf} disabled={!dre}>
               <FileText className="mr-1 h-4 w-4" /> PDF
             </Button>
+            <BotaoAtualizarFinanceiro modo="PERIODO" desde={desdePeriodo} ate={atePeriodo} onConcluido={carregar} />
           </div>
         }
       />

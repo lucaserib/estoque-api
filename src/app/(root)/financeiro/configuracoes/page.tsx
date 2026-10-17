@@ -69,6 +69,10 @@ interface ConfigFinanceiro {
   custoEnvioFlex: number | null;
   usarImpostoEstimado: boolean;
   usarRelatorioLiberacaoMercadoPago: boolean;
+  diasLiberacaoPadrao: number;
+  gerarContaAPagarAoConfirmarCompra: boolean;
+  prazoPagamentoPadraoDias: number;
+  blingContasAtivo: boolean;
 }
 
 interface LinhaConciliacao {
@@ -238,6 +242,10 @@ export default function ConfiguracoesFinanceiroPage() {
           custoEnvioFlex: custoEnvioFlexInput ? paraCentavos(custoEnvioFlexInput) : null,
           usarImpostoEstimado: config.usarImpostoEstimado,
           usarRelatorioLiberacaoMercadoPago: config.usarRelatorioLiberacaoMercadoPago,
+          diasLiberacaoPadrao: config.diasLiberacaoPadrao,
+          gerarContaAPagarAoConfirmarCompra: config.gerarContaAPagarAoConfirmarCompra,
+          prazoPagamentoPadraoDias: config.prazoPagamentoPadraoDias,
+          blingContasAtivo: config.blingContasAtivo,
         }),
       });
       if (!resposta.ok) throw new Error();
@@ -590,6 +598,35 @@ export default function ConfiguracoesFinanceiroPage() {
                 <div className="flex items-center gap-2 pt-6">
                   <Switch checked={config.usarRelatorioLiberacaoMercadoPago} onCheckedChange={(v) => setConfig({ ...config, usarRelatorioLiberacaoMercadoPago: v })} />
                   <Label>Habilitar conferência de liberações do Mercado Pago</Label>
+                </div>
+                <div>
+                  <Label>Dias padrão até a liberação do dinheiro (estimativa)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={config.diasLiberacaoPadrao}
+                    onChange={(e) => setConfig({ ...config, diasLiberacaoPadrao: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-6">
+                  <Switch
+                    checked={config.gerarContaAPagarAoConfirmarCompra}
+                    onCheckedChange={(v) => setConfig({ ...config, gerarContaAPagarAoConfirmarCompra: v })}
+                  />
+                  <Label>Gerar conta a pagar ao confirmar uma compra</Label>
+                </div>
+                <div>
+                  <Label>Prazo padrão de pagamento ao fornecedor (dias)</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={config.prazoPagamentoPadraoDias}
+                    onChange={(e) => setConfig({ ...config, prazoPagamentoPadraoDias: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="flex items-center gap-2 pt-6">
+                  <Switch checked={config.blingContasAtivo} onCheckedChange={(v) => setConfig({ ...config, blingContasAtivo: v })} />
+                  <Label>Importar contas a pagar e a receber do Bling</Label>
                 </div>
               </div>
               <Button className="mt-4" disabled={salvandoConfig} onClick={salvarConfig}>
