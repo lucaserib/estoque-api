@@ -21,10 +21,65 @@ import { invalidarCacheFinanceiro } from "../relatorios/cache";
 
 const PENDENCIA_SEM_VINCULO = "SEM_VINCULO";
 const PENDENCIA_LIBERACAO_ESTIMADA = "LIBERACAO_ESTIMADA";
-const LOTE_MAXIMO_POR_CHAMADA = 10;
 const DIAS_PADRAO_REPROCESSAMENTO = 3;
 const DIAS_PADRAO_BACKFILL = 90;
 const DIAS_MAXIMO_BACKFILL = 365;
+const TENTATIVAS_MAXIMAS_ERRO = 5;
+
+function tempoMaximoLoteMs(): number {
+  return Number(process.env.FINANCEIRO_TEMPO_MAXIMO_LOTE_MS ?? 40000);
+}
+
+function mensagemDeErro(erro: unknown): string {
+  return erro instanceof Error ? erro.message : "Erro desconhecido";
+}
+
+async function registrarErroPedido(
+  userId: string,
+  canal: CanalVenda,
+  pedidoExternoId: string,
+  etapa: string,
+  mensagem: string
+): Promise<void> {
+  await prisma.sincronizacaoFinanceiraErro.upsert({
+    where: { userId_canal_pedidoExternoId_etapa: { userId, canal, pedidoExternoId, etapa } },
+    create: { userId, canal, pedidoExternoId, etapa, mensagem },
+    update: { mensagem, tentativas: { increment: 1 }, ultimoErroEm: new Date(), resolvidoEm: null },
+  });
+}
+
+async function resolverErroPedido(
+  userId: string,
+  canal: CanalVenda,
+  pedidoExternoId: string
+): Promise<void> {
+  await prisma.sincronizacaoFinanceiraErro.updateMany({
+    where: { userId, canal, pedidoExternoId, resolvidoEm: null },
+    data: { resolvidoEm: new Date() },
+  });
+}
+
+async function ingerirPedidoComRegistroDeErro(
+  accountId: string,
+  userId: string,
+  canal: CanalVenda,
+  pedidoExternoId: string,
+  etapa: string
+): Promise<void> {
+  const erroAnterior = await prisma.sincronizacaoFinanceiraErro.findUnique({
+    where: { userId_canal_pedidoExternoId_etapa: { userId, canal, pedidoExternoId, etapa } },
+  });
+  if (erroAnterior && erroAnterior.resolvidoEm == null && erroAnterior.tentativas >= TENTATIVAS_MAXIMAS_ERRO) {
+    return;
+  }
+
+  try {
+    await ingerirPedidoMercadoLivre(accountId, pedidoExternoId);
+    await resolverErroPedido(userId, canal, pedidoExternoId);
+  } catch (erro) {
+    await registrarErroPedido(userId, canal, pedidoExternoId, etapa, mensagemDeErro(erro));
+  }
+}
 
 function statusZeraQuantidade(status: StatusVendaCanal): boolean {
   return status === StatusVendaCanal.CANCELADA || status === StatusVendaCanal.DEVOLVIDA;
@@ -538,30 +593,65 @@ export async function ingerirPedidoMercadoLivre(
   return { ingerido: true };
 }
 
+const HORAS_SOBREPOSICAO_INCREMENTAL = 2;
+
 export async function reprocessarUltimosDias(
   accountId: string,
   dias: number = DIAS_PADRAO_REPROCESSAMENTO
 ): Promise<{ processados: number }> {
   const conta = await prisma.mercadoLivreAccount.findUniqueOrThrow({
     where: { id: accountId },
-    select: { userId: true },
+    select: { userId: true, ultimaSincronizacaoFinanceiraEm: true },
   });
   const contaCanal: ContaCanal = { contaCanalId: accountId, userId: conta.userId };
   const adaptador = obterAdaptador(CanalVenda.MERCADO_LIVRE);
 
   const ate = new Date();
-  const desde = new Date(ate.getTime() - dias * 24 * 60 * 60 * 1000);
+  const desde = conta.ultimaSincronizacaoFinanceiraEm
+    ? new Date(conta.ultimaSincronizacaoFinanceiraEm.getTime() - HORAS_SOBREPOSICAO_INCREMENTAL * 60 * 60 * 1000)
+    : new Date(ate.getTime() - dias * 24 * 60 * 60 * 1000);
 
   let processados = 0;
   let cursor: string | null = null;
   do {
     const pagina = await adaptador.listarPedidosAlterados(contaCanal, desde, ate, cursor);
     for (const pedido of pagina.pedidos) {
-      await ingerirPedidoMercadoLivre(accountId, pedido.pedidoExternoId);
+      await ingerirPedidoComRegistroDeErro(
+        accountId,
+        contaCanal.userId,
+        adaptador.canal,
+        pedido.pedidoExternoId,
+        "INCREMENTAL"
+      );
       processados++;
     }
     cursor = pagina.cursor;
   } while (cursor);
+
+  await prisma.mercadoLivreAccount.update({
+    where: { id: accountId },
+    data: { ultimaSincronizacaoFinanceiraEm: new Date() },
+  });
+
+  return { processados };
+}
+
+export async function reprocessarErrosPendentes(accountId: string): Promise<{ processados: number }> {
+  const conta = await prisma.mercadoLivreAccount.findUniqueOrThrow({
+    where: { id: accountId },
+    select: { userId: true },
+  });
+  const canal = CanalVenda.MERCADO_LIVRE;
+
+  const erros = await prisma.sincronizacaoFinanceiraErro.findMany({
+    where: { userId: conta.userId, canal, resolvidoEm: null, tentativas: { lt: TENTATIVAS_MAXIMAS_ERRO } },
+  });
+
+  let processados = 0;
+  for (const erro of erros) {
+    await ingerirPedidoComRegistroDeErro(accountId, conta.userId, canal, erro.pedidoExternoId, erro.etapa);
+    processados++;
+  }
 
   return { processados };
 }
@@ -598,28 +688,36 @@ export async function continuarBackfill(
     });
   }
 
-  const cursorSalvo = sincronizacao.cursor as unknown as CursorBackfill;
+  let cursorAtual = sincronizacao.cursor as unknown as CursorBackfill;
   const contaCanal: ContaCanal = { contaCanalId: accountId, userId };
   const adaptador = obterAdaptador(canal);
 
   try {
-    let processadosNesteLote = 0;
-    let offsetAtual: string | null = String(cursorSalvo.offset);
+    let processadosNoLote = 0;
+    const inicioLote = Date.now();
+    let offsetAtual: string | null = String(cursorAtual.offset);
 
-    while (processadosNesteLote < LOTE_MAXIMO_POR_CHAMADA) {
+    while (Date.now() - inicioLote < tempoMaximoLoteMs()) {
       const pagina = await adaptador.listarPedidosAlterados(
         contaCanal,
-        new Date(cursorSalvo.desde),
-        new Date(cursorSalvo.ate),
+        new Date(cursorAtual.desde),
+        new Date(cursorAtual.ate),
         offsetAtual
       );
 
       for (const pedido of pagina.pedidos) {
-        await ingerirPedidoMercadoLivre(accountId, pedido.pedidoExternoId);
-        processadosNesteLote++;
+        await ingerirPedidoComRegistroDeErro(
+          accountId,
+          userId,
+          canal,
+          pedido.pedidoExternoId,
+          "BACKFILL"
+        );
+        processadosNoLote++;
       }
 
       offsetAtual = pagina.cursor;
+      cursorAtual = { ...cursorAtual, offset: Number(offsetAtual ?? 0) };
 
       if (!pagina.temMais) {
         await prisma.sincronizacaoFinanceira.update({
@@ -627,25 +725,30 @@ export async function continuarBackfill(
           data: {
             status: "CONCLUIDO",
             concluidoEm: new Date(),
-            processados: { increment: processadosNesteLote },
+            cursor: cursorAtual,
+            processados: { increment: pagina.pedidos.length },
           },
         });
-        return { status: "CONCLUIDO", processados: processadosNesteLote };
+        await prisma.mercadoLivreAccount.update({
+          where: { id: accountId },
+          data: { ultimaSincronizacaoFinanceiraEm: new Date() },
+        });
+        return { status: "CONCLUIDO", processados: processadosNoLote };
       }
+
+      await prisma.sincronizacaoFinanceira.update({
+        where: { id: sincronizacao.id },
+        data: { cursor: cursorAtual, processados: { increment: pagina.pedidos.length } },
+      });
     }
 
-    const novoCursor: CursorBackfill = { ...cursorSalvo, offset: Number(offsetAtual ?? 0) };
-    await prisma.sincronizacaoFinanceira.update({
-      where: { id: sincronizacao.id },
-      data: { cursor: novoCursor, processados: { increment: processadosNesteLote } },
-    });
-    return { status: "EM_ANDAMENTO", processados: processadosNesteLote };
+    return { status: "EM_ANDAMENTO", processados: processadosNoLote };
   } catch (erro) {
     await prisma.sincronizacaoFinanceira.update({
       where: { id: sincronizacao.id },
       data: {
         status: "ERRO",
-        erro: erro instanceof Error ? erro.message : "Erro desconhecido",
+        erro: mensagemDeErro(erro),
       },
     });
     throw erro;

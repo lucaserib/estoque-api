@@ -65,7 +65,7 @@ interface FakeSincronizacao {
   iniciadoEm: Date;
 }
 
-let contas: Array<{ id: string; userId: string; mlUserId: string }> = [];
+let contas: Array<{ id: string; userId: string; mlUserId: string; ultimaSincronizacaoFinanceiraEm?: Date | null }> = [];
 let configuracoes: Array<{ userId: string; aliquotaImposto: number; custoEnvioFlex: number | null }> = [];
 let vinculosMl: Array<{ mlItemId: string; mercadoLivreAccountId: string; produtoId: string | null }> = [];
 let produtos: Array<{ id: string; sku: string; userId: string; isKit: boolean; custoMedio: number | null }> = [];
@@ -73,6 +73,17 @@ let vendas: FakeVenda[] = [];
 let gastosAds: Array<{ userId: string; canal: CanalVenda; dia: Date; custo: number }> = [];
 let resumos: Array<{ userId: string; dia: Date; canal: CanalVenda } & Record<string, number>> = [];
 let sincronizacoes: FakeSincronizacao[] = [];
+let errosSincronizacao: Array<{
+  id: string;
+  userId: string;
+  canal: CanalVenda;
+  pedidoExternoId: string;
+  etapa: string;
+  mensagem: string;
+  tentativas: number;
+  ultimoErroEm: Date;
+  resolvidoEm: Date | null;
+}> = [];
 let proximoId = 1;
 const novoId = () => `id-${proximoId++}`;
 
@@ -85,6 +96,7 @@ function resetFakeDb() {
   gastosAds = [];
   resumos = [];
   sincronizacoes = [];
+  errosSincronizacao = [];
   proximoId = 1;
 }
 
@@ -97,6 +109,12 @@ vi.mock("@/lib/prisma", () => ({
       findUniqueOrThrow: vi.fn(async ({ where }: { where: { id: string } }) => {
         const conta = contas.find((c) => c.id === where.id);
         if (!conta) throw new Error("conta não encontrada");
+        return conta;
+      }),
+      update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        const conta = contas.find((c) => c.id === where.id);
+        if (!conta) throw new Error("conta não encontrada");
+        Object.assign(conta, data);
         return conta;
       }),
     },
@@ -316,6 +334,109 @@ vi.mock("@/lib/prisma", () => ({
         }
       ),
     },
+    sincronizacaoFinanceiraErro: {
+      findUnique: vi.fn(
+        async ({
+          where,
+        }: {
+          where: {
+            userId_canal_pedidoExternoId_etapa: {
+              userId: string;
+              canal: CanalVenda;
+              pedidoExternoId: string;
+              etapa: string;
+            };
+          };
+        }) => {
+          const chave = where.userId_canal_pedidoExternoId_etapa;
+          return (
+            errosSincronizacao.find(
+              (e) =>
+                e.userId === chave.userId &&
+                e.canal === chave.canal &&
+                e.pedidoExternoId === chave.pedidoExternoId &&
+                e.etapa === chave.etapa
+            ) ?? null
+          );
+        }
+      ),
+      upsert: vi.fn(
+        async ({
+          where,
+          create,
+          update,
+        }: {
+          where: {
+            userId_canal_pedidoExternoId_etapa: {
+              userId: string;
+              canal: CanalVenda;
+              pedidoExternoId: string;
+              etapa: string;
+            };
+          };
+          create: { userId: string; canal: CanalVenda; pedidoExternoId: string; etapa: string; mensagem: string };
+          update: { mensagem: string; tentativas: { increment: number }; ultimoErroEm: Date; resolvidoEm: null };
+        }) => {
+          const chave = where.userId_canal_pedidoExternoId_etapa;
+          const existente = errosSincronizacao.find(
+            (e) =>
+              e.userId === chave.userId &&
+              e.canal === chave.canal &&
+              e.pedidoExternoId === chave.pedidoExternoId &&
+              e.etapa === chave.etapa
+          );
+          if (existente) {
+            existente.mensagem = update.mensagem;
+            existente.tentativas += update.tentativas.increment;
+            existente.ultimoErroEm = update.ultimoErroEm;
+            existente.resolvidoEm = null;
+            return existente;
+          }
+          const novo = {
+            id: novoId(),
+            tentativas: 1,
+            ultimoErroEm: new Date(),
+            resolvidoEm: null,
+            ...create,
+          };
+          errosSincronizacao.push(novo);
+          return novo;
+        }
+      ),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { userId: string; canal: CanalVenda; pedidoExternoId: string; resolvidoEm: null };
+          data: { resolvidoEm: Date };
+        }) => {
+          const afetados = errosSincronizacao.filter(
+            (e) =>
+              e.userId === where.userId &&
+              e.canal === where.canal &&
+              e.pedidoExternoId === where.pedidoExternoId &&
+              e.resolvidoEm === null
+          );
+          afetados.forEach((e) => (e.resolvidoEm = data.resolvidoEm));
+          return { count: afetados.length };
+        }
+      ),
+      findMany: vi.fn(
+        async ({
+          where,
+        }: {
+          where: { userId: string; canal: CanalVenda; resolvidoEm: null; tentativas: { lt: number } };
+        }) =>
+          errosSincronizacao.filter(
+            (e) =>
+              e.userId === where.userId &&
+              e.canal === where.canal &&
+              e.resolvidoEm === null &&
+              e.tentativas < where.tentativas.lt
+          )
+      ),
+    },
     sincronizacaoFinanceira: {
       findFirst: vi.fn(
         async ({
@@ -420,7 +541,7 @@ function normalizado(parcial: Partial<VendaCanalNormalizada> = {}): VendaCanalNo
   };
 }
 
-const { ingerirPedidoMercadoLivre, reprocessarUltimosDias, continuarBackfill, atualizarResumoDoDia } =
+const { ingerirPedidoMercadoLivre, reprocessarUltimosDias, reprocessarErrosPendentes, continuarBackfill, atualizarResumoDoDia } =
   await import("../sincronizador");
 
 beforeEach(() => {
@@ -428,6 +549,7 @@ beforeEach(() => {
   contas.push({ id: "conta-1", userId: "user-1", mlUserId: "999" });
   configuracoes.push({ userId: "user-1", aliquotaImposto: 0, custoEnvioFlex: 1500 });
   adaptadorFake.atual = {};
+  process.env.FINANCEIRO_TEMPO_MAXIMO_LOTE_MS = "20";
 });
 
 describe("ingerirPedidoMercadoLivre", () => {
@@ -664,6 +786,110 @@ describe("reprocessarUltimosDias", () => {
     expect(resultado.processados).toBe(2);
     expect(listarPedidosAlteradosMock).toHaveBeenCalledTimes(2);
     expect(vendas.map((v) => v.pedidoExternoId).sort()).toEqual(["1", "2"]);
+  });
+
+  it("F4 (Ciclo 8): um pedido com erro não interrompe os demais do lote", async () => {
+    const obterPedidoMock = vi.fn(async (_conta: unknown, id: string) => {
+      if (id === "2") throw new Error("falha simulada no pedido 2");
+      return normalizado({ pedidoExternoId: id });
+    });
+    adaptadorFake.atual = {
+      obterPedido: obterPedidoMock,
+      listarPedidosAlterados: vi.fn(async () => ({
+        pedidos: [
+          { pedidoExternoId: "1", atualizadoNoCanalEm: new Date() },
+          { pedidoExternoId: "2", atualizadoNoCanalEm: new Date() },
+          { pedidoExternoId: "3", atualizadoNoCanalEm: new Date() },
+        ],
+        cursor: null,
+        temMais: false,
+      })),
+    };
+
+    const resultado = await reprocessarUltimosDias("conta-1", 3);
+
+    expect(resultado.processados).toBe(3);
+    expect(vendas.map((v) => v.pedidoExternoId).sort()).toEqual(["1", "3"]);
+    expect(errosSincronizacao).toHaveLength(1);
+    expect(errosSincronizacao[0].pedidoExternoId).toBe("2");
+    expect(errosSincronizacao[0].resolvidoEm).toBeNull();
+  });
+
+  it("F4 (Ciclo 8): sucesso depois de um erro resolve a pendência", async () => {
+    errosSincronizacao.push({
+      id: "erro-1", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, pedidoExternoId: "1",
+      etapa: "INCREMENTAL", mensagem: "falha anterior", tentativas: 1, ultimoErroEm: new Date(), resolvidoEm: null,
+    });
+    adaptadorFake.atual = {
+      obterPedido: vi.fn(async (_conta: unknown, id: string) => normalizado({ pedidoExternoId: id })),
+      listarPedidosAlterados: vi.fn(async () => ({
+        pedidos: [{ pedidoExternoId: "1", atualizadoNoCanalEm: new Date() }],
+        cursor: null,
+        temMais: false,
+      })),
+    };
+
+    await reprocessarUltimosDias("conta-1", 3);
+
+    expect(errosSincronizacao[0].resolvidoEm).not.toBeNull();
+  });
+
+  it("F4 (Ciclo 8): depois de 5 tentativas, para de reprocessar o mesmo pedido", async () => {
+    errosSincronizacao.push({
+      id: "erro-1", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, pedidoExternoId: "1",
+      etapa: "INCREMENTAL", mensagem: "falha anterior", tentativas: 5, ultimoErroEm: new Date(), resolvidoEm: null,
+    });
+    const obterPedidoMock = vi.fn(async (_conta: unknown, id: string) => normalizado({ pedidoExternoId: id }));
+    adaptadorFake.atual = {
+      obterPedido: obterPedidoMock,
+      listarPedidosAlterados: vi.fn(async () => ({
+        pedidos: [{ pedidoExternoId: "1", atualizadoNoCanalEm: new Date() }],
+        cursor: null,
+        temMais: false,
+      })),
+    };
+
+    await reprocessarUltimosDias("conta-1", 3);
+
+    expect(obterPedidoMock).not.toHaveBeenCalled();
+    expect(vendas).toHaveLength(0);
+  });
+
+  it("F2 (Ciclo 8): usa a última sincronização (menos 2h de sobreposição) em vez da janela fixa, quando já houve uma", async () => {
+    contas[0] = { ...contas[0], ultimaSincronizacaoFinanceiraEm: new Date("2026-05-10T10:00:00.000Z") };
+    const listarPedidosAlteradosMock = vi.fn(
+      async (_conta: unknown, _desde: Date, _ate: Date, _cursor: string | null) => ({
+        pedidos: [],
+        cursor: null,
+        temMais: false,
+      })
+    );
+    adaptadorFake.atual = { listarPedidosAlterados: listarPedidosAlteradosMock };
+
+    await reprocessarUltimosDias("conta-1", 3);
+
+    const desdeChamado = listarPedidosAlteradosMock.mock.calls[0][1] as Date;
+    expect(desdeChamado.toISOString()).toBe("2026-05-10T08:00:00.000Z");
+  });
+});
+
+describe("reprocessarErrosPendentes", () => {
+  it("tenta de novo cada pedido com erro não resolvido e abaixo do limite de tentativas", async () => {
+    errosSincronizacao.push(
+      { id: "e1", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, pedidoExternoId: "1", etapa: "INCREMENTAL", mensagem: "falha", tentativas: 2, ultimoErroEm: new Date(), resolvidoEm: null },
+      { id: "e2", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, pedidoExternoId: "2", etapa: "BACKFILL", mensagem: "falha", tentativas: 5, ultimoErroEm: new Date(), resolvidoEm: null },
+      { id: "e3", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, pedidoExternoId: "3", etapa: "INCREMENTAL", mensagem: "falha", tentativas: 1, ultimoErroEm: new Date(), resolvidoEm: new Date() }
+    );
+    const obterPedidoMock = vi.fn(async (_conta: unknown, id: string) => normalizado({ pedidoExternoId: id }));
+    adaptadorFake.atual = { obterPedido: obterPedidoMock };
+
+    const resultado = await reprocessarErrosPendentes("conta-1");
+
+    expect(resultado.processados).toBe(1);
+    expect(obterPedidoMock).toHaveBeenCalledWith(expect.anything(), "1");
+    expect(obterPedidoMock).not.toHaveBeenCalledWith(expect.anything(), "2");
+    expect(obterPedidoMock).not.toHaveBeenCalledWith(expect.anything(), "3");
+    expect(errosSincronizacao.find((e) => e.pedidoExternoId === "1")?.resolvidoEm).not.toBeNull();
   });
 });
 

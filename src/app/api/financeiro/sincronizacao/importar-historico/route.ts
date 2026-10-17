@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { continuarBackfill } from "@/modules/financeiro/ingestao/sincronizador";
 
+export const maxDuration = 60;
+
 interface RequestBody {
   accountId?: string;
   dias?: number;

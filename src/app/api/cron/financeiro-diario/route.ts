@@ -1,10 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { CanalVenda } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { reprocessarUltimosDias } from "@/modules/financeiro/ingestao/sincronizador";
+import {
+  reprocessarUltimosDias,
+  continuarBackfill,
+  reprocessarErrosPendentes,
+} from "@/modules/financeiro/ingestao/sincronizador";
 import { ingerirGastosAdsDoDia } from "@/modules/financeiro/ingestao/ingestaoAds";
 import { ingerirCobrancasDoMes } from "@/modules/financeiro/ingestao/ingestaoCobrancas";
 import { gerarLancamentosDeTodasAsRecorrencias } from "@/modules/financeiro/lancamentos/recorrencias";
 import { gerarAlertasFinanceiros } from "@/modules/financeiro/alertas";
+
+export const maxDuration = 60;
 
 function mesReferenciaDe(data: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -38,7 +45,7 @@ export async function GET(request: NextRequest) {
 
   const contasAtivas = await prisma.mercadoLivreAccount.findMany({
     where: { isActive: true },
-    select: { id: true },
+    select: { id: true, userId: true },
   });
   const donosDeConta = await prisma.user.findMany({
     where: { contaId: null },
@@ -87,6 +94,29 @@ export async function GET(request: NextRequest) {
       erros++;
       console.error(
         `[CRON_FINANCEIRO_DIARIO] Erro ao ingerir cobranças da conta ${conta.id}:`,
+        error
+      );
+    }
+
+    try {
+      const backfillPendente = await prisma.sincronizacaoFinanceira.findFirst({
+        where: { userId: conta.userId, canal: CanalVenda.MERCADO_LIVRE, tipo: "BACKFILL", status: "EM_ANDAMENTO" },
+      });
+      if (backfillPendente) await continuarBackfill(conta.id);
+    } catch (error) {
+      erros++;
+      console.error(
+        `[CRON_FINANCEIRO_DIARIO] Erro ao continuar backfill da conta ${conta.id}:`,
+        error
+      );
+    }
+
+    try {
+      await reprocessarErrosPendentes(conta.id);
+    } catch (error) {
+      erros++;
+      console.error(
+        `[CRON_FINANCEIRO_DIARIO] Erro ao reprocessar erros pendentes da conta ${conta.id}:`,
         error
       );
     }

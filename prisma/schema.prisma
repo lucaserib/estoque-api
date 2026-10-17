@@ -167,6 +167,7 @@ model User {
   cobrancasCanal           CobrancaCanal[]
   resumosFinanceirosDiarios ResumoFinanceiroDiario[]
   sincronizacoesFinanceiras SincronizacaoFinanceira[]
+  sincronizacoesFinanceirasErros SincronizacaoFinanceiraErro[]
 
   @@index([contaId])
 }
@@ -216,6 +217,7 @@ model MercadoLivreAccount {
   nickname      String
   siteId        String
   isActive      Boolean                   @default(true)
+  ultimaSincronizacaoFinanceiraEm DateTime?
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
   user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -992,4 +994,22 @@ model SincronizacaoFinanceira {
 
   @@index([userId, canal, tipo])
   @@map("sincronizacoes_financeiras")
+}
+
+model SincronizacaoFinanceiraErro {
+  id              String     @id @default(uuid())
+  userId          String
+  canal           CanalVenda
+  pedidoExternoId String
+  etapa           String
+  mensagem        String
+  tentativas      Int        @default(1)
+  ultimoErroEm    DateTime   @default(now())
+  resolvidoEm     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, canal, pedidoExternoId, etapa])
+  @@index([userId, canal, resolvidoEm])
+  @@map("sincronizacoes_financeiras_erros")
 }

@@ -4,8 +4,12 @@ import { NextRequest } from "next/server";
 process.env.CRON_SECRET = "segredo-cron";
 
 const reprocessarUltimosDiasMock = vi.fn();
+const continuarBackfillMock = vi.fn();
+const reprocessarErrosPendentesMock = vi.fn();
 vi.mock("@/modules/financeiro/ingestao/sincronizador", () => ({
   reprocessarUltimosDias: (accountId: string) => reprocessarUltimosDiasMock(accountId),
+  continuarBackfill: (accountId: string) => continuarBackfillMock(accountId),
+  reprocessarErrosPendentes: (accountId: string) => reprocessarErrosPendentesMock(accountId),
 }));
 
 const ingerirGastosAdsDoDiaMock = vi.fn();
@@ -31,10 +35,16 @@ vi.mock("@/modules/financeiro/alertas", () => ({
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     mercadoLivreAccount: {
-      findMany: vi.fn(async () => [{ id: "conta-1" }, { id: "conta-2" }]),
+      findMany: vi.fn(async () => [
+        { id: "conta-1", userId: "dono-conta-1" },
+        { id: "conta-2", userId: "dono-conta-2" },
+      ]),
     },
     user: {
       findMany: vi.fn(async () => [{ id: "dono-1" }]),
+    },
+    sincronizacaoFinanceira: {
+      findFirst: vi.fn(async () => null),
     },
   },
 }));
@@ -49,6 +59,8 @@ function criarRequest(authorization?: string) {
 
 beforeEach(() => {
   reprocessarUltimosDiasMock.mockReset();
+  continuarBackfillMock.mockReset().mockResolvedValue({ status: "EM_ANDAMENTO", processados: 0 });
+  reprocessarErrosPendentesMock.mockReset().mockResolvedValue({ processados: 0 });
   ingerirGastosAdsDoDiaMock.mockReset().mockResolvedValue({ processados: 0 });
   ingerirCobrancasDoMesMock.mockReset().mockResolvedValue({ processadas: 0, naoMapeadas: 0 });
   gerarLancamentosDeTodasAsRecorrenciasMock.mockReset().mockResolvedValue({ gerados: 0 });
@@ -105,6 +117,19 @@ describe("GET /api/cron/financeiro-diario", () => {
     expect(body.pedidosProcessados).toBe(4);
     expect(body.erros).toBe(1);
     expect(ingerirGastosAdsDoDiaMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("F4 (Ciclo 8): continua um backfill pendente, mas não inicia um novo quando não há nenhum em andamento", async () => {
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    expect(response.status).toBe(200);
+    expect(continuarBackfillMock).not.toHaveBeenCalled();
+  });
+
+  it("F4 (Ciclo 8): reprocessa erros pendentes de cada conta ativa", async () => {
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    expect(response.status).toBe(200);
+    expect(reprocessarErrosPendentesMock).toHaveBeenCalledWith("conta-1");
+    expect(reprocessarErrosPendentesMock).toHaveBeenCalledWith("conta-2");
   });
 
   it("erro em ads de uma conta é contado mas não derruba a rota", async () => {

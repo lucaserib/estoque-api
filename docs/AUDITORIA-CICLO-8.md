@@ -37,3 +37,20 @@ Registro vivo de execução do `PROMPT-CICLO-8-FINANCEIRO-INTEGRACAO.md`, uma se
 - `DEVOLVIDA_PARCIAL`: classificado corretamente por `mapearStatus`, mas a ingestão ainda trata como venda normal (não zera quantidade nem abate o valor estornado por item) — proporcionar isso corretamente exigiria ratear o `transaction_amount_refunded` por item, não especificado o suficiente para arriscar.
 
 **Resultado ao final da fase:** `tsc`/`lint` limpos; `npm test` com os 505 testes passando (os 7 vermelhos da Fase 0 + 2 testes pré-existentes da DRE que encodavam a convenção antiga foram atualizados para a nova).
+
+## Fase 2 — Sincronização automática, retomável e visível
+
+**Construído:**
+- **F4 (erro por pedido)**: tabela nova `SincronizacaoFinanceiraErro` (`userId, canal, pedidoExternoId, etapa, mensagem, tentativas, ultimoErroEm, resolvidoEm`). `continuarBackfill` e `reprocessarUltimosDias` passaram a isolar cada pedido num try/catch próprio (`ingerirPedidoComRegistroDeErro`) — um pedido com erro não derruba mais o lote nem marca a sincronização inteira como `ERRO`; o erro fica registrado e é tentado de novo (até 5 tentativas, `TENTATIVAS_MAXIMAS_ERRO`) pela próxima chamada, via `reprocessarErrosPendentes`.
+- **F4 (orçamento de tempo)**: `continuarBackfill` trocou o limite por quantidade (`LOTE_MAXIMO_POR_CHAMADA`) por um orçamento de tempo (`FINANCEIRO_TEMPO_MAXIMO_LOTE_MS`, default 40s), e passou a salvar o cursor **a cada página** (não só ao final da chamada) — um timeout da função não repete mais a mesma página para sempre.
+- **Incremental de verdade**: `MercadoLivreAccount.ultimaSincronizacaoFinanceiraEm` (novo campo) grava quando `reprocessarUltimosDias` termina. A próxima chamada busca `desde = últimaSincronização − 2h` em vez de uma janela fixa de 3 dias, sem perder nada entre execuções; sem sincronização anterior, cai no padrão de 3 dias.
+- **Orquestrador único** (`ingestao/orquestrador.ts`, `sincronizarFinanceiro(contaId, {modo, desde, ate})`): por modo (`INCREMENTAL`/`PERIODO`/`BACKFILL`) chama a sincronização de pedidos certa, depois ads do dia e cobranças de cada mês do período afetado. `obterTravaAtiva` consulta `SincronizacaoFinanceira` com `status=EM_ANDAMENTO` iniciada há menos de 10 minutos — trava por conta para dois cliques (ou duas abas) não rodarem juntos.
+- Rotas novas: `POST /api/financeiro/sincronizacao` (`{accountId?, modo, desde?, ate?}`, só `FINANCEIRO_EDITAR`, respeita a trava) e `GET /api/financeiro/sincronizacao/status` (`FINANCEIRO_VER`: sincronização em andamento, última concluída, erros pendentes). `maxDuration = 60` nessas rotas e em `importar-historico`.
+- Cron diário (`financeiro-diario`) passou a continuar um backfill já `EM_ANDAMENTO` (nunca inicia um novo sozinho — isso é gatilho de UI, Fase 5) e a chamar `reprocessarErrosPendentes` para cada conta ativa, além do que já fazia.
+
+**Deixado pendente, com motivo:**
+- O cron **não foi migrado** para chamar `sincronizarFinanceiro` (o orquestrador) em vez das funções individuais que já chamava — são exatamente as mesmas chamadas por baixo, e reescrever a rota trocaria uma bateria de testes já sólida por uma reescrita sem ganho de comportamento. O orquestrador está pronto para quando as telas da Fase 5 (que sim precisam dele, para o botão “Atualizar”) forem construídas.
+- **Início automático do backfill ao abrir a tela** (barra de progresso "Importando suas vendas…") e o **painel "Saúde dos dados"**: são UI (Fase 5) — a Fase 2 deixou a base pronta (status via `GET /sincronizacao/status`, erros pendentes contáveis, trava por conta), mas não construiu nenhuma tela ainda.
+- Notas de crédito e paginação `from_id`/`sort_by=ID` de cobranças (Fase 3) não foram tocadas nesta fase.
+
+**Resultado ao final da fase:** `tsc`/`lint` limpos; `npm test` com 528 testes passando (23 novos: isolamento de erro por pedido, orquestrador, rotas de sincronização, cron).
