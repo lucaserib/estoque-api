@@ -107,6 +107,36 @@ export interface BlingContact {
   email?: string;
 }
 
+export interface BlingContaFinanceira {
+  id: number;
+  vencimento: string;
+  valor: number;
+  situacao: number;
+  saldo?: number;
+  dataEmissao?: string;
+  numeroDocumento?: string;
+  contato?: { id: number; nome?: string };
+  categoria?: { id: number };
+  dataPagamento?: string;
+  historico?: string;
+}
+
+export interface BlingCategoriaReceitaDespesa {
+  id: number;
+  descricao: string;
+  tipo: number;
+}
+
+export interface BlingPedidoVenda {
+  id: number;
+  numero: string;
+  data: string;
+  total: number;
+  situacao?: { id: number; valor?: number };
+  loja?: { id: number };
+  contato?: { id: number; nome?: string };
+}
+
 export class BlingReconnectError extends Error {
   readonly code = "BLING_RECONNECT_REQUIRED";
 
@@ -500,6 +530,61 @@ export class BlingService {
     );
 
     return { data: data.data || [] };
+  }
+
+  static async getContasPagar(
+    accountId: string,
+    page: number = 1,
+    limit: number = 100,
+    dataInicial?: string
+  ): Promise<BlingContaFinanceira[]> {
+    const params = new URLSearchParams({ pagina: String(page), limite: String(limit) });
+    if (dataInicial) params.set("dataInicialVencimento", dataInicial);
+    const data = await this.requestJson<{ data?: BlingContaFinanceira[] }>(
+      `/contas/pagar?${params.toString()}`,
+      accountId
+    );
+    return data.data ?? [];
+  }
+
+  static async getContasReceber(
+    accountId: string,
+    page: number = 1,
+    limit: number = 100,
+    dataInicial?: string
+  ): Promise<BlingContaFinanceira[]> {
+    const params = new URLSearchParams({ pagina: String(page), limite: String(limit) });
+    if (dataInicial) params.set("dataInicialVencimento", dataInicial);
+    const data = await this.requestJson<{ data?: BlingContaFinanceira[] }>(
+      `/contas/receber?${params.toString()}`,
+      accountId
+    );
+    return data.data ?? [];
+  }
+
+  static async getCategoriasReceitasDespesas(
+    accountId: string
+  ): Promise<BlingCategoriaReceitaDespesa[]> {
+    const data = await this.requestJson<{ data?: BlingCategoriaReceitaDespesa[] }>(
+      `/categorias/receitas-despesas`,
+      accountId
+    );
+    return data.data ?? [];
+  }
+
+  static async getPedidosVendas(
+    accountId: string,
+    page: number = 1,
+    limit: number = 100,
+    dataInicial?: string
+  ): Promise<BlingPedidoVenda[]> {
+    const params = new URLSearchParams({ pagina: String(page), limite: String(limit) });
+    if (dataInicial) params.set("dataInicial", dataInicial);
+    const data = await this.requestJson<{ data?: BlingPedidoVenda[] }>(
+      `/pedidos/vendas?${params.toString()}`,
+      accountId
+    );
+    return data.data ?? [];
   }
 
   static async getProductById(

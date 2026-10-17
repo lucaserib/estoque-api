@@ -7,6 +7,7 @@ import {
 } from "@/services/blingService";
 import { sincronizarProdutoUnico } from "@/services/blingProductSync";
 import { processarEventoWebhookBling } from "@/services/blingWebhookProcessor";
+import { sincronizarContasFinanceirasBling } from "@/modules/financeiro/canais/erp/bling/contasFinanceiras";
 
 const MAX_EVENTOS_POR_EXECUCAO = 200;
 
@@ -75,6 +76,16 @@ export async function GET(request: NextRequest) {
         data: { ultimaSincronizacaoProdutos: new Date() },
       });
       contasSincronizadas++;
+
+      try {
+        await sincronizarContasFinanceirasBling(conta.userId, conta.id);
+      } catch (error) {
+        errosSincronizacao++;
+        console.error(
+          `[CRON_BLING_SYNC] Erro ao sincronizar contas financeiras da conta ${conta.id}:`,
+          error
+        );
+      }
     } catch (error) {
       if (error instanceof BlingReconnectError || error instanceof BlingTransientError) {
         console.error(

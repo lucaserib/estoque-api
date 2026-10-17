@@ -49,6 +49,10 @@ describe("GET /api/financeiro/configuracoes", () => {
     expect(body.regimeTributario).toBe("SIMPLES");
     expect(body.aliquotaImposto).toBe(0);
     expect(body.usarRelatorioLiberacaoMercadoPago).toBe(false);
+    expect(body.diasLiberacaoPadrao).toBe(14);
+    expect(body.gerarContaAPagarAoConfirmarCompra).toBe(true);
+    expect(body.prazoPagamentoPadraoDias).toBe(30);
+    expect(body.blingContasAtivo).toBe(false);
   });
 });
 
@@ -69,6 +73,28 @@ describe("PATCH /api/financeiro/configuracoes", () => {
     verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
     const resposta = await PATCH(criarRequestPatch({ regimeTributario: "INVALIDO" }) as never);
     expect(resposta.status).toBe(400);
+  });
+
+  it("F4 (Ciclo 8): responde 400 para prazoPagamentoPadraoDias negativo", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+    const resposta = await PATCH(criarRequestPatch({ prazoPagamentoPadraoDias: -1 }) as never);
+    expect(resposta.status).toBe(400);
+  });
+
+  it("F4 (Ciclo 8): atualiza blingContasAtivo e prazoPagamentoPadraoDias via upsert", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+    upsertMock.mockResolvedValue({ blingContasAtivo: true, prazoPagamentoPadraoDias: 45 });
+
+    const resposta = await PATCH(
+      criarRequestPatch({ blingContasAtivo: true, prazoPagamentoPadraoDias: 45 }) as never
+    );
+
+    expect(resposta.status).toBe(200);
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { userId: "conta-1" },
+      update: { blingContasAtivo: true, prazoPagamentoPadraoDias: 45 },
+      create: { userId: "conta-1", blingContasAtivo: true, prazoPagamentoPadraoDias: 45 },
+    });
   });
 
   it("atualiza os campos informados via upsert", async () => {

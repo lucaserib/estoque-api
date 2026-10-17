@@ -68,3 +68,18 @@ Registro vivo de execução do `PROMPT-CICLO-8-FINANCEIRO-INTEGRACAO.md`, uma se
 - Conciliação mensal recalculada pelo botão "Atualizar" da DRE: UI, fica para a Fase 5.
 
 **Resultado ao final da fase:** `tsc`/`lint` limpos; `npm test` com 537 testes passando.
+
+## Fase 4 — Fontes do sistema e do ERP
+
+**Construído:**
+- **Conta a pagar automática**: ao confirmar um `PedidoCompra` (`PUT /api/pedidos-compra`), se `ConfiguracaoGeral.gerarContaAPagarAoConfirmarCompra` estiver ligado (default `true`), gera a conta a pagar `PREVISTO` automaticamente (`gerarContaAPagarDePedidoCompra`, já idempotente por `chaveExterna` desde o Ciclo 7) com vencimento `dataConclusao + prazoPagamentoPadraoDias` (novo campo, default 30 dias). Isolado em try/catch — uma falha aqui não derruba a confirmação do pedido nem o update de estoque. `scripts/backfill-contas-a-pagar-pedidos-compra.ts` cobre os pedidos confirmados nos últimos 90 dias que já existiam antes desta fase (rodar manualmente uma vez após o deploy — ver checklist da Fase 6).
+- **Bling — contas a pagar e a receber**: `BlingService.getContasPagar`/`getContasReceber`/`getCategoriasReceitasDespesas` (reaproveitam `requestJson`, o limitador de 3 req/s e o header `enable-jwt` já existentes). `canais/erp/bling/contasFinanceiras.ts` grava cada conta como `LancamentoFinanceiro` (`origem: ERP`, `chaveExterna: bling:pagar:<id>` / `bling:receber:<id>`), casando fornecedor por `Fornecedor.blingContatoId` e categoria por `MapeamentoCategoriaBling` (nova tabela; sem mapeamento, cai em "Outras"). Liga/desliga por `ConfiguracaoGeral.blingContasAtivo` (default `false`). Rodando a cada execução do cron `bling-sync`, por conta Bling ativa, isolado em try/catch.
+- Configurações do financeiro (`GET`/`PATCH /api/financeiro/configuracoes`) passaram a expor `diasLiberacaoPadrao`, `gerarContaAPagarAoConfirmarCompra`, `prazoPagamentoPadraoDias` e `blingContasAtivo` (campos que já existiam no banco desde as Fases 1 e 4, mas não tinham API) — pronto para a tela de Configurações da Fase 5 ler/escrever.
+
+**Deixado pendente, com motivo:**
+- **Pedidos de venda de outros canais via Bling** (item 3 do prompt): não implementado. Exigiria um adaptador `AdaptadorCanalFinanceiro` novo (`canal: CanalVenda.ERP`) e uma regra confiável para não duplicar vendas do Mercado Livre já ingeridas direto — o campo `VendaCanalNormalizada.origemReal` já existe para isso desde o Ciclo 7, mas sem nenhum pedido real do Bling para confirmar o formato, implementar agora arriscaria duplicar ou perder vendas de verdade. Ver `docs/financeiro/fontes-bling.md`.
+- **Tela de mapeamento de categorias do Bling**: a tabela (`MapeamentoCategoriaBling`) e a leitura já existem; só falta a UI para o usuário criar os mapeamentos (Fase 5).
+- **CMV confiável — reprocessar vendas quando o custo for preenchido depois**: não implementado nesta fase. O custo de um produto é alterado em pelo menos 5 rotas diferentes (`produtos/[id]`, `importar-custos`, `bulk-assign`, confirmação de compra, etc.); hookar um reprocessamento em cada uma sem nenhum teste de regressão nessas rotas tinha risco maior que o benefício dentro do tempo desta fase. O link "N vendas sem custo" na tela (Fase 5) já é possível sem isso — só não reprocessa automaticamente o que já foi gravado como incompleto.
+- Tipo de retorno `situacao` do Bling (código numérico) não é usado para decidir `PAGO`/`PREVISTO` — ver `fontes-bling.md`.
+
+**Resultado ao final da fase:** `tsc`/`lint` limpos; `npm test` com 545 testes passando.

@@ -23,6 +23,10 @@ export async function GET(request: NextRequest) {
       custoEnvioFlex: config?.custoEnvioFlex ?? null,
       usarImpostoEstimado: config?.usarImpostoEstimado ?? true,
       usarRelatorioLiberacaoMercadoPago: config?.usarRelatorioLiberacaoMercadoPago ?? false,
+      diasLiberacaoPadrao: config?.diasLiberacaoPadrao ?? 14,
+      gerarContaAPagarAoConfirmarCompra: config?.gerarContaAPagarAoConfirmarCompra ?? true,
+      prazoPagamentoPadraoDias: config?.prazoPagamentoPadraoDias ?? 30,
+      blingContasAtivo: config?.blingContasAtivo ?? false,
     });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
@@ -41,6 +45,10 @@ interface RequestBody {
   custoEnvioFlex?: number | null;
   usarImpostoEstimado?: boolean;
   usarRelatorioLiberacaoMercadoPago?: boolean;
+  diasLiberacaoPadrao?: number;
+  gerarContaAPagarAoConfirmarCompra?: boolean;
+  prazoPagamentoPadraoDias?: number;
+  blingContasAtivo?: boolean;
 }
 
 export async function PATCH(request: NextRequest) {
@@ -74,6 +82,18 @@ export async function PATCH(request: NextRequest) {
     if (body.custoEnvioFlex != null && (typeof body.custoEnvioFlex !== "number" || body.custoEnvioFlex < 0)) {
       return NextResponse.json({ error: "custoEnvioFlex deve ser um número não negativo" }, { status: 400 });
     }
+    if (
+      body.diasLiberacaoPadrao !== undefined &&
+      (typeof body.diasLiberacaoPadrao !== "number" || body.diasLiberacaoPadrao < 0)
+    ) {
+      return NextResponse.json({ error: "diasLiberacaoPadrao deve ser um número não negativo" }, { status: 400 });
+    }
+    if (
+      body.prazoPagamentoPadraoDias !== undefined &&
+      (typeof body.prazoPagamentoPadraoDias !== "number" || body.prazoPagamentoPadraoDias < 0)
+    ) {
+      return NextResponse.json({ error: "prazoPagamentoPadraoDias deve ser um número não negativo" }, { status: 400 });
+    }
 
     const dados = {
       ...(body.regimeTributario && { regimeTributario: body.regimeTributario }),
@@ -85,6 +105,14 @@ export async function PATCH(request: NextRequest) {
       ...(body.usarRelatorioLiberacaoMercadoPago !== undefined && {
         usarRelatorioLiberacaoMercadoPago: body.usarRelatorioLiberacaoMercadoPago,
       }),
+      ...(body.diasLiberacaoPadrao !== undefined && { diasLiberacaoPadrao: body.diasLiberacaoPadrao }),
+      ...(body.gerarContaAPagarAoConfirmarCompra !== undefined && {
+        gerarContaAPagarAoConfirmarCompra: body.gerarContaAPagarAoConfirmarCompra,
+      }),
+      ...(body.prazoPagamentoPadraoDias !== undefined && {
+        prazoPagamentoPadraoDias: body.prazoPagamentoPadraoDias,
+      }),
+      ...(body.blingContasAtivo !== undefined && { blingContasAtivo: body.blingContasAtivo }),
     };
 
     const config = await prisma.configuracaoGeral.upsert({

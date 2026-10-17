@@ -7,6 +7,7 @@ import { Prisma, PedidoCompra } from "@prisma/client";
 import { serializeWithEAN } from "@/utils/api";
 import { NotificationService } from "@/services/notificationService";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
+import { gerarContaAPagarDePedidoCompra } from "@/modules/financeiro/lancamentos/pedidoCompra";
 
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
@@ -449,6 +450,27 @@ export async function PUT(request: NextRequest) {
       user.id,
       pedidoAtualizado.fornecedor?.nome ?? "sem fornecedor"
     );
+
+    try {
+      const configGeral = await prisma.configuracaoGeral.findUnique({
+        where: { userId: user.contaId },
+        select: { gerarContaAPagarAoConfirmarCompra: true, prazoPagamentoPadraoDias: true },
+      });
+      if (configGeral?.gerarContaAPagarAoConfirmarCompra ?? true) {
+        const prazoDias = configGeral?.prazoPagamentoPadraoDias ?? 30;
+        const vencimento = new Date(
+          pedidoAtualizado.dataConclusao!.getTime() + prazoDias * 24 * 60 * 60 * 1000
+        );
+        await gerarContaAPagarDePedidoCompra(user.contaId, user.id, pedidoAtualizado.id, {
+          vencimento,
+        });
+      }
+    } catch (error) {
+      console.error(
+        `[PEDIDO_COMPRA] Erro ao gerar conta a pagar automática do pedido ${pedidoAtualizado.id}:`,
+        error
+      );
+    }
 
     return NextResponse.json({
       message: "Pedido confirmado e estoque atualizado com sucesso",

@@ -168,6 +168,7 @@ model User {
   resumosFinanceirosDiarios ResumoFinanceiroDiario[]
   sincronizacoesFinanceiras SincronizacaoFinanceira[]
   sincronizacoesFinanceirasErros SincronizacaoFinanceiraErro[]
+  mapeamentosCategoriaBling MapeamentoCategoriaBling[]
 
   @@index([contaId])
 }
@@ -185,6 +186,9 @@ model ConfiguracaoGeral {
   usarImpostoEstimado              Boolean                  @default(true)
   usarRelatorioLiberacaoMercadoPago Boolean                  @default(false)
   diasLiberacaoPadrao              Int                      @default(14)
+  gerarContaAPagarAoConfirmarCompra Boolean                  @default(true)
+  prazoPagamentoPadraoDias          Int                      @default(30)
+  blingContasAtivo                  Boolean                  @default(false)
   createdAt                        DateTime @default(now())
   updatedAt                        DateTime @updatedAt
   user                             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -781,6 +785,7 @@ model CategoriaFinanceira {
   filhas      CategoriaFinanceira[]  @relation("CategoriaFinanceiraHierarquia")
   lancamentos LancamentoFinanceiro[]
   recorrencias RecorrenciaFinanceira[]
+  mapeamentosBling MapeamentoCategoriaBling[]
 
   @@unique([userId, paiId, nome])
   @@map("categorias_financeiras")
@@ -994,6 +999,22 @@ model SincronizacaoFinanceira {
 
   @@index([userId, canal, tipo])
   @@map("sincronizacoes_financeiras")
+}
+
+model MapeamentoCategoriaBling {
+  id                   String   @id @default(uuid())
+  userId               String
+  blingCategoriaId     String
+  blingDescricao       String
+  categoriaFinanceiraId String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  categoriaFinanceira CategoriaFinanceira @relation(fields: [categoriaFinanceiraId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, blingCategoriaId])
+  @@map("mapeamentos_categoria_bling")
 }
 
 model SincronizacaoFinanceiraErro {
