@@ -2,17 +2,28 @@ import { StatusVendaCanal, Confianca } from "@prisma/client";
 import type { MLOrder } from "@/types/mercadolivre";
 import type {
   CustoEnvioNormalizado,
+  EnvioNormalizado,
   ItemVendaCanalNormalizado,
   VendaCanalNormalizada,
 } from "../tipos";
 
-interface DescontoBruto {
-  full?: number;
-  seller?: number;
+interface DetalheDescontoBruto {
+  items?: Array<{
+    id?: string | number;
+    variation_id?: string | number | null;
+    amounts?: { total?: number; seller?: number };
+  }>;
+  supplier?: { funding_mode?: string; offer_id?: string };
+}
+
+interface DescontosBruto {
+  details?: DetalheDescontoBruto[];
 }
 
 interface PagamentoBruto {
   status?: string;
+  transaction_amount?: number;
+  transaction_amount_refunded?: number;
   money_release_date?: string | null;
 }
 
@@ -24,22 +35,44 @@ interface CustoEnvioBruto {
   }>;
 }
 
-/**
- * Nem todo status do ML já é financeiramente relevante (regime de
- * competência: só entra quando foi pago). `cancelled` sem nenhum pagamento
- * aprovado nunca chegou a existir financeiramente — não ingere.
- *
- * Distinção CANCELADA × DEVOLVIDA via `order_request.return`: baseada no tipo
- * já existente neste repositório (não confirmada contra um pedido real —
- * ver docs/financeiro/fontes-mercado-livre.md, pergunta em aberto).
- */
+interface EnvioBruto {
+  logistic_type?: string;
+}
+
+const STATUS_PAGAMENTO_RELEVANTE = new Set([
+  "approved",
+  "refunded",
+  "partially_refunded",
+  "charged_back",
+  "in_mediation",
+]);
+
+function listaPagamentos(payments: unknown): PagamentoBruto[] {
+  return Array.isArray(payments) ? (payments as PagamentoBruto[]) : [];
+}
+
+function houvePagamentoRelevante(payments: unknown): boolean {
+  return listaPagamentos(payments).some(
+    (p) =>
+      p.status != null &&
+      STATUS_PAGAMENTO_RELEVANTE.has(p.status) &&
+      typeof p.transaction_amount === "number" &&
+      p.transaction_amount > 0
+  );
+}
+
+function houvePagamentoParcialmenteEstornado(payments: unknown): boolean {
+  return listaPagamentos(payments).some((p) => p.status === "partially_refunded");
+}
+
 export function mapearStatus(pedido: MLOrder): StatusVendaCanal | null {
   if (pedido.status === "paid") return StatusVendaCanal.PAGA;
 
   if (pedido.status === "cancelled") {
-    const houvePagamento =
-      typeof pedido.paid_amount === "number" && pedido.paid_amount > 0;
-    if (!houvePagamento) return null;
+    if (!houvePagamentoRelevante(pedido.payments)) return null;
+    if (houvePagamentoParcialmenteEstornado(pedido.payments)) {
+      return StatusVendaCanal.DEVOLVIDA_PARCIAL;
+    }
 
     return pedido.order_request?.return
       ? StatusVendaCanal.DEVOLVIDA
@@ -49,7 +82,6 @@ export function mapearStatus(pedido: MLOrder): StatusVendaCanal | null {
   return null;
 }
 
-/** sale_fee é tratado como por unidade, mesma convenção já usada em sales-complete e dashboard/resumo. */
 export function mapearItem(
   item: MLOrder["order_items"][number]
 ): ItemVendaCanalNormalizado {
@@ -76,24 +108,55 @@ export function mapearItem(
   };
 }
 
-/** GET /orders/{id}/discounts pode devolver um objeto único ou uma lista (campanha + cupom). Soma só a parte do vendedor. */
-export function somarDescontoVendedor(bruto: unknown): number {
-  const itens: DescontoBruto[] = Array.isArray(bruto)
-    ? bruto
-    : bruto && typeof bruto === "object"
-      ? [bruto as DescontoBruto]
+export interface DescontoItemNormalizado {
+  anuncioExternoId: string | null;
+  variacaoExternaId: string | null;
+  descontoTotal: number;
+  descontoVendedor: number;
+  descontoCusteadoPeloMl: number;
+  fundingMode: string | null;
+  offerId: string | null;
+}
+
+export function mapearDescontos(bruto: unknown): DescontoItemNormalizado[] {
+  const details =
+    bruto && typeof bruto === "object" && Array.isArray((bruto as DescontosBruto).details)
+      ? ((bruto as DescontosBruto).details as DetalheDescontoBruto[])
       : [];
 
-  const totalReais = itens.reduce(
-    (soma, item) => soma + (typeof item.seller === "number" ? item.seller : 0),
-    0
-  );
-  return Math.round(totalReais * 100);
+  const resultado: DescontoItemNormalizado[] = [];
+  for (const detalhe of details) {
+    for (const item of detalhe.items ?? []) {
+      const total =
+        typeof item.amounts?.total === "number" ? Math.round(item.amounts.total * 100) : 0;
+      const seller =
+        typeof item.amounts?.seller === "number" ? Math.round(item.amounts.seller * 100) : 0;
+
+      resultado.push({
+        anuncioExternoId: item.id != null ? String(item.id) : null,
+        variacaoExternaId: item.variation_id != null ? String(item.variation_id) : null,
+        descontoTotal: total,
+        descontoVendedor: seller,
+        descontoCusteadoPeloMl: Math.max(0, total - seller),
+        fundingMode: detalhe.supplier?.funding_mode ?? null,
+        offerId: detalhe.supplier?.offer_id ?? null,
+      });
+    }
+  }
+  return resultado;
+}
+
+export function somarDescontoVendedor(bruto: unknown): number {
+  return mapearDescontos(bruto).reduce((soma, d) => soma + d.descontoVendedor, 0);
+}
+
+export function somarDescontoCusteadoPeloMl(bruto: unknown): number {
+  return mapearDescontos(bruto).reduce((soma, d) => soma + d.descontoCusteadoPeloMl, 0);
 }
 
 function extrairDataLiberacao(payments: unknown): Date | null {
-  if (!Array.isArray(payments) || payments.length === 0) return null;
-  const lista = payments as PagamentoBruto[];
+  const lista = listaPagamentos(payments);
+  if (lista.length === 0) return null;
   const aprovado = lista.find((p) => p.status === "approved") ?? lista[0];
   return aprovado?.money_release_date ? new Date(aprovado.money_release_date) : null;
 }
@@ -101,6 +164,11 @@ function extrairDataLiberacao(payments: unknown): Date | null {
 function extrairFreteComprador(shipping: Record<string, unknown>): number {
   const custo = shipping.cost ?? shipping.list_cost;
   return typeof custo === "number" ? Math.round(custo * 100) : 0;
+}
+
+function extrairDataCancelamento(pedido: MLOrder): Date | null {
+  if (pedido.cancel_detail?.date) return new Date(pedido.cancel_detail.date);
+  return pedido.last_updated ? new Date(pedido.last_updated) : null;
 }
 
 export function mapearPedido(
@@ -123,16 +191,14 @@ export function mapearPedido(
     pedidoExternoId: String(pedido.id),
     pacoteExternoId: pedido.pack_id != null ? String(pedido.pack_id) : null,
     dataVenda,
-    dataCancelamento:
-      status !== StatusVendaCanal.PAGA && pedido.last_updated
-        ? new Date(pedido.last_updated)
-        : null,
+    dataCancelamento: status !== StatusVendaCanal.PAGA ? extrairDataCancelamento(pedido) : null,
     dataLiberacao: extrairDataLiberacao(pedido.payments),
     status,
     logistica,
     envioExternoId,
     freteComprador: extrairFreteComprador(shipping),
     descontoVendedorTotal: somarDescontoVendedor(descontosBrutos),
+    descontoCusteadoPeloMlTotal: somarDescontoCusteadoPeloMl(descontosBrutos),
     atualizadoNoCanalEm: pedido.last_updated
       ? new Date(pedido.last_updated)
       : dataVenda,
@@ -140,11 +206,6 @@ export function mapearPedido(
   };
 }
 
-/**
- * `compensation` (número único) × `compensations` (lista com `amount`): os
- * dois formatos aparecem em exemplos diferentes da documentação do ML — ver
- * docs/financeiro/fontes-mercado-livre.md. Trata os dois.
- */
 export function mapearCustoEnvio(bruto: CustoEnvioBruto): CustoEnvioNormalizado {
   const sender = bruto.senders?.[0];
   if (!sender || typeof sender.cost !== "number") {
@@ -163,5 +224,12 @@ export function mapearCustoEnvio(bruto: CustoEnvioBruto): CustoEnvioNormalizado 
   return {
     valor: Math.round((sender.cost - compensacao) * 100),
     confianca: Confianca.CONFIRMADO,
+  };
+}
+
+export function mapearEnvio(bruto: EnvioBruto): EnvioNormalizado {
+  return {
+    logistica: typeof bruto.logistic_type === "string" ? bruto.logistic_type : null,
+    confianca: typeof bruto.logistic_type === "string" ? Confianca.CONFIRMADO : Confianca.ESTIMADO,
   };
 }

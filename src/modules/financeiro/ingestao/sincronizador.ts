@@ -20,6 +20,7 @@ import { vincularProduto } from "./vinculo";
 import { invalidarCacheFinanceiro } from "../relatorios/cache";
 
 const PENDENCIA_SEM_VINCULO = "SEM_VINCULO";
+const PENDENCIA_LIBERACAO_ESTIMADA = "LIBERACAO_ESTIMADA";
 const LOTE_MAXIMO_POR_CHAMADA = 10;
 const DIAS_PADRAO_REPROCESSAMENTO = 3;
 const DIAS_PADRAO_BACKFILL = 90;
@@ -29,16 +30,9 @@ function statusZeraQuantidade(status: StatusVendaCanal): boolean {
   return status === StatusVendaCanal.CANCELADA || status === StatusVendaCanal.DEVOLVIDA;
 }
 
-/**
- * O que o Mercado Pago libera para a venda: faturamento menos só as
- * deduções do próprio canal (desconto do vendedor, tarifa, frete) — NÃO
- * subtrai o imposto (é estimativa interna do vendedor, o ML não retém) nem
- * ads (vem de cobrança separada, Fase 4). Null se tarifa ou frete ainda
- * são desconhecidos — melhor "—" do que fingir que a taxa foi zero.
- */
 function calcularValorLiquidoReceber(resultado: ResultadoVenda): number | null {
   if (resultado.tarifa == null || resultado.freteVendedor == null) return null;
-  return resultado.faturamentoBruto - resultado.descontoVendedor - resultado.tarifa - resultado.freteVendedor;
+  return resultado.faturamentoBruto - resultado.tarifa - resultado.freteVendedor;
 }
 
 async function resolverCustoAtualDoProduto(produtoId: string): Promise<number | null> {
@@ -56,25 +50,70 @@ async function resolverCustoAtualDoProduto(produtoId: string): Promise<number | 
 interface ConfigIngestao {
   aliquotaImposto: number;
   custoEnvioFlex: number | null;
+  diasLiberacaoPadrao: number;
 }
 
 async function obterConfigIngestao(userId: string): Promise<ConfigIngestao> {
   const config = await prisma.configuracaoGeral.findUnique({
     where: { userId },
-    select: { aliquotaImposto: true, custoEnvioFlex: true },
+    select: { aliquotaImposto: true, custoEnvioFlex: true, diasLiberacaoPadrao: true },
   });
   return {
     aliquotaImposto: config?.aliquotaImposto ?? 0,
     custoEnvioFlex: config?.custoEnvioFlex ?? null,
+    diasLiberacaoPadrao: config?.diasLiberacaoPadrao ?? 14,
   };
 }
 
-/**
- * Full: custo vem da cobrança mensal (Fase 4), não do pedido. Flex: custo
- * configurado em ConfiguracaoGeral.custoEnvioFlex (null = ainda não
- * configurado, vira pendência SEM_FRETE em vez de 0 inventado). Sem envio
- * (retirada): zero de verdade. Os demais: custo real via obterCustoEnvio.
- */
+async function resolverLogisticaReal(
+  contaCanal: ContaCanal,
+  adaptador: AdaptadorCanalFinanceiro,
+  normalizado: VendaCanalNormalizada
+): Promise<string | null> {
+  if (normalizado.logistica) return normalizado.logistica;
+  if (!normalizado.envioExternoId || !adaptador.obterEnvio) return null;
+
+  const envio = await adaptador.obterEnvio(contaCanal, normalizado.envioExternoId);
+  return envio.logistica;
+}
+
+interface LiberacaoResolvida {
+  dataLiberacao: Date | null;
+  valorLiquidoOverride: number | null;
+  estimado: boolean;
+}
+
+async function resolverLiberacao(
+  contaCanal: ContaCanal,
+  adaptador: AdaptadorCanalFinanceiro,
+  normalizado: VendaCanalNormalizada,
+  diasLiberacaoPadrao: number
+): Promise<LiberacaoResolvida> {
+  if (normalizado.dataLiberacao) {
+    return { dataLiberacao: normalizado.dataLiberacao, valorLiquidoOverride: null, estimado: false };
+  }
+
+  if (adaptador.obterLiberacaoPagamento) {
+    const liberacao = await adaptador.obterLiberacaoPagamento(contaCanal, normalizado.pedidoExternoId);
+    if (liberacao.dataLiberacao) {
+      return {
+        dataLiberacao: liberacao.dataLiberacao,
+        valorLiquidoOverride: liberacao.valorLiquido,
+        estimado: liberacao.confianca === Confianca.ESTIMADO,
+      };
+    }
+  }
+
+  if (normalizado.status !== StatusVendaCanal.PAGA) {
+    return { dataLiberacao: null, valorLiquidoOverride: null, estimado: false };
+  }
+
+  const estimativa = new Date(
+    normalizado.dataVenda.getTime() + diasLiberacaoPadrao * 24 * 60 * 60 * 1000
+  );
+  return { dataLiberacao: estimativa, valorLiquidoOverride: null, estimado: true };
+}
+
 async function resolverFreteTotalDoPedidoAtual(
   contaCanal: ContaCanal,
   adaptador: AdaptadorCanalFinanceiro,
@@ -82,7 +121,6 @@ async function resolverFreteTotalDoPedidoAtual(
   custoEnvioFlex: number | null
 ): Promise<number | null> {
   if (!normalizado.envioExternoId) return 0;
-  if (normalizado.logistica === "fulfillment") return 0;
   if (normalizado.logistica === "self_service") return custoEnvioFlex;
   if (!adaptador.obterCustoEnvio) return null;
 
@@ -204,6 +242,7 @@ export async function recalcularEPersistirMargem(
 interface ItensPreparados {
   itensEntrada: ItemVendaEntrada[];
   vinculos: Array<string | null>;
+  descontosCusteadosMlRateados: number[];
 }
 
 async function prepararItens(
@@ -247,7 +286,12 @@ async function prepararItens(
     item.descontoVendedorTotal = descontosRateados[i];
   });
 
-  return { itensEntrada, vinculos };
+  const descontosCusteadosMlRateados = ratearCustoVendaPorItem(
+    normalizado.descontoCusteadoPeloMlTotal,
+    itensEntrada
+  );
+
+  return { itensEntrada, vinculos, descontosCusteadosMlRateados };
 }
 
 async function persistirVendaNormalizada(
@@ -262,11 +306,22 @@ async function persistirVendaNormalizada(
   const { userId } = contaCanal;
 
   const config = await obterConfigIngestao(userId);
+  normalizadoOriginal.logistica = await resolverLogisticaReal(
+    contaCanal,
+    adaptador,
+    normalizadoOriginal
+  );
   const freteTotalPedido = await resolverFreteTotalDoPedidoAtual(
     contaCanal,
     adaptador,
     normalizadoOriginal,
     config.custoEnvioFlex
+  );
+  const liberacao = await resolverLiberacao(
+    contaCanal,
+    adaptador,
+    normalizadoOriginal,
+    config.diasLiberacaoPadrao
   );
 
   const vendaExistente = await prisma.vendaCanal.findUnique({
@@ -280,7 +335,7 @@ async function persistirVendaNormalizada(
     include: { itens: true },
   });
 
-  const { itensEntrada, vinculos } = await prepararItens(
+  const { itensEntrada, vinculos, descontosCusteadosMlRateados } = await prepararItens(
     userId,
     contaCanal.contaCanalId,
     normalizadoOriginal,
@@ -295,9 +350,13 @@ async function persistirVendaNormalizada(
 
   const semVinculo = vinculos.some((v) => v === null);
   const completo = resultado.completo && !semVinculo;
-  const faltando = semVinculo
-    ? [...new Set([...resultado.faltando, PENDENCIA_SEM_VINCULO])]
-    : resultado.faltando;
+  const faltando = [
+    ...new Set([
+      ...resultado.faltando,
+      ...(semVinculo ? [PENDENCIA_SEM_VINCULO] : []),
+      ...(liberacao.estimado ? [PENDENCIA_LIBERACAO_ESTIMADA] : []),
+    ]),
+  ];
 
   const faturamentoBrutoOriginal = normalizadoOriginal.itens.reduce(
     (soma, item) => soma + item.precoUnitario * item.quantidade,
@@ -308,7 +367,7 @@ async function persistirVendaNormalizada(
     pacoteExternoId: normalizadoOriginal.pacoteExternoId,
     dataVenda: normalizadoOriginal.dataVenda,
     dataCancelamento: normalizadoOriginal.dataCancelamento,
-    dataLiberacao: normalizadoOriginal.dataLiberacao,
+    dataLiberacao: liberacao.dataLiberacao,
     status: normalizadoOriginal.status,
     logistica: normalizadoOriginal.logistica,
     envioExternoId: normalizadoOriginal.envioExternoId,
@@ -322,7 +381,7 @@ async function persistirVendaNormalizada(
     cmv: resultado.cmv,
     outrosCustos: 0,
     margemContribuicao: resultado.margemContribuicao,
-    valorLiquidoReceber: calcularValorLiquidoReceber(resultado),
+    valorLiquidoReceber: liberacao.valorLiquidoOverride ?? calcularValorLiquidoReceber(resultado),
     completo,
     faltando,
     freteConfianca: freteTotalPedido == null ? Confianca.ESTIMADO : Confianca.CONFIRMADO,
@@ -367,6 +426,7 @@ async function persistirVendaNormalizada(
         adsRateado: resultado.itens[i].adsRateado,
         custoUnitario: itensEntrada[i].custoUnitario,
         margemContribuicao: resultado.itens[i].margemContribuicao,
+        descontoCusteadoMl: descontosCusteadosMlRateados[i],
       })),
     }),
   ]);
@@ -420,6 +480,7 @@ export async function atualizarResumoDoDia(
     resumo.pedidos += 1;
     if (!venda.completo) resumo.vendasIncompletas += 1;
     adsAlocadoEmVendas += venda.adsAtribuido; // conta mesmo cancelada: ads não é reembolsado
+    resumo.faturamentoBruto += venda.faturamentoBruto;
 
     if (statusZeraQuantidade(venda.status)) {
       resumo.cancelamentos += venda.faturamentoBruto;
@@ -427,7 +488,6 @@ export async function atualizarResumoDoDia(
     }
 
     resumo.unidades += venda.itens.reduce((soma, item) => soma + item.quantidade, 0);
-    resumo.faturamentoBruto += venda.faturamentoBruto;
     resumo.descontos += venda.descontoVendedor;
     resumo.impostos += venda.impostoEstimado;
     resumo.tarifas += venda.tarifaVenda;

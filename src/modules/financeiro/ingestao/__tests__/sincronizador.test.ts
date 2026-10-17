@@ -402,6 +402,7 @@ function normalizado(parcial: Partial<VendaCanalNormalizada> = {}): VendaCanalNo
     envioExternoId: "555",
     freteComprador: 0,
     descontoVendedorTotal: 0,
+    descontoCusteadoPeloMlTotal: 0,
     atualizadoNoCanalEm: new Date("2026-05-10T18:00:00.000Z"),
     itens: [
       {
@@ -526,8 +527,8 @@ describe("ingerirPedidoMercadoLivre", () => {
     expect(vendas[0].faltando).toContain("SEM_FRETE");
   });
 
-  it("Full não chama obterCustoEnvio e grava frete zero", async () => {
-    const obterCustoEnvioMock = vi.fn();
+  it("F8 (Ciclo 8): Full também busca o custo real do envio (não existe mais 'Full = frete 0')", async () => {
+    const obterCustoEnvioMock = vi.fn(async () => ({ valor: 900, confianca: Confianca.CONFIRMADO }));
     adaptadorFake.atual = {
       obterPedido: vi.fn(async () => normalizado({ logistica: "fulfillment" })),
       obterCustoEnvio: obterCustoEnvioMock,
@@ -535,8 +536,8 @@ describe("ingerirPedidoMercadoLivre", () => {
 
     await ingerirPedidoMercadoLivre("conta-1", "1000001");
 
-    expect(vendas[0].freteVendedor).toBe(0);
-    expect(obterCustoEnvioMock).not.toHaveBeenCalled();
+    expect(vendas[0].freteVendedor).toBe(900);
+    expect(obterCustoEnvioMock).toHaveBeenCalled();
   });
 
   it("carrinho com pacote e frete único: rateia entre os dois pedidos e atualiza o irmão já ingerido", async () => {
@@ -603,7 +604,7 @@ describe("atualizarResumoDoDia", () => {
 
     const resumo = resumos[0];
     expect(resumo.pedidos).toBe(2);
-    expect(resumo.faturamentoBruto).toBe(10000); // só a paga
+    expect(resumo.faturamentoBruto).toBe(18000);
     expect(resumo.cancelamentos).toBe(8000); // valor original do cancelamento
     expect(resumo.unidades).toBe(2);
   });
@@ -632,7 +633,7 @@ describe("atualizarResumoDoDia", () => {
     await atualizarResumoDoDia("user-1", CanalVenda.MERCADO_LIVRE, dia);
 
     const resumo = resumos[0];
-    expect(resumo.faturamentoBruto).toBe(15000); // 10000 paga + 5000 cancelada
+    expect(resumo.faturamentoBruto).toBe(15000);
     expect(resumo.cancelamentos).toBe(5000);
   });
 });

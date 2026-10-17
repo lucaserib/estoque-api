@@ -6,7 +6,9 @@ import {
   mapearStatus,
   mapearItem,
   somarDescontoVendedor,
+  somarDescontoCusteadoPeloMl,
   mapearCustoEnvio,
+  mapearEnvio,
 } from "../mapeador";
 import fixtureComum from "./fixtures/pedido-comum.json";
 import fixtureDuasUnidades from "./fixtures/pedido-2-unidades.json";
@@ -34,7 +36,9 @@ function pedidoBase(parcial: Partial<MLOrder> = {}): MLOrder {
     shipping: { id: 555, logistic_type: "drop_off", cost: 20 },
     total_amount: 100,
     paid_amount: 100,
-    payments: [{ id: 1, status: "approved", money_release_date: "2026-05-25T00:00:00.000Z" }],
+    payments: [
+      { id: 1, status: "approved", transaction_amount: 100, money_release_date: "2026-05-25T00:00:00.000Z" },
+    ],
     ...parcial,
   };
 }
@@ -44,13 +48,17 @@ describe("mapearStatus", () => {
     expect(mapearStatus(pedidoBase({ status: "paid" }))).toBe(StatusVendaCanal.PAGA);
   });
 
-  it("cancelado sem nenhum pagamento aprovado não é ingerido (null)", () => {
-    const pedido = pedidoBase({ status: "cancelled", paid_amount: undefined });
+  it("cancelado sem nenhum pagamento relevante não é ingerido (null)", () => {
+    const pedido = pedidoBase({ status: "cancelled", paid_amount: undefined, payments: [] });
     expect(mapearStatus(pedido)).toBeNull();
   });
 
-  it("cancelado com pagamento aprovado mapeia para CANCELADA", () => {
-    const pedido = pedidoBase({ status: "cancelled", paid_amount: 100 });
+  it("F6 (Ciclo 8): cancelado depois de pago (paid_amount zerado pelo estorno) ainda é CANCELADA, pelo histórico de pagamentos", () => {
+    const pedido = pedidoBase({
+      status: "cancelled",
+      paid_amount: 0,
+      payments: [{ id: 1, status: "refunded", transaction_amount: 100, transaction_amount_refunded: 100 }],
+    });
     expect(mapearStatus(pedido)).toBe(StatusVendaCanal.CANCELADA);
   });
 
@@ -63,14 +71,23 @@ describe("mapearStatus", () => {
     expect(mapearStatus(pedido)).toBe(StatusVendaCanal.DEVOLVIDA);
   });
 
+  it("F6 (Ciclo 8): pagamento parcialmente estornado mapeia para DEVOLVIDA_PARCIAL", () => {
+    const pedido = pedidoBase({
+      status: "cancelled",
+      paid_amount: 50,
+      payments: [{ id: 1, status: "partially_refunded", transaction_amount: 100, transaction_amount_refunded: 50 }],
+    });
+    expect(mapearStatus(pedido)).toBe(StatusVendaCanal.DEVOLVIDA_PARCIAL);
+  });
+
   it("status ainda não relevante para o financeiro (aguardando pagamento) não é ingerido", () => {
-    expect(mapearStatus(pedidoBase({ status: "payment_in_process" }))).toBeNull();
+    expect(mapearStatus(pedidoBase({ status: "payment_in_process", payments: [] }))).toBeNull();
   });
 });
 
 describe("mapearPedido — pedido pago simples", () => {
   it("mapeia campos do pedido e do item", () => {
-    const normalizado = mapearPedido(pedidoBase(), { full: 0, seller: 0 });
+    const normalizado = mapearPedido(pedidoBase(), { details: [] });
 
     expect(normalizado).not.toBeNull();
     expect(normalizado?.status).toBe(StatusVendaCanal.PAGA);
@@ -175,17 +192,35 @@ describe("mapearItem", () => {
 });
 
 describe("somarDescontoVendedor", () => {
-  it("objeto único: soma só a parte do vendedor", () => {
-    expect(somarDescontoVendedor({ full: 10, seller: 4 })).toBe(400);
+  it("um detalhe com um item: soma só a parte do vendedor (amounts.seller)", () => {
+    expect(
+      somarDescontoVendedor({ details: [{ items: [{ amounts: { total: 10, seller: 4 } }] }] })
+    ).toBe(400);
   });
 
-  it("lista de descontos (campanha + cupom): soma a parte do vendedor de cada um", () => {
-    expect(somarDescontoVendedor([{ full: 10, seller: 4 }, { full: 5, seller: 2 }])).toBe(600);
+  it("vários detalhes (campanha + cupom): soma a parte do vendedor de cada item", () => {
+    expect(
+      somarDescontoVendedor({
+        details: [
+          { items: [{ amounts: { total: 10, seller: 4 } }] },
+          { items: [{ amounts: { total: 5, seller: 2 } }] },
+        ],
+      })
+    ).toBe(600);
   });
 
   it("sem desconto: zero", () => {
     expect(somarDescontoVendedor(null)).toBe(0);
     expect(somarDescontoVendedor(undefined)).toBe(0);
+    expect(somarDescontoVendedor({ details: [] })).toBe(0);
+  });
+});
+
+describe("somarDescontoCusteadoPeloMl", () => {
+  it("é a diferença entre total e seller — a parte que o ML bancou", () => {
+    expect(
+      somarDescontoCusteadoPeloMl(fixtureComum.descontos)
+    ).toBe(100);
   });
 });
 
@@ -221,6 +256,19 @@ describe("F6 (Ciclo 8) — cancelamento depois do pagamento", () => {
     const pedido = fixtureCancelado.pedido as unknown as MLOrder;
 
     expect(mapearStatus(pedido)).toBe(StatusVendaCanal.CANCELADA);
+  });
+});
+
+describe("mapearEnvio — F8 (Ciclo 8)", () => {
+  it("logistic_type confirmado via GET /shipments/{id}", () => {
+    const resultado = mapearEnvio({ logistic_type: "self_service" });
+    expect(resultado.logistica).toBe("self_service");
+    expect(resultado.confianca).toBe("CONFIRMADO");
+  });
+
+  it("sem logistic_type: desconhecido (ESTIMADO)", () => {
+    expect(mapearEnvio({}).logistica).toBeNull();
+    expect(mapearEnvio({}).confianca).toBe("ESTIMADO");
   });
 });
 

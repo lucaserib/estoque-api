@@ -39,6 +39,27 @@ Diferente de pedidos/descontos/frete (APIs centrais e estáveis do ML, já usada
 
 Mapeamento de `charge_type` → `tipoNormalizado` em `canais/mercadoLivre/mapeadorCobrancas.ts`: qualquer código fora do mapa cai em `NAO_MAPEADO` com o valor preservado (nunca descartado), para a tela de configurações (Fase 7) listar para revisão manual — exatamente como o prompt pede.
 
+## Ciclo 8 — confirmado em produção (17/10/2026, conta LEAPSTORE)
+
+Testado com 3 pedidos reais (comum, 2 unidades, cancelado pós-pagamento). Substitui as perguntas abertas correspondentes acima.
+
+| Campo | Confirmado |
+|---|---|
+| `order.id`, `shipping.id`, `payments[].id` | Vêm como **número** na resposta real, não string — `pedidoSchema`/`envioSchema`/`pagamentoSchema` em `canais/mercadoLivre/esquemas.ts` convertem para string; `mapearPedido` também força `String(pedido.id)`. |
+| `sale_fee` | Por unidade, confirmado (2,99 em pedido de 1 e de 2 unidades, mesmo anúncio) — mantém `sale_fee × quantity`. |
+| `GET /orders/{id}/discounts` | Formato real é `{details:[{items:[{amounts:{total,seller}}], supplier:{funding_mode,offer_id}}]}`, não `{full,seller}` no topo. `unit_price` já vem líquido do desconto — `descontoVendedor` é informativo, não é subtraído de receita/imposto/margem/valorLiquidoReceber. `total − seller` é quanto o próprio ML custeou (`descontoCusteadoMl`, por item). |
+| `GET /shipments/{id}/costs` | `senders[0].cost` e `senders[0].compensation`/`compensations` confirmados como já implementado (Ciclo 7). |
+| Cancelamento pós-pagamento | `paid_amount` zera depois de um estorno — não serve para detectar se houve pagamento. `mapearStatus` passou a olhar o histórico de `payments[].status` (`approved`, `refunded`, `partially_refunded`, `charged_back`, `in_mediation`) com `transaction_amount > 0`. `cancel_detail.date` é a data real do cancelamento (fallback `last_updated`). |
+| `shipping.logistic_type` | **Não vem no pedido** — o payload real só traz `{id}`. A logística confiável vem de `GET /shipments/{id}` (`mapearEnvio`), chamada separadamente pela ingestão antes de resolver o frete. |
+| `money_release_date` | **Não vem nos pagamentos do pedido.** Fase 1 implementou busca em `GET https://api.mercadopago.com/v1/payments/{id}` (`obterLiberacaoPagamento`) — **não confirmado contra uma resposta real**, nomes de campo (`money_release_date`, `transaction_details.net_received_amount`) vieram de documentação pública. Sem resposta, cai em estimativa por `ConfiguracaoGeral.diasLiberacaoPadrao`. |
+
+### Ainda não confirmado (introduzido na Fase 1 do Ciclo 8)
+
+- `GET /shipments/{id}` devolvendo `order_id` (usado para religar o webhook de `shipments` ao pedido) — não confirmado.
+- `GET /post-purchase/v1/claims/{id}` devolvendo `resource`/`resource_id` (usado no webhook de `claims`) — endpoint e formato não confirmados.
+- `GET https://api.mercadopago.com/v1/payments/{id}` devolvendo `order.id` (usado no webhook de `payments` para religar ao pedido) — não confirmado.
+- Devoluções (frete de retorno cobrado do vendedor via claims) e Full/Flex além do `logistic_type` básico: pendente para uma fase seguinte.
+
 ## Como usar o diagnóstico
 
 ```

@@ -825,10 +825,17 @@ export class MercadoLivreService {
 
         case "orders":
         case "orders_v2":
-          await this.processOrderWebhook(
-            evento.mercadoLivreAccountId,
-            evento.resource
-          );
+          try {
+            await this.processOrderWebhook(
+              evento.mercadoLivreAccountId,
+              evento.resource
+            );
+          } catch (erroEstoque) {
+            console.error(
+              `[WEBHOOK_ORDER] Erro no processamento de estoque (financeiro segue independente):`,
+              erroEstoque
+            );
+          }
           await this.processOrderWebhookFinanceiro(
             evento.mercadoLivreAccountId,
             evento.resource
@@ -837,6 +844,20 @@ export class MercadoLivreService {
 
         case "payments":
           await this.processPaymentWebhook(
+            evento.mercadoLivreAccountId,
+            evento.resource
+          );
+          break;
+
+        case "shipments":
+          await this.processShipmentWebhookFinanceiro(
+            evento.mercadoLivreAccountId,
+            evento.resource
+          );
+          break;
+
+        case "claims":
+          await this.processClaimWebhookFinanceiro(
             evento.mercadoLivreAccountId,
             evento.resource
           );
@@ -1944,6 +1965,107 @@ export class MercadoLivreService {
     }
   }
 
+  private static async resolverPedidoDoPagamento(
+    accountId: string,
+    paymentId: string
+  ): Promise<string | null> {
+    try {
+      const accessToken = await this.getValidToken(accountId);
+      const resposta = await fetchMlWithBackoff(
+        `https://api.mercadopago.com/v1/payments/${paymentId}`,
+        { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+      );
+      if (!resposta.ok) return null;
+
+      const dados = (await resposta.json()) as { order?: { id?: string | number } };
+      return dados.order?.id != null ? String(dados.order.id) : null;
+    } catch (erro) {
+      console.error(`[WEBHOOK_PAYMENT] Erro ao resolver pedido do pagamento ${paymentId}:`, erro);
+      return null;
+    }
+  }
+
+  private static async resolverPedidoDoEnvio(
+    accountId: string,
+    shipmentId: string
+  ): Promise<string | null> {
+    try {
+      const accessToken = await this.getValidToken(accountId);
+      const resposta = await fetchMlWithBackoff(
+        `${this.BASE_URL}/shipments/${shipmentId}`,
+        { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+      );
+      if (!resposta.ok) return null;
+
+      const dados = (await resposta.json()) as { order_id?: string | number };
+      return dados.order_id != null ? String(dados.order_id) : null;
+    } catch (erro) {
+      console.error(`[WEBHOOK_SHIPMENT] Erro ao resolver pedido do envio ${shipmentId}:`, erro);
+      return null;
+    }
+  }
+
+  private static async resolverPedidoDaClaim(
+    accountId: string,
+    claimId: string
+  ): Promise<string | null> {
+    try {
+      const accessToken = await this.getValidToken(accountId);
+      const resposta = await fetchMlWithBackoff(
+        `${this.BASE_URL}/post-purchase/v1/claims/${claimId}`,
+        { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+      );
+      if (!resposta.ok) return null;
+
+      const dados = (await resposta.json()) as { resource?: string; resource_id?: string | number };
+      if (dados.resource && dados.resource !== "order") return null;
+      return dados.resource_id != null ? String(dados.resource_id) : null;
+    } catch (erro) {
+      console.error(`[WEBHOOK_CLAIM] Erro ao resolver pedido da claim ${claimId}:`, erro);
+      return null;
+    }
+  }
+
+  private static async processShipmentWebhookFinanceiro(
+    accountId: string,
+    resource: string
+  ): Promise<void> {
+    const shipmentId = resource.split("/").pop();
+    if (!shipmentId) return;
+
+    try {
+      const orderId = await this.resolverPedidoDoEnvio(accountId, shipmentId);
+      if (!orderId) return;
+
+      const { ingerirPedidoMercadoLivre } = await import(
+        "@/modules/financeiro/ingestao/sincronizador"
+      );
+      await ingerirPedidoMercadoLivre(accountId, orderId);
+    } catch (erro) {
+      console.error(`[WEBHOOK_SHIPMENT_FINANCEIRO] Erro ao reingerir pedido do envio ${shipmentId}:`, erro);
+    }
+  }
+
+  private static async processClaimWebhookFinanceiro(
+    accountId: string,
+    resource: string
+  ): Promise<void> {
+    const claimId = resource.split("/").pop();
+    if (!claimId) return;
+
+    try {
+      const orderId = await this.resolverPedidoDaClaim(accountId, claimId);
+      if (!orderId) return;
+
+      const { ingerirPedidoMercadoLivre } = await import(
+        "@/modules/financeiro/ingestao/sincronizador"
+      );
+      await ingerirPedidoMercadoLivre(accountId, orderId);
+    } catch (erro) {
+      console.error(`[WEBHOOK_CLAIM_FINANCEIRO] Erro ao reingerir pedido da claim ${claimId}:`, erro);
+    }
+  }
+
   /**
    * ✅ NOVO: Processa webhook de pagamento
    */
@@ -1957,6 +2079,19 @@ export class MercadoLivreService {
       const { mlCache } = await import("@/lib/cache");
       await mlCache.delete(`orders:${accountId}:recent`);
       await mlCache.delete(`metrics:${accountId}:dashboard`);
+
+      const paymentId = resource.split("/").pop();
+      if (paymentId) {
+        const orderId = await this.resolverPedidoDoPagamento(accountId, paymentId);
+        if (orderId) {
+          const { ingerirPedidoMercadoLivre } = await import(
+            "@/modules/financeiro/ingestao/sincronizador"
+          );
+          await ingerirPedidoMercadoLivre(accountId, orderId).catch((erro) =>
+            console.error(`[WEBHOOK_PAYMENT_FINANCEIRO] Erro ao reingerir pedido ${orderId}:`, erro)
+          );
+        }
+      }
 
     } catch (error) {
       console.error(

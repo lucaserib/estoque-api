@@ -30,6 +30,7 @@ export interface VendaCanalNormalizada {
   freteComprador: number;
   /** Nível do pedido inteiro — a camada de ingestão rateia entre os itens. */
   descontoVendedorTotal: number;
+  descontoCusteadoPeloMlTotal: number;
   atualizadoNoCanalEm: Date;
   itens: ItemVendaCanalNormalizado[];
   /** Preenchido só por adaptadores que espelham pedidos de outro canal (ex.: ERP espelhando o ML). Ausente = este pedido é a própria origem. */
@@ -38,6 +39,17 @@ export interface VendaCanalNormalizada {
 
 export interface CustoEnvioNormalizado {
   valor: number | null;
+  confianca: Confianca;
+}
+
+export interface EnvioNormalizado {
+  logistica: string | null;
+  confianca: Confianca;
+}
+
+export interface LiberacaoPagamentoNormalizada {
+  dataLiberacao: Date | null;
+  valorLiquido: number | null;
   confianca: Confianca;
 }
 
@@ -102,6 +114,11 @@ export interface AdaptadorCanalFinanceiro {
     conta: ContaCanal,
     envioId: string
   ): Promise<CustoEnvioNormalizado>;
+  obterEnvio?(conta: ContaCanal, envioId: string): Promise<EnvioNormalizado>;
+  obterLiberacaoPagamento?(
+    conta: ContaCanal,
+    pedidoExternoId: string
+  ): Promise<LiberacaoPagamentoNormalizada>;
   listarGastosAds?(conta: ContaCanal, dia: Date): Promise<GastoAdsNormalizado[]>;
   listarCobrancas?(
     conta: ContaCanal,

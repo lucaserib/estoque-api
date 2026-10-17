@@ -66,6 +66,9 @@ vi.mock("@/lib/prisma", () => ({
       findMany: vi.fn(async () => []),
       aggregate: vi.fn(async () => ({ _sum: { outrosCustos: 0 } })),
     },
+    vendaCanalItem: {
+      aggregate: vi.fn(async () => ({ _sum: { descontoCusteadoMl: 0 } })),
+    },
     cobrancaCanal: {
       aggregate: vi.fn(
         async ({
@@ -159,8 +162,8 @@ describe("gerarDre", () => {
     const mes = relatorio.meses[0];
 
     expect(mes.faturamentoBruto).toBe(100000);
-    expect(mes.receitaOperacionalBruta).toBe(100000 - 5000 - 2000);
-    expect(mes.receitaLiquida).toBe(100000 - 5000 - 2000 - 3000);
+    expect(mes.receitaOperacionalBruta).toBe(100000 - 5000);
+    expect(mes.receitaLiquida).toBe(100000 - 5000 - 3000);
     expect(mes.custosVariaveis.tarifas).toBe(10000);
     expect(mes.cmv).toBe(40000);
   });
@@ -314,9 +317,9 @@ describe("gerarDre", () => {
     expect(mes.faturamentoBruto).toBe(350000);
     expect(mes.cancelamentosEDevolucoes).toBe(10000);
     expect(mes.descontos).toBe(8000);
-    expect(mes.receitaOperacionalBruta).toBe(332000); // 350000 - 10000 - 8000
+    expect(mes.receitaOperacionalBruta).toBe(340000); // 350000 - 10000
     expect(mes.impostosSobreVendas).toBe(13000);
-    expect(mes.receitaLiquida).toBe(319000); // 332000 - 13000
+    expect(mes.receitaLiquida).toBe(327000); // 340000 - 13000
 
     // Custos variáveis
     expect(mes.custosVariaveis).toEqual({
@@ -331,8 +334,8 @@ describe("gerarDre", () => {
     expect(mes.cmv).toBe(90000);
 
     // Margem de contribuição
-    expect(mes.margemContribuicao).toBe(182000); // 319000 - 47000 - 90000
-    expect(mes.margemContribuicaoPercentual).toBeCloseTo(182000 / 319000, 10);
+    expect(mes.margemContribuicao).toBe(190000); // 327000 - 47000 - 90000
+    expect(mes.margemContribuicaoPercentual).toBeCloseTo(190000 / 327000, 10);
 
     // Despesas operacionais, por categoria e total
     expect(mes.despesasOperacionais).toEqual(
@@ -342,7 +345,7 @@ describe("gerarDre", () => {
       ])
     );
     expect(mes.totalDespesasOperacionais).toBe(14500);
-    expect(mes.resultadoOperacional).toBe(167500); // 182000 - 14500
+    expect(mes.resultadoOperacional).toBe(175500); // 190000 - 14500
 
     // Resultado financeiro: Rendimentos (receita) soma, Juros (despesa) subtrai — líquido +700
     expect(mes.resultadoFinanceiro).toBe(700);
@@ -351,7 +354,7 @@ describe("gerarDre", () => {
     expect(mes.impostoLucro).toBe(6000);
 
     // Lucro líquido final
-    expect(mes.lucroLiquido).toBe(162200); // 167500 + 700 - 6000
-    expect(mes.lucroLiquidoPercentual).toBeCloseTo(162200 / 319000, 10);
+    expect(mes.lucroLiquido).toBe(170200); // 175500 + 700 - 6000
+    expect(mes.lucroLiquidoPercentual).toBeCloseTo(170200 / 327000, 10);
   });
 });

@@ -7,11 +7,13 @@ import type {
   CobrancaNormalizada,
   ContaCanal,
   CustoEnvioNormalizado,
+  EnvioNormalizado,
   GastoAdsNormalizado,
+  LiberacaoPagamentoNormalizada,
   PaginaPedidos,
   VendaCanalNormalizada,
 } from "../tipos";
-import { mapearCustoEnvio, mapearPedido } from "./mapeador";
+import { mapearCustoEnvio, mapearEnvio, mapearPedido } from "./mapeador";
 import { mapearGastoAds, type GastoAdsBruto } from "./mapeadorAds";
 import { mapearCobranca, type CobrancaBruta } from "./mapeadorCobrancas";
 
@@ -131,6 +133,60 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
     }
 
     return mapearCustoEnvio(await resposta.json());
+  },
+
+  async obterEnvio(conta: ContaCanal, envioId: string): Promise<EnvioNormalizado> {
+    const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
+    const resposta = await fetchMlWithBackoff(
+      `${BASE_URL}/shipments/${envioId}`,
+      { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+    );
+    if (!resposta.ok) return { logistica: null, confianca: Confianca.ESTIMADO };
+
+    return mapearEnvio(await resposta.json());
+  },
+
+  async obterLiberacaoPagamento(
+    conta: ContaCanal,
+    pedidoExternoId: string
+  ): Promise<LiberacaoPagamentoNormalizada> {
+    try {
+      const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
+      const pedido = await MercadoLivreService.getOrder(pedidoExternoId, accessToken);
+      const pagamentos = Array.isArray(pedido.payments)
+        ? (pedido.payments as Array<{ id?: string | number; status?: string }>)
+        : [];
+      const pagamento = pagamentos.find((p) => p.status === "approved") ?? pagamentos[0];
+      if (pagamento?.id == null) {
+        return { dataLiberacao: null, valorLiquido: null, confianca: Confianca.ESTIMADO };
+      }
+
+      const resposta = await fetchMlWithBackoff(
+        `https://api.mercadopago.com/v1/payments/${pagamento.id}`,
+        { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+      );
+      if (!resposta.ok) {
+        return { dataLiberacao: null, valorLiquido: null, confianca: Confianca.ESTIMADO };
+      }
+
+      const dados = (await resposta.json()) as {
+        money_release_date?: string | null;
+        transaction_details?: { net_received_amount?: number };
+      };
+      if (!dados.money_release_date) {
+        return { dataLiberacao: null, valorLiquido: null, confianca: Confianca.ESTIMADO };
+      }
+
+      const netReceivedAmount = dados.transaction_details?.net_received_amount;
+      return {
+        dataLiberacao: new Date(dados.money_release_date),
+        valorLiquido: typeof netReceivedAmount === "number" ? Math.round(netReceivedAmount * 100) : null,
+        confianca: Confianca.CONFIRMADO,
+      };
+    } catch (erro) {
+      console.error("[LIBERACAO_ML] Erro ao buscar liberação do pagamento:", erro);
+      return { dataLiberacao: null, valorLiquido: null, confianca: Confianca.ESTIMADO };
+    }
   },
 
   /**

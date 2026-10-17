@@ -31,6 +31,7 @@ export interface DreMensal {
   faturamentoBruto: number;
   cancelamentosEDevolucoes: number;
   descontos: number;
+  descontoCusteadoPeloMl: number;
   receitaOperacionalBruta: number;
   impostosSobreVendas: number;
   receitaLiquida: number;
@@ -133,11 +134,11 @@ async function somarVendaCanalDoMes(
     tarifas: 0, frete: 0, ads: 0, cmv: 0, margemContribuicao: 0,
   };
   for (const v of vendas) {
-    if (v.status === "CANCELADA" || v.status === "DEVOLVIDA") {
+    soma.faturamentoBruto += v.faturamentoBruto;
+    if (v.status === "CANCELADA" || v.status === "DEVOLVIDA" || v.status === "DEVOLVIDA_PARCIAL") {
       soma.cancelamentos += v.faturamentoBruto;
       continue;
     }
-    soma.faturamentoBruto += v.faturamentoBruto;
     soma.descontos += v.descontoVendedor;
     soma.impostos += v.impostoEstimado;
     soma.tarifas += v.tarifaVenda;
@@ -147,6 +148,23 @@ async function somarVendaCanalDoMes(
     soma.margemContribuicao += v.margemContribuicao ?? 0;
   }
   return soma;
+}
+
+async function somarDescontoCusteadoMlDoMes(
+  userId: string,
+  competencia: Competencia,
+  canal?: CanalVenda
+): Promise<number> {
+  const inicio = inicioDoMes(instanteDoMes(competencia));
+  const fim = fimDoMes(instanteDoMes(competencia));
+
+  const resultado = await prisma.vendaCanalItem.aggregate({
+    where: {
+      venda: { userId, dataVenda: { gte: inicio, lte: fim }, ...(canal && { canal }) },
+    },
+    _sum: { descontoCusteadoMl: true },
+  });
+  return resultado._sum.descontoCusteadoMl ?? 0;
 }
 
 async function somarOutrosCustosDoMes(
@@ -222,6 +240,7 @@ async function gerarDreDeUmMes(
   userId: string,
   competencia: Competencia,
   regimeTributario: RegimeTributario,
+  usarImpostoEstimado: boolean,
   filtros: FiltrosDre
 ): Promise<DreMensal> {
   const resumoVendas =
@@ -229,19 +248,31 @@ async function gerarDreDeUmMes(
       ? await somarVendaCanalDoMes(userId, competencia, filtros.canal, filtros.contaCanalId)
       : await somarResumoDoMes(userId, competencia, filtros.canal);
 
-  const [armazenagemFull, outrasTarifasNaoMapeadas, freteDevolucaoEOutros, despesasOperacionais, resultadoFinanceiro, impostoLucroBruto] =
-    await Promise.all([
-      somarCobrancasDoMes(userId, competencia, "ARMAZENAGEM_FULL", filtros.canal),
-      somarCobrancasDoMes(userId, competencia, "NAO_MAPEADO", filtros.canal),
-      somarOutrosCustosDoMes(userId, competencia, filtros.canal, filtros.contaCanalId),
-      somarLancamentosPorGrupo(userId, competencia, "DESPESA_OPERACIONAL"),
-      somarLancamentosPorGrupo(userId, competencia, "RESULTADO_FINANCEIRO"),
-      somarLancamentosPorGrupo(userId, competencia, "IMPOSTO_LUCRO"),
-    ]);
+  const [
+    armazenagemFull,
+    outrasTarifasNaoMapeadas,
+    freteDevolucaoEOutros,
+    despesasOperacionais,
+    resultadoFinanceiro,
+    impostoLucroBruto,
+    descontoCusteadoPeloMl,
+    impostoVendaLancado,
+  ] = await Promise.all([
+    somarCobrancasDoMes(userId, competencia, "ARMAZENAGEM_FULL", filtros.canal),
+    somarCobrancasDoMes(userId, competencia, "NAO_MAPEADO", filtros.canal),
+    somarOutrosCustosDoMes(userId, competencia, filtros.canal, filtros.contaCanalId),
+    somarLancamentosPorGrupo(userId, competencia, "DESPESA_OPERACIONAL"),
+    somarLancamentosPorGrupo(userId, competencia, "RESULTADO_FINANCEIRO"),
+    somarLancamentosPorGrupo(userId, competencia, "IMPOSTO_LUCRO"),
+    somarDescontoCusteadoMlDoMes(userId, competencia, filtros.canal),
+    usarImpostoEstimado ? null : somarLancamentosPorGrupo(userId, competencia, "IMPOSTO_VENDA"),
+  ]);
 
-  const receitaOperacionalBruta =
-    resumoVendas.faturamentoBruto - resumoVendas.cancelamentos - resumoVendas.descontos;
-  const receitaLiquida = receitaOperacionalBruta - resumoVendas.impostos;
+  const receitaOperacionalBruta = resumoVendas.faturamentoBruto - resumoVendas.cancelamentos;
+  const impostosSobreVendas = usarImpostoEstimado
+    ? resumoVendas.impostos
+    : impostoVendaLancado!.total;
+  const receitaLiquida = receitaOperacionalBruta - impostosSobreVendas;
 
   const custosVariaveis = {
     tarifas: resumoVendas.tarifas,
@@ -277,8 +308,9 @@ async function gerarDreDeUmMes(
     faturamentoBruto: resumoVendas.faturamentoBruto,
     cancelamentosEDevolucoes: resumoVendas.cancelamentos,
     descontos: resumoVendas.descontos,
+    descontoCusteadoPeloMl,
     receitaOperacionalBruta,
-    impostosSobreVendas: resumoVendas.impostos,
+    impostosSobreVendas,
     receitaLiquida,
     custosVariaveis,
     cmv: resumoVendas.cmv,
@@ -305,14 +337,17 @@ export async function gerarDre(
   return comCacheFinanceiro(userId, chave, async () => {
     const config = await prisma.configuracaoGeral.findUnique({
       where: { userId },
-      select: { regimeTributario: true },
+      select: { regimeTributario: true, usarImpostoEstimado: true },
     });
     const regimeTributario = config?.regimeTributario ?? RegimeTributario.SIMPLES;
+    const usarImpostoEstimado = config?.usarImpostoEstimado ?? true;
 
     const meses: DreMensal[] = [];
     let competencia = ate;
     for (let i = 0; i < Math.min(quantidadeDeMeses, 12); i++) {
-      meses.unshift(await gerarDreDeUmMes(userId, competencia, regimeTributario, filtros));
+      meses.unshift(
+        await gerarDreDeUmMes(userId, competencia, regimeTributario, usarImpostoEstimado, filtros)
+      );
       competencia = mesAnterior(competencia);
     }
 

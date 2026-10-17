@@ -160,34 +160,31 @@ describe("calcularResultadoVenda", () => {
     expect(resultado.margemContribuicao).toBeLessThan(0);
   });
 
-  it("desconto custeado pelo ML não reduz a receita do vendedor; só o custeado pelo vendedor entra na fórmula", () => {
-    const custeadoPeloVendedor = calcularResultadoVenda(
+  it("F5 (Ciclo 8): descontoVendedorTotal é informativo — unit_price já vem líquido, não se subtrai de novo", () => {
+    const comDesconto = calcularResultadoVenda(
       { freteTotal: 0, adsAtribuido: 0 },
       [item({ precoUnitario: 10000, descontoVendedorTotal: 1000, tarifaTotal: 0, custoUnitario: 0 })],
       SEM_IMPOSTO
     );
-    const semDescontoDoVendedor = calcularResultadoVenda(
+    const semDesconto = calcularResultadoVenda(
       { freteTotal: 0, adsAtribuido: 0 },
       [item({ precoUnitario: 10000, descontoVendedorTotal: 0, tarifaTotal: 0, custoUnitario: 0 })],
       SEM_IMPOSTO
     );
 
-    // o desconto do ML já não aparece em nenhum campo de entrada — faturamentoBruto
-    // (preço pago) é igual nos dois casos, só a margem muda pelo desconto do vendedor
-    expect(custeadoPeloVendedor.faturamentoBruto).toBe(semDescontoDoVendedor.faturamentoBruto);
-    expect(custeadoPeloVendedor.margemContribuicao).toBe(
-      (semDescontoDoVendedor.margemContribuicao as number) - 1000
-    );
+    expect(comDesconto.faturamentoBruto).toBe(semDesconto.faturamentoBruto);
+    expect(comDesconto.margemContribuicao).toBe(semDesconto.margemContribuicao);
+    expect(comDesconto.descontoVendedor).toBe(1000);
   });
 
-  it("imposto incide sobre o faturamento já líquido do desconto do vendedor", () => {
+  it("F5 (Ciclo 8): imposto incide sobre o faturamento bruto, sem abater o desconto do vendedor", () => {
     const resultado = calcularResultadoVenda(
       { freteTotal: 0, adsAtribuido: 0 },
       [item({ precoUnitario: 10000, descontoVendedorTotal: 2000, tarifaTotal: 0, custoUnitario: 0 })],
       IMPOSTO_6
     );
 
-    expect(resultado.imposto).toBe(Math.round((10000 - 2000) * 0.06));
+    expect(resultado.imposto).toBe(Math.round(10000 * 0.06));
   });
 
   it("ads sem venda no dia é zero mas não falta — não entra em faltando", () => {
@@ -204,9 +201,6 @@ describe("calcularResultadoVenda", () => {
 
 describe("F5 (Ciclo 8) — desconto do vendedor é informativo, não reduz a margem", () => {
   it("unit_price já vem líquido do desconto; subtrair descontoVendedorTotal de novo conta a mesma coisa duas vezes", () => {
-    // Pedido real (2000019031090968): unit_price 34,70 já é líquido do
-    // desconto de 34,30 que o vendedor custeou via sale_fee. A margem não
-    // pode subtrair os 34,30 de novo.
     const resultado = calcularResultadoVenda(
       { freteTotal: 0, adsAtribuido: 0 },
       [item({ precoUnitario: 3470, descontoVendedorTotal: 3430, tarifaTotal: 299, custoUnitario: 1000 })],
@@ -240,7 +234,7 @@ describe("ratearCustoVendaPorItem", () => {
 });
 
 describe("calcularMargemContribuicao", () => {
-  it("subtrai todos os componentes do faturamento bruto", () => {
+  it("F5 (Ciclo 8): subtrai imposto, tarifa, frete, ads e cmv — descontoVendedor é informativo e não entra na conta", () => {
     const margem = calcularMargemContribuicao({
       faturamentoBruto: 10000,
       descontoVendedor: 500,
@@ -251,7 +245,7 @@ describe("calcularMargemContribuicao", () => {
       cmv: 4000,
     });
 
-    expect(margem).toBe(10000 - 500 - 300 - 1000 - 800 - 200 - 4000);
+    expect(margem).toBe(10000 - 300 - 1000 - 800 - 200 - 4000);
   });
 });
 

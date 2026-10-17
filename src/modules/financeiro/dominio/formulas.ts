@@ -79,7 +79,6 @@ export interface ComponentesMargem {
 export function calcularMargemContribuicao(componentes: ComponentesMargem): number {
   return (
     componentes.faturamentoBruto -
-    componentes.descontoVendedor -
     componentes.imposto -
     componentes.tarifa -
     componentes.frete -
@@ -131,9 +130,7 @@ function calcularItem(
 ): ItemVendaResultado {
   const faturamentoBruto = item.precoUnitario * item.quantidade;
   const descontoVendedor = item.descontoVendedorTotal;
-  const imposto = Math.round(
-    (faturamentoBruto - descontoVendedor) * contexto.aliquotaImposto
-  );
+  const imposto = Math.round(faturamentoBruto * contexto.aliquotaImposto);
   const cmv = item.custoUnitario == null ? null : item.custoUnitario * item.quantidade;
 
   const faltando: string[] = [];

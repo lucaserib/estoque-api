@@ -183,6 +183,7 @@ model ConfiguracaoGeral {
   custoEnvioFlex                   Int?
   usarImpostoEstimado              Boolean                  @default(true)
   usarRelatorioLiberacaoMercadoPago Boolean                  @default(false)
+  diasLiberacaoPadrao              Int                      @default(14)
   createdAt                        DateTime @default(now())
   updatedAt                        DateTime @updatedAt
   user                             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -753,6 +754,7 @@ model VendaCanalItem {
   adsRateado         Int        @default(0)
   custoUnitario      Int?
   margemContribuicao Int?
+  descontoCusteadoMl Int        @default(0)
   venda              VendaCanal @relation(fields: [vendaId], references: [id], onDelete: Cascade)
   produto            Produto?   @relation(fields: [produtoId], references: [id], onDelete: SetNull)
 

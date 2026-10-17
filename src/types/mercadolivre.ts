@@ -499,6 +499,12 @@ export interface MLOrder {
   total_amount: number;
   paid_amount?: number;
   payments?: unknown;
+  mediations?: Array<{ id: string | number }>;
+  cancel_detail?: {
+    code?: string;
+    group?: string;
+    date?: string;
+  } | null;
   feedback?: {
     purchase?: {
       id: string;
