@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 interface FakeLancamento {
   userId: string;
+  contaFinanceiraId?: string;
   tipo: string;
   status: string;
   valor: number;
@@ -9,10 +10,18 @@ interface FakeLancamento {
   vencimento: Date;
 }
 interface FakeConta {
+  id: string;
   userId: string;
   ativo: boolean;
   tipo: string;
+  nome: string;
   saldoInicial: number;
+  dataSaldoInicial: Date;
+  automatica: boolean;
+  saldoAtualExterno: number | null;
+  saldoALiberarExterno: number | null;
+  saldoExternoAtualizadoEm: Date | null;
+  saldoExternoConfianca: string | null;
 }
 interface FakeVenda {
   userId: string;
@@ -32,14 +41,17 @@ vi.mock("@/lib/prisma", () => ({
           where,
         }: {
           where: {
-            userId: string;
+            userId?: string;
+            contaFinanceiraId?: string;
             status: string;
             pagamento?: { gte: Date; lte: Date };
             vencimento?: { gte: Date; lte: Date };
           };
         }) =>
           lancamentos.filter((l) => {
-            if (l.userId !== where.userId || l.status !== where.status) return false;
+            if (where.userId && l.userId !== where.userId) return false;
+            if (where.contaFinanceiraId && l.contaFinanceiraId !== where.contaFinanceiraId) return false;
+            if (l.status !== where.status) return false;
             if (where.pagamento) {
               if (!l.pagamento) return false;
               if (l.pagamento < where.pagamento.gte || l.pagamento > where.pagamento.lte) return false;
@@ -51,8 +63,8 @@ vi.mock("@/lib/prisma", () => ({
     },
     contaFinanceira: {
       findMany: vi.fn(
-        async ({ where }: { where: { userId: string; ativo: boolean; tipo: { not: string } } }) =>
-          contas.filter((c) => c.userId === where.userId && c.ativo === where.ativo && c.tipo !== where.tipo.not)
+        async ({ where }: { where: { userId: string; ativo: boolean } }) =>
+          contas.filter((c) => c.userId === where.userId && c.ativo === where.ativo)
       ),
     },
     vendaCanal: {
@@ -133,10 +145,18 @@ describe("gerarFluxoCaixa", () => {
 });
 
 describe("gerarSaldoProjetado", () => {
-  it("soma saldo inicial das contas (exceto cartão de crédito), liberações futuras e previstos", async () => {
+  it("soma saldo atual das contas (exceto cartão de crédito), liberações futuras e previstos", async () => {
     contas.push(
-      { userId: "user-1", ativo: true, tipo: "BANCO", saldoInicial: 10000 },
-      { userId: "user-1", ativo: true, tipo: "CARTAO_CREDITO", saldoInicial: 99999 } // nunca deve entrar
+      {
+        id: "conta-1", userId: "user-1", ativo: true, tipo: "BANCO", nome: "Banco",
+        saldoInicial: 10000, dataSaldoInicial: new Date("2026-01-01"),
+        automatica: false, saldoAtualExterno: null, saldoALiberarExterno: null, saldoExternoAtualizadoEm: null, saldoExternoConfianca: null,
+      },
+      {
+        id: "conta-2", userId: "user-1", ativo: true, tipo: "CARTAO_CREDITO", nome: "Cartão", // nunca deve entrar
+        saldoInicial: 99999, dataSaldoInicial: new Date("2026-01-01"),
+        automatica: false, saldoAtualExterno: null, saldoALiberarExterno: null, saldoExternoAtualizadoEm: null, saldoExternoConfianca: null,
+      }
     );
     vendas.push({ userId: "user-1", dataLiberacao: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000), valorLiquidoReceber: 2000 });
     lancamentos.push({
@@ -146,7 +166,7 @@ describe("gerarSaldoProjetado", () => {
 
     const resultado = await gerarSaldoProjetado("user-1", 30);
 
-    expect(resultado.saldoInicial).toBe(10000); // cartão de crédito excluído
+    expect(resultado.saldoAtual).toBe(10000); // cartão de crédito excluído, sem lançamentos pagos
     expect(resultado.liberacoesFuturas).toBe(2000);
     expect(resultado.lancamentosPrevistos).toBe(-500);
     expect(resultado.saldoProjetado).toBe(10000 + 2000 - 500);

@@ -50,7 +50,17 @@ Pagamento disponível: `transaction_details.net_received_amount`, direto do Merc
 
 ## CMV (custo da mercadoria vendida)
 
-Congelado no momento da venda (`VendaCanalItem.custoUnitario`): usa `Produto.custoMedio` (ou o custo do kit, se completo) na primeira ingestão e não muda depois, mesmo que o custo do produto mude no cadastro — preserva o custo real daquela venda específica.
+Congelado no momento da venda (`VendaCanalItem.custoUnitario`): usa `Produto.custoMedio + Produto.custoEmbalagem` (ou o custo do kit, se completo, mais a embalagem do kit) na primeira ingestão e não muda depois, mesmo que o custo do produto mude no cadastro — preserva o custo real daquela venda específica.
+
+## Saldo em conta
+
+Cada `ContaFinanceira` tem um `saldoAtual` calculado (`relatorios/saldoContas.ts`), com a origem sempre visível:
+- **Carteira Mercado Pago automática** (`tipo: CARTEIRA_MARKETPLACE`, `automatica: true`, criada uma por conta do Mercado Livre conectada, nome "Mercado Pago — `<apelido>`"): usa o saldo real da API (`saldoAtualExterno`/`saldoALiberarExterno`, sincronizado a cada execução do cron e sob demanda) sempre que a última sincronização teve `confianca: CONFIRMADO`. Sem confirmação ainda (endpoint não testado em produção, ver `fontes-mercado-livre.md`), cai para o cálculo por lançamentos como qualquer outra conta.
+- **Demais contas** (banco, caixa, cartão): `saldoInicial + Σ(lançamentos pagos desde a data do saldo inicial até hoje)`. Cartão de crédito nunca entra no total somado (`calcularSaldoTotalAtual`) — representa dívida, não dinheiro disponível.
+
+O "saldo projetado" do fluxo de caixa (`gerarSaldoProjetado`) usa esse saldo atual (não mais o saldo inicial estático) como ponto de partida, somado às liberações futuras de vendas e aos lançamentos previstos no horizonte escolhido.
+
+**Movimentos da carteira** (`canais/mercadoPago/movimentosCarteira.ts`): lista liberações (`VendaCanal.valorLiquidoReceber` onde `statusLiberacao: "released"`) e retenções (`VendaCanal.retencaoDividas`) já confirmadas por venda, mais — quando `ConfiguracaoGeral.usarRelatorioLiberacaoMercadoPago` está ligado — as linhas do relatório de liberação do Mercado Pago (`release_report`, não confirmado contra uma resposta real). Os dois grupos não são somados num único total: não há chave confirmada para deduplicar uma liberação que apareça nos dois, então somar os dois contaria a mesma liberação duas vezes.
 
 ## Lucro líquido
 
@@ -70,3 +80,10 @@ Esta fase corrigiu os dois bugs que faziam a DRE e o resumo do período divergir
 - **Frete recebido do comprador como receita** (item 3): para logísticas em que o vendedor cobra frete do comprador (ME1, entrega própria), o prompt pede uma linha "Receita de frete" na DRE. Depende do serviço único (item 2 da Fase 2, também deferido) para não duplicar a lógica de composição da DRE em mais um lugar — ficou para quando a consolidação acontecer.
 - **Frete de envio ao Full / inbound** (item 4): cadastro de remessas ao Full (data, custo, produtos e quantidades) com rateio por unidade enviada é uma funcionalidade nova de ponta a ponta (modelo, tela de cadastro, rateio, aplicação retroativa), ortogonal a corrigir os cálculos existentes — o maior item de risco/esforço da fase. Adiado para não consumir o orçamento das Fases 4 a 7, que o prompt também exige nesta mesma execução.
 - **UI de edição de custo de frete e embalagem por produto**: os campos (`Produto.custoFreteManual`, `Produto.custoEmbalagem`) existem, são lidos pela prioridade 4 do frete e pelo CMV, e têm uma rota dedicada (`PATCH /api/produtos/[id]/custos-frete`) — mas não há tela para editá-los ainda. A rota existente de edição de produto (`PUT /api/produtos`) substitui todos os campos não enviados por `null`, então colar esses dois campos nela sem atualizar o formulário correspondente apagaria silenciosamente qualquer valor já configurado a cada edição de nome/SKU; a rota dedicada evita esse risco até a tela ser construída.
+
+## O que ainda não está completo (deferido do Ciclo 9, Fase 4)
+
+- **Saldo real da API do Mercado Pago**: o endpoint (`/users/{mlUserId}/mercadopago_account/balance`) nunca foi testado contra uma resposta real (ambiente de desenvolvimento não alcança `api.mercadopago.com`) — ver `fontes-mercado-livre.md`. A infraestrutura inteira está pronta (conta automática, sincronização no cron e sob demanda, fallback sem inventar número), só falta confirmar em produção se o endpoint, os nomes de campo e o token da conta ML funcionam como documentado.
+- **Conciliação "saldo calculado × saldo da API" com diferença explícita**: o prompt pede comparar o saldo reconstruído a partir dos movimentos com o saldo real e mostrar a diferença como "a conciliar". Sem uma tabela de histórico de saldo (snapshot em cada sincronização), uma reconstrução fiel exigiria somar *todos* os movimentos desde a conexão da conta — custoso e arriscado de ficar errado. Construí a lista de movimentos do período (liberações e retenções confirmadas) lado a lado com o saldo atual da API, mas sem calcular uma "diferença" entre os dois: eles respondem perguntas diferentes (fluxo do período vs. saldo em um instante), e apresentar uma subtração entre eles seria uma conciliação falsa.
+- **Classificação de saques e transferências do `release_report`**: o prompt pede que esses movimentos apareçam separados de liberações de venda. O relatório (`lerRelatorioLiberacaoMercadoPago`, Ciclo 7) não tem um campo confirmado para diferenciar "liberação de venda" de "saque"/"transferência" — por isso toda linha dele aparece como `RELATORIO_MP`, sem subdividir, até o payload real do endpoint ser confirmado.
+- **Tela dedicada de "Movimentos da carteira"**: a rota (`GET /api/financeiro/contas-financeiras/movimentos-carteira`) e o serviço existem e têm teste; a UI que lista esses movimentos (além do resumo já mostrado em Fluxo de caixa e Visão geral) não foi construída nesta fase.

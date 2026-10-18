@@ -31,7 +31,7 @@ function formatarDataCurtaSp(data: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(data);
 }
 
-async function obterAccessTokenEMlUserId(
+export async function obterAccessTokenEMlUserId(
   contaCanalId: string
 ): Promise<{ accessToken: string; mlUserId: string }> {
   const [accessToken, conta] = await Promise.all([

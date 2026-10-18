@@ -78,6 +78,14 @@ A fonte real de tarifa, frete e retenção por venda **não é** `sale_fee`/`/sh
 
 Sem pagamento disponível (pedido ainda não tem `payments[]`, ou a chamada ao Mercado Pago falha), a venda continua usando a estimativa antiga (`sale_fee` por item, `/shipments/{id}/costs`), marcada `confianca: ESTIMADO` — nenhum número passa a faltar por causa desta mudança.
 
+## Ciclo 9, Fase 4 — saldo da carteira Mercado Pago (não confirmado)
+
+| Campo | Endpoint | Status |
+|---|---|---|
+| Saldo disponível e a liberar | `GET https://api.mercadopago.com/users/{mlUserId}/mercadopago_account/balance` (`available_balance`, `unavailable_balance`, `total_amount`) | **Pendente de confirmação real** — este ambiente não alcança `api.mercadopago.com` (mesma limitação de rede documentada nas seções acima). Exposto no diagnóstico (`?tipo=saldo`) para confirmar em produção. Qualquer falha (404, formato inesperado) devolve `disponivel`/`aLiberar` nulos com `confianca: ESTIMADO`, nunca um valor inventado. |
+
+Enquanto não confirmado, a conta financeira automática "Mercado Pago — `<apelido>`" (criada em toda sincronização, `ContaFinanceira.automatica = true`, `contaCanalId` = id da `MercadoLivreAccount`) fica com `saldoAtual` calculado por lançamentos pagos (igual a qualquer outra conta), não pelo saldo da API — só passa a usar o valor da API quando a primeira resposta `CONFIRMADO` chegar.
+
 ## Como usar o diagnóstico
 
 ```

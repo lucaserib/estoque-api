@@ -46,6 +46,11 @@ vi.mock("@/modules/financeiro/alertas", () => ({
   gerarAlertasFinanceiros: (userId: string) => gerarAlertasFinanceirosMock(userId),
 }));
 
+const sincronizarSaldoMercadoPagoMock = vi.fn();
+vi.mock("@/modules/financeiro/canais/mercadoPago/saldo", () => ({
+  sincronizarSaldoMercadoPago: (accountId: string) => sincronizarSaldoMercadoPagoMock(accountId),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     mercadoLivreAccount: {
@@ -82,6 +87,7 @@ beforeEach(() => {
   conferirMesMock.mockReset().mockResolvedValue({ faltando: [], divergentes: [], coberturaPercentual: 100 });
   importarFaltantesMock.mockReset().mockResolvedValue({ importados: 0, erros: 0 });
   gerarLancamentosDeTodasAsRecorrenciasMock.mockReset().mockResolvedValue({ gerados: 0 });
+  sincronizarSaldoMercadoPagoMock.mockReset().mockResolvedValue(undefined);
   gerarAlertasFinanceirosMock.mockReset().mockResolvedValue({
     contasAVencer: 0,
     contasVencidas: 0,

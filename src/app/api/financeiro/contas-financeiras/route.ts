@@ -3,6 +3,7 @@ import { TipoContaFinanceira } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { criarContaFinanceira, listarContasFinanceiras } from "@/modules/financeiro/lancamentos/contasFinanceiras";
+import { listarContasComSaldo } from "@/modules/financeiro/relatorios/saldoContas";
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +12,11 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const incluirInativas = searchParams.get("incluirInativas") === "true";
+
+    if (searchParams.get("comSaldo") === "true") {
+      const contas = await listarContasComSaldo(user.contaId);
+      return NextResponse.json({ contas });
+    }
 
     const contas = await listarContasFinanceiras(user.contaId, incluirInativas);
     return NextResponse.json({ contas });

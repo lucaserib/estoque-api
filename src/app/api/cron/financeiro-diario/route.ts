@@ -8,6 +8,7 @@ import { conferirMes, importarFaltantes } from "@/modules/financeiro/relatorios/
 import { competenciaDe } from "@/modules/financeiro/dominio/periodo";
 import { gerarLancamentosDeTodasAsRecorrencias } from "@/modules/financeiro/lancamentos/recorrencias";
 import { gerarAlertasFinanceiros } from "@/modules/financeiro/alertas";
+import { sincronizarSaldoMercadoPago } from "@/modules/financeiro/canais/mercadoPago/saldo";
 
 export const maxDuration = 60;
 
@@ -59,6 +60,7 @@ export async function GET(request: NextRequest) {
   let faltantesImportados = 0;
   let lancamentosRecorrentesGerados = 0;
   let alertasGerados = 0;
+  let saldosSincronizados = 0;
   let erros = 0;
 
   for (const conta of contasAtivas) {
@@ -106,6 +108,17 @@ export async function GET(request: NextRequest) {
       erros++;
       console.error(
         `[CRON_FINANCEIRO_DIARIO] Erro ao reprocessar erros pendentes da conta ${conta.id}:`,
+        error
+      );
+    }
+
+    try {
+      await sincronizarSaldoMercadoPago(conta.id);
+      saldosSincronizados++;
+    } catch (error) {
+      erros++;
+      console.error(
+        `[CRON_FINANCEIRO_DIARIO] Erro ao sincronizar saldo da conta ${conta.id}:`,
         error
       );
     }
@@ -164,6 +177,7 @@ export async function GET(request: NextRequest) {
     faltantesImportados,
     lancamentosRecorrentesGerados,
     alertasGerados,
+    saldosSincronizados,
     erros,
   });
 }

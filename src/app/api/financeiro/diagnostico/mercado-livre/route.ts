@@ -125,6 +125,22 @@ async function diagnosticarPorTipo(
       return NextResponse.json({ mapeado });
     }
 
+    case "saldo": {
+      const conta = await prisma.mercadoLivreAccount.findUniqueOrThrow({
+        where: { id: accountId },
+        select: { mlUserId: true },
+      });
+      const resposta = await fetch(
+        `https://api.mercadopago.com/users/${conta.mlUserId}/mercadopago_account/balance`,
+        { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+      );
+      const corpo = await resposta.json().catch(() => null);
+      if (!resposta.ok) {
+        return NextResponse.json({ error: "Erro ao buscar o saldo da conta", detalhe: corpo }, { status: resposta.status });
+      }
+      return NextResponse.json({ bruto: removerCamposSensiveis(corpo, CAMPOS_PESSOAIS_PROIBIDOS) });
+    }
+
     default:
       return NextResponse.json({ error: `Tipo de diagnóstico desconhecido: ${tipo}` }, { status: 400 });
   }

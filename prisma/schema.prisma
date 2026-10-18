@@ -833,23 +833,30 @@ model CategoriaFinanceira {
 }
 
 model ContaFinanceira {
-  id               String                 @id @default(uuid())
-  userId           String
-  nome             String
-  tipo             TipoContaFinanceira
-  saldoInicial     Int                    @default(0)
-  dataSaldoInicial DateTime
-  diaFechamento    Int?
-  diaVencimento    Int?
-  limite           Int?
-  ativo            Boolean                @default(true)
-  createdAt        DateTime               @default(now())
-  updatedAt        DateTime               @updatedAt
-  user             User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lancamentos      LancamentoFinanceiro[]
-  recorrencias     RecorrenciaFinanceira[]
-  faturas          FaturaCartao[]
+  id                       String                 @id @default(uuid())
+  userId                   String
+  nome                     String
+  tipo                     TipoContaFinanceira
+  saldoInicial             Int                    @default(0)
+  dataSaldoInicial         DateTime
+  diaFechamento            Int?
+  diaVencimento            Int?
+  limite                   Int?
+  ativo                    Boolean                @default(true)
+  automatica               Boolean                @default(false)
+  contaCanalId             String?
+  saldoAtualExterno        Int?
+  saldoALiberarExterno     Int?
+  saldoExternoAtualizadoEm DateTime?
+  saldoExternoConfianca    Confianca?
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  user                     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lancamentos              LancamentoFinanceiro[]
+  recorrencias             RecorrenciaFinanceira[]
+  faturas                  FaturaCartao[]
 
+  @@unique([userId, contaCanalId])
   @@index([userId])
   @@map("contas_financeiras")
 }

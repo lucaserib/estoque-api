@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   Bar,
   BarChart,
@@ -21,6 +23,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DataTable,
+  DataTableBody,
+  DataTableCell,
+  DataTableHead,
+  DataTableHeader,
+  DataTableRow,
+} from "@/components/ui/data-table";
 import { formatBRL, formatDateBR } from "@/lib/format";
 import { chartColor } from "@/lib/chart-colors";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "../components/SeletorPeriodo";
@@ -36,10 +46,19 @@ interface PontoFluxo {
 
 interface SaldoProjetado {
   dias: 30 | 60 | 90;
-  saldoInicial: number;
+  saldoAtual: number;
   liberacoesFuturas: number;
   lancamentosPrevistos: number;
   saldoProjetado: number;
+}
+
+interface ContaComSaldo {
+  id: string;
+  nome: string;
+  tipo: string;
+  saldoAtual: number;
+  saldoALiberarExterno: number | null;
+  origemSaldo: "API_MERCADO_PAGO" | "LANCAMENTOS";
 }
 
 export default function FluxoDeCaixaPage() {
@@ -53,6 +72,8 @@ export default function FluxoDeCaixaPage() {
   const [dias, setDias] = useState<30 | 60 | 90>(30);
   const [saldo, setSaldo] = useState<SaldoProjetado | null>(null);
   const [carregandoSaldo, setCarregandoSaldo] = useState(true);
+  const [contas, setContas] = useState<ContaComSaldo[]>([]);
+  const [sincronizandoSaldo, setSincronizandoSaldo] = useState(false);
 
   const carregarFluxo = useCallback(async () => {
     setCarregandoFluxo(true);
@@ -74,14 +95,32 @@ export default function FluxoDeCaixaPage() {
   const carregarSaldo = useCallback(async () => {
     setCarregandoSaldo(true);
     try {
-      const resposta = await fetch(`/api/financeiro/fluxo-caixa/saldo-projetado?dias=${dias}`);
-      if (resposta.ok) setSaldo(await resposta.json());
+      const [respostaSaldo, respostaContas] = await Promise.all([
+        fetch(`/api/financeiro/fluxo-caixa/saldo-projetado?dias=${dias}`),
+        fetch("/api/financeiro/contas-financeiras?comSaldo=true"),
+      ]);
+      if (respostaSaldo.ok) setSaldo(await respostaSaldo.json());
+      if (respostaContas.ok) setContas((await respostaContas.json()).contas);
     } catch (error) {
       console.error("Erro ao carregar saldo projetado:", error);
     } finally {
       setCarregandoSaldo(false);
     }
   }, [dias]);
+
+  const sincronizarSaldo = async () => {
+    setSincronizandoSaldo(true);
+    try {
+      const resposta = await fetch("/api/financeiro/contas-financeiras/sincronizar-saldo", { method: "POST" });
+      if (!resposta.ok) throw new Error();
+      toast.success("Saldo atualizado.");
+      carregarSaldo();
+    } catch {
+      toast.error("Erro ao atualizar saldo.");
+    } finally {
+      setSincronizandoSaldo(false);
+    }
+  };
 
   useEffect(() => {
     if (podeVerFinanceiro) carregarFluxo();
@@ -101,7 +140,7 @@ export default function FluxoDeCaixaPage() {
 
   const itensSaldo: StatStripItem[] = saldo
     ? [
-        { label: "Saldo inicial das contas", value: formatBRL(saldo.saldoInicial) },
+        { label: "Saldo atual das contas", value: formatBRL(saldo.saldoAtual) },
         { label: "Liberações futuras (ML)", value: formatBRL(saldo.liberacoesFuturas) },
         { label: "Lançamentos previstos", value: formatBRL(saldo.lancamentosPrevistos) },
         { label: `Saldo projetado em ${saldo.dias} dias`, value: formatBRL(saldo.saldoProjetado) },
@@ -155,8 +194,50 @@ export default function FluxoDeCaixaPage() {
         </div>
         {carregandoSaldo ? <Skeleton className="h-[100px] rounded-md" /> : <StatStrip items={itensSaldo} />}
         <p className="mt-3 text-xs text-muted-foreground">
-          Saldo inicial vem do que está configurado em cada conta financeira; contas de cartão de crédito não entram, pois representam dívida, não dinheiro disponível.
+          Saldo atual: saldo real da API do Mercado Pago para a carteira automática (quando disponível), ou saldo
+          inicial + lançamentos pagos para as demais contas. Contas de cartão de crédito não entram, pois
+          representam dívida, não dinheiro disponível.
         </p>
+      </SectionCard>
+
+      <SectionCard
+        title="Saldo por conta"
+        actions={
+          <Button size="sm" variant="outline" disabled={sincronizandoSaldo} onClick={sincronizarSaldo}>
+            {sincronizandoSaldo ? "Atualizando…" : "Atualizar saldo"}
+          </Button>
+        }
+      >
+        {carregandoSaldo ? (
+          <Skeleton className="h-[160px] rounded-md" />
+        ) : contas.length === 0 ? (
+          <div className="py-10 text-center text-sm text-muted-foreground">Nenhuma conta financeira cadastrada.</div>
+        ) : (
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow>
+                <DataTableHead>Conta</DataTableHead>
+                <DataTableHead>Origem do saldo</DataTableHead>
+                <DataTableHead className="text-right">Saldo atual</DataTableHead>
+                <DataTableHead className="text-right">A liberar (ML)</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
+              {contas.map((conta) => (
+                <DataTableRow key={conta.id}>
+                  <DataTableCell>{conta.nome}</DataTableCell>
+                  <DataTableCell>
+                    {conta.origemSaldo === "API_MERCADO_PAGO" ? "API do Mercado Pago" : "Saldo inicial + lançamentos"}
+                  </DataTableCell>
+                  <DataTableCell className="text-right">{formatBRL(conta.saldoAtual)}</DataTableCell>
+                  <DataTableCell className="text-right">
+                    {conta.saldoALiberarExterno != null ? formatBRL(conta.saldoALiberarExterno) : "—"}
+                  </DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTableBody>
+          </DataTable>
+        )}
       </SectionCard>
     </div>
   );

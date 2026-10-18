@@ -1,7 +1,8 @@
-import { StatusLancamento, TipoContaFinanceira, TipoLancamento } from "@prisma/client";
+import { StatusLancamento, TipoLancamento } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { inicioDoDia, inicioDaSemana, inicioDoMes } from "../dominio/periodo";
 import { comCacheFinanceiro } from "./cache";
+import { calcularSaldoTotalAtual } from "./saldoContas";
 
 export type Granularidade = "DIA" | "SEMANA" | "MES";
 
@@ -12,7 +13,7 @@ export type Granularidade = "DIA" | "SEMANA" | "MES";
  * cartão) é dinheiro saindo da conta bancária de verdade, sem um lançamento
  * irmão de entrada em lugar nenhum — não é um "wash" de duas pontas.
  */
-function valorComoCaixa(tipo: TipoLancamento, valor: number): number {
+export function valorComoCaixa(tipo: TipoLancamento, valor: number): number {
   if (tipo === TipoLancamento.RECEITA) return valor;
   return -valor;
 }
@@ -83,17 +84,19 @@ export async function gerarFluxoCaixa(
 
 export interface SaldoProjetado {
   dias: 30 | 60 | 90;
-  saldoInicial: number;
+  saldoAtual: number;
   liberacoesFuturas: number;
   lancamentosPrevistos: number;
   saldoProjetado: number;
 }
 
 /**
- * Cartão de crédito não entra no saldo inicial — ele representa dívida, não
- * dinheiro disponível. `saldoInicial` é o que está configurado em cada
- * ContaFinanceira (Fase 7/configurações) — este relatório não tenta
- * recalcular um "saldo atual" reconstruindo todo o histórico de lançamentos.
+ * Cartão de crédito não entra no saldo atual — ele representa dívida, não
+ * dinheiro disponível. `saldoAtual` vem de `calcularSaldoTotalAtual`: saldo
+ * real da API do Mercado Pago para a carteira automática (quando disponível
+ * e confirmado) ou saldo inicial + lançamentos pagos para as demais contas
+ * (Fase 4 do Ciclo 9 — antes disso o cálculo usava só o saldo inicial
+ * estático, ignorando qualquer lançamento já pago).
  */
 export async function gerarSaldoProjetado(
   userId: string,
@@ -102,11 +105,8 @@ export async function gerarSaldoProjetado(
   const hoje = new Date();
   const horizonte = new Date(hoje.getTime() + dias * 24 * 60 * 60 * 1000);
 
-  const [contas, vendas, lancamentos] = await Promise.all([
-    prisma.contaFinanceira.findMany({
-      where: { userId, ativo: true, tipo: { not: TipoContaFinanceira.CARTAO_CREDITO } },
-      select: { saldoInicial: true },
-    }),
+  const [saldoAtual, vendas, lancamentos] = await Promise.all([
+    calcularSaldoTotalAtual(userId),
     prisma.vendaCanal.findMany({
       where: { userId, dataLiberacao: { gte: hoje, lte: horizonte } },
       select: { valorLiquidoReceber: true },
@@ -117,7 +117,6 @@ export async function gerarSaldoProjetado(
     }),
   ]);
 
-  const saldoInicial = contas.reduce((soma, c) => soma + c.saldoInicial, 0);
   const liberacoesFuturas = vendas.reduce((soma, v) => soma + (v.valorLiquidoReceber ?? 0), 0);
   const lancamentosPrevistos = lancamentos.reduce(
     (soma, l) => soma + valorComoCaixa(l.tipo, l.valor),
@@ -126,9 +125,9 @@ export async function gerarSaldoProjetado(
 
   return {
     dias,
-    saldoInicial,
+    saldoAtual,
     liberacoesFuturas,
     lancamentosPrevistos,
-    saldoProjetado: saldoInicial + liberacoesFuturas + lancamentosPrevistos,
+    saldoProjetado: saldoAtual + liberacoesFuturas + lancamentosPrevistos,
   };
 }

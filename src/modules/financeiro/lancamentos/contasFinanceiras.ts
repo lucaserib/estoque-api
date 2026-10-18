@@ -33,6 +33,29 @@ export async function criarContaFinanceira(userId: string, dados: DadosContaFina
   });
 }
 
+export async function garantirContaFinanceiraMercadoPago(
+  userId: string,
+  contaCanalId: string,
+  apelido: string
+) {
+  const existente = await prisma.contaFinanceira.findUnique({
+    where: { userId_contaCanalId: { userId, contaCanalId } },
+  });
+  if (existente) return existente;
+
+  return prisma.contaFinanceira.create({
+    data: {
+      userId,
+      contaCanalId,
+      automatica: true,
+      nome: `Mercado Pago — ${apelido}`,
+      tipo: TipoContaFinanceira.CARTEIRA_MARKETPLACE,
+      saldoInicial: 0,
+      dataSaldoInicial: new Date(),
+    },
+  });
+}
+
 export class ContaFinanceiraNaoEncontradaError extends Error {
   constructor() {
     super("Conta financeira não encontrada");

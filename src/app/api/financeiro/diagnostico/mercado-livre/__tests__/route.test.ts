@@ -15,6 +15,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     mercadoLivreAccount: {
       findFirst: vi.fn(async () => ({ id: "conta-ml-1" })),
+      findUniqueOrThrow: vi.fn(async () => ({ mlUserId: "999" })),
     },
   },
 }));
@@ -144,6 +145,25 @@ describe("GET /api/financeiro/diagnostico/mercado-livre", () => {
     const response = await GET(criarRequest("?tipo=envio"));
 
     expect(response.status).toBe(400);
+  });
+
+  it("Ciclo 9 (Fase 4): tipo=saldo devolve o bruto da API de saldo do Mercado Pago", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/users/999/mercadopago_account/balance")) {
+        return new Response(JSON.stringify({ available_balance: 10, unavailable_balance: 2 }), { status: 200 });
+      }
+      throw new Error(`URL inesperada: ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { GET } = await import("../route");
+    const response = await GET(criarRequest("?tipo=saldo"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.bruto.available_balance).toBe(10);
   });
 
   it("F3 (Ciclo 8): tipo desconhecido devolve 400", async () => {

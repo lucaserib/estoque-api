@@ -94,6 +94,13 @@ interface LinhaConciliacaoAlerta {
   diferenca: number;
 }
 
+interface ContaComSaldo {
+  id: string;
+  nome: string;
+  saldoAtual: number;
+  origemSaldo: "API_MERCADO_PAGO" | "LANCAMENTOS";
+}
+
 async function buscarJson<T>(url: string): Promise<T | null> {
   try {
     const resposta = await fetch(url);
@@ -147,6 +154,7 @@ export default function FinanceiroPage() {
   const [vendasIncompletasTotal, setVendasIncompletasTotal] = useState(0);
   const [saldoProjetado, setSaldoProjetado] = useState<number | null>(null);
   const [alertaConciliacao, setAlertaConciliacao] = useState<LinhaConciliacaoAlerta[]>([]);
+  const [contasComSaldo, setContasComSaldo] = useState<ContaComSaldo[]>([]);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -164,6 +172,7 @@ export default function FinanceiroPage() {
       vendasIncompletasResp,
       saldoResp,
       conciliacaoResp,
+      contasComSaldoResp,
     ] = await Promise.all([
       buscarJson<ResumoDiaResponse>("/api/financeiro/resumo-dia"),
       buscarJson<ResumoPeriodoResponse>(`/api/financeiro/resumo-periodo?desde=${desdeIso}&ate=${ateIso}`),
@@ -177,6 +186,7 @@ export default function FinanceiroPage() {
       buscarJson<{ total: number }>(`/api/financeiro/vendas?desde=${desdeIso}&ate=${ateIso}&soIncompletas=true&porPagina=1`),
       buscarJson<SaldoProjetadoResponse>("/api/financeiro/fluxo-caixa/saldo-projetado?dias=30"),
       buscarJson<{ linhas: LinhaConciliacaoAlerta[] }>(`/api/financeiro/conciliacao?mes=${mesAtualIso}`),
+      buscarJson<{ contas: ContaComSaldo[] }>("/api/financeiro/contas-financeiras?comSaldo=true"),
     ]);
 
     setResumoHoje(resumoDiaResp);
@@ -189,6 +199,7 @@ export default function FinanceiroPage() {
     setVendasIncompletasTotal(vendasIncompletasResp?.total ?? 0);
     setSaldoProjetado(saldoResp?.saldoProjetado ?? null);
     setAlertaConciliacao((conciliacaoResp?.linhas ?? []).filter((l) => l.alerta));
+    setContasComSaldo(contasComSaldoResp?.contas ?? []);
 
     setAtualizadoEm(new Date());
     setCarregando(false);
@@ -388,6 +399,20 @@ export default function FinanceiroPage() {
             { label: "Saldo projetado (30 dias)", value: saldoProjetado != null ? formatBRL(saldoProjetado) : "—" },
           ]}
         />
+      </SectionCard>
+
+      <SectionCard title="Saldo por conta">
+        {contasComSaldo.length === 0 ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">Nenhuma conta financeira cadastrada.</div>
+        ) : (
+          <StatStrip
+            items={contasComSaldo.map((conta) => ({
+              label: conta.nome,
+              value: formatBRL(conta.saldoAtual),
+              note: conta.origemSaldo === "API_MERCADO_PAGO" ? "API do Mercado Pago" : "Lançamentos",
+            }))}
+          />
+        )}
       </SectionCard>
     </div>
   );

@@ -11,6 +11,11 @@ vi.mock("@/modules/financeiro/lancamentos/contasFinanceiras", () => ({
   criarContaFinanceira: (...args: unknown[]) => criarContaFinanceiraMock(...args),
 }));
 
+const listarContasComSaldoMock = vi.fn();
+vi.mock("@/modules/financeiro/relatorios/saldoContas", () => ({
+  listarContasComSaldo: (...args: unknown[]) => listarContasComSaldoMock(...args),
+}));
+
 function criarRequestGet(query = "") {
   return new NextRequest(`http://localhost/api/financeiro/contas-financeiras${query}`);
 }
@@ -27,6 +32,7 @@ beforeEach(() => {
   verifyUserMock.mockReset();
   listarContasFinanceirasMock.mockReset();
   criarContaFinanceiraMock.mockReset();
+  listarContasComSaldoMock.mockReset();
 });
 
 describe("GET /api/financeiro/contas-financeiras", () => {
@@ -40,6 +46,19 @@ describe("GET /api/financeiro/contas-financeiras", () => {
     listarContasFinanceirasMock.mockResolvedValue([{ id: "cf-1" }]);
     const response = await GET(criarRequestGet());
     expect((await response.json()).contas).toHaveLength(1);
+    expect(listarContasComSaldoMock).not.toHaveBeenCalled();
+  });
+
+  it("Ciclo 9 (Fase 4): comSaldo=true devolve as contas com saldo calculado, não a lista simples", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+    listarContasComSaldoMock.mockResolvedValue([{ id: "cf-1", saldoAtual: 5000 }]);
+
+    const response = await GET(criarRequestGet("?comSaldo=true"));
+    const body = await response.json();
+
+    expect(body.contas).toEqual([{ id: "cf-1", saldoAtual: 5000 }]);
+    expect(listarContasComSaldoMock).toHaveBeenCalledWith("conta-1");
+    expect(listarContasFinanceirasMock).not.toHaveBeenCalled();
   });
 });
 
