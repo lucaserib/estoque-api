@@ -129,6 +129,20 @@ enum RateioCustoFixo {
   NENHUM
 }
 
+enum FreteOrigem {
+  AJUSTE_MANUAL
+  PAGAMENTO_CONFIRMADO
+  CUSTO_ENVIO_CANAL
+  CUSTO_PRODUTO
+  PADRAO_LOGISTICA
+  DESCONHECIDO
+}
+
+enum TipoValorFreteLogistica {
+  FIXO
+  PERCENTUAL
+}
+
 model User {
   id                       String                     @id @default(uuid())
   name                     String?
@@ -170,6 +184,7 @@ model User {
   sincronizacoesFinanceirasErros SincronizacaoFinanceiraErro[]
   tarefasSincronizacaoFinanceira TarefaSincronizacaoFinanceira[]
   mapeamentosCategoriaBling MapeamentoCategoriaBling[]
+  regrasFreteLogistica      RegraFreteLogistica[]
 
   @@index([contaId])
 }
@@ -195,6 +210,21 @@ model ConfiguracaoGeral {
   user                             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("configuracoes_gerais")
+}
+
+model RegraFreteLogistica {
+  id         String                  @id @default(uuid())
+  userId     String
+  logistica  String
+  tipoValor  TipoValorFreteLogistica
+  valor      Int                     @default(0)
+  percentual Float                   @default(0)
+  createdAt  DateTime                @default(now())
+  updatedAt  DateTime                @updatedAt
+  user       User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, logistica])
+  @@map("regras_frete_logistica")
 }
 
 model Invitation {
@@ -374,6 +404,8 @@ model Produto {
   alturaCm             Int?
   larguraCm            Int?
   comprimentoCm        Int?
+  custoFreteManual     Int?
+  custoEmbalagem       Int?
   ativo                Boolean               @default(true)
   componentes          Componente[]          @relation("KitToComponente")
   kitsComponentes      Componente[]          @relation("ProdutoToComponente")
@@ -732,6 +764,11 @@ model VendaCanal {
   completo            Boolean          @default(true)
   faltando            String[]         @default([])
   freteConfianca      Confianca        @default(ESTIMADO)
+  freteOrigem           FreteOrigem    @default(DESCONHECIDO)
+  freteAjusteManual     Int?
+  freteAjusteManualMotivo String?
+  freteAjusteManualUserId String?
+  freteAjusteManualEm   DateTime?
   atualizadoNoCanalEm DateTime
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt

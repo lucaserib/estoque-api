@@ -26,13 +26,15 @@ Por pedido, nesta ordem de prioridade:
 
 ## Frete do vendedor
 
-Por pedido, nesta ordem de prioridade:
-1. **Pagamento do Mercado Pago**: soma das cobranças `type: shipping` (`shp_*`). `confianca: CONFIRMADO`.
-2. Envio Flex (`logistica: self_service`) sem pagamento disponível: `ConfiguracaoGeral.custoEnvioFlex` (valor fixo configurado) ou desconhecido (`SEM_FRETE`) se não configurado.
-3. Qualquer outra logística sem pagamento disponível: `/shipments/{id}/costs` (`senders[0].cost − compensações`).
-4. Pedidos de um mesmo pacote (`pacoteExternoId`) dividem o frete total proporcionalmente ao faturamento de cada pedido do pacote.
+Por pedido, nesta ordem de prioridade (gravada em `VendaCanal.freteOrigem`, implementada em `ingestao/sincronizador.ts`'s `resolverFrete`):
+1. **`AJUSTE_MANUAL`**: valor definido manualmente na venda (`VendaCanal.freteAjusteManual`), com motivo e usuário obrigatórios (`PATCH /api/financeiro/vendas/[id]/frete`). Uma vez definido, **sobrevive a qualquer reprocessamento** — nenhuma sincronização (incremental, período, `forcar: true`) o sobrescreve; só é removido explicitamente (`valorReais: null` na mesma rota), o que dispara uma nova resolução automática a partir da fonte real.
+2. **`PAGAMENTO_CONFIRMADO`**: soma das cobranças `type: shipping` (`shp_*`) do pagamento confirmado do Mercado Pago.
+3. **`CUSTO_ENVIO_CANAL`**: sem pagamento disponível e logística ≠ `self_service` (Flex não é cobrado dessa forma): `/shipments/{id}/costs` (`senders[0].cost − compensações`). Pedidos de um mesmo pacote (`pacoteExternoId`) dividem esse valor proporcionalmente ao faturamento de cada pedido do pacote — exceto os que já têm `AJUSTE_MANUAL`, que ficam fora do rateio.
+4. **`CUSTO_PRODUTO`**: soma de `Produto.custoFreteManual × quantidade` de cada item do pedido — só se **todos** os itens tiverem produto vinculado e custo de frete manual cadastrado; qualquer item sem isso faz essa fonte inteira cair para a próxima.
+5. **`PADRAO_LOGISTICA`**: regra cadastrada em `RegraFreteLogistica` para a logística do pedido (`FIXO`: valor em centavos; `PERCENTUAL`: fração do faturamento bruto do pedido), gerenciável em Financeiro → Configurações → "Frete por logística". Sem regra cadastrada, `self_service` cai de volta no `ConfiguracaoGeral.custoEnvioFlex` legado (compatibilidade com o Ciclo 8).
+6. **`DESCONHECIDO`**: nenhuma das fontes acima resolveu um valor (ou o pedido não tem envio, caso em que o valor é `0`, não desconhecido) — `SEM_FRETE` nas pendências, nunca um zero inventado.
 
-A Fase 3 do Ciclo 9 adiciona mais regras (ajuste manual, custo por produto/anúncio) — a prioridade completa fica documentada ali quando implementada.
+Recalcular vendas afetadas quando uma regra de frete muda (padrão por logística ou custo por produto): reenfileirar o período afetado com `forcar: true` via `POST /api/financeiro/sincronizacao/importar-historico` — a mesma fila da Fase 1 reprocessa cada pedido do zero, respeitando ajustes manuais existentes.
 
 ## Retenção de dívidas
 
@@ -61,3 +63,10 @@ Ver `docs/financeiro/fontes-mercado-livre.md`, seção "Ciclo 9", e `canais/merc
 ## O que ainda não está unificado (deferido do Ciclo 9, Fase 2)
 
 Esta fase corrigiu os dois bugs que faziam a DRE e o resumo do período divergirem entre si (C1: desconto subtraído duas vezes; C3: janela UTC vs. SP) e trocou a fonte de tarifa/frete por pedido para o pagamento confirmado do Mercado Pago (C4). Um serviço único (`relatorios/consolidado.ts`) servindo DRE, resumo do dia, resumo do período, série diária, lucro por produto, dashboard e ficha do produto — item 2 do prompt original — **não foi construído nesta fase**: é uma reescrita de 6 pontos de consumo, e o restante do ciclo (Fases 3 a 7: frete configurável, saldo real, produtos/anúncios, visão geral completa) ainda precisa do tempo e do orçamento de risco que essa reescrita consumiria. As fórmulas de cada consumidor continuam onde estavam, agora sem as duas divergências medidas em produção; a consolidação completa fica registrada aqui como dívida explícita para um ciclo futuro.
+
+## O que ainda não está completo (deferido do Ciclo 9, Fase 3)
+
+- **Detalhe completo do frete por venda** (item 1 do prompt): hoje a venda guarda o valor final e a origem (`freteOrigem`), mas não o detalhamento (quanto foi custo total do envio, quanto o comprador pagou, quanto o Mercado Livre subsidiou via `discounts[].promoted_amount`). `freteComprador` já existe desde o Ciclo 7/8; o detalhamento do subsídio do ML ficou de fora porque nenhuma tela ainda consome esse dado — construí-lo sem um consumidor seria especular sobre o formato certo.
+- **Frete recebido do comprador como receita** (item 3): para logísticas em que o vendedor cobra frete do comprador (ME1, entrega própria), o prompt pede uma linha "Receita de frete" na DRE. Depende do serviço único (item 2 da Fase 2, também deferido) para não duplicar a lógica de composição da DRE em mais um lugar — ficou para quando a consolidação acontecer.
+- **Frete de envio ao Full / inbound** (item 4): cadastro de remessas ao Full (data, custo, produtos e quantidades) com rateio por unidade enviada é uma funcionalidade nova de ponta a ponta (modelo, tela de cadastro, rateio, aplicação retroativa), ortogonal a corrigir os cálculos existentes — o maior item de risco/esforço da fase. Adiado para não consumir o orçamento das Fases 4 a 7, que o prompt também exige nesta mesma execução.
+- **UI de edição de custo de frete e embalagem por produto**: os campos (`Produto.custoFreteManual`, `Produto.custoEmbalagem`) existem, são lidos pela prioridade 4 do frete e pelo CMV, e têm uma rota dedicada (`PATCH /api/produtos/[id]/custos-frete`) — mas não há tela para editá-los ainda. A rota existente de edição de produto (`PUT /api/produtos`) substitui todos os campos não enviados por `null`, então colar esses dois campos nela sem atualizar o formulário correspondente apagaria silenciosamente qualquer valor já configurado a cada edição de nome/SKU; a rota dedicada evita esse risco até a tela ser construída.

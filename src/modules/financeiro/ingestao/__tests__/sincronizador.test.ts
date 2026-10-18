@@ -48,6 +48,11 @@ interface FakeVenda {
   valorLiquidoReceber: number | null;
   retencaoDividas?: number;
   statusLiberacao?: string | null;
+  freteAjusteManual?: number | null;
+  freteAjusteManualMotivo?: string | null;
+  freteAjusteManualUserId?: string | null;
+  freteAjusteManualEm?: Date | null;
+  freteOrigem?: string;
   completo: boolean;
   faltando: string[];
   freteConfianca: Confianca;
@@ -81,8 +86,23 @@ interface FakeSincronizacao {
 
 let contas: Array<{ id: string; userId: string; mlUserId: string; ultimaSincronizacaoFinanceiraEm?: Date | null }> = [];
 let configuracoes: Array<{ userId: string; aliquotaImposto: number; custoEnvioFlex: number | null }> = [];
+let regrasFreteLogistica: Array<{
+  userId: string;
+  logistica: string;
+  tipoValor: "FIXO" | "PERCENTUAL";
+  valor: number;
+  percentual: number;
+}> = [];
 let vinculosMl: Array<{ mlItemId: string; mercadoLivreAccountId: string; produtoId: string | null }> = [];
-let produtos: Array<{ id: string; sku: string; userId: string; isKit: boolean; custoMedio: number | null }> = [];
+let produtos: Array<{
+  id: string;
+  sku: string;
+  userId: string;
+  isKit: boolean;
+  custoMedio: number | null;
+  custoFreteManual?: number | null;
+  custoEmbalagem?: number | null;
+}> = [];
 let vendas: FakeVenda[] = [];
 let cobrancasPagamento: FakeCobrancaPagamento[] = [];
 let gastosAds: Array<{ userId: string; canal: CanalVenda; dia: Date; custo: number }> = [];
@@ -105,6 +125,7 @@ const novoId = () => `id-${proximoId++}`;
 function resetFakeDb() {
   contas = [];
   configuracoes = [];
+  regrasFreteLogistica = [];
   vinculosMl = [];
   produtos = [];
   vendas = [];
@@ -139,6 +160,11 @@ vi.mock("@/lib/prisma", () => ({
         configuracoes.find((c) => c.userId === where.userId) ?? null
       ),
     },
+    regraFreteLogistica: {
+      findMany: vi.fn(async ({ where }: { where: { userId: string } }) =>
+        regrasFreteLogistica.filter((r) => r.userId === where.userId)
+      ),
+    },
     produtoMercadoLivre: {
       findUnique: vi.fn(
         async ({
@@ -165,7 +191,15 @@ vi.mock("@/lib/prisma", () => ({
         }) => {
           if (where.id) {
             const produto = produtos.find((p) => p.id === where.id);
-            return produto ? { id: produto.id, isKit: produto.isKit, custoMedio: produto.custoMedio } : null;
+            return produto
+              ? {
+                  id: produto.id,
+                  isKit: produto.isKit,
+                  custoMedio: produto.custoMedio,
+                  custoFreteManual: produto.custoFreteManual ?? null,
+                  custoEmbalagem: produto.custoEmbalagem ?? null,
+                }
+              : null;
           }
           if (where.sku_userId) {
             const produto = produtos.find(
@@ -588,8 +622,13 @@ function normalizado(parcial: Partial<VendaCanalNormalizada> = {}): VendaCanalNo
   };
 }
 
-const { ingerirPedidoMercadoLivre, reprocessarErrosPendentes, atualizarResumoDoDia } =
-  await import("../sincronizador");
+const {
+  ingerirPedidoMercadoLivre,
+  reprocessarErrosPendentes,
+  atualizarResumoDoDia,
+  definirAjusteManualFrete,
+  limparAjusteManualFrete,
+} = await import("../sincronizador");
 
 beforeEach(() => {
   resetFakeDb();
@@ -780,6 +819,75 @@ describe("ingerirPedidoMercadoLivre", () => {
     expect(vendas[0].itens[0].tarifaVenda).toBe(299);
     expect(cobrancasPagamento).toHaveLength(2);
     expect(cobrancasPagamento.find((c) => c.nome === "fee_spl")?.valor).toBe(1214);
+  });
+
+  it("Ciclo 9 (Fase 3, prioridade 3): custo de frete por produto é usado quando não há pagamento nem custo real do envio", async () => {
+    produtos.push({ id: "produto-1", sku: "SKU-1", userId: "user-1", isKit: false, custoMedio: 5000, custoFreteManual: 300 });
+    vinculosMl.push({ mlItemId: "MLB1", mercadoLivreAccountId: "conta-1", produtoId: "produto-1" });
+    adaptadorFake.atual = { obterPedido: vi.fn(async () => normalizado()) };
+
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+
+    expect(vendas[0].freteVendedor).toBe(300);
+    expect(vendas[0].freteOrigem).toBe("CUSTO_PRODUTO");
+  });
+
+  it("Ciclo 9 (Fase 3, prioridade 4): regra padrão por logística FIXO é usada como último recurso", async () => {
+    regrasFreteLogistica.push({ userId: "user-1", logistica: "drop_off", tipoValor: "FIXO", valor: 450, percentual: 0 });
+    adaptadorFake.atual = { obterPedido: vi.fn(async () => normalizado()) };
+
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+
+    expect(vendas[0].freteVendedor).toBe(450);
+    expect(vendas[0].freteOrigem).toBe("PADRAO_LOGISTICA");
+  });
+
+  it("Ciclo 9 (Fase 3, prioridade 4): regra padrão por logística PERCENTUAL calcula sobre o faturamento bruto", async () => {
+    regrasFreteLogistica.push({ userId: "user-1", logistica: "drop_off", tipoValor: "PERCENTUAL", valor: 0, percentual: 0.05 });
+    adaptadorFake.atual = { obterPedido: vi.fn(async () => normalizado()) };
+
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+
+    expect(vendas[0].freteVendedor).toBe(500); // 5% de 10000
+    expect(vendas[0].freteOrigem).toBe("PADRAO_LOGISTICA");
+  });
+
+  it("Ciclo 9 (Fase 3, prioridade 1): ajuste manual de frete vence qualquer outra fonte e sobrevive a reprocessamento", async () => {
+    adaptadorFake.atual = {
+      obterPedido: vi.fn(async () => normalizado()),
+      obterCustoEnvio: vi.fn(async () => ({ valor: 800, confianca: Confianca.CONFIRMADO })),
+    };
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+    expect(vendas[0].freteVendedor).toBe(800);
+
+    await definirAjusteManualFrete(vendas[0].id, 111, "Combinado com o cliente", "user-ajustador");
+
+    expect(vendas[0].freteVendedor).toBe(111);
+    expect(vendas[0].freteOrigem).toBe("AJUSTE_MANUAL");
+    expect(vendas[0].freteAjusteManual).toBe(111);
+    expect(vendas[0].freteAjusteManualMotivo).toBe("Combinado com o cliente");
+    expect(vendas[0].freteAjusteManualUserId).toBe("user-ajustador");
+
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+
+    expect(vendas[0].freteVendedor).toBe(111);
+    expect(vendas[0].freteOrigem).toBe("AJUSTE_MANUAL");
+  });
+
+  it("Ciclo 9 (Fase 3): limparAjusteManualFrete remove o ajuste e volta a derivar da fonte automática", async () => {
+    adaptadorFake.atual = {
+      obterPedido: vi.fn(async () => normalizado()),
+      obterCustoEnvio: vi.fn(async () => ({ valor: 800, confianca: Confianca.CONFIRMADO })),
+    };
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+    await definirAjusteManualFrete(vendas[0].id, 111, "Motivo qualquer", "user-ajustador");
+    expect(vendas[0].freteVendedor).toBe(111);
+
+    await limparAjusteManualFrete(vendas[0].id);
+
+    expect(vendas[0].freteVendedor).toBe(800);
+    expect(vendas[0].freteOrigem).toBe("CUSTO_ENVIO_CANAL");
+    expect(vendas[0].freteAjusteManual).toBeNull();
   });
 });
 

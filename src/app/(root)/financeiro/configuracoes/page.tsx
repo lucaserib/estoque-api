@@ -75,6 +75,14 @@ interface ConfigFinanceiro {
   blingContasAtivo: boolean;
 }
 
+interface RegraFrete {
+  id: string;
+  logistica: string;
+  tipoValor: "FIXO" | "PERCENTUAL";
+  valor: number;
+  percentual: number;
+}
+
 interface LinhaConciliacao {
   tipo: "TARIFA_VENDA" | "FRETE";
   totalPedidos: number;
@@ -169,6 +177,13 @@ export default function ConfiguracoesFinanceiroPage() {
   const [custoEnvioFlexInput, setCustoEnvioFlexInput] = useState("");
   const [salvandoConfig, setSalvandoConfig] = useState(false);
 
+  const [regrasFrete, setRegrasFrete] = useState<RegraFrete[]>([]);
+  const [novaLogistica, setNovaLogistica] = useState("");
+  const [novoTipoValorFrete, setNovoTipoValorFrete] = useState<"FIXO" | "PERCENTUAL">("FIXO");
+  const [novoValorFreteInput, setNovoValorFreteInput] = useState("");
+  const [novoPercentualFreteInput, setNovoPercentualFreteInput] = useState("");
+  const [salvandoRegraFrete, setSalvandoRegraFrete] = useState(false);
+
   const [dialogCategoriaAberto, setDialogCategoriaAberto] = useState(false);
   const [formCategoria, setFormCategoria] = useState<FormCategoria>(formCategoriaVazio());
   const [salvandoCategoria, setSalvandoCategoria] = useState(false);
@@ -204,13 +219,15 @@ export default function ConfiguracoesFinanceiroPage() {
   const carregarTudo = useCallback(async () => {
     setCarregando(true);
     try {
-      const [categoriasResp, contasResp, configResp] = await Promise.all([
+      const [categoriasResp, contasResp, configResp, regrasFreteResp] = await Promise.all([
         fetch("/api/financeiro/categorias?incluirInativas=true"),
         fetch("/api/financeiro/contas-financeiras?incluirInativas=true"),
         fetch("/api/financeiro/configuracoes"),
+        fetch("/api/financeiro/configuracoes/regras-frete"),
       ]);
       if (categoriasResp.ok) setCategorias((await categoriasResp.json()).categorias);
       if (contasResp.ok) setContas((await contasResp.json()).contas);
+      if (regrasFreteResp.ok) setRegrasFrete(await regrasFreteResp.json());
       if (configResp.ok) {
         const dados: ConfigFinanceiro = await configResp.json();
         setConfig(dados);
@@ -255,6 +272,51 @@ export default function ConfiguracoesFinanceiroPage() {
       toast.error("Erro ao salvar configurações.");
     } finally {
       setSalvandoConfig(false);
+    }
+  };
+
+  const salvarRegraFrete = async () => {
+    if (!novaLogistica.trim()) {
+      toast.error("Informe a logística.");
+      return;
+    }
+    setSalvandoRegraFrete(true);
+    try {
+      const resposta = await fetch("/api/financeiro/configuracoes/regras-frete", {
+        method: "POST",
+        body: JSON.stringify({
+          logistica: novaLogistica.trim(),
+          tipoValor: novoTipoValorFrete,
+          valorReais: novoTipoValorFrete === "FIXO" ? parseFloat(novoValorFreteInput || "0") : undefined,
+          percentual:
+            novoTipoValorFrete === "PERCENTUAL" ? parseFloat(novoPercentualFreteInput || "0") / 100 : undefined,
+        }),
+      });
+      if (!resposta.ok) throw new Error();
+      toast.success("Regra de frete salva.");
+      setNovaLogistica("");
+      setNovoValorFreteInput("");
+      setNovoPercentualFreteInput("");
+      carregarTudo();
+    } catch {
+      toast.error("Erro ao salvar regra de frete.");
+    } finally {
+      setSalvandoRegraFrete(false);
+    }
+  };
+
+  const removerRegraFrete = async (logistica: string) => {
+    if (!confirm(`Remover a regra de frete padrão para "${logistica}"?`)) return;
+    try {
+      const resposta = await fetch(
+        `/api/financeiro/configuracoes/regras-frete?logistica=${encodeURIComponent(logistica)}`,
+        { method: "DELETE" }
+      );
+      if (!resposta.ok) throw new Error();
+      toast.success("Regra removida.");
+      carregarTudo();
+    } catch {
+      toast.error("Erro ao remover regra de frete.");
     }
   };
 
@@ -634,6 +696,85 @@ export default function ConfiguracoesFinanceiroPage() {
               </Button>
             </SectionCard>
           )}
+
+          <SectionCard title="Frete por logística">
+            <p className="mb-3 text-sm text-muted-foreground">
+              Usado como último recurso quando não há valor real do envio (pagamento do Mercado Pago ou custo do
+              transportador) nem custo de frete cadastrado no produto. Ordem de prioridade completa: ajuste manual
+              na venda → valor real do Mercado Livre → custo de frete do produto → esta regra padrão por logística.
+            </p>
+            <DataTable>
+              <DataTableHeader>
+                <DataTableRow>
+                  <DataTableHead>Logística</DataTableHead>
+                  <DataTableHead>Tipo</DataTableHead>
+                  <DataTableHead>Valor</DataTableHead>
+                  <DataTableHead className="text-right">Ações</DataTableHead>
+                </DataTableRow>
+              </DataTableHeader>
+              <DataTableBody>
+                {regrasFrete.map((regra) => (
+                  <DataTableRow key={regra.id}>
+                    <DataTableCell>{regra.logistica}</DataTableCell>
+                    <DataTableCell>{regra.tipoValor === "FIXO" ? "Valor fixo" : "% do faturamento"}</DataTableCell>
+                    <DataTableCell>
+                      {regra.tipoValor === "FIXO"
+                        ? formatBRL(regra.valor)
+                        : `${(regra.percentual * 100).toFixed(2)}%`}
+                    </DataTableCell>
+                    <DataTableCell className="text-right">
+                      <Button variant="ghost" size="sm" onClick={() => removerRegraFrete(regra.logistica)}>
+                        Remover
+                      </Button>
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+                {regrasFrete.length === 0 && (
+                  <DataTableRow>
+                    <DataTableCell colSpan={4} className="text-center text-sm text-muted-foreground">
+                      Nenhuma regra cadastrada.
+                    </DataTableCell>
+                  </DataTableRow>
+                )}
+              </DataTableBody>
+            </DataTable>
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div>
+                <Label>Logística</Label>
+                <Input
+                  placeholder="ex.: me1, drop_off"
+                  value={novaLogistica}
+                  onChange={(e) => setNovaLogistica(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label>Tipo</Label>
+                <Select value={novoTipoValorFrete} onValueChange={(v) => setNovoTipoValorFrete(v as "FIXO" | "PERCENTUAL")}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FIXO">Valor fixo</SelectItem>
+                    <SelectItem value="PERCENTUAL">% do faturamento</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {novoTipoValorFrete === "FIXO" ? (
+                <div>
+                  <Label>Valor (R$)</Label>
+                  <Input type="number" step="0.01" min="0" value={novoValorFreteInput} onChange={(e) => setNovoValorFreteInput(e.target.value)} />
+                </div>
+              ) : (
+                <div>
+                  <Label>Percentual (%)</Label>
+                  <Input type="number" step="0.01" min="0" max="100" value={novoPercentualFreteInput} onChange={(e) => setNovoPercentualFreteInput(e.target.value)} />
+                </div>
+              )}
+              <div className="flex items-end">
+                <Button className="w-full" disabled={salvandoRegraFrete} onClick={salvarRegraFrete}>
+                  {salvandoRegraFrete ? "Salvando…" : "Adicionar/atualizar"}
+                </Button>
+              </div>
+            </div>
+          </SectionCard>
 
           <SectionCard title="Importação de histórico">
             <p className="mb-3 text-sm text-muted-foreground">
