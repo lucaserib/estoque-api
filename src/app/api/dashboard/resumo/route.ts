@@ -34,37 +34,32 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
     inicioPeriodo.getTime() - periodoDias * 24 * 60 * 60 * 1000
   );
 
-  // Lê do módulo financeiro (Ciclo 7) em vez de buscar pedidos do ML em
-  // tempo real e estimar margem aqui — o financeiro já tem tudo isso
-  // pré-agregado em ResumoFinanceiroDiario (cancelamento, desconto, imposto,
-  // ads, CMV incluídos de verdade, não só tarifa como a estimativa antiga).
+  // Mesmos números do Financeiro: tudo vem do motor único
+  // (modules/financeiro/relatorios/motor.ts).
   const vendasBloco = await comFallback(
     async () => {
       const [periodoAtual, periodoAnterior, serieDiariaFinanceiro, lucroPorProduto, vendasIncompletas] =
         await Promise.all([
           gerarResumoPeriodo(userId, inicioPeriodo, agora),
-          gerarResumoPeriodo(userId, inicioPeriodoAnterior, inicioPeriodo),
+          gerarResumoPeriodo(userId, inicioPeriodoAnterior, new Date(inicioPeriodo.getTime() - 1)),
           gerarSerieDiaria(userId, inicioPeriodo, agora),
           gerarLucroPorProduto(userId, { desde: inicioPeriodo, ate: agora }),
           listarVendasComLucro(userId, { desde: inicioPeriodo, ate: agora, soIncompletas: true, porPagina: 1 }),
         ]);
 
-      const receitaLiquida = (periodo: typeof periodoAtual) =>
-        periodo.faturamentoBruto - periodo.cancelamentos - periodo.descontos - periodo.impostos;
-
-      const receitaLiquidaAtual = receitaLiquida(periodoAtual);
-      const receitaLiquidaAnterior = receitaLiquida(periodoAnterior);
+      const atual = periodoAtual.indicadores;
+      const anterior = periodoAnterior.indicadores;
 
       return {
-        receitaLiquida: receitaLiquidaAtual,
-        margemContribuicao: periodoAtual.margemContribuicao,
-        margemContribuicaoPercentual: periodoAtual.margemContribuicaoPercentual,
-        unidades: periodoAtual.unidades,
-        ticketMedio: periodoAtual.ticketMedio,
+        receitaLiquida: atual.receitaTotal,
+        margemContribuicao: atual.margemContribuicao,
+        margemContribuicaoPercentual: atual.margemContribuicaoPercentual,
+        unidades: atual.unidades,
+        ticketMedio: atual.ticketMedio,
         vendasIncompletas: vendasIncompletas.total,
         serieDiaria: serieDiariaFinanceiro.map((p) => ({
           data: p.dia.toISOString().split("T")[0],
-          receita: p.faturamentoBruto,
+          receita: p.faturamento,
           unidades: p.unidades,
           pedidos: p.pedidos,
         })),
@@ -74,8 +69,8 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
           margem: l.margemContribuicao,
         })),
         deltaPercentual:
-          receitaLiquidaAnterior > 0
-            ? ((receitaLiquidaAtual - receitaLiquidaAnterior) / receitaLiquidaAnterior) * 100
+          anterior.receitaTotal > 0
+            ? ((atual.receitaTotal - anterior.receitaTotal) / anterior.receitaTotal) * 100
             : null,
       };
     },

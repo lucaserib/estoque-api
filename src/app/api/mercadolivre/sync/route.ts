@@ -4,9 +4,20 @@ import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { NotificationService } from "@/services/notificationService";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
-import { pickMlImageUrl } from "@/lib/imageUrl";
 import { serializeWithEAN } from "@/utils/api";
-import { obterPrecoAtualAnuncio } from "@/services/mercadoLivrePreco";
+import { emParalelo } from "@/modules/financeiro/ingestao/paralelo";
+import {
+  atualizarEstoqueFullDosAnuncios,
+  listarIdsAnunciosMl,
+  registrarErroAnuncio,
+  sincronizarAnuncioMl,
+} from "@/modules/catalogo/anunciosMl";
+import { iniciarSincronizacaoCatalogo } from "@/modules/catalogo/sincronizacao";
+
+export const maxDuration = 60;
+
+const CONCORRENCIA = 4;
+const TEMPO_MAXIMO_MS = 45000;
 
 export async function GET(request: NextRequest) {
   try {
@@ -69,7 +80,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { accountId, syncType = "full" } = body;
+    const { accountId } = body;
 
     if (!accountId) {
       return NextResponse.json(
@@ -94,234 +105,46 @@ export async function POST(request: NextRequest) {
     }
 
     const startTime = Date.now();
+    const accessToken = await MercadoLivreService.getValidToken(accountId);
+    const ids = await listarIdsAnunciosMl(accessToken, account.mlUserId);
+    const conta = { id: account.id, userId: account.userId, siteId: account.siteId, mlUserId: account.mlUserId };
 
-    try {
-      const accessToken = await MercadoLivreService.getValidToken(accountId);
+    let newItems = 0;
+    let updatedItems = 0;
+    let errorItems = 0;
+    let pendentes = 0;
+    const prazo = startTime + TEMPO_MAXIMO_MS;
 
-      const itemsResponse = await MercadoLivreService.getUserItems(accessToken);
-
-      let newItems = 0;
-      let updatedItems = 0;
-      let errorItems = 0;
-      const errors: string[] = [];
-
-
-      const BATCH_SIZE = 5;
-      const productBatches: string[][] = [];
-
-      for (let i = 0; i < itemsResponse.results.length; i += BATCH_SIZE) {
-        productBatches.push(itemsResponse.results.slice(i, i + BATCH_SIZE));
+    for (let i = 0; i < ids.length; i += CONCORRENCIA * 2) {
+      if (Date.now() > prazo) {
+        pendentes = ids.length - i;
+        break;
       }
-
-
-      for (
-        let batchIndex = 0;
-        batchIndex < productBatches.length;
-        batchIndex++
-      ) {
-        const batch = productBatches[batchIndex];
-
-        const batchResults = await Promise.allSettled(
-          batch.map(async (itemId) => {
-            try {
-              const item = await MercadoLivreService.getItem(
-                itemId,
-                accessToken
-              );
-
-              const existingProduct =
-                await prisma.produtoMercadoLivre.findFirst({
-                  where: {
-                    mlItemId: itemId,
-                    mercadoLivreAccountId: accountId,
-                  },
-                });
-
-              let currentPrice = Math.round(item.price * 100);
-              let originalPrice = item.original_price
-                ? Math.round(item.original_price * 100)
-                : null;
-              const basePrice = item.base_price
-                ? Math.round(item.base_price * 100)
-                : null;
-              let hasPromotion = false;
-              let promotionDiscount = 0;
-
-              const precoAtual = await obterPrecoAtualAnuncio(itemId, accessToken);
-              if (precoAtual) {
-                currentPrice = precoAtual.precoAtual;
-                if (precoAtual.temPromocao) {
-                  originalPrice = precoAtual.precoOriginal;
-                  hasPromotion = true;
-                }
-              } else if (originalPrice && originalPrice > currentPrice) {
-                hasPromotion = true;
-              }
-
-              if (
-                hasPromotion &&
-                originalPrice &&
-                originalPrice > currentPrice
-              ) {
-                promotionDiscount = Math.round(
-                  ((originalPrice - currentPrice) / originalPrice) * 100
-                );
-              }
-
-              let mlTarifaVenda: number | null = null;
-              let mlCustoFrete: number | null = null;
-              let mlCustosAtualizadosEm: Date | null = null;
-              if (item.status === "active") {
-                const custos = await MercadoLivreService.fetchCustosAnuncio(
-                  item,
-                  accessToken,
-                  account.siteId,
-                  account.mlUserId
-                );
-                mlTarifaVenda = custos.mlTarifaVenda;
-                mlCustoFrete = custos.mlCustoFrete;
-                mlCustosAtualizadosEm = new Date();
-              }
-
-              let mlFullDisponivel: number | null = null;
-              let mlFullEmTransito: number | null = null;
-              let mlFullIndisponivel: number | null = null;
-              let mlFullAtualizadoEm: Date | null = null;
-              if (item.inventory_id) {
-                const fullStock = await MercadoLivreService.getFulfillmentStock(
-                  item.inventory_id,
-                  accessToken
-                );
-                if (fullStock) {
-                  mlFullDisponivel = fullStock.disponivel;
-                  mlFullEmTransito = fullStock.emTransito;
-                  mlFullIndisponivel = fullStock.indisponivel;
-                  mlFullAtualizadoEm = new Date();
-                }
-              }
-
-              const productData = {
-                mlTitle: item.title,
-                mlPrice: currentPrice,
-                mlOriginalPrice: originalPrice, // ✅ NOVO: Preço original
-                mlBasePrice: basePrice, // ✅ NOVO: Preço base
-                mlHasPromotion: Boolean(hasPromotion), // ✅ CORREÇÃO: Garantir tipo boolean
-                mlPromotionDiscount: hasPromotion ? promotionDiscount : null, // ✅ NOVO: % desconto
-                mlAvailableQuantity: item.available_quantity,
-                mlSoldQuantity: item.sold_quantity || 0,
-                mlStatus: item.status,
-                mlCondition: item.condition,
-                mlListingType: item.listing_type_id || "gold_special",
-                mlPermalink: item.permalink,
-                mlThumbnail: pickMlImageUrl(item),
-                mlCategoryId: item.category_id,
-                mlShippingMode:
-                  item.shipping?.logistic_type || item.shipping?.mode || null, // ✅ NOVO: Modo de envio (fulfillment, me2, custom)
-                mlLastUpdated: new Date(item.last_updated || new Date()),
-                lastSyncAt: new Date(),
-                syncStatus: "synced",
-                syncError: null,
-                mlTarifaVenda,
-                mlCustoFrete,
-                mlLogisticType: item.shipping?.logistic_type ?? null,
-                mlInventoryId: item.inventory_id ?? null,
-                mlCustosAtualizadosEm,
-                mlFullDisponivel,
-                mlFullEmTransito,
-                mlFullIndisponivel,
-                mlFullAtualizadoEm,
-              };
-
-              if (existingProduct) {
-                await prisma.produtoMercadoLivre.update({
-                  where: { id: existingProduct.id },
-                  data: productData,
-                });
-                return { type: "updated", itemId };
-              } else {
-                const realSku = MercadoLivreService.extractRealSku(item);
-                let localProductId: string | null = null;
-
-                if (realSku) {
-                  const localProduct = await prisma.produto.findFirst({
-                    where: {
-                      sku: realSku,
-                      userId: user.contaId,
-                    },
-                  });
-
-                  if (localProduct) {
-                    localProductId = localProduct.id;
-                  }
-                }
-
-                await prisma.produtoMercadoLivre.create({
-                  data: {
-                    ...productData,
-                    produtoId: localProductId, // Pode ser null
-                    mercadoLivreAccountId: accountId,
-                    mlItemId: itemId,
-                    syncStatus: localProductId ? "synced" : "pending_link", // Status diferente se não vinculado
-                  },
-                });
-                return { type: "created", itemId, linked: !!localProductId };
-              }
-            } catch (itemError) {
-              const errorMessage = `Erro no produto ${itemId}: ${
-                itemError instanceof Error
-                  ? itemError.message
-                  : "Erro desconhecido"
-              }`;
-              console.error(`[SYNC] ${errorMessage}`);
-              return { type: "error", itemId, error: errorMessage };
-            }
-          })
-        );
-
-        batchResults.forEach((result) => {
-          if (result.status === "fulfilled") {
-            const value = result.value;
-            switch (value?.type) {
-              case "updated":
-                updatedItems++;
-                break;
-              case "created":
-                newItems++;
-                break;
-              case "skipped":
-                break;
-              case "error":
-                errorItems++;
-                errors.push((value as { error: string }).error);
-                break;
-            }
-          } else {
-            errorItems++;
-            const errorMessage = `Erro inesperado no lote: ${result.reason}`;
-            errors.push(errorMessage);
-            console.error(`[SYNC] ${errorMessage}`);
-          }
-        });
-
-        if (batchIndex < productBatches.length - 1) {
-          await new Promise((resolve) => setTimeout(resolve, 200));
+      await emParalelo(ids.slice(i, i + CONCORRENCIA * 2), CONCORRENCIA, async (itemId) => {
+        try {
+          const resultado = await sincronizarAnuncioMl(conta, accessToken, itemId);
+          if (resultado === "CRIADO") newItems++;
+          else updatedItems++;
+        } catch (erro) {
+          errorItems++;
+          await registrarErroAnuncio(account.id, itemId, erro instanceof Error ? erro.message : "Erro desconhecido");
         }
-      }
-
-      const duration = Math.round((Date.now() - startTime) / 1000);
-      const syncedItems = newItems + updatedItems;
-
-
-      return NextResponse.json({
-        success: true,
-        syncedCount: syncedItems,
-        totalItems: itemsResponse.results.length,
-        duration,
       });
-    } catch (syncError) {
-      console.error("Erro na sincronização:", syncError);
-      throw syncError;
     }
+
+    await atualizarEstoqueFullDosAnuncios(account.userId, account.id);
+    if (pendentes > 0) await iniciarSincronizacaoCatalogo(user.contaId);
+
+    return NextResponse.json({
+      success: true,
+      syncedCount: newItems + updatedItems,
+      newItems,
+      updatedItems,
+      errorItems,
+      pendentes,
+      totalItems: ids.length,
+      duration: Math.round((Date.now() - startTime) / 1000),
+    });
   } catch (error) {
     console.error("Erro na sincronização:", error);
     if (notifyUserId) {

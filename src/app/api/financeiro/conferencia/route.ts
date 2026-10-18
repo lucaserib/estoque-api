@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
-import {
-  conferirMes,
-  importarFaltantes,
-  reprocessarDivergentes,
-} from "@/modules/financeiro/relatorios/conferencia";
+import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
+import { conferirMes, corrigirMes } from "@/modules/financeiro/relatorios/conferencia";
 
 export const maxDuration = 60;
 
 function validarMes(mes: string | null): { ano: number; mes: number } | null {
   if (!mes || !/^\d{4}-\d{2}$/.test(mes)) return null;
   const [ano, mesNumero] = mes.split("-").map(Number);
+  if (mesNumero < 1 || mesNumero > 12) return null;
   return { ano, mes: mesNumero };
 }
 
@@ -25,9 +23,7 @@ async function obterContaAtiva(userId: string, accountId?: string | null) {
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
-    if (user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Apenas administradores podem usar a conferência" }, { status: 403 });
-    }
+    exigirVisualizacao(user.role, "FINANCEIRO_VER");
 
     const { searchParams } = new URL(request.url);
     const competencia = validarMes(searchParams.get("mes"));
@@ -43,27 +39,30 @@ export async function GET(request: NextRequest) {
     const resultado = await conferirMes(user.contaId, conta.id, competencia);
     return NextResponse.json(resultado);
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
     console.error("Erro ao conferir o mês contra o Mercado Livre:", error);
-    return NextResponse.json({ error: "Erro ao conferir o mês contra o Mercado Livre" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro ao conferir o mês contra o Mercado Livre" },
+      { status: 500 }
+    );
   }
 }
 
 interface RequestBody {
   accountId?: string;
-  acao?: "importar_faltantes" | "reprocessar_divergentes";
-  pedidosExternoId?: string[];
+  mes?: string;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
-    if (user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Apenas administradores podem usar a conferência" }, { status: 403 });
-    }
+    exigirPermissao(user.role, "FINANCEIRO_EDITAR");
 
     const body: RequestBody = await request.json().catch(() => ({}));
-    if (!Array.isArray(body.pedidosExternoId) || body.pedidosExternoId.length === 0) {
-      return NextResponse.json({ error: "Informe 'pedidosExternoId'" }, { status: 400 });
+    const competencia = validarMes(body.mes ?? null);
+    if (!competencia) {
+      return NextResponse.json({ error: "Informe 'mes' no formato AAAA-MM" }, { status: 400 });
     }
 
     const conta = await obterContaAtiva(user.contaId, body.accountId);
@@ -71,15 +70,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Nenhuma conta do Mercado Livre ativa encontrada" }, { status: 404 });
     }
 
-    if (body.acao === "reprocessar_divergentes") {
-      const resultado = await reprocessarDivergentes(conta.id, body.pedidosExternoId);
-      return NextResponse.json(resultado);
-    }
-
-    const resultado = await importarFaltantes(conta.id, body.pedidosExternoId);
+    const resultado = await corrigirMes(conta.id, competencia);
     return NextResponse.json(resultado);
   } catch (error) {
-    console.error("Erro ao aplicar ação da conferência:", error);
-    return NextResponse.json({ error: "Erro ao aplicar ação da conferência" }, { status: 500 });
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+    console.error("Erro ao corrigir o mês com os dados do Mercado Livre:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro ao corrigir o mês" },
+      { status: 500 }
+    );
   }
 }

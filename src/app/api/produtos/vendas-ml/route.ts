@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ArmazemTipo } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
-import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
+import { atualizarEstoqueFullDosAnuncios } from "@/modules/catalogo/anunciosMl";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 
 export async function GET(request: NextRequest) {
@@ -80,88 +79,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Lê o snapshot de estoque Full já gravado na sincronização de anúncios
-    // (sync/route.ts, processItemWebhook) em vez de chamar a API do ML
-    // produto a produto a cada atualização desta tela.
+    await atualizarEstoqueFullDosAnuncios(user.contaId, mlAccount.id);
     const estoqueFullPorProduto: { [key: string]: number } = {};
-
-    const produtosMLFull = await prisma.produtoMercadoLivre.findMany({
-      where: {
-        mercadoLivreAccountId: mlAccount.id,
-        produtoId: { not: null },
-        mlLogisticType: "fulfillment",
-      },
-      select: {
-        produtoId: true,
-        mlFullDisponivel: true,
-      },
+    const anunciosFull = await prisma.produtoMercadoLivre.findMany({
+      where: { mercadoLivreAccountId: mlAccount.id, produtoId: { not: null }, mlLogisticType: "fulfillment" },
+      select: { produtoId: true, mlFullDisponivel: true },
     });
-
-    for (const produtoML of produtosMLFull) {
-      if (!produtoML.produtoId || produtoML.mlFullDisponivel == null) {
-        continue;
-      }
-      estoqueFullPorProduto[produtoML.produtoId] =
-        (estoqueFullPorProduto[produtoML.produtoId] || 0) +
-        produtoML.mlFullDisponivel;
-    }
-
-
-    const produtosComFull = Object.entries(estoqueFullPorProduto);
-    if (produtosComFull.length > 0) {
-      const armazemFullExistente = await prisma.armazem.findFirst({
-        where: { userId: user.contaId, nome: FULL_ARMAZEM_NOME },
-      });
-      const armazemFull =
-        armazemFullExistente && armazemFullExistente.tipo !== ArmazemTipo.FULL_ML
-          ? await prisma.armazem.update({
-              where: { id: armazemFullExistente.id },
-              data: { tipo: ArmazemTipo.FULL_ML },
-            })
-          : armazemFullExistente ??
-            (await prisma.armazem.create({
-              data: { nome: FULL_ARMAZEM_NOME, userId: user.contaId, tipo: ArmazemTipo.FULL_ML },
-            }));
-
-      for (const [produtoId, quantidade] of produtosComFull) {
-        try {
-          const estoqueAtual = await prisma.estoque.findUnique({
-            where: {
-              produtoId_armazemId: { produtoId, armazemId: armazemFull.id },
-            },
-          });
-
-          if (estoqueAtual?.quantidade === quantidade) continue;
-
-          await prisma.$transaction([
-            prisma.estoque.upsert({
-              where: {
-                produtoId_armazemId: {
-                  produtoId,
-                  armazemId: armazemFull.id,
-                },
-              },
-              create: { produtoId, armazemId: armazemFull.id, quantidade },
-              update: { quantidade },
-            }),
-            prisma.estoqueMovimentacao.create({
-              data: {
-                userId: user.contaId,
-                produtoId,
-                armazemId: armazemFull.id,
-                quantidadeAnterior: estoqueAtual?.quantidade ?? 0,
-                quantidadeNova: quantidade,
-                origem: "SINCRONIZACAO_FULL_ML",
-              },
-            }),
-          ]);
-        } catch (fullSyncError) {
-          console.error(
-            `[VENDAS_ML] Erro ao sincronizar estoque Full do produto ${produtoId}:`,
-            fullSyncError
-          );
-        }
-      }
+    for (const anuncio of anunciosFull) {
+      if (!anuncio.produtoId || anuncio.mlFullDisponivel == null) continue;
+      estoqueFullPorProduto[anuncio.produtoId] = (estoqueFullPorProduto[anuncio.produtoId] || 0) + anuncio.mlFullDisponivel;
     }
 
     // Atualizar mlSold90Days no banco POR ANÚNCIO (mlItemId)

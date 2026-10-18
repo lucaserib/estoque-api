@@ -23,6 +23,7 @@ export interface LinhaConciliacao {
   diferenca: number;
   diferencaPercentual: number | null;
   alerta: boolean;
+  faturaDisponivel?: boolean;
 }
 
 export interface RelatorioConciliacao {
@@ -66,9 +67,11 @@ export async function gerarRelatorioConciliacao(
     const diferenca = totalFatura - totalPedidos;
     const diferencaPercentual = totalPedidos === 0 ? null : diferenca / totalPedidos;
     const alerta =
-      diferencaPercentual != null && Math.abs(diferencaPercentual) > LIMITE_ALERTA_PERCENTUAL;
+      totalFatura !== 0 &&
+      diferencaPercentual != null &&
+      Math.abs(diferencaPercentual) > LIMITE_ALERTA_PERCENTUAL;
 
-    return { tipo, totalPedidos, totalFatura, diferenca, diferencaPercentual, alerta };
+    return { tipo, totalPedidos, totalFatura, diferenca, diferencaPercentual, alerta, faturaDisponivel: totalFatura !== 0 };
   });
 
   return { mesReferencia, canal, linhas };

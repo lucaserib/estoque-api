@@ -35,6 +35,8 @@ import {
 } from "@/components/ui/data-table";
 import { formatBRL } from "@/lib/format";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
+import { useSincronizacaoFinanceira } from "../components/SincronizacaoFinanceira";
+import { DESCRICAO_MODO_FATURAMENTO, type ModoFaturamento } from "../components/tipos";
 
 type GrupoDre =
   | "RECEITA_BRUTA" | "DEDUCAO_RECEITA" | "IMPOSTO_VENDA" | "CUSTO_VARIAVEL"
@@ -74,6 +76,7 @@ interface ConfigFinanceiro {
   prazoPagamentoPadraoDias: number;
   blingContasAtivo: boolean;
   metaFaturamentoMensal: number | null;
+  modoFaturamento: ModoFaturamento;
 }
 
 interface RegraFrete {
@@ -168,6 +171,7 @@ function formContaDe(conta: ContaFinanceira): FormConta {
 
 export default function ConfiguracoesFinanceiroPage() {
   const { carregando: carregandoSessao, podeVerFinanceiro, papel } = useAcessoFinanceiro();
+  const { atualizar, sinalizarDadosAlterados } = useSincronizacaoFinanceira();
 
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [contas, setContas] = useState<ContaFinanceira[]>([]);
@@ -269,10 +273,12 @@ export default function ConfiguracoesFinanceiroPage() {
           prazoPagamentoPadraoDias: config.prazoPagamentoPadraoDias,
           blingContasAtivo: config.blingContasAtivo,
           metaFaturamentoMensal: metaFaturamentoMensalInput ? paraCentavos(metaFaturamentoMensalInput) : null,
+          modoFaturamento: config.modoFaturamento,
         }),
       });
       if (!resposta.ok) throw new Error();
       toast.success("Configurações salvas.");
+      sinalizarDadosAlterados();
       carregarTudo();
     } catch {
       toast.error("Erro ao salvar configurações.");
@@ -443,21 +449,13 @@ export default function ConfiguracoesFinanceiroPage() {
   const importarHistorico = async () => {
     setStatusImportacao("em_andamento");
     setTotalImportado(0);
-    let total = 0;
     try {
-      for (;;) {
-        const resposta = await fetch("/api/financeiro/sincronizacao/importar-historico", {
-          method: "POST",
-          body: JSON.stringify({ dias: parseInt(diasImportar, 10) || 90 }),
-        });
-        if (!resposta.ok) throw new Error();
-        const resultado: { status: "CONCLUIDO" | "EM_ANDAMENTO"; processados: number } = await resposta.json();
-        total += resultado.processados;
-        setTotalImportado(total);
-        if (resultado.status === "CONCLUIDO") break;
-      }
+      const dias = Math.max(1, parseInt(diasImportar, 10) || 365);
+      const ate = new Date();
+      const desde = new Date(ate.getTime() - dias * 24 * 60 * 60 * 1000);
+      await atualizar({ modo: "BACKFILL", desde, ate });
       setStatusImportacao("concluido");
-      toast.success(`Importação concluída: ${total} pedido(s) processado(s).`);
+      toast.success("Importação iniciada. O progresso aparece no topo das telas do Financeiro.");
     } catch {
       setStatusImportacao("erro");
       toast.error("Erro ao importar histórico financeiro.");
@@ -616,6 +614,38 @@ export default function ConfiguracoesFinanceiroPage() {
           </SectionCard>
 
           {config && (
+            <SectionCard title="Como calcular o faturamento" description="Vale para Visão geral, DRE, Vendas, Produtos e o dashboard principal.">
+              <div className="space-y-3">
+                {(Object.keys(DESCRICAO_MODO_FATURAMENTO) as ModoFaturamento[]).map((modo) => (
+                  <label
+                    key={modo}
+                    className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 ${config.modoFaturamento === modo ? "border-primary bg-primary/5" : "border-border"}`}
+                  >
+                    <input
+                      type="radio"
+                      name="modoFaturamento"
+                      className="mt-1"
+                      checked={config.modoFaturamento === modo}
+                      onChange={() => setConfig({ ...config, modoFaturamento: modo })}
+                    />
+                    <span>
+                      <span className="block text-sm font-medium">{DESCRICAO_MODO_FATURAMENTO[modo].titulo}</span>
+                      <span className="block text-xs text-muted-foreground">{DESCRICAO_MODO_FATURAMENTO[modo].resumo}</span>
+                    </span>
+                  </label>
+                ))}
+                <p className="text-xs text-muted-foreground">
+                  Exemplo: venda de R$ 34,70 em que o ML cobrou R$ 6,85 de frete. Igual ao ML: faturamento R$ 34,70 e frete de
+                  R$ 6,85 como custo. Líquido de frete: faturamento R$ 27,85 e nenhum frete separado. A margem é igual nos três
+                  modos. O frete de cada venda vem do pagamento no Mercado Pago; quando não vier (Flex, envio próprio), usa as
+                  regras de &ldquo;Frete por logística&rdquo; abaixo ou o frete cadastrado no produto, e pode ser ajustado à mão em
+                  Vendas. Clique em &ldquo;Salvar configurações&rdquo; para aplicar.
+                </p>
+              </div>
+            </SectionCard>
+          )}
+
+          {config && (
             <SectionCard title="Regras do financeiro">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -633,16 +663,6 @@ export default function ConfiguracoesFinanceiroPage() {
                 <div>
                   <Label>Alíquota de imposto sobre vendas (%)</Label>
                   <Input type="number" step="0.01" min="0" max="100" value={aliquotaInput} onChange={(e) => setAliquotaInput(e.target.value)} />
-                </div>
-                <div>
-                  <Label>Cancelamento entra na DRE</Label>
-                  <Select value={config.cancelamentoNaCompetencia} onValueChange={(v) => setConfig({ ...config, cancelamentoNaCompetencia: v as ConfigFinanceiro["cancelamentoNaCompetencia"] })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="VENDA">Na competência da venda</SelectItem>
-                      <SelectItem value="CANCELAMENTO">Na competência do cancelamento</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div>
                   <Label>Rateio de custo fixo por produto</Label>
@@ -789,7 +809,8 @@ export default function ConfiguracoesFinanceiroPage() {
 
           <SectionCard title="Importação de histórico">
             <p className="mb-3 text-sm text-muted-foreground">
-              Importa pedidos antigos do Mercado Livre para o financeiro. Pode levar vários cliques para concluir — cada chamada processa um lote.
+              Busca de novo no Mercado Livre todos os pedidos do período (do mês mais recente para o mais antigo) e regrava
+              cada venda. Roda em segundo plano enquanto o Financeiro estiver aberto; o progresso aparece no topo das telas.
             </p>
             <div className="flex flex-wrap items-end gap-3">
               <div>

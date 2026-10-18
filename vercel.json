@@ -9,6 +9,10 @@
       "schedule": "30 6 * * *"
     },
     {
+      "path": "/api/cron/catalogo-diario",
+      "schedule": "45 6 * * *"
+    },
+    {
       "path": "/api/cron/ml-webhook-retry",
       "schedule": "0 7 * * *"
     },

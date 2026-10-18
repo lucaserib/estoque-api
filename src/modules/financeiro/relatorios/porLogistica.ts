@@ -1,76 +1,65 @@
-import { CanalVenda, StatusVendaCanal } from "@prisma/client";
-import { prisma } from "@/lib/prisma";
+import { CanalVenda } from "@prisma/client";
 import { comCacheFinanceiro } from "./cache";
+import { agruparVendas, buscarVendasParaCalculo, obterConfigRelatorio } from "./motor";
 
 export interface ResumoLogistica {
   logistica: string;
+  rotulo: string;
   pedidos: number;
-  faturamentoBruto: number;
+  pedidosCancelados: number;
+  unidades: number;
+  faturamento: number;
+  frete: number;
   freteMedio: number | null;
+  tarifas: number;
   margemContribuicao: number;
+  margemContribuicaoPercentual: number | null;
 }
 
-const STATUS_CONTAM = [StatusVendaCanal.PAGA, StatusVendaCanal.DEVOLVIDA_PARCIAL];
+const ROTULO_LOGISTICA: Record<string, string> = {
+  fulfillment: "Full",
+  self_service: "Flex",
+  cross_docking: "Coleta",
+  xd_drop_off: "Agência (drop-off)",
+  drop_off: "Correios / agência",
+  default: "Mercado Envios 1",
+  custom: "Envio próprio",
+  not_specified: "A combinar",
+  DESCONHECIDA: "Aguardando detalhes",
+};
 
-/**
- * Agrupa vendas por logística (Full `fulfillment`, Flex `self_service`,
- * coleta `drop_off`, e qualquer outro valor que o canal mandar) — não
- * normaliza os nomes, mostra exatamente o que `VendaCanal.logistica` tem
- * gravado, para não esconder um valor desconhecido atrás de "outro".
- */
+export function rotuloLogistica(logistica: string | null): string {
+  if (!logistica) return ROTULO_LOGISTICA.DESCONHECIDA;
+  return ROTULO_LOGISTICA[logistica] ?? logistica;
+}
+
 export async function calcularResumoPorLogistica(
   userId: string,
   desde: Date,
   ate: Date,
   canal?: CanalVenda
 ): Promise<ResumoLogistica[]> {
-  const chave = `por-logistica:${desde.toISOString()}:${ate.toISOString()}:${canal ?? "todos"}`;
+  const config = await obterConfigRelatorio(userId);
+  const chave = `por-logistica:${desde.toISOString()}:${ate.toISOString()}:${canal ?? "todos"}:${config.modoFaturamento}:${config.aliquotaImposto}`;
 
   return comCacheFinanceiro(userId, chave, async () => {
-    const vendas = await prisma.vendaCanal.findMany({
-      where: {
-        userId,
-        dataVenda: { gte: desde, lte: ate },
-        status: { in: STATUS_CONTAM },
-        ...(canal && { canal }),
-      },
-      select: {
-        logistica: true,
-        faturamentoBruto: true,
-        freteVendedor: true,
-        margemContribuicao: true,
-      },
-    });
+    const vendas = await buscarVendasParaCalculo(userId, desde, ate, { canal });
+    const baldes = agruparVendas(vendas, config, (v) => v.logistica ?? "DESCONHECIDA");
 
-    const porLogistica = new Map<string, { pedidos: number; faturamentoBruto: number; freteSoma: number; freteContagem: number; margemContribuicao: number }>();
-
-    for (const venda of vendas) {
-      const chaveLogistica = venda.logistica ?? "DESCONHECIDA";
-      const atual = porLogistica.get(chaveLogistica) ?? {
-        pedidos: 0,
-        faturamentoBruto: 0,
-        freteSoma: 0,
-        freteContagem: 0,
-        margemContribuicao: 0,
-      };
-      atual.pedidos += 1;
-      atual.faturamentoBruto += venda.faturamentoBruto;
-      if (venda.freteVendedor != null) {
-        atual.freteSoma += venda.freteVendedor;
-        atual.freteContagem += 1;
-      }
-      atual.margemContribuicao += venda.margemContribuicao ?? 0;
-      porLogistica.set(chaveLogistica, atual);
-    }
-
-    return [...porLogistica.entries()]
-      .map(([logistica, dados]) => ({
+    return [...baldes.entries()]
+      .map(([logistica, t]) => ({
         logistica,
-        pedidos: dados.pedidos,
-        faturamentoBruto: dados.faturamentoBruto,
-        freteMedio: dados.freteContagem === 0 ? null : Math.round(dados.freteSoma / dados.freteContagem),
-        margemContribuicao: dados.margemContribuicao,
+        rotulo: rotuloLogistica(logistica === "DESCONHECIDA" ? null : logistica),
+        pedidos: t.pedidos,
+        pedidosCancelados: t.pedidosCancelados,
+        unidades: t.unidades,
+        faturamento: t.receitaTotal,
+        frete: t.frete,
+        freteMedio: t.pedidos === 0 ? null : Math.round(t.frete / t.pedidos),
+        tarifas: t.tarifas,
+        margemContribuicao: t.margemContribuicaoVendas,
+        margemContribuicaoPercentual: t.receitaTotal === 0 ? null : t.margemContribuicaoVendas / t.receitaTotal,
       }))
-      .sort((a, b) => b.faturamentoBruto - a.faturamentoBruto);
+      .sort((a, b) => b.faturamento - a.faturamento);
   });
 }

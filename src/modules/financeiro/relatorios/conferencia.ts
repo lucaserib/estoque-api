@@ -1,27 +1,26 @@
 import { CanalVenda, StatusVendaCanal } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import type { MLOrder } from "@/types/mercadolivre";
 import { inicioDoMes, fimDoMes, type Competencia } from "../dominio/periodo";
 import { listarPedidosCriadosNoPeriodo } from "../canais/mercadoLivre/cliente";
 import { mapearPedido } from "../canais/mercadoLivre/mapeador";
-import { ingerirPedidoMercadoLivre } from "../ingestao/sincronizador";
+import { ingerirPedidosEmLote, type ResultadoLote } from "../ingestao/lote";
+import { obterUserIdDaConta } from "../ingestao/sincronizador";
 
 function statusCancelado(status: StatusVendaCanal): boolean {
-  return (
-    status === StatusVendaCanal.CANCELADA ||
-    status === StatusVendaCanal.DEVOLVIDA ||
-    status === StatusVendaCanal.DEVOLVIDA_PARCIAL
-  );
+  return status === StatusVendaCanal.CANCELADA || status === StatusVendaCanal.DEVOLVIDA;
 }
 
 export interface DivergenciaConferencia {
   pedidoExternoId: string;
-  campo: string;
+  campo: "faturamento" | "status" | "unidades" | "tarifa" | "data";
   valorMl: number | string | null;
   valorApp: number | string | null;
 }
 
 export interface TotaisConferencia {
   pedidos: number;
+  pedidosValidos: number;
   unidades: number;
   faturamento: number;
   cancelados: number;
@@ -36,37 +35,80 @@ export interface ResultadoConferencia {
   coberturaPercentual: number;
   faltando: string[];
   divergentes: DivergenciaConferencia[];
+  sobrando: string[];
+  aguardandoDetalhes: number;
+  confere: boolean;
 }
 
 function totaisVazios(): TotaisConferencia {
-  return { pedidos: 0, unidades: 0, faturamento: 0, cancelados: 0, valorCancelado: 0, tarifa: 0 };
+  return { pedidos: 0, pedidosValidos: 0, unidades: 0, faturamento: 0, cancelados: 0, valorCancelado: 0, tarifa: 0 };
 }
 
+function limitesDoMes(competencia: Competencia) {
+  const instante = new Date(Date.UTC(competencia.ano, competencia.mes - 1, 15, 12, 0, 0));
+  return { desde: inicioDoMes(instante), ate: fimDoMes(instante) };
+}
+
+function somarNoTotal(
+  total: TotaisConferencia,
+  status: StatusVendaCanal,
+  faturamento: number,
+  estornado: number,
+  unidades: number,
+  tarifa: number
+) {
+  total.pedidos++;
+  if (statusCancelado(status)) {
+    total.cancelados++;
+    total.valorCancelado += faturamento;
+    return;
+  }
+  total.pedidosValidos++;
+  total.unidades += unidades;
+  total.faturamento += faturamento - estornado;
+  total.valorCancelado += estornado;
+  total.tarifa += tarifa;
+}
+
+/**
+ * Compara, pedido a pedido, o que o Mercado Livre tem no mês (data de criação
+ * do pedido, fuso de SP — o mesmo critério de todos os relatórios) com o que
+ * está gravado. Faturamento = preço × quantidade dos pedidos não cancelados,
+ * exatamente como o painel de vendas do ML.
+ */
 export async function conferirMes(
   userId: string,
   accountId: string,
-  competencia: Competencia
+  competencia: Competencia,
+  pedidosJaBuscados?: MLOrder[]
 ): Promise<ResultadoConferencia> {
-  const instanteDoMes = new Date(Date.UTC(competencia.ano, competencia.mes - 1, 15, 12, 0, 0));
-  const desde = inicioDoMes(instanteDoMes);
-  const ate = fimDoMes(instanteDoMes);
-
-  const pedidosMl = await listarPedidosCriadosNoPeriodo(accountId, desde, ate);
+  const { desde, ate } = limitesDoMes(competencia);
+  const pedidosMl = pedidosJaBuscados ?? (await listarPedidosCriadosNoPeriodo(accountId, desde, ate));
 
   const totalMl = totaisVazios();
   const totalApp = totaisVazios();
   const faltando: string[] = [];
   const divergentes: DivergenciaConferencia[] = [];
 
-  const idsExternos = pedidosMl.map((p) => String(p.id));
-  const vendas =
-    idsExternos.length === 0
-      ? []
-      : await prisma.vendaCanal.findMany({
-          where: { userId, canal: CanalVenda.MERCADO_LIVRE, pedidoExternoId: { in: idsExternos } },
-          include: { itens: true },
-        });
-  const vendaPorPedido = new Map(vendas.map((v) => [v.pedidoExternoId, v]));
+  const vendasDoMes = await prisma.vendaCanal.findMany({
+    where: {
+      userId,
+      canal: CanalVenda.MERCADO_LIVRE,
+      contaCanalId: accountId,
+      dataVenda: { gte: desde, lte: ate },
+    },
+    include: { itens: { select: { quantidade: true, tarifaVenda: true } } },
+  });
+  const idsMl = new Set(pedidosMl.map((p) => String(p.id)));
+  const foraDoMes = await prisma.vendaCanal.findMany({
+    where: {
+      userId,
+      canal: CanalVenda.MERCADO_LIVRE,
+      pedidoExternoId: { in: [...idsMl].filter((id) => !vendasDoMes.some((v) => v.pedidoExternoId === id)) },
+    },
+    include: { itens: { select: { quantidade: true, tarifaVenda: true } } },
+  });
+  const vendaPorPedido = new Map([...vendasDoMes, ...foraDoMes].map((v) => [v.pedidoExternoId, v]));
 
   for (const pedidoBruto of pedidosMl) {
     const pedidoExternoId = String(pedidoBruto.id);
@@ -76,17 +118,7 @@ export async function conferirMes(
     const faturamentoMl = normalizado.itens.reduce((soma, item) => soma + item.precoUnitario * item.quantidade, 0);
     const tarifaMl = normalizado.itens.reduce((soma, item) => soma + (item.tarifaTotal ?? 0), 0);
     const unidadesMl = normalizado.itens.reduce((soma, item) => soma + item.quantidade, 0);
-    const canceladoMl = statusCancelado(normalizado.status);
-
-    totalMl.pedidos++;
-    totalMl.unidades += unidadesMl;
-    totalMl.tarifa += tarifaMl;
-    if (canceladoMl) {
-      totalMl.cancelados++;
-      totalMl.valorCancelado += faturamentoMl;
-    } else {
-      totalMl.faturamento += faturamentoMl;
-    }
+    somarNoTotal(totalMl, normalizado.status, faturamentoMl, normalizado.valorEstornado ?? 0, unidadesMl, tarifaMl);
 
     const venda = vendaPorPedido.get(pedidoExternoId);
     if (!venda) {
@@ -95,17 +127,7 @@ export async function conferirMes(
     }
 
     const unidadesApp = venda.itens.reduce((soma, item) => soma + item.quantidade, 0);
-    const canceladoApp = statusCancelado(venda.status);
-
-    totalApp.pedidos++;
-    totalApp.unidades += unidadesApp;
-    totalApp.tarifa += venda.tarifaVenda;
-    if (canceladoApp) {
-      totalApp.cancelados++;
-      totalApp.valorCancelado += venda.faturamentoBruto;
-    } else {
-      totalApp.faturamento += venda.faturamentoBruto;
-    }
+    somarNoTotal(totalApp, venda.status, venda.faturamentoBruto, venda.valorEstornado, unidadesApp, venda.tarifaVenda);
 
     if (venda.faturamentoBruto !== faturamentoMl) {
       divergentes.push({ pedidoExternoId, campo: "faturamento", valorMl: faturamentoMl, valorApp: venda.faturamentoBruto });
@@ -116,46 +138,80 @@ export async function conferirMes(
     if (unidadesApp !== unidadesMl) {
       divergentes.push({ pedidoExternoId, campo: "unidades", valorMl: unidadesMl, valorApp: unidadesApp });
     }
+    if (venda.dataVenda.getTime() !== normalizado.dataVenda.getTime()) {
+      divergentes.push({
+        pedidoExternoId,
+        campo: "data",
+        valorMl: normalizado.dataVenda.toISOString(),
+        valorApp: venda.dataVenda.toISOString(),
+      });
+    }
+    if (!statusCancelado(normalizado.status) && Math.abs(venda.tarifaVenda - tarifaMl) > 2) {
+      divergentes.push({ pedidoExternoId, campo: "tarifa", valorMl: tarifaMl, valorApp: venda.tarifaVenda });
+    }
   }
+
+  const sobrando = vendasDoMes.filter((v) => !idsMl.has(v.pedidoExternoId)).map((v) => v.pedidoExternoId);
+  const aguardandoDetalhes = vendasDoMes.filter((v) => v.enriquecidoEm == null).length;
 
   const coberturaPercentual =
     totalMl.pedidos === 0
       ? 100
       : Math.round(((totalMl.pedidos - faltando.length) / totalMl.pedidos) * 1000) / 10;
 
-  return { competencia, totalMl, totalApp, coberturaPercentual, faltando, divergentes };
+  const confere =
+    faltando.length === 0 &&
+    divergentes.filter((d) => d.campo !== "tarifa").length === 0 &&
+    totalMl.faturamento === totalApp.faturamento &&
+    totalMl.pedidosValidos === totalApp.pedidosValidos;
+
+  return {
+    competencia,
+    totalMl,
+    totalApp,
+    coberturaPercentual,
+    faltando,
+    divergentes,
+    sobrando,
+    aguardandoDetalhes,
+    confere,
+  };
 }
 
-export async function importarFaltantes(
-  accountId: string,
-  pedidosExternoId: string[]
-): Promise<{ importados: number; erros: number }> {
-  let importados = 0;
-  let erros = 0;
-  for (const pedidoExternoId of pedidosExternoId) {
-    try {
-      const resultado = await ingerirPedidoMercadoLivre(accountId, pedidoExternoId);
-      if (resultado.ingerido) importados++;
-    } catch {
-      erros++;
-    }
-  }
-  return { importados, erros };
+export interface ResultadoCorrecaoMes {
+  antes: ResultadoConferencia;
+  depois: ResultadoConferencia;
+  lote: ResultadoLote;
 }
 
-export async function reprocessarDivergentes(
-  accountId: string,
-  pedidosExternoId: string[]
-): Promise<{ reprocessados: number; erros: number }> {
-  let reprocessados = 0;
-  let erros = 0;
-  for (const pedidoExternoId of [...new Set(pedidosExternoId)]) {
-    try {
-      await ingerirPedidoMercadoLivre(accountId, pedidoExternoId);
-      reprocessados++;
-    } catch {
-      erros++;
-    }
+/**
+ * Corrige o mês de uma vez: busca todos os pedidos do mês no ML (uma única
+ * listagem), grava em lote os que faltam ou divergem e devolve a conferência
+ * de antes e depois. Os detalhes do pagamento das vendas corrigidas entram na
+ * fila de detalhamento.
+ */
+export async function corrigirMes(accountId: string, competencia: Competencia): Promise<ResultadoCorrecaoMes> {
+  const userId = await obterUserIdDaConta(accountId);
+  if (!userId) throw new Error("Conta do Mercado Livre não encontrada");
+
+  const { desde, ate } = limitesDoMes(competencia);
+  const pedidosMl = await listarPedidosCriadosNoPeriodo(accountId, desde, ate);
+  const antes = await conferirMes(userId, accountId, competencia, pedidosMl);
+
+  const precisamCorrecao = new Set([...antes.faltando, ...antes.divergentes.map((d) => d.pedidoExternoId)]);
+  const paraGravar = pedidosMl.filter((p) => precisamCorrecao.has(String(p.id)));
+  const lote = await ingerirPedidosEmLote({ contaCanalId: accountId, userId }, paraGravar, {
+    forcar: true,
+    etapa: "CONFERENCIA",
+  });
+
+  if (antes.sobrando.length > 0) {
+    await prisma.vendaCanal.updateMany({
+      where: { userId, contaCanalId: accountId, pedidoExternoId: { in: antes.sobrando } },
+      data: { enriquecidoEm: null, enriquecimentoTentativas: 0 },
+    });
   }
-  return { reprocessados, erros };
+
+  const depois = await conferirMes(userId, accountId, competencia, pedidosMl);
+  return { antes, depois, lote };
 }

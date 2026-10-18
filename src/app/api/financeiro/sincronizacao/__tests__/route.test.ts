@@ -4,10 +4,8 @@ const { verifyUserMock } = vi.hoisted(() => ({ verifyUserMock: vi.fn() }));
 vi.mock("@/helpers/verifyUser", () => ({ verifyUser: verifyUserMock }));
 
 const sincronizarFinanceiroMock = vi.fn();
-const obterTravaAtivaMock = vi.fn();
 vi.mock("@/modules/financeiro/ingestao/orquestrador", () => ({
   sincronizarFinanceiro: (...args: unknown[]) => sincronizarFinanceiroMock(...args),
-  obterTravaAtiva: (...args: unknown[]) => obterTravaAtivaMock(...args),
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -40,8 +38,6 @@ const { POST } = await import("../route");
 beforeEach(() => {
   verifyUserMock.mockReset();
   sincronizarFinanceiroMock.mockReset();
-  obterTravaAtivaMock.mockReset();
-  obterTravaAtivaMock.mockResolvedValue(null);
 });
 
 describe("POST /api/financeiro/sincronizacao", () => {
@@ -74,17 +70,6 @@ describe("POST /api/financeiro/sincronizacao", () => {
       "conta-ml-1",
       expect.objectContaining({ modo: "PERIODO" })
     );
-  });
-
-  it("não inicia uma nova sincronização quando já há uma em andamento (trava por conta)", async () => {
-    verifyUserMock.mockResolvedValue({ contaId: "conta-dona", role: "ADMIN" });
-    obterTravaAtivaMock.mockResolvedValue({ id: "sinc-ativa" });
-
-    const response = await POST(criarRequest({ modo: "INCREMENTAL" }) as never);
-    const body = await response.json();
-
-    expect(body.status).toBe("EM_ANDAMENTO");
-    expect(sincronizarFinanceiroMock).not.toHaveBeenCalled();
   });
 
   it("modo inválido cai para INCREMENTAL", async () => {

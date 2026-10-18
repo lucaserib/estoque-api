@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CanalVenda } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
-import { sincronizarFinanceiro, obterTravaAtiva, type ModoSincronizacao } from "@/modules/financeiro/ingestao/orquestrador";
+import { sincronizarFinanceiro, type ModoSincronizacao } from "@/modules/financeiro/ingestao/orquestrador";
 
 export const maxDuration = 60;
 
@@ -12,9 +11,16 @@ interface RequestBody {
   modo?: ModoSincronizacao;
   desde?: string;
   ate?: string;
+  forcar?: boolean;
 }
 
 const MODOS_VALIDOS: ModoSincronizacao[] = ["INCREMENTAL", "PERIODO", "BACKFILL"];
+
+function dataValida(valor?: string): Date | undefined {
+  if (!valor) return undefined;
+  const data = new Date(valor);
+  return Number.isNaN(data.getTime()) ? undefined : data;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,18 +46,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const travaAtiva = await obterTravaAtiva(user.contaId, CanalVenda.MERCADO_LIVRE);
-    if (travaAtiva) {
-      return NextResponse.json(
-        { status: "EM_ANDAMENTO", processados: 0, erros: 0, proximoPasso: "CONTINUAR" },
-        { status: 200 }
-      );
-    }
-
     const resultado = await sincronizarFinanceiro(conta.id, {
       modo,
-      desde: body.desde ? new Date(body.desde) : undefined,
-      ate: body.ate ? new Date(body.ate) : undefined,
+      desde: dataValida(body.desde),
+      ate: dataValida(body.ate),
+      forcar: body.forcar ?? modo !== "INCREMENTAL",
+      orcamentoMs: 45000,
     });
 
     return NextResponse.json(resultado);
@@ -60,6 +60,9 @@ export async function POST(request: NextRequest) {
     if (permissaoResponse) return permissaoResponse;
 
     console.error("Erro ao sincronizar financeiro:", error);
-    return NextResponse.json({ error: "Erro ao sincronizar financeiro" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Erro ao sincronizar financeiro" },
+      { status: 500 }
+    );
   }
 }

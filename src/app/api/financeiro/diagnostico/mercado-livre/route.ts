@@ -41,6 +41,11 @@ const CAMPOS_PESSOAIS_PROIBIDOS = [
   "card",
   "payer_id",
   "identification",
+  "payer",
+  "payer_nickname",
+  "receiver_name",
+  "address",
+  "state_name",
 ];
 
 async function buscarJson(
@@ -139,6 +144,30 @@ async function diagnosticarPorTipo(
         return NextResponse.json({ error: "Erro ao buscar o saldo da conta", detalhe: corpo }, { status: resposta.status });
       }
       return NextResponse.json({ bruto: removerCamposSensiveis(corpo, CAMPOS_PESSOAIS_PROIBIDOS) });
+    }
+
+    case "bruto": {
+      const caminho = searchParams.get("caminho") ?? "";
+      const host = searchParams.get("host") === "mp" ? "https://api.mercadopago.com" : "https://api.mercadolibre.com";
+      const prefixosPermitidos =
+        host === "https://api.mercadopago.com"
+          ? ["/v1/payments/", "/users/", "/v1/account/"]
+          : ["/billing/", "/advertising/", "/orders/", "/shipments/", "/items/", "/users/", "/post-purchase/"];
+      if (!caminho.startsWith("/") || caminho.includes("..") || !prefixosPermitidos.some((p) => caminho.startsWith(p))) {
+        return NextResponse.json(
+          { error: "Caminho não permitido", permitidos: prefixosPermitidos },
+          { status: 400 }
+        );
+      }
+      const cabecalhos: Record<string, string> = { Authorization: `Bearer ${accessToken}`, Accept: "application/json" };
+      const apiVersion = searchParams.get("apiVersion");
+      if (apiVersion) cabecalhos["Api-Version"] = apiVersion;
+      const resposta = await fetch(`${host}${caminho}`, { headers: cabecalhos });
+      const corpo = await resposta.json().catch(() => null);
+      return NextResponse.json(
+        { status: resposta.status, bruto: removerCamposSensiveis(corpo, CAMPOS_PESSOAIS_PROIBIDOS) },
+        { status: 200 }
+      );
     }
 
     default:

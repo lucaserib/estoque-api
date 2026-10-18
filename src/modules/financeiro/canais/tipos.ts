@@ -29,6 +29,8 @@ export interface VendaCanalNormalizada {
   envioExternoId: string | null;
   pagamentoExternoId: string | null;
   freteComprador: number;
+  /** Valor devolvido ao comprador numa devolução parcial (pedido continua válido pelo restante). */
+  valorEstornado?: number;
   /** Nível do pedido inteiro — a camada de ingestão rateia entre os itens. */
   descontoVendedorTotal: number;
   descontoCusteadoPeloMlTotal: number;

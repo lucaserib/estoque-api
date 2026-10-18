@@ -34,6 +34,7 @@ import {
 import { formatBRL, formatDateBR } from "@/lib/format";
 import { chartColor } from "@/lib/chart-colors";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "../components/SeletorPeriodo";
+import { Input } from "@/components/ui/input";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
 
 type Granularidade = "DIA" | "SEMANA" | "MES";
@@ -57,8 +58,13 @@ interface ContaComSaldo {
   nome: string;
   tipo: string;
   saldoAtual: number;
-  saldoALiberarExterno: number | null;
-  origemSaldo: "API_MERCADO_PAGO" | "LANCAMENTOS";
+  saldoInicial: number;
+  dataSaldoInicial: string;
+  saldoALiberar: number | null;
+  liberadoDesdeAjuste: number | null;
+  movimentadoDesdeAjuste: number;
+  origemSaldo: "API_MERCADO_PAGO" | "LIBERACOES_E_LANCAMENTOS" | "LANCAMENTOS";
+  precisaAjuste: boolean;
 }
 
 export default function FluxoDeCaixaPage() {
@@ -73,7 +79,9 @@ export default function FluxoDeCaixaPage() {
   const [saldo, setSaldo] = useState<SaldoProjetado | null>(null);
   const [carregandoSaldo, setCarregandoSaldo] = useState(true);
   const [contas, setContas] = useState<ContaComSaldo[]>([]);
-  const [sincronizandoSaldo, setSincronizandoSaldo] = useState(false);
+  const [contaEmAjuste, setContaEmAjuste] = useState<string | null>(null);
+  const [valorAjuste, setValorAjuste] = useState("");
+  const [salvandoAjuste, setSalvandoAjuste] = useState(false);
 
   const carregarFluxo = useCallback(async () => {
     setCarregandoFluxo(true);
@@ -108,17 +116,28 @@ export default function FluxoDeCaixaPage() {
     }
   }, [dias]);
 
-  const sincronizarSaldo = async () => {
-    setSincronizandoSaldo(true);
+  const salvarAjuste = async (contaId: string) => {
+    const valor = Number(valorAjuste.replace(/\./g, "").replace(",", "."));
+    if (!Number.isFinite(valor)) {
+      toast.error("Informe o saldo em reais.");
+      return;
+    }
+    setSalvandoAjuste(true);
     try {
-      const resposta = await fetch("/api/financeiro/contas-financeiras/sincronizar-saldo", { method: "POST" });
+      const resposta = await fetch(`/api/financeiro/contas-financeiras/${contaId}/ajustar-saldo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ saldoAtual: Math.round(valor * 100) }),
+      });
       if (!resposta.ok) throw new Error();
-      toast.success("Saldo atualizado.");
+      toast.success("Saldo ajustado. A partir de agora ele acompanha as liberações e os lançamentos.");
+      setContaEmAjuste(null);
+      setValorAjuste("");
       carregarSaldo();
     } catch {
-      toast.error("Erro ao atualizar saldo.");
+      toast.error("Erro ao ajustar o saldo.");
     } finally {
-      setSincronizandoSaldo(false);
+      setSalvandoAjuste(false);
     }
   };
 
@@ -194,19 +213,15 @@ export default function FluxoDeCaixaPage() {
         </div>
         {carregandoSaldo ? <Skeleton className="h-[100px] rounded-md" /> : <StatStrip items={itensSaldo} />}
         <p className="mt-3 text-xs text-muted-foreground">
-          Saldo atual: saldo real da API do Mercado Pago para a carteira automática (quando disponível), ou saldo
-          inicial + lançamentos pagos para as demais contas. Contas de cartão de crédito não entram, pois
-          representam dívida, não dinheiro disponível.
+          Saldo atual: carteira do Mercado Pago = último saldo informado + líquido das vendas liberadas desde então +
+          lançamentos pagos na conta; demais contas = saldo inicial + lançamentos pagos. Cartão de crédito não entra
+          (é dívida, não dinheiro disponível).
         </p>
       </SectionCard>
 
       <SectionCard
         title="Saldo por conta"
-        actions={
-          <Button size="sm" variant="outline" disabled={sincronizandoSaldo} onClick={sincronizarSaldo}>
-            {sincronizandoSaldo ? "Atualizando…" : "Atualizar saldo"}
-          </Button>
-        }
+        description="O Mercado Pago não informa o saldo para apps do Mercado Livre: informe o saldo de hoje uma vez e o app acompanha sozinho."
       >
         {carregandoSaldo ? (
           <Skeleton className="h-[160px] rounded-md" />
@@ -217,21 +232,51 @@ export default function FluxoDeCaixaPage() {
             <DataTableHeader>
               <DataTableRow>
                 <DataTableHead>Conta</DataTableHead>
-                <DataTableHead>Origem do saldo</DataTableHead>
+                <DataTableHead>Como o saldo é calculado</DataTableHead>
                 <DataTableHead className="text-right">Saldo atual</DataTableHead>
-                <DataTableHead className="text-right">A liberar (ML)</DataTableHead>
+                <DataTableHead className="text-right">A liberar</DataTableHead>
+                <DataTableHead className="text-right">Ajuste</DataTableHead>
               </DataTableRow>
             </DataTableHeader>
             <DataTableBody>
               {contas.map((conta) => (
                 <DataTableRow key={conta.id}>
-                  <DataTableCell>{conta.nome}</DataTableCell>
                   <DataTableCell>
-                    {conta.origemSaldo === "API_MERCADO_PAGO" ? "API do Mercado Pago" : "Saldo inicial + lançamentos"}
+                    {conta.nome}
+                    {conta.precisaAjuste && <div className="text-xs text-warning">Informe o saldo atual</div>}
                   </DataTableCell>
-                  <DataTableCell className="text-right">{formatBRL(conta.saldoAtual)}</DataTableCell>
+                  <DataTableCell className="text-xs text-muted-foreground">
+                    {conta.origemSaldo === "LIBERACOES_E_LANCAMENTOS"
+                      ? `${formatBRL(conta.saldoInicial)} em ${formatDateBR(conta.dataSaldoInicial)} + ${formatBRL(conta.liberadoDesdeAjuste ?? 0)} liberados${conta.movimentadoDesdeAjuste !== 0 ? ` ${conta.movimentadoDesdeAjuste > 0 ? "+" : "−"} ${formatBRL(Math.abs(conta.movimentadoDesdeAjuste))} em lançamentos` : ""}`
+                      : `${formatBRL(conta.saldoInicial)} em ${formatDateBR(conta.dataSaldoInicial)} + lançamentos pagos`}
+                  </DataTableCell>
+                  <DataTableCell className="text-right font-mono">{formatBRL(conta.saldoAtual)}</DataTableCell>
+                  <DataTableCell className="text-right font-mono">
+                    {conta.saldoALiberar != null ? formatBRL(conta.saldoALiberar) : "—"}
+                  </DataTableCell>
                   <DataTableCell className="text-right">
-                    {conta.saldoALiberarExterno != null ? formatBRL(conta.saldoALiberarExterno) : "—"}
+                    {contaEmAjuste === conta.id ? (
+                      <div className="flex items-center justify-end gap-2">
+                        <Input
+                          autoFocus
+                          value={valorAjuste}
+                          onChange={(e) => setValorAjuste(e.target.value)}
+                          placeholder="Saldo de hoje (R$)"
+                          className="h-8 w-[150px]"
+                          inputMode="decimal"
+                        />
+                        <Button size="sm" disabled={salvandoAjuste} onClick={() => salvarAjuste(conta.id)}>
+                          Salvar
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => setContaEmAjuste(null)}>
+                          Cancelar
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => { setContaEmAjuste(conta.id); setValorAjuste(""); }}>
+                        Informar saldo
+                      </Button>
+                    )}
                   </DataTableCell>
                 </DataTableRow>
               ))}

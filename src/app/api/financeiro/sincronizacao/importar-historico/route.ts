@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
-import { enfileirarPeriodo, executarFila } from "@/modules/financeiro/ingestao/fila";
+import { sincronizarFinanceiro } from "@/modules/financeiro/ingestao/orquestrador";
 
 export const maxDuration = 60;
 
 const DIAS_PADRAO_HISTORICO = 365;
+const DIAS_MAXIMOS_HISTORICO = 730;
 
 interface RequestBody {
   accountId?: string;
@@ -37,17 +38,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const dias = body.dias ?? DIAS_PADRAO_HISTORICO;
+    const dias = Math.min(Math.max(body.dias ?? DIAS_PADRAO_HISTORICO, 1), DIAS_MAXIMOS_HISTORICO);
     const ate = new Date();
     const desde = new Date(ate.getTime() - dias * 24 * 60 * 60 * 1000);
 
-    await enfileirarPeriodo(conta.id, desde, ate, 20, body.forcar ?? false);
-    const resultadoFila = await executarFila(user.contaId, conta.id);
-
-    return NextResponse.json({
-      status: resultadoFila.status === "EM_ANDAMENTO" ? "EM_ANDAMENTO" : "CONCLUIDO",
-      processados: resultadoFila.processados,
+    const resultado = await sincronizarFinanceiro(conta.id, {
+      modo: "BACKFILL",
+      desde,
+      ate,
+      forcar: body.forcar ?? true,
+      orcamentoMs: 45000,
     });
+
+    return NextResponse.json(resultado);
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
     if (permissaoResponse) return permissaoResponse;

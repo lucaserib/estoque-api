@@ -325,6 +325,27 @@ export async function garantirArmazensParaDepositos(
   for (const deposit of deposits) {
     const depositoId = String(deposit.id);
     if (!armazemPorDeposito.has(depositoId)) {
+      const mesmoNome = armazensExistentes.find(
+        (a) =>
+          !a.blingDepositoId &&
+          a.tipo === "LOCAL" &&
+          a.nome.trim().toLowerCase() === deposit.descricao.trim().toLowerCase()
+      );
+      const unicoLocalSemDeposito =
+        deposit.padrao &&
+        armazensExistentes.filter((a) => !a.blingDepositoId && a.tipo === "LOCAL").length === 1
+          ? armazensExistentes.find((a) => !a.blingDepositoId && a.tipo === "LOCAL")
+          : undefined;
+      const paraVincular = mesmoNome ?? unicoLocalSemDeposito;
+      if (paraVincular) {
+        const vinculado = await prisma.armazem.update({
+          where: { id: paraVincular.id },
+          data: { blingDepositoId: depositoId },
+        });
+        paraVincular.blingDepositoId = depositoId;
+        armazemPorDeposito.set(depositoId, vinculado);
+        continue;
+      }
       const novoArmazem = await prisma.armazem.create({
         data: {
           userId,

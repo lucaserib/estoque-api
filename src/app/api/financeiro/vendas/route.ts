@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
       soIncompletas: searchParams.get("soIncompletas") === "true",
       produtoId: searchParams.get("produtoId") || undefined,
       logistica: searchParams.get("logistica") || undefined,
+      aguardandoDetalhes: searchParams.get("aguardandoDetalhes") === "true",
+      busca: searchParams.get("busca") || undefined,
       pagina: searchParams.get("pagina") ? Number(searchParams.get("pagina")) : undefined,
       porPagina: searchParams.get("porPagina") ? Number(searchParams.get("porPagina")) : undefined,
     });

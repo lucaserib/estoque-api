@@ -61,6 +61,9 @@ vi.mock("@/lib/prisma", () => ({
           })
       ),
     },
+    mercadoLivreAccount: {
+      findMany: vi.fn(async () => []),
+    },
     contaFinanceira: {
       findMany: vi.fn(
         async ({ where }: { where: { userId: string; ativo: boolean } }) =>
@@ -69,12 +72,12 @@ vi.mock("@/lib/prisma", () => ({
     },
     vendaCanal: {
       findMany: vi.fn(
-        async ({ where }: { where: { userId: string; dataLiberacao: { gte: Date; lte: Date } } }) =>
+        async ({ where }: { where: { userId: string; dataLiberacao: { gt: Date; lte: Date } } }) =>
           vendas.filter(
             (v) =>
               v.userId === where.userId &&
               v.dataLiberacao &&
-              v.dataLiberacao >= where.dataLiberacao.gte &&
+              v.dataLiberacao > where.dataLiberacao.gt &&
               v.dataLiberacao <= where.dataLiberacao.lte
           )
       ),

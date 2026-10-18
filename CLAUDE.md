@@ -87,6 +87,8 @@ Quando um número parecer errado, confira primeiro **de onde ele vem** antes de 
 - **Pendências de cadastro** (sem custo, sem fornecedor, margem negativa etc.): `calcularPendencias` (`src/lib/pendencias.ts`), orquestrado por `src/services/pendenciasService.ts`, cacheado por 60s por conta.
 - **Sugestão de reposição**: `src/services/reposicaoService.ts` — demanda vem de pedidos pagos do ML (uma chamada por conta, nunca por produto) mais saídas manuais, explodida por kit; estoque disponível soma local + Full (do snapshot) + pedidos de compra em aberto.
 - **Saldo de estoque do Bling**: gravado em `Estoque.quantidade` pela sincronização (`blingProductSync.ts`); `EstoqueMovimentacao.origem` registra se a última mudança veio do Bling ou de outra fonte (usado para detectar divergência).
+- **Todo número do Financeiro** (faturamento, margem, lucro, por produto, por logística, DRE, dashboard): `src/modules/financeiro/relatorios/motor.ts` (`calcularVenda`, `calcularIndicadores`, `agruparVendas`). Nenhuma tela ou rota calcula por conta própria. As definições estão em `docs/financeiro/definicoes.md`. A venda cai no dia da **criação** do pedido (fuso de SP), igual ao ML.
+- **Vendas do ML no Financeiro**: `VendaCanal`, gravada em duas etapas. Primeiro o lote rápido (`ingestao/lote.ts`), direto do `/orders/search`; depois o detalhamento (`ingestao/enriquecimento.ts`), com o pagamento do Mercado Pago (tarifa e frete reais, retenção, líquido, liberação). `enriquecidoEm = null` significa "ainda sem o detalhe do pagamento". A fila fica em `ingestao/fila.ts` e a prova contra o ML em `relatorios/conferencia.ts` (tela Financeiro → Conferência).
 
 ### Key Business Logic
 
@@ -159,4 +161,4 @@ All business data is scoped by **account** (`User.contaId`), not by individual u
 - Next.js config: `next.config.mjs` (includes ML image domains)
 
 ### Ciclo atual
-O histórico de auditorias e planos de execução por ciclo vive em `docs/` (`docs/AUDITORIA-CICLO-6.md` é o registro vivo do ciclo em andamento) e `docs/historico/` (ciclos e documentos anteriores já concluídos).
+O histórico de auditorias e planos de execução por ciclo vive em `docs/` (`docs/AUDITORIA-CICLO-10.md` é o registro vivo do ciclo em andamento) e `docs/historico/` (ciclos e documentos anteriores já concluídos). O plano mestre do produto é `PROMPT-DEFINITIVO-LEAP-STOCK.md` na raiz.

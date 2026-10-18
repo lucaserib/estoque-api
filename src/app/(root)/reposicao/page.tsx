@@ -13,6 +13,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
 import { HeroMetric } from "@/components/ui/hero-metric";
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
 import { SectionCard } from "@/components/ui/section-card";
@@ -185,7 +186,8 @@ const ReposicaoPage = () => {
         title="Reposição"
         subtitle="Produtos que precisam de reposição urgente"
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap justify-end gap-2">
+            <SincronizacaoCatalogo compacto onConcluido={() => fetchData()} />
             <Button
               variant="outline"
               onClick={handleGerarPedidos}

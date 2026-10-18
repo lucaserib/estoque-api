@@ -29,6 +29,16 @@ export async function ingerirCobrancasDoMes(
 
   const cobrancas = await adaptador.listarCobrancas(contaCanal, mesReferencia);
 
+  await prisma.cobrancaCanal.deleteMany({
+    where: {
+      userId: conta.userId,
+      canal: adaptador.canal,
+      contaCanalId: accountId,
+      mesReferencia,
+      NOT: { detalheExternoId: { contains: ":" } },
+    },
+  });
+
   let naoMapeadas = 0;
   for (const cobranca of cobrancas) {
     await prisma.cobrancaCanal.upsert({
@@ -57,6 +67,9 @@ export async function ingerirCobrancasDoMes(
         tipoExterno: cobranca.tipoExterno,
         tipoNormalizado: cobranca.tipoNormalizado,
         valor: cobranca.valor,
+        pedidoExternoId: cobranca.pedidoExternoId,
+        anuncioExternoId: cobranca.anuncioExternoId,
+        data: cobranca.data,
         coberturaPedido: cobranca.coberturaPedido,
       },
     });

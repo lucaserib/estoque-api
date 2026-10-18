@@ -14,7 +14,6 @@ import {
   type ItemVendaEntrada,
   type ResultadoVenda,
 } from "../dominio/formulas";
-import { inicioDoDia, fimDoDia } from "../dominio/periodo";
 import { ratear } from "../dominio/dinheiro";
 import { resolverOrigemCanonica } from "./deduplicacao";
 import { vincularProduto } from "./vinculo";
@@ -119,14 +118,14 @@ interface RegraFreteLogisticaInfo {
   percentual: number;
 }
 
-interface ConfigIngestao {
+export interface ConfigIngestao {
   aliquotaImposto: number;
   custoEnvioFlex: number | null;
   diasLiberacaoPadrao: number;
   regrasFreteLogistica: Map<string, RegraFreteLogisticaInfo>;
 }
 
-async function obterConfigIngestao(userId: string): Promise<ConfigIngestao> {
+export async function obterConfigIngestao(userId: string): Promise<ConfigIngestao> {
   const [config, regras] = await Promise.all([
     prisma.configuracaoGeral.findUnique({
       where: { userId },
@@ -416,7 +415,7 @@ export async function recalcularEPersistirMargem(
     }
   });
 
-  await atualizarResumoDoDia(venda.userId, venda.canal, venda.dataVenda);
+  await invalidarCacheFinanceiro(venda.userId);
 }
 
 export async function definirAjusteManualFrete(
@@ -495,7 +494,7 @@ async function prepararItens(
       produtoId,
       quantidade: zerar ? 0 : item.quantidade,
       precoUnitario: item.precoUnitario,
-      tarifaTotal: item.tarifaTotal,
+      tarifaTotal: zerar ? 0 : item.tarifaTotal,
       descontoVendedorTotal: 0,
       custoUnitario,
     });
@@ -517,39 +516,129 @@ async function prepararItens(
   return { itensEntrada, vinculos, descontosCusteadosMlRateados, custosFreteManualPorItem, algumVinculoNaoConfirmado };
 }
 
-async function persistirVendaNormalizada(
+export type ModoIngestao = "RAPIDO" | "COMPLETO";
+
+const ORIGENS_FRETE_CONFIRMADAS: FreteOrigem[] = [
+  FreteOrigem.PAGAMENTO_CONFIRMADO,
+  FreteOrigem.CUSTO_ENVIO_CANAL,
+];
+
+type VendaExistenteComItens = NonNullable<Awaited<ReturnType<typeof buscarVendaExistente>>>;
+
+async function buscarVendaExistente(userId: string, canal: CanalVenda, pedidoExternoId: string) {
+  return prisma.vendaCanal.findUnique({
+    where: { userId_canal_pedidoExternoId: { userId, canal, pedidoExternoId } },
+    include: { itens: true },
+  });
+}
+
+function resolverFreteSemChamadas(
+  normalizado: VendaCanalNormalizada,
+  vendaExistente: VendaExistenteComItens | null,
+  config: ConfigIngestao,
+  itensEntrada: ItemVendaEntrada[],
+  custosFreteManualPorItem: Array<number | null>,
+  faturamentoBruto: number
+): ResolucaoFrete {
+  if (vendaExistente?.freteAjusteManual != null) {
+    return { valor: vendaExistente.freteAjusteManual, origem: FreteOrigem.AJUSTE_MANUAL };
+  }
+  if (!normalizado.envioExternoId) {
+    return { valor: 0, origem: FreteOrigem.DESCONHECIDO };
+  }
+  if (
+    vendaExistente?.freteVendedor != null &&
+    ORIGENS_FRETE_CONFIRMADAS.includes(vendaExistente.freteOrigem)
+  ) {
+    return { valor: vendaExistente.freteVendedor, origem: vendaExistente.freteOrigem };
+  }
+  const custoPorProduto = somarCustoFreteProduto(itensEntrada, custosFreteManualPorItem);
+  if (custoPorProduto != null) return { valor: custoPorProduto, origem: FreteOrigem.CUSTO_PRODUTO };
+  const padrao = resolverPadraoLogistica(normalizado.logistica, config, faturamentoBruto);
+  if (padrao != null) return { valor: padrao, origem: FreteOrigem.PADRAO_LOGISTICA };
+  return { valor: null, origem: FreteOrigem.DESCONHECIDO };
+}
+
+function liberacaoSemChamadas(
+  normalizado: VendaCanalNormalizada,
+  vendaExistente: VendaExistenteComItens | null,
+  diasLiberacaoPadrao: number
+): LiberacaoResolvida {
+  if (normalizado.dataLiberacao) {
+    return { dataLiberacao: normalizado.dataLiberacao, valorLiquidoOverride: null, estimado: false };
+  }
+  if (vendaExistente?.dataLiberacao && !vendaExistente.faltando.includes(PENDENCIA_LIBERACAO_ESTIMADA)) {
+    return {
+      dataLiberacao: vendaExistente.dataLiberacao,
+      valorLiquidoOverride: vendaExistente.valorLiquidoReceber,
+      estimado: false,
+    };
+  }
+  if (normalizado.status !== StatusVendaCanal.PAGA) {
+    return { dataLiberacao: null, valorLiquidoOverride: null, estimado: false };
+  }
+  return {
+    dataLiberacao: new Date(normalizado.dataVenda.getTime() + diasLiberacaoPadrao * 24 * 60 * 60 * 1000),
+    valorLiquidoOverride: null,
+    estimado: true,
+  };
+}
+
+export interface OpcoesPersistencia {
+  modo: ModoIngestao;
+  config?: ConfigIngestao;
+  vendaExistente?: VendaExistenteComItens | null;
+}
+
+/**
+ * Grava (cria ou atualiza) uma venda a partir do pedido normalizado.
+ *
+ * RAPIDO: usa só o que o próprio pedido traz (/orders/search) — nenhuma
+ * chamada extra à API. Faturamento, status, unidades e tarifa (sale_fee)
+ * ficam corretos na hora; frete e liberação reaproveitam o que já estava
+ * confirmado ou caem nas regras configuradas. A venda fica com
+ * `enriquecidoEm = null` e entra na fila de detalhamento.
+ *
+ * COMPLETO: busca o pagamento no Mercado Pago (tarifa real, frete real,
+ * retenções, líquido e data de liberação) e a logística do envio, e marca a
+ * venda como detalhada.
+ */
+export async function persistirVendaNormalizada(
   contaCanal: ContaCanal,
   adaptador: AdaptadorCanalFinanceiro,
-  normalizadoOriginal: VendaCanalNormalizada
+  normalizadoOriginal: VendaCanalNormalizada,
+  opcoes: OpcoesPersistencia = { modo: "COMPLETO" }
 ): Promise<void> {
   const origem = resolverOrigemCanonica(
     { canal: adaptador.canal, pedidoExternoId: normalizadoOriginal.pedidoExternoId },
     normalizadoOriginal.origemReal
   );
   const { userId } = contaCanal;
+  const completo = opcoes.modo === "COMPLETO";
 
-  const config = await obterConfigIngestao(userId);
-  normalizadoOriginal.logistica = await resolverLogisticaReal(
-    contaCanal,
-    adaptador,
-    normalizadoOriginal
-  );
+  const config = opcoes.config ?? (await obterConfigIngestao(userId));
+  const vendaExistente =
+    opcoes.vendaExistente !== undefined
+      ? opcoes.vendaExistente
+      : await buscarVendaExistente(userId, origem.canal, origem.pedidoExternoId);
 
-  const vendaExistente = await prisma.vendaCanal.findUnique({
-    where: {
-      userId_canal_pedidoExternoId: {
-        userId,
-        canal: origem.canal,
-        pedidoExternoId: origem.pedidoExternoId,
-      },
-    },
-    include: { itens: true },
-  });
+  normalizadoOriginal.logistica = completo
+    ? await resolverLogisticaReal(contaCanal, adaptador, normalizadoOriginal)
+    : normalizadoOriginal.logistica ?? vendaExistente?.logistica ?? null;
 
   const { itensEntrada, vinculos, descontosCusteadosMlRateados, custosFreteManualPorItem, algumVinculoNaoConfirmado } =
     await prepararItens(userId, contaCanal.contaCanalId, normalizadoOriginal, vendaExistente);
 
-  const pagamento = await resolverPagamentoDetalhado(contaCanal, adaptador, normalizadoOriginal);
+  if (!completo && vendaExistente && normalizadoOriginal.descontoVendedorTotal === 0) {
+    const descontosExistentes = ratearCustoVendaPorItem(vendaExistente.descontoVendedor, itensEntrada);
+    itensEntrada.forEach((item, i) => {
+      item.descontoVendedorTotal = descontosExistentes[i];
+    });
+  }
+
+  const pagamento = completo
+    ? await resolverPagamentoDetalhado(contaCanal, adaptador, normalizadoOriginal)
+    : null;
   if (pagamento) {
     aplicarTarifaConfirmada(itensEntrada, pagamento);
   }
@@ -559,25 +648,34 @@ async function persistirVendaNormalizada(
     0
   );
 
-  const frete = await resolverFrete(
-    contaCanal,
-    adaptador,
-    normalizadoOriginal,
-    config,
-    pagamento,
-    vendaExistente?.freteAjusteManual ?? null,
-    itensEntrada,
-    custosFreteManualPorItem,
-    faturamentoBrutoOriginal
-  );
+  const frete = completo
+    ? await resolverFrete(
+        contaCanal,
+        adaptador,
+        normalizadoOriginal,
+        config,
+        pagamento,
+        vendaExistente?.freteAjusteManual ?? null,
+        itensEntrada,
+        custosFreteManualPorItem,
+        faturamentoBrutoOriginal
+      )
+    : resolverFreteSemChamadas(
+        normalizadoOriginal,
+        vendaExistente,
+        config,
+        itensEntrada,
+        custosFreteManualPorItem,
+        faturamentoBrutoOriginal
+      );
   const freteTotalPedido = frete.valor;
 
-  const liberacao = await resolverLiberacao(
-    contaCanal,
-    adaptador,
-    normalizadoOriginal,
-    config.diasLiberacaoPadrao
-  );
+  const liberacao: LiberacaoResolvida =
+    pagamento?.dataLiberacao
+      ? { dataLiberacao: pagamento.dataLiberacao, valorLiquidoOverride: null, estimado: false }
+      : completo
+        ? await resolverLiberacao(contaCanal, adaptador, normalizadoOriginal, config.diasLiberacaoPadrao)
+        : liberacaoSemChamadas(normalizadoOriginal, vendaExistente, config.diasLiberacaoPadrao);
 
   const resultado: ResultadoVenda = calcularResultadoVenda(
     { freteTotal: freteTotalPedido, adsAtribuido: vendaExistente?.adsAtribuido ?? 0 },
@@ -586,7 +684,7 @@ async function persistirVendaNormalizada(
   );
 
   const semVinculo = vinculos.some((v) => v === null);
-  const completo = resultado.completo && !semVinculo;
+  const vendaCompleta = resultado.completo && !semVinculo;
   const faltando = [
     ...new Set([
       ...resultado.faltando,
@@ -595,6 +693,11 @@ async function persistirVendaNormalizada(
       ...(algumVinculoNaoConfirmado ? [PENDENCIA_VINCULO_NAO_CONFIRMADO] : []),
     ]),
   ];
+
+  const valorLiquidoReceber =
+    pagamento?.valorLiquidoReceber ??
+    liberacao.valorLiquidoOverride ??
+    calcularValorLiquidoReceber(resultado);
 
   const dadosComuns = {
     pacoteExternoId: normalizadoOriginal.pacoteExternoId,
@@ -605,6 +708,7 @@ async function persistirVendaNormalizada(
     logistica: normalizadoOriginal.logistica,
     envioExternoId: normalizadoOriginal.envioExternoId,
     faturamentoBruto: faturamentoBrutoOriginal,
+    valorEstornado: normalizadoOriginal.valorEstornado ?? 0,
     descontoVendedor: resultado.descontoVendedor,
     tarifaVenda: resultado.tarifa ?? 0,
     freteVendedor: resultado.freteVendedor,
@@ -614,15 +718,21 @@ async function persistirVendaNormalizada(
     cmv: resultado.cmv,
     outrosCustos: 0,
     margemContribuicao: resultado.margemContribuicao,
-    valorLiquidoReceber:
-      pagamento?.valorLiquidoReceber ?? liberacao.valorLiquidoOverride ?? calcularValorLiquidoReceber(resultado),
-    retencaoDividas: pagamento?.retencaoDividas ?? 0,
-    statusLiberacao: pagamento?.statusLiberacao ?? null,
-    completo,
+    valorLiquidoReceber,
+    retencaoDividas: pagamento?.retencaoDividas ?? vendaExistente?.retencaoDividas ?? 0,
+    statusLiberacao: pagamento?.statusLiberacao ?? vendaExistente?.statusLiberacao ?? null,
+    completo: vendaCompleta,
     faltando,
-    freteConfianca: freteTotalPedido == null ? Confianca.ESTIMADO : Confianca.CONFIRMADO,
+    freteConfianca:
+      frete.origem === FreteOrigem.PAGAMENTO_CONFIRMADO ||
+      frete.origem === FreteOrigem.CUSTO_ENVIO_CANAL ||
+      frete.origem === FreteOrigem.AJUSTE_MANUAL
+        ? Confianca.CONFIRMADO
+        : Confianca.ESTIMADO,
     freteOrigem: frete.origem,
     atualizadoNoCanalEm: normalizadoOriginal.atualizadoNoCanalEm,
+    enriquecidoEm: completo ? new Date() : null,
+    ...(completo ? { enriquecimentoErro: null } : {}),
   };
 
   const venda = await prisma.vendaCanal.upsert({
@@ -671,8 +781,6 @@ async function persistirVendaNormalizada(
   if (pagamento) {
     await persistirCobrancasPagamento(venda.id, pagamento);
   }
-
-  await atualizarResumoDoDia(userId, origem.canal, normalizadoOriginal.dataVenda);
 }
 
 async function persistirCobrancasPagamento(
@@ -709,87 +817,16 @@ async function persistirCobrancasPagamento(
   }
 }
 
+/**
+ * Os relatórios calculam tudo direto das vendas (relatorios/motor.ts) — não
+ * há mais snapshot diário para manter. Mantida só para invalidar o cache
+ * curto dos relatórios depois de uma escrita.
+ */
 export async function atualizarResumoDoDia(
   userId: string,
-  canal: CanalVenda,
-  algumInstanteDoDia: Date
+  _canal?: CanalVenda,
+  _algumInstanteDoDia?: Date
 ): Promise<void> {
-  const dia = inicioDoDia(algumInstanteDoDia);
-  const fimDia = fimDoDia(algumInstanteDoDia);
-
-  const vendas = await prisma.vendaCanal.findMany({
-    where: { userId, canal, dataVenda: { gte: dia, lte: fimDia } },
-    select: {
-      status: true,
-      faturamentoBruto: true,
-      descontoVendedor: true,
-      tarifaVenda: true,
-      freteVendedor: true,
-      impostoEstimado: true,
-      adsAtribuido: true,
-      cmv: true,
-      margemContribuicao: true,
-      completo: true,
-      itens: { select: { quantidade: true } },
-    },
-  });
-
-  const resumo = {
-    pedidos: 0,
-    unidades: 0,
-    faturamentoBruto: 0,
-    cancelamentos: 0,
-    descontos: 0,
-    impostos: 0,
-    tarifas: 0,
-    frete: 0,
-    ads: 0,
-    cmv: 0,
-    margemContribuicao: 0,
-    vendasIncompletas: 0,
-  };
-
-  let adsAlocadoEmVendas = 0;
-
-  for (const venda of vendas) {
-    resumo.pedidos += 1;
-    if (!venda.completo) resumo.vendasIncompletas += 1;
-    adsAlocadoEmVendas += venda.adsAtribuido; // conta mesmo cancelada: ads não é reembolsado
-    resumo.faturamentoBruto += venda.faturamentoBruto;
-
-    if (statusZeraQuantidade(venda.status)) {
-      resumo.cancelamentos += venda.faturamentoBruto;
-      continue;
-    }
-
-    resumo.unidades += venda.itens.reduce((soma, item) => soma + item.quantidade, 0);
-    resumo.descontos += venda.descontoVendedor;
-    resumo.impostos += venda.impostoEstimado;
-    resumo.tarifas += venda.tarifaVenda;
-    resumo.frete += venda.freteVendedor ?? 0;
-    resumo.cmv += venda.cmv ?? 0;
-    if (venda.margemContribuicao != null) {
-      resumo.margemContribuicao += venda.margemContribuicao;
-    }
-  }
-
-  // Ads sem venda no dia não pode somar — o custo de GastoAdsCanal é a fonte
-  // de verdade do total; a parte não alocada a nenhuma venda ainda reduz a
-  // margem do dia (foi um gasto real), mesmo sem uma venda específica pra descontar.
-  const totalAdsDoDia = await prisma.gastoAdsCanal.aggregate({
-    where: { userId, canal, dia: { gte: dia, lte: fimDia } },
-    _sum: { custo: true },
-  });
-  resumo.ads = totalAdsDoDia._sum.custo ?? 0;
-  const adsNaoAlocado = Math.max(0, resumo.ads - adsAlocadoEmVendas);
-  resumo.margemContribuicao -= adsNaoAlocado;
-
-  await prisma.resumoFinanceiroDiario.upsert({
-    where: { userId_dia_canal: { userId, dia, canal } },
-    create: { userId, dia, canal, ...resumo },
-    update: { ...resumo, atualizadoEm: new Date() },
-  });
-
   await invalidarCacheFinanceiro(userId);
 }
 
@@ -809,16 +846,19 @@ export async function ingerirPedidoMercadoLivre(
   const normalizado = await adaptador.obterPedido(contaCanal, pedidoExternoId);
   if (!normalizado) return { ingerido: false, motivo: "NAO_RELEVANTE_AINDA" };
 
-  await persistirVendaNormalizada(contaCanal, adaptador, normalizado);
+  await persistirVendaNormalizada(contaCanal, adaptador, normalizado, { modo: "COMPLETO" });
+  await invalidarCacheFinanceiro(conta.userId);
   return { ingerido: true };
 }
 
 export async function ingerirVendaNormalizada(
   contaCanal: ContaCanal,
   adaptador: AdaptadorCanalFinanceiro,
-  normalizado: VendaCanalNormalizada
+  normalizado: VendaCanalNormalizada,
+  modo: ModoIngestao = "COMPLETO"
 ): Promise<void> {
-  await persistirVendaNormalizada(contaCanal, adaptador, normalizado);
+  await persistirVendaNormalizada(contaCanal, adaptador, normalizado, { modo });
+  await invalidarCacheFinanceiro(contaCanal.userId);
 }
 
 export async function obterUserIdDaConta(accountId: string): Promise<string | null> {

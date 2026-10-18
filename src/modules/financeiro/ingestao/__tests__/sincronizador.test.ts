@@ -632,9 +632,9 @@ function normalizado(parcial: Partial<VendaCanalNormalizada> = {}): VendaCanalNo
 const {
   ingerirPedidoMercadoLivre,
   reprocessarErrosPendentes,
-  atualizarResumoDoDia,
   definirAjusteManualFrete,
   limparAjusteManualFrete,
+  persistirVendaNormalizada,
 } = await import("../sincronizador");
 
 beforeEach(() => {
@@ -911,63 +911,72 @@ describe("ingerirPedidoMercadoLivre", () => {
   });
 });
 
-describe("atualizarResumoDoDia", () => {
-  it("soma vendas pagas e separa cancelamentos pelo valor original", async () => {
-    const dia = new Date("2026-05-10T15:00:00.000Z");
-    vendas.push({
-      id: "v1", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, contaCanalId: "conta-1",
-      pedidoExternoId: "P1", pacoteExternoId: null, dataVenda: dia, dataCancelamento: null, dataLiberacao: null,
-      status: StatusVendaCanal.PAGA, logistica: null, envioExternoId: null,
-      faturamentoBruto: 10000, descontoVendedor: 0, tarifaVenda: 1000, freteVendedor: 500, freteComprador: 0,
-      impostoEstimado: 0, adsAtribuido: 0, cmv: 4000, outrosCustos: 0, margemContribuicao: 4500,
-      valorLiquidoReceber: null, completo: true, faltando: [], freteConfianca: Confianca.CONFIRMADO,
-      atualizadoNoCanalEm: dia, itens: [{ id: "i1", vendaId: "v1", produtoId: null, sku: null, anuncioExternoId: "a", variacaoExternaId: null, titulo: "x", quantidade: 2, precoUnitario: 5000, precoCheio: null, tarifaVenda: 1000, freteRateado: 500, descontoRateado: 0, impostoRateado: 0, adsRateado: 0, custoUnitario: 2000, margemContribuicao: 4500 }],
-    });
-    vendas.push({
-      id: "v2", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, contaCanalId: "conta-1",
-      pedidoExternoId: "P2", pacoteExternoId: null, dataVenda: dia, dataCancelamento: dia, dataLiberacao: null,
-      status: StatusVendaCanal.CANCELADA, logistica: null, envioExternoId: null,
-      faturamentoBruto: 8000, descontoVendedor: 0, tarifaVenda: 0, freteVendedor: 0, freteComprador: 0,
-      impostoEstimado: 0, adsAtribuido: 0, cmv: 0, outrosCustos: 0, margemContribuicao: 0,
-      valorLiquidoReceber: null, completo: true, faltando: [], freteConfianca: Confianca.CONFIRMADO,
-      atualizadoNoCanalEm: dia, itens: [],
-    });
+describe("persistirVendaNormalizada — modos RAPIDO e COMPLETO (Ciclo 10)", () => {
+  it("RAPIDO grava o pedido sem nenhuma chamada extra à API e deixa a venda aguardando detalhes", async () => {
+    const obterPagamentoDetalhado = vi.fn();
+    const obterCustoEnvio = vi.fn();
+    const obterEnvio = vi.fn();
+    adaptadorFake.atual = { obterPagamentoDetalhado, obterCustoEnvio, obterEnvio };
+    const adaptador = (await import("../../canais/registro")).obterAdaptador(CanalVenda.MERCADO_LIVRE);
 
-    await atualizarResumoDoDia("user-1", CanalVenda.MERCADO_LIVRE, dia);
+    await persistirVendaNormalizada(
+      { contaCanalId: "conta-1", userId: "user-1" },
+      adaptador,
+      normalizado({ pagamentoExternoId: "PAY1", logistica: null }),
+      { modo: "RAPIDO" }
+    );
 
-    const resumo = resumos[0];
-    expect(resumo.pedidos).toBe(2);
-    expect(resumo.faturamentoBruto).toBe(18000);
-    expect(resumo.cancelamentos).toBe(8000); // valor original do cancelamento
-    expect(resumo.unidades).toBe(2);
+    expect(obterPagamentoDetalhado).not.toHaveBeenCalled();
+    expect(obterCustoEnvio).not.toHaveBeenCalled();
+    expect(obterEnvio).not.toHaveBeenCalled();
+    expect(vendas).toHaveLength(1);
+    expect(vendas[0].faturamentoBruto).toBe(10000);
+    expect(vendas[0].tarifaVenda).toBe(1000);
+    expect((vendas[0] as unknown as { enriquecidoEm: Date | null }).enriquecidoEm).toBeNull();
   });
 
-  it("F7 (Ciclo 8): faturamentoBruto inclui a venda depois cancelada; cancelamentos guarda o valor dela à parte", async () => {
-    const dia = new Date("2026-05-11T15:00:00.000Z");
-    vendas.push({
-      id: "v3", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, contaCanalId: "conta-1",
-      pedidoExternoId: "P3", pacoteExternoId: null, dataVenda: dia, dataCancelamento: null, dataLiberacao: null,
-      status: StatusVendaCanal.PAGA, logistica: null, envioExternoId: null,
-      faturamentoBruto: 10000, descontoVendedor: 0, tarifaVenda: 0, freteVendedor: 0, freteComprador: 0,
-      impostoEstimado: 0, adsAtribuido: 0, cmv: 0, outrosCustos: 0, margemContribuicao: 10000,
-      valorLiquidoReceber: null, completo: true, faltando: [], freteConfianca: Confianca.CONFIRMADO,
-      atualizadoNoCanalEm: dia, itens: [],
-    });
-    vendas.push({
-      id: "v4", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, contaCanalId: "conta-1",
-      pedidoExternoId: "P4", pacoteExternoId: null, dataVenda: dia, dataCancelamento: dia, dataLiberacao: null,
-      status: StatusVendaCanal.CANCELADA, logistica: null, envioExternoId: null,
-      faturamentoBruto: 5000, descontoVendedor: 0, tarifaVenda: 0, freteVendedor: 0, freteComprador: 0,
-      impostoEstimado: 0, adsAtribuido: 0, cmv: 0, outrosCustos: 0, margemContribuicao: 0,
-      valorLiquidoReceber: null, completo: true, faltando: [], freteConfianca: Confianca.CONFIRMADO,
-      atualizadoNoCanalEm: dia, itens: [],
-    });
+  it("RAPIDO reaproveita o frete já confirmado pelo pagamento quando o pedido muda de status", async () => {
+    adaptadorFake.atual = {
+      obterPedido: vi.fn(async () => normalizado({ pagamentoExternoId: "PAY1" })),
+      obterPagamentoDetalhado: vi.fn(async () => ({
+        pagamentoExternoId: "PAY1",
+        tarifaVenda: 299,
+        freteVendedor: 685,
+        retencaoDividas: 0,
+        valorLiquidoReceber: 9016,
+        dataLiberacao: new Date("2026-06-01T12:00:00.000Z"),
+        statusLiberacao: "pending",
+        cobrancas: [],
+        desconhecidos: [],
+      })),
+    };
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+    expect((vendas[0] as unknown as { enriquecidoEm: Date | null }).enriquecidoEm).toBeInstanceOf(Date);
 
-    await atualizarResumoDoDia("user-1", CanalVenda.MERCADO_LIVRE, dia);
+    const adaptador = (await import("../../canais/registro")).obterAdaptador(CanalVenda.MERCADO_LIVRE);
+    await persistirVendaNormalizada(
+      { contaCanalId: "conta-1", userId: "user-1" },
+      adaptador,
+      normalizado({ atualizadoNoCanalEm: new Date("2026-05-12T10:00:00.000Z") }),
+      { modo: "RAPIDO" }
+    );
 
-    const resumo = resumos[0];
-    expect(resumo.faturamentoBruto).toBe(15000);
-    expect(resumo.cancelamentos).toBe(5000);
+    expect(vendas[0].freteVendedor).toBe(685);
+    expect(vendas[0].freteOrigem).toBe("PAGAMENTO_CONFIRMADO");
+    expect(vendas[0].dataLiberacao?.toISOString()).toBe("2026-06-01T12:00:00.000Z");
+    expect((vendas[0] as unknown as { enriquecidoEm: Date | null }).enriquecidoEm).toBeNull();
+  });
+
+  it("venda cancelada não carrega tarifa do pedido (o ML devolve a tarifa)", async () => {
+    adaptadorFake.atual = {};
+    const adaptador = (await import("../../canais/registro")).obterAdaptador(CanalVenda.MERCADO_LIVRE);
+    await persistirVendaNormalizada(
+      { contaCanalId: "conta-1", userId: "user-1" },
+      adaptador,
+      normalizado({ status: StatusVendaCanal.CANCELADA }),
+      { modo: "RAPIDO" }
+    );
+    expect(vendas[0].tarifaVenda).toBe(0);
   });
 });
 

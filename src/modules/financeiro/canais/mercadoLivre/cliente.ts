@@ -56,47 +56,102 @@ async function buscarDiscounts(
   return resposta.json();
 }
 
+export type CampoDataPedido = "date_created" | "date_last_updated";
+
+export interface PaginaPedidosBrutos {
+  pedidos: MLOrder[];
+  total: number;
+  proximoOffset: number | null;
+}
+
+export interface ParametrosPaginaPedidos {
+  campoData: CampoDataPedido;
+  desde: Date;
+  ate: Date;
+  offset: number;
+  ordem?: "date_asc" | "date_desc";
+  limite?: number;
+}
+
+export async function buscarPaginaPedidos(
+  contaCanalId: string,
+  parametros: ParametrosPaginaPedidos
+): Promise<PaginaPedidosBrutos> {
+  const { accessToken, mlUserId } = await obterAccessTokenEMlUserId(contaCanalId);
+  const limite = parametros.limite ?? LIMITE_POR_PAGINA;
+  const params = new URLSearchParams({
+    seller: mlUserId,
+    offset: String(parametros.offset),
+    limit: String(limite),
+    sort: parametros.ordem ?? "date_desc",
+    [`order.${parametros.campoData}.from`]: parametros.desde.toISOString(),
+    [`order.${parametros.campoData}.to`]: parametros.ate.toISOString(),
+  });
+
+  const resposta = await fetchMlWithBackoff(`${BASE_URL}/orders/search?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+  });
+  if (!resposta.ok) {
+    throw new Error(`Mercado Livre recusou a busca de pedidos (HTTP ${resposta.status})`);
+  }
+
+  const dados = (await resposta.json()) as { results?: MLOrder[]; paging?: { total?: number } };
+  const pedidos = dados.results ?? [];
+  const total = dados.paging?.total ?? pedidos.length;
+  const proximo = parametros.offset + limite;
+  const teto = Math.min(total, ML_MAX_OFFSET);
+  return {
+    pedidos,
+    total,
+    proximoOffset: pedidos.length === limite && proximo < teto ? proximo : null,
+  };
+}
+
+async function listarJanelaCompleta(
+  contaCanalId: string,
+  desde: Date,
+  ate: Date
+): Promise<{ pedidos: MLOrder[]; total: number }> {
+  const pedidos: MLOrder[] = [];
+  let offset: number | null = 0;
+  let total = 0;
+  while (offset != null) {
+    const pagina = await buscarPaginaPedidos(contaCanalId, {
+      campoData: "date_created",
+      desde,
+      ate,
+      offset,
+      ordem: "date_asc",
+    });
+    total = pagina.total;
+    pedidos.push(...pagina.pedidos);
+    offset = pagina.proximoOffset;
+  }
+  return { pedidos, total };
+}
+
+/**
+ * Todos os pedidos criados na janela (data de criação, fuso de SP nas bordas
+ * que o chamador passar). Busca a janela inteira de uma vez; só fatia por dia
+ * quando a janela passa do limite de 10.000 resultados do /orders/search.
+ */
 export async function listarPedidosCriadosNoPeriodo(
   contaCanalId: string,
   desde: Date,
   ate: Date
 ): Promise<MLOrder[]> {
-  const { accessToken, mlUserId } = await obterAccessTokenEMlUserId(contaCanalId);
-  const pedidos: MLOrder[] = [];
+  const janela = await listarJanelaCompleta(contaCanalId, desde, ate);
+  if (janela.total <= ML_MAX_OFFSET) return janela.pedidos;
 
+  const pedidos: MLOrder[] = [];
   let diaCursor = inicioDoDia(desde);
   while (diaCursor <= ate) {
     const fimDoDiaAtual = fimDoDia(diaCursor);
     const fimEfetivo = fimDoDiaAtual < ate ? fimDoDiaAtual : ate;
-
-    let offset = 0;
-    while (true) {
-      const params = new URLSearchParams({
-        seller: mlUserId,
-        offset: String(offset),
-        limit: String(LIMITE_POR_PAGINA),
-        sort: "date_asc",
-        "order.date_created.from": diaCursor.toISOString(),
-        "order.date_created.to": fimEfetivo.toISOString(),
-      });
-
-      const resposta = await fetchMlWithBackoff(
-        `${BASE_URL}/orders/search?${params.toString()}`,
-        { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
-      );
-      if (!resposta.ok) break;
-
-      const dados = (await resposta.json()) as { results: MLOrder[]; paging: { total: number } };
-      pedidos.push(...dados.results);
-
-      offset += LIMITE_POR_PAGINA;
-      const tetoDisponivel = Math.min(dados.paging.total, ML_MAX_OFFSET);
-      if (dados.results.length < LIMITE_POR_PAGINA || offset >= tetoDisponivel) break;
-    }
-
+    const doDia = await listarJanelaCompleta(contaCanalId, diaCursor < desde ? desde : diaCursor, fimEfetivo);
+    pedidos.push(...doDia.pedidos);
     diaCursor = new Date(fimEfetivo.getTime() + 1);
   }
-
   return pedidos;
 }
 
@@ -321,45 +376,47 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
     conta: ContaCanal,
     mesReferencia: string
   ): Promise<CobrancaNormalizada[]> {
-    const cobrancas: CobrancaNormalizada[] = [];
+    const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
+    const chavePeriodo = `${mesReferencia}-01`;
+    const porId = new Map<string, CobrancaNormalizada>();
 
-    try {
-      const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
-      const chavePeriodo = `${mesReferencia}-01`;
+    const caminhos = [
+      `/billing/integration/periods/key/${chavePeriodo}/group/ML/details`,
+      `/billing/integration/periods/key/${chavePeriodo}/group/ML/full/details`,
+    ];
 
+    for (const caminho of caminhos) {
       for (const documentType of TIPOS_DOCUMENTO_COBRANCA) {
-        let fromId = "0";
-
-        while (true) {
+        let offset = 0;
+        while (offset <= ML_MAX_OFFSET) {
           const params = new URLSearchParams({
             document_type: documentType,
             limit: String(LIMITE_COBRANCAS_POR_PAGINA),
-            sort_by: "ID",
-            order_by: "ASC",
-            from_id: fromId,
+            offset: String(offset),
           });
+          const resposta = await fetchMlWithBackoff(`${BASE_URL}${caminho}?${params.toString()}`, {
+            headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+          });
+          if (resposta.status === 404) break;
+          if (!resposta.ok && resposta.status !== 206) {
+            if (caminho.endsWith("/full/details")) break;
+            throw new Error(`Mercado Livre recusou a fatura ${mesReferencia} (HTTP ${resposta.status})`);
+          }
 
-          const resposta = await fetchMlWithBackoff(
-            `${BASE_URL}/billing/integration/periods/key/${chavePeriodo}/group/ML/details?${params.toString()}`,
-            { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
-          );
-          if (!resposta.ok) break;
-
-          const dados = (await resposta.json()) as { results?: CobrancaBruta[] };
+          const dados = (await resposta.json()) as { results?: CobrancaBruta[]; total?: number };
           const resultados = dados.results ?? [];
-          cobrancas.push(...resultados.map(mapearCobranca));
+          for (const bruto of resultados) {
+            const cobranca = mapearCobranca(bruto, documentType as "BILL" | "CREDIT_NOTE");
+            if (cobranca) porId.set(cobranca.detalheExternoId, cobranca);
+          }
 
-          if (resultados.length < LIMITE_COBRANCAS_POR_PAGINA) break;
-
-          const ultimoId = resultados[resultados.length - 1]?.id;
-          if (ultimoId == null || String(ultimoId) === fromId) break;
-          fromId = String(ultimoId);
+          offset += resultados.length;
+          const total = typeof dados.total === "number" ? dados.total : offset;
+          if (resultados.length === 0 || offset >= total) break;
         }
       }
-    } catch (erro) {
-      console.error("[COBRANCAS_ML] Erro ao buscar cobranças:", erro);
     }
 
-    return cobrancas;
+    return [...porId.values()];
   },
 };

@@ -68,8 +68,9 @@ function houvePagamentoParcialmenteEstornado(payments: unknown): boolean {
 
 export function mapearStatus(pedido: MLOrder): StatusVendaCanal | null {
   if (pedido.status === "paid") return StatusVendaCanal.PAGA;
+  if (pedido.status === "partially_refunded") return StatusVendaCanal.DEVOLVIDA_PARCIAL;
 
-  if (pedido.status === "cancelled") {
+  if (pedido.status === "cancelled" || pedido.status === "pending_cancel") {
     if (!houvePagamentoRelevante(pedido.payments)) return null;
     if (houvePagamentoParcialmenteEstornado(pedido.payments)) {
       return StatusVendaCanal.DEVOLVIDA_PARCIAL;
@@ -169,9 +170,20 @@ function extrairPagamentoExternoId(payments: unknown): string | null {
   return aprovado?.id != null ? String(aprovado.id) : null;
 }
 
-function extrairFreteComprador(shipping: Record<string, unknown>): number {
-  const custo = shipping.cost ?? shipping.list_cost;
+export function extrairFreteComprador(pedido: Pick<MLOrder, "total_amount" | "paid_amount" | "shipping">): number {
+  if (typeof pedido.paid_amount === "number" && typeof pedido.total_amount === "number") {
+    return Math.max(0, Math.round((pedido.paid_amount - pedido.total_amount) * 100));
+  }
+  const shipping = (pedido.shipping ?? {}) as Record<string, unknown>;
+  const custo = shipping.cost;
   return typeof custo === "number" ? Math.round(custo * 100) : 0;
+}
+
+export function extrairValorEstornado(payments: unknown): number {
+  return listaPagamentos(payments).reduce((soma, p) => {
+    const estornado = typeof p.transaction_amount_refunded === "number" ? p.transaction_amount_refunded : 0;
+    return soma + Math.round(estornado * 100);
+  }, 0);
 }
 
 function extrairDataCancelamento(pedido: MLOrder): Date | null {
@@ -186,7 +198,7 @@ export function mapearPedido(
   const status = mapearStatus(pedido);
   if (!status) return null;
 
-  const dataVenda = new Date(pedido.date_closed ?? pedido.date_created);
+  const dataVenda = new Date(pedido.date_created);
   const shipping = (pedido.shipping ?? {}) as Record<string, unknown>;
   const envioExternoId =
     typeof shipping.id === "number" || typeof shipping.id === "string"
@@ -205,7 +217,8 @@ export function mapearPedido(
     logistica,
     envioExternoId,
     pagamentoExternoId: extrairPagamentoExternoId(pedido.payments),
-    freteComprador: extrairFreteComprador(shipping),
+    freteComprador: extrairFreteComprador(pedido),
+    valorEstornado: status === StatusVendaCanal.DEVOLVIDA_PARCIAL ? extrairValorEstornado(pedido.payments) : 0,
     descontoVendedorTotal: somarDescontoVendedor(descontosBrutos),
     descontoCusteadoPeloMlTotal: somarDescontoCusteadoPeloMl(descontosBrutos),
     atualizadoNoCanalEm: pedido.last_updated

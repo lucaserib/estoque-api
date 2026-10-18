@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { ArrowRight, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
 import { HeroMetric } from "@/components/ui/hero-metric";
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
 import { SectionCard } from "@/components/ui/section-card";
@@ -237,7 +238,8 @@ export default function DashboardPage() {
             : undefined
         }
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <SincronizacaoCatalogo compacto onConcluido={carregar} />
             <Select value={periodo} onValueChange={setPeriodo}>
               <SelectTrigger className="w-28 h-9">
                 <SelectValue />

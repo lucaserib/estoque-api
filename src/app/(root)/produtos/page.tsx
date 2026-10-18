@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
+import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
 import { KitList } from "./components/KitList";
 
 interface ProdutoToDelete {
@@ -58,7 +59,6 @@ const ProdutosPageContent = () => {
   const [pendingCount, setPendingCount] = useState(0);
   const [vinculosPendentesCount, setVinculosPendentesCount] = useState(0);
   const [updatingVendas, setUpdatingVendas] = useState(false);
-  const [updatingBlingStock, setUpdatingBlingStock] = useState(false);
   const [blingAccount, setBlingAccount] = useState<BlingAccountStatus | null>(
     null
   );
@@ -186,50 +186,6 @@ const ProdutosPageContent = () => {
     }
   };
 
-  const atualizarEstoqueBling = async () => {
-    setUpdatingBlingStock(true);
-    try {
-      const response = await fetch("/api/produtos/estoque-bling", {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        if (errorData?.code === "BLING_RECONNECT_REQUIRED") {
-          setBlingAccount((prev) => (prev ? { ...prev, isActive: false } : prev));
-          toast.error("Sua conexão com o Bling expirou", {
-            description: "Reconecte sua conta para atualizar o estoque.",
-            action: { label: "Reconectar", onClick: () => reconectarBling() },
-          });
-          return;
-        }
-        if (errorData?.code === "RATE_LIMITED") {
-          toast.error(
-            "Muitas atualizações seguidas. Aguarde alguns minutos antes de tentar de novo."
-          );
-          return;
-        }
-        throw new Error(errorData?.message || "Erro ao sincronizar estoque");
-      }
-
-      const data = await response.json();
-
-      toast.success(
-        `Estoque sincronizado! ${data.stats.atualizados}/${data.stats.total} divergências corrigidas`
-      );
-
-      setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      console.error("Erro ao atualizar estoque do Bling:", error);
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : "Erro ao sincronizar estoque do Bling"
-      );
-    } finally {
-      setUpdatingBlingStock(false);
-    }
-  };
 
   const handleDeleteProduto = async (forceDelete: boolean) => {
     if (!produtoToDelete) return;
@@ -320,18 +276,12 @@ const ProdutosPageContent = () => {
         subtitle="Catálogo, estoque e fornecedores"
         actions={
           <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={atualizarEstoqueBling}
-              disabled={updatingBlingStock}
-              title="Sincronizar estoque local com Bling"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${updatingBlingStock ? "animate-spin" : ""}`}
-              />
-              {updatingBlingStock ? "Sincronizando..." : "Atualizar Estoque Bling"}
-            </Button>
+            <SincronizacaoCatalogo
+              onConcluido={() => {
+                refetch();
+                setRefreshTrigger((prev) => prev + 1);
+              }}
+            />
             <Button
               variant="outline"
               className="gap-2"

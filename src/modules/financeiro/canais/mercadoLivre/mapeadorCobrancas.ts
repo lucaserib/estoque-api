@@ -1,50 +1,101 @@
 import type { CobrancaNormalizada } from "../tipos";
 
+/**
+ * Formato de cada linha de GET /billing/integration/periods/key/{AAAA-MM-01}/group/ML/details
+ * (documentação "Billing reports" do Mercado Livre). Campos opcionais porque a
+ * API omite blocos inteiros conforme o tipo da cobrança.
+ */
 export interface CobrancaBruta {
-  id?: string | number;
-  date?: string;
-  amount?: number;
-  order_id?: string | number | null;
-  item_id?: string | null;
-  charge_type?: string;
-  details_type?: string;
-  concept?: string;
+  charge_info?: {
+    detail_id?: number | string;
+    detail_amount?: number;
+    detail_type?: string;
+    detail_sub_type?: string;
+    concept_type?: string;
+    transaction_detail?: string;
+    creation_date_time?: string;
+    debited_from_operation?: string;
+    legal_document_number?: string | number;
+    payment_id?: number | string;
+  };
+  sales_info?: Array<{ order_id?: number | string | null; transaction_amount?: number }> | null;
+  items_info?: Array<{ item_id?: string | null; order_id?: number | string | null }> | null;
+  shipping_info?: { shipping_id?: number | string | null; pack_id?: number | string | null } | null;
+  discount_info?: { discount_amount?: number } | null;
+  fulfillment_info?: { type?: string; item_id?: string | null } | null;
+  document_info?: { document_id?: number | string } | null;
 }
 
-/**
- * Nomes de tipo (`charge_type`/`details_type`/`concept`) são a parte menos
- * confirmada deste mapeador — vieram de exemplos de documentação, não de
- * uma fatura real. Qualquer tipo fora do mapa cai em "NAO_MAPEADO" e ainda
- * assim entra no valor total (nada é descartado em silêncio); a tela de
- * configurações (Fase 7) lista os não mapeados pra revisão manual.
- */
-const TIPOS_CONHECIDOS: Record<string, string> = {
-  marketplace_fee: "TARIFA_VENDA",
-  sale_fee: "TARIFA_VENDA",
-  shipping_fee: "FRETE",
-  shipping: "FRETE",
-  fulfillment_fee: "ARMAZENAGEM_FULL",
-  storage_fee: "ARMAZENAGEM_FULL",
-  advertising_fee: "PUBLICIDADE",
-  ads: "PUBLICIDADE",
+/** Sub-tipos documentados (detail_sub_type) → categoria do app. */
+const POR_SUB_TIPO: Record<string, string> = {
+  CV: "TARIFA_VENDA",
+  BV: "BONIFICACAO",
+  BXD: "BONIFICACAO",
+  CXD: "FRETE",
   PADS: "PUBLICIDADE",
+  CCMP: "TARIFA_MERCADO_PAGO",
+  CFLX: "FRETE",
+  CFCB: "ARMAZENAGEM_FULL",
+  CEW: "ASSINATURA",
 };
 
-/** Essas duas já aparecem no pedido (tarifaVenda/freteVendedor) — a cobrança correspondente serve só para conciliação, não soma de novo na DRE. */
-const TIPOS_COBERTOS_PELO_PEDIDO = new Set(["TARIFA_VENDA", "FRETE"]);
+/** Quando o sub-tipo não é conhecido, o concept_type ainda diz a natureza da cobrança. */
+const POR_CONCEITO: Record<string, string> = {
+  SHIPPING: "FRETE",
+  FLEX: "FRETE",
+  FULFILLMENT: "ARMAZENAGEM_FULL",
+  ADVERTISING: "PUBLICIDADE",
+  ADS: "PUBLICIDADE",
+  WARRANTY: "ASSINATURA",
+  SUBSCRIPTION: "ASSINATURA",
+};
 
-export function mapearCobranca(bruto: CobrancaBruta): CobrancaNormalizada {
-  const tipoExterno = bruto.charge_type ?? bruto.details_type ?? bruto.concept ?? "DESCONHECIDO";
-  const tipoNormalizado = TIPOS_CONHECIDOS[tipoExterno] ?? "NAO_MAPEADO";
+/** Já descontadas no pagamento de cada venda (tarifa e frete do pedido) — na fatura servem só para conferência. */
+const TIPOS_COBERTOS_PELO_PEDIDO = new Set(["TARIFA_VENDA", "FRETE", "BONIFICACAO", "TARIFA_MERCADO_PAGO"]);
+
+export function classificarCobranca(subTipo: string | null, conceito: string | null): string {
+  if (subTipo && POR_SUB_TIPO[subTipo]) return POR_SUB_TIPO[subTipo];
+  if (conceito && POR_CONCEITO[conceito.toUpperCase()]) return POR_CONCEITO[conceito.toUpperCase()];
+  return "NAO_MAPEADO";
+}
+
+function idOuNulo(valor: unknown): string | null {
+  return valor == null || valor === "" ? null : String(valor);
+}
+
+export function mapearCobranca(
+  bruto: CobrancaBruta,
+  tipoDocumento: "BILL" | "CREDIT_NOTE" = "BILL"
+): CobrancaNormalizada | null {
+  const info = bruto.charge_info ?? {};
+  const detalheId = idOuNulo(info.detail_id);
+  if (!detalheId) return null;
+
+  const subTipo = info.detail_sub_type ?? null;
+  const conceito = info.concept_type ?? null;
+  let tipoNormalizado = classificarCobranca(subTipo, conceito);
+  const ehBonus = (info.detail_type ?? "").toUpperCase() === "BONUS" || tipoDocumento === "CREDIT_NOTE";
+  if (ehBonus && tipoNormalizado === "NAO_MAPEADO") tipoNormalizado = "BONIFICACAO";
+
+  const valorAbsoluto = typeof info.detail_amount === "number" ? Math.round(Math.abs(info.detail_amount) * 100) : 0;
+  const valor = ehBonus ? -valorAbsoluto : valorAbsoluto;
+
+  const pedidoExternoId =
+    idOuNulo(bruto.sales_info?.find((s) => s.order_id != null)?.order_id) ??
+    idOuNulo(bruto.items_info?.find((i) => i.order_id != null)?.order_id);
+  const anuncioExternoId =
+    idOuNulo(bruto.items_info?.find((i) => i.item_id)?.item_id) ?? idOuNulo(bruto.fulfillment_info?.item_id);
+
+  const rotulo = [subTipo, info.transaction_detail].filter(Boolean).join(" — ");
 
   return {
-    detalheExternoId: String(bruto.id ?? ""),
-    tipoExterno,
+    detalheExternoId: `${tipoDocumento}:${detalheId}`,
+    tipoExterno: rotulo || conceito || "DESCONHECIDO",
     tipoNormalizado,
-    valor: typeof bruto.amount === "number" ? Math.round(bruto.amount * 100) : 0,
-    pedidoExternoId: bruto.order_id != null ? String(bruto.order_id) : null,
-    anuncioExternoId: bruto.item_id ?? null,
-    data: bruto.date ? new Date(bruto.date) : new Date(),
-    coberturaPedido: TIPOS_COBERTOS_PELO_PEDIDO.has(tipoNormalizado),
+    valor,
+    pedidoExternoId,
+    anuncioExternoId,
+    data: info.creation_date_time ? new Date(info.creation_date_time) : new Date(),
+    coberturaPedido: TIPOS_COBERTOS_PELO_PEDIDO.has(tipoNormalizado) && pedidoExternoId != null,
   };
 }

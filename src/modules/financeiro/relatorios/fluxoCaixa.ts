@@ -1,4 +1,4 @@
-import { StatusLancamento, TipoLancamento } from "@prisma/client";
+import { StatusLancamento, StatusVendaCanal, TipoLancamento } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { inicioDoDia, inicioDaSemana, inicioDoMes } from "../dominio/periodo";
 import { comCacheFinanceiro } from "./cache";
@@ -92,11 +92,10 @@ export interface SaldoProjetado {
 
 /**
  * Cartão de crédito não entra no saldo atual — ele representa dívida, não
- * dinheiro disponível. `saldoAtual` vem de `calcularSaldoTotalAtual`: saldo
- * real da API do Mercado Pago para a carteira automática (quando disponível
- * e confirmado) ou saldo inicial + lançamentos pagos para as demais contas
- * (Fase 4 do Ciclo 9 — antes disso o cálculo usava só o saldo inicial
- * estático, ignorando qualquer lançamento já pago).
+ * dinheiro disponível. `saldoAtual` vem de `calcularSaldoTotalAtual` (carteira
+ * do Mercado Pago calculada pelas liberações + demais contas pelos
+ * lançamentos); somam-se as liberações futuras do horizonte e os lançamentos
+ * previstos.
  */
 export async function gerarSaldoProjetado(
   userId: string,
@@ -108,7 +107,11 @@ export async function gerarSaldoProjetado(
   const [saldoAtual, vendas, lancamentos] = await Promise.all([
     calcularSaldoTotalAtual(userId),
     prisma.vendaCanal.findMany({
-      where: { userId, dataLiberacao: { gte: hoje, lte: horizonte } },
+      where: {
+        userId,
+        dataLiberacao: { gt: hoje, lte: horizonte },
+        status: { notIn: [StatusVendaCanal.CANCELADA, StatusVendaCanal.DEVOLVIDA] },
+      },
       select: { valorLiquidoReceber: true },
     }),
     prisma.lancamentoFinanceiro.findMany({

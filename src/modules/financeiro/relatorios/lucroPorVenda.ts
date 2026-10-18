@@ -1,5 +1,7 @@
 import { CanalVenda, StatusVendaCanal } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { calcularVenda, obterConfigRelatorio, SELECT_VENDA_CALCULO } from "./motor";
+import { rotuloLogistica } from "./porLogistica";
 
 export interface FiltrosLucroPorVenda {
   desde?: Date;
@@ -10,6 +12,8 @@ export interface FiltrosLucroPorVenda {
   soIncompletas?: boolean;
   produtoId?: string;
   logistica?: string;
+  aguardandoDetalhes?: boolean;
+  busca?: string;
   pagina?: number;
   porPagina?: number;
 }
@@ -25,6 +29,14 @@ function montarWhere(userId: string, filtros: FiltrosLucroPorVenda) {
     ...(filtros.soPrejuizo && { margemContribuicao: { lt: 0 } }),
     ...(filtros.soIncompletas && { completo: false }),
     ...(filtros.logistica && { logistica: filtros.logistica }),
+    ...(filtros.aguardandoDetalhes && { enriquecidoEm: null }),
+    ...(filtros.busca && {
+      OR: [
+        { pedidoExternoId: { contains: filtros.busca.trim() } },
+        { itens: { some: { titulo: { contains: filtros.busca.trim(), mode: "insensitive" as const } } } },
+        { itens: { some: { sku: { contains: filtros.busca.trim(), mode: "insensitive" as const } } } },
+      ],
+    }),
     ...((filtros.desde || filtros.ate) && {
       dataVenda: {
         ...(filtros.desde && { gte: filtros.desde }),
@@ -40,18 +52,46 @@ export async function listarVendasComLucro(userId: string, filtros: FiltrosLucro
   const porPagina = Math.min(filtros.porPagina ?? POR_PAGINA_PADRAO, POR_PAGINA_MAXIMA);
   const where = montarWhere(userId, filtros);
 
-  const [vendas, total] = await Promise.all([
+  const [vendas, total, config] = await Promise.all([
     prisma.vendaCanal.findMany({
       where,
-      include: { itens: { select: { titulo: true, quantidade: true, sku: true, produtoId: true } } },
+      select: {
+        ...SELECT_VENDA_CALCULO,
+        canal: true,
+        pacoteExternoId: true,
+        statusLiberacao: true,
+        freteConfianca: true,
+        freteAjusteManual: true,
+        freteAjusteManualMotivo: true,
+        enriquecimentoErro: true,
+        itens: {
+          select: {
+            ...SELECT_VENDA_CALCULO.itens.select,
+            titulo: true,
+            sku: true,
+            anuncioExternoId: true,
+          },
+        },
+      },
       orderBy: { dataVenda: "desc" },
       skip: (pagina - 1) * porPagina,
       take: porPagina,
     }),
     prisma.vendaCanal.count({ where }),
+    obterConfigRelatorio(userId),
   ]);
 
-  return { vendas, total, pagina, porPagina };
+  return {
+    vendas: vendas.map((venda) => ({
+      ...venda,
+      logisticaRotulo: rotuloLogistica(venda.logistica),
+      calculo: calcularVenda(venda, config),
+    })),
+    total,
+    pagina,
+    porPagina,
+    modoFaturamento: config.modoFaturamento,
+  };
 }
 
 export class VendaNaoEncontradaError extends Error {
@@ -62,10 +102,21 @@ export class VendaNaoEncontradaError extends Error {
 }
 
 export async function obterDetalheVenda(userId: string, vendaId: string) {
-  const venda = await prisma.vendaCanal.findFirst({
-    where: { id: vendaId, userId },
-    include: { itens: { include: { produto: { select: { nome: true, sku: true } } } } },
-  });
+  const [venda, config] = await Promise.all([
+    prisma.vendaCanal.findFirst({
+      where: { id: vendaId, userId },
+      include: {
+        itens: { include: { produto: { select: { nome: true, sku: true } } } },
+        cobrancasPagamento: { orderBy: { valor: "desc" } },
+      },
+    }),
+    obterConfigRelatorio(userId),
+  ]);
   if (!venda) throw new VendaNaoEncontradaError();
-  return venda;
+  return {
+    ...venda,
+    logisticaRotulo: rotuloLogistica(venda.logistica),
+    calculo: calcularVenda(venda, config),
+    modoFaturamento: config.modoFaturamento,
+  };
 }

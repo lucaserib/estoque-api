@@ -5,25 +5,20 @@ import {
   type TarefaSincronizacaoFinanceira,
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { obterAdaptador } from "../canais/registro";
-import { listarPedidosCriadosNoPeriodo } from "../canais/mercadoLivre/cliente";
-import { mapearPedido } from "../canais/mercadoLivre/mapeador";
-import type { MLOrder } from "@/types/mercadolivre";
+import { buscarPaginaPedidos } from "../canais/mercadoLivre/cliente";
 import type { ContaCanal } from "../canais/tipos";
-import { inicioDoDia, fimDoDia } from "../dominio/periodo";
+import { inicioDoDia, fimDoDia, inicioDoMes, fimDoMes } from "../dominio/periodo";
 import { ingerirGastosAdsDoDia } from "./ingestaoAds";
 import { ingerirCobrancasDoMes } from "./ingestaoCobrancas";
-import {
-  ingerirPedidoComRegistroDeErro,
-  ingerirVendaNormalizada,
-  mensagemDeErro,
-  obterUserIdDaConta,
-  registrarErroPedido,
-  resolverErroPedido,
-  tempoMaximoLoteMs,
-} from "./sincronizador";
+import { ingerirPedidosEmLote } from "./lote";
+import { contarVendasAguardandoDetalhes, enriquecerVendasPendentes } from "./enriquecimento";
+import { mensagemDeErro, obterUserIdDaConta, tempoMaximoLoteMs } from "./sincronizador";
 
-const MINUTOS_TRAVA = 2;
+const MINUTOS_TRAVA_TAREFA = 2;
+const MARGEM_FINAL_MS = 4000;
+const HORAS_SOBREPOSICAO_INCREMENTAL = 2;
+const HORAS_INCREMENTAL_SEM_HISTORICO = 48;
+const TENTATIVAS_MAXIMAS_TAREFA = 5;
 
 function mesReferenciaDe(data: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -93,8 +88,10 @@ async function obterProximaTarefa(
     where: {
       userId,
       contaCanalId,
+      tentativas: { lt: TENTATIVAS_MAXIMAS_TAREFA },
       OR: [
         { status: StatusTarefaSincronizacao.PENDENTE },
+        { status: StatusTarefaSincronizacao.EM_ANDAMENTO, bloqueadaAte: null },
         { status: StatusTarefaSincronizacao.EM_ANDAMENTO, bloqueadaAte: { lt: agora } },
       ],
     },
@@ -102,160 +99,133 @@ async function obterProximaTarefa(
   });
 }
 
+type StatusExecucao = "OCIOSO" | "CONCLUIDA" | "EM_ANDAMENTO" | "ERRO" | "OCUPADO";
+
 export interface ResultadoExecucaoFila {
   tarefaId: string | null;
   tipo: TipoTarefaSincronizacao | null;
-  status: "OCIOSO" | "CONCLUIDA" | "EM_ANDAMENTO" | "ERRO";
+  status: StatusExecucao;
+  processados: number;
+  vendasDetalhadas: number;
+  aguardandoDetalhes: number;
+  tarefasPendentes: number;
+}
+
+interface ResultadoTarefa {
+  concluida: boolean;
   processados: number;
 }
 
 interface CursorPeriodo {
-  diaAtual: string;
-  offsetNoDia: number;
+  inicioJanela: string;
+  offset: number;
 }
 
-async function deveIgnorarPedido(
-  userId: string,
-  canal: CanalVenda,
-  pedidoBruto: MLOrder
-): Promise<boolean> {
-  if (!pedidoBruto.last_updated) return false;
-  const existente = await prisma.vendaCanal.findUnique({
-    where: {
-      userId_canal_pedidoExternoId: { userId, canal, pedidoExternoId: String(pedidoBruto.id) },
-    },
-    select: { atualizadoNoCanalEm: true, completo: true },
-  });
-  if (!existente || !existente.completo) return false;
-  return existente.atualizadoNoCanalEm.getTime() === new Date(pedidoBruto.last_updated).getTime();
+function janelaDoMes(instante: Date, desde: Date, ate: Date): { inicio: Date; fim: Date } {
+  const inicioMes = inicioDoMes(instante);
+  const fimMes = fimDoMes(instante);
+  return {
+    inicio: inicioMes < desde ? desde : inicioMes,
+    fim: fimMes > ate ? ate : fimMes,
+  };
 }
 
-async function ingerirPedidoBrutoComRegistro(
-  contaCanal: ContaCanal,
-  canal: CanalVenda,
-  pedidoBruto: MLOrder,
-  etapa: string,
-  forcar: boolean
-): Promise<void> {
-  if (!forcar && (await deveIgnorarPedido(contaCanal.userId, canal, pedidoBruto))) return;
-
-  const adaptador = obterAdaptador(canal);
-  try {
-    const precisaDescontos = Array.isArray(pedidoBruto.tags) && pedidoBruto.tags.includes("order_has_discount");
-    const descontos =
-      precisaDescontos && adaptador.obterDescontos
-        ? await adaptador.obterDescontos(contaCanal, String(pedidoBruto.id))
-        : null;
-
-    const normalizado = mapearPedido(pedidoBruto, descontos);
-    if (!normalizado) return;
-
-    await ingerirVendaNormalizada(contaCanal, adaptador, normalizado);
-    await resolverErroPedido(contaCanal.userId, canal, String(pedidoBruto.id));
-  } catch (erro) {
-    await registrarErroPedido(contaCanal.userId, canal, String(pedidoBruto.id), etapa, mensagemDeErro(erro));
-  }
-}
-
+/**
+ * Importa os pedidos criados no período, do mês mais recente para o mais
+ * antigo (o mês atual fica certo primeiro), uma página de 50 pedidos por vez,
+ * gravando o cursor a cada página. Cada página é gravada em lote, sem
+ * chamadas extras por pedido.
+ */
 async function executarPedidosPeriodo(
   tarefa: TarefaSincronizacaoFinanceira,
-  orcamentoMs: number
-): Promise<ResultadoExecucaoFila> {
+  prazoFinal: number
+): Promise<ResultadoTarefa> {
   const contaCanal: ContaCanal = { contaCanalId: tarefa.contaCanalId, userId: tarefa.userId };
   const desde = tarefa.desde ?? inicioDoDia(new Date());
   const ate = tarefa.ate ?? fimDoDia(new Date());
 
-  const cursorSalvo = (tarefa.cursor as unknown as CursorPeriodo | null) ?? {
-    diaAtual: inicioDoDia(desde).toISOString(),
-    offsetNoDia: 0,
-  };
+  const salvo = tarefa.cursor as unknown as CursorPeriodo | null;
+  let janela = salvo?.inicioJanela
+    ? janelaDoMes(new Date(salvo.inicioJanela), desde, ate)
+    : janelaDoMes(ate, desde, ate);
+  let offset = salvo?.offset ?? 0;
+  let processados = 0;
 
-  let diaAtual = new Date(cursorSalvo.diaAtual);
-  let indiceNoDia = cursorSalvo.offsetNoDia;
-  let processadosNoLote = 0;
-  const inicioLote = Date.now();
+  while (Date.now() < prazoFinal) {
+    const pagina = await buscarPaginaPedidos(tarefa.contaCanalId, {
+      campoData: "date_created",
+      desde: janela.inicio,
+      ate: janela.fim,
+      offset,
+      ordem: "date_desc",
+    });
+    await ingerirPedidosEmLote(contaCanal, pagina.pedidos, { forcar: tarefa.forcar, etapa: "PEDIDOS_PERIODO" });
+    processados += pagina.pedidos.length;
 
-  const salvarProgresso = async (novoIndice: number) => {
+    let concluida = false;
+    if (pagina.proximoOffset != null) {
+      offset = pagina.proximoOffset;
+    } else {
+      const fimMesAnterior = new Date(janela.inicio.getTime() - 1);
+      if (fimMesAnterior < desde) {
+        concluida = true;
+      } else {
+        janela = janelaDoMes(fimMesAnterior, desde, ate);
+        offset = 0;
+      }
+    }
+
     await prisma.tarefaSincronizacaoFinanceira.update({
       where: { id: tarefa.id },
       data: {
-        cursor: { diaAtual: diaAtual.toISOString(), offsetNoDia: novoIndice },
-        processados: { increment: processadosNoLote },
-        bloqueadaAte: null,
+        cursor: { inicioJanela: janela.inicio.toISOString(), offset },
+        processados: { increment: pagina.pedidos.length },
+        ...(concluida
+          ? { status: StatusTarefaSincronizacao.CONCLUIDA, concluidaEm: new Date(), bloqueadaAte: null, erro: null }
+          : { bloqueadaAte: new Date(Date.now() + MINUTOS_TRAVA_TAREFA * 60 * 1000) }),
       },
     });
-  };
-
-  while (diaAtual <= ate) {
-    const fimDoDiaAtual = fimDoDia(diaAtual);
-    const fimEfetivo = fimDoDiaAtual < ate ? fimDoDiaAtual : ate;
-    const pedidosDoDia = await listarPedidosCriadosNoPeriodo(tarefa.contaCanalId, diaAtual, fimEfetivo);
-
-    while (indiceNoDia < pedidosDoDia.length) {
-      if (Date.now() - inicioLote >= orcamentoMs) {
-        await salvarProgresso(indiceNoDia);
-        return { tarefaId: tarefa.id, tipo: tarefa.tipo, status: "EM_ANDAMENTO", processados: processadosNoLote };
-      }
-
-      await ingerirPedidoBrutoComRegistro(
-        contaCanal,
-        tarefa.canal,
-        pedidosDoDia[indiceNoDia],
-        "PEDIDOS_PERIODO",
-        tarefa.forcar
-      );
-      processadosNoLote++;
-      indiceNoDia++;
-    }
-
-    diaAtual = new Date(fimEfetivo.getTime() + 1);
-    indiceNoDia = 0;
+    if (concluida) return { concluida: true, processados };
   }
 
-  await prisma.tarefaSincronizacaoFinanceira.update({
-    where: { id: tarefa.id },
-    data: {
-      status: StatusTarefaSincronizacao.CONCLUIDA,
-      concluidaEm: new Date(),
-      bloqueadaAte: null,
-      processados: { increment: processadosNoLote },
-    },
-  });
-  return { tarefaId: tarefa.id, tipo: tarefa.tipo, status: "CONCLUIDA", processados: processadosNoLote };
+  return { concluida: false, processados };
 }
 
 async function executarPedidosIncremental(
   tarefa: TarefaSincronizacaoFinanceira,
-  orcamentoMs: number
-): Promise<ResultadoExecucaoFila> {
+  prazoFinal: number
+): Promise<ResultadoTarefa> {
   const contaCanal: ContaCanal = { contaCanalId: tarefa.contaCanalId, userId: tarefa.userId };
-  const adaptador = obterAdaptador(tarefa.canal);
-  const desde = tarefa.desde ?? new Date(Date.now() - 48 * 60 * 60 * 1000);
-  const ate = tarefa.ate ?? new Date();
+  const conta = await prisma.mercadoLivreAccount.findUnique({
+    where: { id: tarefa.contaCanalId },
+    select: { ultimaSincronizacaoFinanceiraEm: true },
+  });
+  const ate = tarefa.ate ?? tarefa.criadaEm;
+  const desde =
+    tarefa.desde ??
+    (conta?.ultimaSincronizacaoFinanceiraEm
+      ? new Date(conta.ultimaSincronizacaoFinanceiraEm.getTime() - HORAS_SOBREPOSICAO_INCREMENTAL * 60 * 60 * 1000)
+      : new Date(ate.getTime() - HORAS_INCREMENTAL_SEM_HISTORICO * 60 * 60 * 1000));
 
-  const cursorSalvo = tarefa.cursor as unknown as { offset: string | null } | null;
-  let cursor: string | null = cursorSalvo?.offset ?? null;
-  let processadosNoLote = 0;
-  const inicioLote = Date.now();
+  const salvo = tarefa.cursor as unknown as { offset?: number } | null;
+  let offset = salvo?.offset ?? 0;
+  let processados = 0;
 
-  while (Date.now() - inicioLote < orcamentoMs) {
-    const pagina = await adaptador.listarPedidosAlterados(contaCanal, desde, ate, cursor);
-    for (const pedido of pagina.pedidos) {
-      await ingerirPedidoComRegistroDeErro(
-        tarefa.contaCanalId,
-        tarefa.userId,
-        tarefa.canal,
-        pedido.pedidoExternoId,
-        "PEDIDOS_INCREMENTAL"
-      );
-      processadosNoLote++;
-    }
-    cursor = pagina.cursor;
+  while (Date.now() < prazoFinal) {
+    const pagina = await buscarPaginaPedidos(tarefa.contaCanalId, {
+      campoData: "date_last_updated",
+      desde,
+      ate,
+      offset,
+      ordem: "date_asc",
+    });
+    await ingerirPedidosEmLote(contaCanal, pagina.pedidos, { etapa: "PEDIDOS_INCREMENTAL" });
+    processados += pagina.pedidos.length;
 
-    if (!pagina.temMais) {
+    if (pagina.proximoOffset == null) {
       await prisma.mercadoLivreAccount.update({
         where: { id: tarefa.contaCanalId },
-        data: { ultimaSincronizacaoFinanceiraEm: new Date() },
+        data: { ultimaSincronizacaoFinanceiraEm: ate },
       });
       await prisma.tarefaSincronizacaoFinanceira.update({
         where: { id: tarefa.id },
@@ -263,31 +233,28 @@ async function executarPedidosIncremental(
           status: StatusTarefaSincronizacao.CONCLUIDA,
           concluidaEm: new Date(),
           bloqueadaAte: null,
-          processados: { increment: processadosNoLote },
+          erro: null,
+          processados: { increment: pagina.pedidos.length },
         },
       });
-      return { tarefaId: tarefa.id, tipo: tarefa.tipo, status: "CONCLUIDA", processados: processadosNoLote };
+      return { concluida: true, processados };
     }
 
+    offset = pagina.proximoOffset;
     await prisma.tarefaSincronizacaoFinanceira.update({
       where: { id: tarefa.id },
       data: {
-        cursor: { offset: cursor },
+        cursor: { offset },
         processados: { increment: pagina.pedidos.length },
-        bloqueadaAte: new Date(Date.now() + MINUTOS_TRAVA * 60 * 1000),
+        bloqueadaAte: new Date(Date.now() + MINUTOS_TRAVA_TAREFA * 60 * 1000),
       },
     });
-    processadosNoLote = 0;
   }
 
-  await prisma.tarefaSincronizacaoFinanceira.update({
-    where: { id: tarefa.id },
-    data: { bloqueadaAte: null },
-  });
-  return { tarefaId: tarefa.id, tipo: tarefa.tipo, status: "EM_ANDAMENTO", processados: processadosNoLote };
+  return { concluida: false, processados };
 }
 
-async function executarAds(tarefa: TarefaSincronizacaoFinanceira): Promise<ResultadoExecucaoFila> {
+async function executarAds(tarefa: TarefaSincronizacaoFinanceira): Promise<ResultadoTarefa> {
   const desde = inicioDoDia(tarefa.desde ?? new Date());
   const ate = fimDoDia(tarefa.ate ?? new Date());
 
@@ -303,38 +270,37 @@ async function executarAds(tarefa: TarefaSincronizacaoFinanceira): Promise<Resul
     where: { id: tarefa.id },
     data: { status: StatusTarefaSincronizacao.CONCLUIDA, concluidaEm: new Date(), bloqueadaAte: null, processados },
   });
-  return { tarefaId: tarefa.id, tipo: tarefa.tipo, status: "CONCLUIDA", processados };
+  return { concluida: true, processados };
 }
 
-async function executarCobrancas(tarefa: TarefaSincronizacaoFinanceira): Promise<ResultadoExecucaoFila> {
+async function executarCobrancas(tarefa: TarefaSincronizacaoFinanceira): Promise<ResultadoTarefa> {
   const desde = tarefa.desde ?? new Date();
   const ate = tarefa.ate ?? new Date();
 
   let processados = 0;
-  let cursorMes = new Date(Date.UTC(desde.getUTCFullYear(), desde.getUTCMonth(), 1));
-  const fimMes = new Date(Date.UTC(ate.getUTCFullYear(), ate.getUTCMonth(), 1));
-  while (cursorMes <= fimMes) {
+  let cursorMes = inicioDoMes(desde);
+  while (cursorMes <= ate) {
     const resultado = await ingerirCobrancasDoMes(tarefa.contaCanalId, mesReferenciaDe(cursorMes));
     processados += resultado.processadas;
-    cursorMes = new Date(Date.UTC(cursorMes.getUTCFullYear(), cursorMes.getUTCMonth() + 1, 1));
+    cursorMes = new Date(fimDoMes(cursorMes).getTime() + 1);
   }
 
   await prisma.tarefaSincronizacaoFinanceira.update({
     where: { id: tarefa.id },
     data: { status: StatusTarefaSincronizacao.CONCLUIDA, concluidaEm: new Date(), bloqueadaAte: null, processados },
   });
-  return { tarefaId: tarefa.id, tipo: tarefa.tipo, status: "CONCLUIDA", processados };
+  return { concluida: true, processados };
 }
 
 async function executarTarefa(
   tarefa: TarefaSincronizacaoFinanceira,
-  orcamentoMs: number
-): Promise<ResultadoExecucaoFila> {
+  prazoFinal: number
+): Promise<ResultadoTarefa> {
   switch (tarefa.tipo) {
     case TipoTarefaSincronizacao.PEDIDOS_PERIODO:
-      return executarPedidosPeriodo(tarefa, orcamentoMs);
+      return executarPedidosPeriodo(tarefa, prazoFinal);
     case TipoTarefaSincronizacao.PEDIDOS_INCREMENTAL:
-      return executarPedidosIncremental(tarefa, orcamentoMs);
+      return executarPedidosIncremental(tarefa, prazoFinal);
     case TipoTarefaSincronizacao.ADS:
       return executarAds(tarefa);
     case TipoTarefaSincronizacao.COBRANCAS:
@@ -344,43 +310,130 @@ async function executarTarefa(
         where: { id: tarefa.id },
         data: {
           status: StatusTarefaSincronizacao.ERRO,
-          erro: `Tipo de tarefa ainda não implementado: ${tarefa.tipo}`,
+          erro: `Tipo de tarefa não implementado: ${tarefa.tipo}`,
           bloqueadaAte: null,
         },
       });
-      return { tarefaId: tarefa.id, tipo: tarefa.tipo, status: "ERRO", processados: 0 };
+      return { concluida: true, processados: 0 };
   }
 }
 
+/**
+ * Uma execução por conta por vez: a coluna `financeiroProcessandoAte` funciona
+ * como trava com validade — se outra requisição já está processando, esta
+ * devolve OCUPADO na hora em vez de duplicar chamadas à API.
+ */
+async function adquirirTravaConta(contaCanalId: string, orcamentoMs: number): Promise<boolean> {
+  const agora = new Date();
+  const resultado = await prisma.mercadoLivreAccount.updateMany({
+    where: {
+      id: contaCanalId,
+      OR: [{ financeiroProcessandoAte: null }, { financeiroProcessandoAte: { lt: agora } }],
+    },
+    data: { financeiroProcessandoAte: new Date(agora.getTime() + orcamentoMs + 15000) },
+  });
+  return resultado.count === 1;
+}
+
+async function liberarTravaConta(contaCanalId: string): Promise<void> {
+  await prisma.mercadoLivreAccount.update({
+    where: { id: contaCanalId },
+    data: { financeiroProcessandoAte: null },
+  });
+}
+
+export async function contarTarefasPendentes(userId: string, contaCanalId: string): Promise<number> {
+  return prisma.tarefaSincronizacaoFinanceira.count({
+    where: {
+      userId,
+      contaCanalId,
+      tentativas: { lt: TENTATIVAS_MAXIMAS_TAREFA },
+      status: { in: [StatusTarefaSincronizacao.PENDENTE, StatusTarefaSincronizacao.EM_ANDAMENTO] },
+    },
+  });
+}
+
+/**
+ * Processa a fila da conta dentro do orçamento de tempo: primeiro as tarefas
+ * (importar pedidos, cobranças, ads), por prioridade; com o tempo que sobrar,
+ * detalha as vendas que ainda não têm os dados do pagamento.
+ */
 export async function executarFila(
   userId: string,
   contaCanalId: string,
   orcamentoMs: number = tempoMaximoLoteMs()
 ): Promise<ResultadoExecucaoFila> {
-  const tarefa = await obterProximaTarefa(userId, contaCanalId);
-  if (!tarefa) return { tarefaId: null, tipo: null, status: "OCIOSO", processados: 0 };
+  const inicio = Date.now();
+  const prazoFinal = inicio + orcamentoMs - MARGEM_FINAL_MS;
+  const resultado: ResultadoExecucaoFila = {
+    tarefaId: null,
+    tipo: null,
+    status: "OCIOSO",
+    processados: 0,
+    vendasDetalhadas: 0,
+    aguardandoDetalhes: 0,
+    tarefasPendentes: 0,
+  };
 
-  await prisma.tarefaSincronizacaoFinanceira.update({
-    where: { id: tarefa.id },
-    data: {
-      status: StatusTarefaSincronizacao.EM_ANDAMENTO,
-      bloqueadaAte: new Date(Date.now() + MINUTOS_TRAVA * 60 * 1000),
-    },
-  });
+  if (!(await adquirirTravaConta(contaCanalId, orcamentoMs))) {
+    resultado.status = "OCUPADO";
+    resultado.tarefasPendentes = await contarTarefasPendentes(userId, contaCanalId);
+    resultado.aguardandoDetalhes = await contarVendasAguardandoDetalhes(contaCanalId);
+    return resultado;
+  }
 
   try {
-    return await executarTarefa(tarefa, orcamentoMs);
-  } catch (erro) {
-    await prisma.tarefaSincronizacaoFinanceira.update({
-      where: { id: tarefa.id },
-      data: {
-        status: StatusTarefaSincronizacao.PENDENTE,
-        tentativas: { increment: 1 },
-        erro: mensagemDeErro(erro),
-        bloqueadaAte: null,
-      },
-    });
-    return { tarefaId: tarefa.id, tipo: tarefa.tipo, status: "ERRO", processados: 0 };
+    while (Date.now() < prazoFinal) {
+      const tarefa = await obterProximaTarefa(userId, contaCanalId);
+      if (!tarefa) break;
+
+      resultado.tarefaId = tarefa.id;
+      resultado.tipo = tarefa.tipo;
+      await prisma.tarefaSincronizacaoFinanceira.update({
+        where: { id: tarefa.id },
+        data: {
+          status: StatusTarefaSincronizacao.EM_ANDAMENTO,
+          bloqueadaAte: new Date(Date.now() + MINUTOS_TRAVA_TAREFA * 60 * 1000),
+        },
+      });
+
+      try {
+        const execucao = await executarTarefa(tarefa, prazoFinal);
+        resultado.processados += execucao.processados;
+        resultado.status = execucao.concluida ? "CONCLUIDA" : "EM_ANDAMENTO";
+        if (!execucao.concluida) break;
+      } catch (erro) {
+        resultado.status = "ERRO";
+        await prisma.tarefaSincronizacaoFinanceira.update({
+          where: { id: tarefa.id },
+          data: {
+            status: StatusTarefaSincronizacao.PENDENTE,
+            tentativas: { increment: 1 },
+            erro: mensagemDeErro(erro).slice(0, 500),
+            bloqueadaAte: null,
+          },
+        });
+        break;
+      }
+    }
+
+    const restanteMs = prazoFinal - Date.now();
+    if (restanteMs > 8000) {
+      const enriquecimento = await enriquecerVendasPendentes(contaCanalId, userId, restanteMs);
+      resultado.vendasDetalhadas = enriquecimento.processados;
+      resultado.aguardandoDetalhes = enriquecimento.restantes;
+    } else {
+      resultado.aguardandoDetalhes = await contarVendasAguardandoDetalhes(contaCanalId);
+    }
+    resultado.tarefasPendentes = await contarTarefasPendentes(userId, contaCanalId);
+    if (resultado.tarefasPendentes > 0 || resultado.aguardandoDetalhes > 0) {
+      if (resultado.status !== "ERRO") resultado.status = "EM_ANDAMENTO";
+    } else if (resultado.status !== "ERRO") {
+      resultado.status = resultado.processados > 0 || resultado.vendasDetalhadas > 0 ? "CONCLUIDA" : "OCIOSO";
+    }
+    return resultado;
+  } finally {
+    await liberarTravaConta(contaCanalId);
   }
 }
 
@@ -416,6 +469,25 @@ export async function enfileirarIncremental(
     canal: CanalVenda.MERCADO_LIVRE,
     contaCanalId: accountId,
     tipo: TipoTarefaSincronizacao.PEDIDOS_INCREMENTAL,
+    prioridade,
+  });
+}
+
+export async function enfileirarCobrancas(
+  accountId: string,
+  desde: Date,
+  ate: Date,
+  prioridade = 0
+): Promise<TarefaSincronizacaoFinanceira | null> {
+  const userId = await obterUserIdDaConta(accountId);
+  if (!userId) return null;
+  return enfileirarTarefa({
+    userId,
+    canal: CanalVenda.MERCADO_LIVRE,
+    contaCanalId: accountId,
+    tipo: TipoTarefaSincronizacao.COBRANCAS,
+    desde: inicioDoMes(desde),
+    ate: fimDoMes(ate),
     prioridade,
   });
 }

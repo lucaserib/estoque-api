@@ -1,20 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Cell,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
-import { AlertTriangle, ArrowRight } from "lucide-react";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { AlertTriangle, ArrowRight, Info } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { HeroMetric } from "@/components/ui/hero-metric";
 import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
@@ -29,71 +18,76 @@ import {
   DataTableRow,
 } from "@/components/ui/data-table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatBRL, formatPercent, formatDateBR } from "@/lib/format";
 import { chartColor } from "@/lib/chart-colors";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "./components/SeletorPeriodo";
 import { useAcessoFinanceiro } from "./components/useAcessoFinanceiro";
 import { BotaoAtualizarFinanceiro } from "./components/BotaoAtualizarFinanceiro";
+import { useAoAtualizarDados } from "./components/SincronizacaoFinanceira";
+import { DemonstrativoResultado } from "./components/DemonstrativoResultado";
+import {
+  buscarJson,
+  DESCRICAO_MODO_FATURAMENTO,
+  moeda,
+  percentual,
+  variacao,
+  type ComparacaoApi,
+  type IndicadoresApi,
+} from "./components/tipos";
+
+interface ResumoPeriodoResponse {
+  indicadores: IndicadoresApi;
+  comparacaoPeriodoAnterior: ComparacaoApi;
+  pontoEquilibrioMes: {
+    despesasFixasDoMes: number;
+    pontoEquilibrio: number | null;
+    faturamentoDoMes: number;
+    faltaVender: number | null;
+    motivoIndisponivel: "SEM_DESPESAS_CADASTRADAS" | "MARGEM_NEGATIVA" | null;
+  };
+  metaMes: {
+    metaFaturamentoMensal: number | null;
+    percentualMeta: number | null;
+    mesEmAndamento: boolean;
+    projecaoFechamento: number;
+  };
+}
 
 interface ResumoDiaResponse {
-  faturamentoBruto: number;
-  unidades: number;
-  pedidos: number;
-  tarifas: number;
-  frete: number;
-  ads: number;
-  margemContribuicao: number;
-  lucroEstimado: number;
-  ticketMedio: number | null;
-  comparacaoOntem: { faturamentoBruto: { percentual: number | null } };
-  comparacaoSemanaPassada: { faturamentoBruto: { percentual: number | null } };
+  indicadores: IndicadoresApi;
+  comparacaoOntem: ComparacaoApi;
+  comparacaoSemanaPassada: ComparacaoApi;
   contasAPagar: {
     vencendoHoje: { quantidade: number; valor: number };
     vencidas: { quantidade: number; valor: number };
     proximos7Dias: { quantidade: number; valor: number };
   };
-}
-
-interface ResumoPeriodoResponse {
-  faturamentoBruto: number;
-  cancelamentos: number;
-  descontos: number;
-  impostos: number;
-  tarifas: number;
-  frete: number;
-  ads: number;
-  cmv: number;
-  margemContribuicao: number;
-  margemContribuicaoPercentual: number | null;
-  ticketMedio: number | null;
-  lucroLiquido: number;
-  pontoEquilibrioMes: { faltaVender: number | null };
-  metaMes: {
-    metaFaturamentoMensal: number | null;
-    percentualMeta: number | null;
-    projecaoFechamento: number;
-  };
+  valorALiberarHoje: number;
 }
 
 interface PontoSerie {
   dia: string;
-  faturamentoBruto: number;
+  faturamento: number;
   margemContribuicao: number;
+  pedidos: number;
 }
 
 interface ResumoLogistica {
   logistica: string;
+  rotulo: string;
   pedidos: number;
-  faturamentoBruto: number;
+  faturamento: number;
   freteMedio: number | null;
   margemContribuicao: number;
+  margemContribuicaoPercentual: number | null;
 }
 
 interface ProdutoLinha {
   produtoId: string;
   sku: string;
   nome: string;
-  lucroLiquido: number;
+  unidades: number;
+  faturamentoBruto: number;
+  margemContribuicao: number;
   margemContribuicaoPercentual: number | null;
 }
 
@@ -101,141 +95,93 @@ interface VendaPrejuizo {
   id: string;
   pedidoExternoId: string;
   dataVenda: string;
-  margemContribuicao: number | null;
-}
-
-interface SaldoProjetadoResponse {
-  saldoProjetado: number;
-}
-
-interface LinhaConciliacaoAlerta {
-  tipo: string;
-  alerta: boolean;
-  diferenca: number;
+  calculo: { margemContribuicao: number; receitaTotal: number };
+  itens: Array<{ titulo: string }>;
 }
 
 interface ContaComSaldo {
   id: string;
   nome: string;
+  tipo: string;
   saldoAtual: number;
-  origemSaldo: "API_MERCADO_PAGO" | "LANCAMENTOS";
+  saldoALiberar: number | null;
+  precisaAjuste: boolean;
+  automatica: boolean;
 }
 
-async function buscarJson<T>(url: string): Promise<T | null> {
-  try {
-    const resposta = await fetch(url);
-    if (!resposta.ok) return null;
-    return (await resposta.json()) as T;
-  } catch {
-    return null;
-  }
+interface LinhaConciliacao {
+  tipo: string;
+  alerta: boolean;
+  diferenca: number;
+  faturaDisponivel?: boolean;
 }
 
-function construirDadosCascata(resumo: ResumoPeriodoResponse) {
-  const despesaFixaRateada = resumo.margemContribuicao - resumo.lucroLiquido;
-  const passos = [
-    { nome: "Faturamento", valor: resumo.faturamentoBruto },
-    { nome: "Cancel./desc.", valor: -(resumo.cancelamentos + resumo.descontos) },
-    { nome: "Impostos", valor: -resumo.impostos },
-    { nome: "Tarifas", valor: -resumo.tarifas },
-    { nome: "Frete", valor: -resumo.frete },
-    { nome: "Ads", valor: -resumo.ads },
-    { nome: "CMV", valor: -resumo.cmv },
-    { nome: "Desp. fixas", valor: -despesaFixaRateada },
-  ];
+function formatarDiaCurto(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", timeZone: "America/Sao_Paulo" });
+}
 
-  let acumulado = 0;
-  const dados = passos.map((passo) => {
-    const inicio = acumulado;
-    acumulado += passo.valor;
-    return {
-      nome: passo.nome,
-      base: Math.min(inicio, acumulado),
-      altura: Math.abs(passo.valor),
-      positivo: passo.valor >= 0,
-    };
+function formatarDataVenda(iso: string): string {
+  return new Date(iso).toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo",
   });
-  dados.push({ nome: "Lucro líquido", base: 0, altura: Math.abs(acumulado), positivo: acumulado >= 0 });
-  return dados;
+}
+
+function eixoMoeda(centavos: number): string {
+  const reais = centavos / 100;
+  if (Math.abs(reais) >= 1000) return `R$ ${(reais / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil`;
+  return `R$ ${reais.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 }
 
 export default function FinanceiroPage() {
   const { carregando: carregandoSessao, podeVerFinanceiro } = useAcessoFinanceiro();
   const [periodo, setPeriodo] = useState<PeriodoSelecionado>({ preset: "mesAtual", ...periodoDoPreset("mesAtual") });
   const [carregando, setCarregando] = useState(true);
-  const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
 
-  const [resumoHoje, setResumoHoje] = useState<ResumoDiaResponse | null>(null);
   const [resumoPeriodo, setResumoPeriodo] = useState<ResumoPeriodoResponse | null>(null);
-  const [serieDiaria, setSerieDiaria] = useState<PontoSerie[]>([]);
-  const [topProdutos, setTopProdutos] = useState<ProdutoLinha[]>([]);
-  const [piorProdutos, setPiorProdutos] = useState<ProdutoLinha[]>([]);
-  const [vendasComPrejuizo, setVendasComPrejuizo] = useState<VendaPrejuizo[]>([]);
-  const [vendasIncompletasTotal, setVendasIncompletasTotal] = useState(0);
-  const [vinculosNaoConfirmadosTotal, setVinculosNaoConfirmadosTotal] = useState(0);
-  const [cobrancasNaoMapeadasTotal, setCobrancasNaoMapeadasTotal] = useState(0);
-  const [resumoPorLogistica, setResumoPorLogistica] = useState<ResumoLogistica[]>([]);
+  const [resumoHoje, setResumoHoje] = useState<ResumoDiaResponse | null>(null);
+  const [serie, setSerie] = useState<PontoSerie[]>([]);
+  const [porLogistica, setPorLogistica] = useState<ResumoLogistica[]>([]);
+  const [produtos, setProdutos] = useState<ProdutoLinha[]>([]);
+  const [vendasPrejuizo, setVendasPrejuizo] = useState<VendaPrejuizo[]>([]);
+  const [contas, setContas] = useState<ContaComSaldo[]>([]);
   const [saldoProjetado, setSaldoProjetado] = useState<number | null>(null);
-  const [alertaConciliacao, setAlertaConciliacao] = useState<LinhaConciliacaoAlerta[]>([]);
-  const [contasComSaldo, setContasComSaldo] = useState<ContaComSaldo[]>([]);
+  const [conciliacao, setConciliacao] = useState<LinhaConciliacao[]>([]);
+  const [vinculosPendentes, setVinculosPendentes] = useState(0);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
-    const hoje = new Date();
-    const desdeIso = periodo.desde.toISOString();
-    const ateIso = periodo.ate.toISOString();
-    const mesAtualIso = `${hoje.getUTCFullYear()}-${String(hoje.getUTCMonth() + 1).padStart(2, "0")}`;
+    const q = `desde=${periodo.desde.toISOString()}&ate=${periodo.ate.toISOString()}`;
+    const mes = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit" }).format(
+      periodo.ate < new Date() ? periodo.ate : new Date()
+    );
 
-    const [
-      resumoDiaResp,
-      resumoPeriodoResp,
-      serieResp,
-      produtosResp,
-      vendasPrejuizoResp,
-      vendasIncompletasResp,
-      saldoResp,
-      conciliacaoResp,
-      contasComSaldoResp,
-      vinculosPendentesResp,
-      cobrancasNaoMapeadasResp,
-      porLogisticaResp,
-    ] = await Promise.all([
+    const [rp, rd, se, lo, pr, vp, ct, sp, co, vi] = await Promise.all([
+      buscarJson<ResumoPeriodoResponse>(`/api/financeiro/resumo-periodo?${q}`),
       buscarJson<ResumoDiaResponse>("/api/financeiro/resumo-dia"),
-      buscarJson<ResumoPeriodoResponse>(`/api/financeiro/resumo-periodo?desde=${desdeIso}&ate=${ateIso}`),
-      buscarJson<{ pontos: PontoSerie[] }>(`/api/financeiro/serie-diaria?desde=${desdeIso}&ate=${ateIso}`),
-      buscarJson<{ produtos: ProdutoLinha[] }>(
-        `/api/financeiro/produtos?desde=${desdeIso}&ate=${ateIso}&ordenarPor=lucroLiquido&ordem=desc`
-      ),
-      buscarJson<{ vendas: VendaPrejuizo[]; total: number }>(
-        `/api/financeiro/vendas?desde=${desdeIso}&ate=${ateIso}&soPrejuizo=true&porPagina=10`
-      ),
-      buscarJson<{ total: number }>(`/api/financeiro/vendas?desde=${desdeIso}&ate=${ateIso}&soIncompletas=true&porPagina=1`),
-      buscarJson<SaldoProjetadoResponse>("/api/financeiro/fluxo-caixa/saldo-projetado?dias=30"),
-      buscarJson<{ linhas: LinhaConciliacaoAlerta[] }>(`/api/financeiro/conciliacao?mes=${mesAtualIso}`),
+      buscarJson<{ pontos: PontoSerie[] }>(`/api/financeiro/serie-diaria?${q}`),
+      buscarJson<{ resumo: ResumoLogistica[] }>(`/api/financeiro/por-logistica?${q}`),
+      buscarJson<{ produtos: ProdutoLinha[] }>(`/api/financeiro/produtos?${q}&ordenarPor=margemContribuicao&ordem=desc`),
+      buscarJson<{ vendas: VendaPrejuizo[] }>(`/api/financeiro/vendas?${q}&soPrejuizo=true&porPagina=8`),
       buscarJson<{ contas: ContaComSaldo[] }>("/api/financeiro/contas-financeiras?comSaldo=true"),
+      buscarJson<{ saldoProjetado: number }>("/api/financeiro/fluxo-caixa/saldo-projetado?dias=30"),
+      buscarJson<{ linhas: LinhaConciliacao[] }>(`/api/financeiro/conciliacao?mes=${mes}`),
       buscarJson<{ vinculos: unknown[] }>("/api/produtos/vinculos-pendentes"),
-      buscarJson<{ linhas: Array<{ quantidade: number }> }>(`/api/financeiro/cobrancas-nao-mapeadas?mes=${mesAtualIso}`),
-      buscarJson<{ resumo: ResumoLogistica[] }>(`/api/financeiro/por-logistica?desde=${desdeIso}&ate=${ateIso}`),
     ]);
 
-    setResumoHoje(resumoDiaResp);
-    setResumoPeriodo(resumoPeriodoResp);
-    setSerieDiaria(serieResp?.pontos ?? []);
-    const produtosOrdenados = produtosResp?.produtos ?? [];
-    setTopProdutos(produtosOrdenados.slice(0, 10));
-    setPiorProdutos([...produtosOrdenados].reverse().slice(0, 10));
-    setVendasComPrejuizo(vendasPrejuizoResp?.vendas ?? []);
-    setVendasIncompletasTotal(vendasIncompletasResp?.total ?? 0);
-    setSaldoProjetado(saldoResp?.saldoProjetado ?? null);
-    setAlertaConciliacao((conciliacaoResp?.linhas ?? []).filter((l) => l.alerta));
-    setContasComSaldo(contasComSaldoResp?.contas ?? []);
-    setVinculosNaoConfirmadosTotal(vinculosPendentesResp?.vinculos.length ?? 0);
-    setCobrancasNaoMapeadasTotal(
-      (cobrancasNaoMapeadasResp?.linhas ?? []).reduce((soma, l) => soma + l.quantidade, 0)
-    );
-    setResumoPorLogistica(porLogisticaResp?.resumo ?? []);
-
-    setAtualizadoEm(new Date());
+    setResumoPeriodo(rp);
+    setResumoHoje(rd);
+    setSerie(se?.pontos ?? []);
+    setPorLogistica(lo?.resumo ?? []);
+    setProdutos(pr?.produtos ?? []);
+    setVendasPrejuizo(vp?.vendas ?? []);
+    setContas(ct?.contas ?? []);
+    setSaldoProjetado(sp?.saldoProjetado ?? null);
+    setConciliacao((co?.linhas ?? []).filter((l) => l.alerta && l.faturaDisponivel !== false));
+    setVinculosPendentes(vi?.vinculos.length ?? 0);
     setCarregando(false);
   }, [periodo]);
 
@@ -243,7 +189,7 @@ export default function FinanceiroPage() {
     if (podeVerFinanceiro) carregar();
   }, [podeVerFinanceiro, carregar]);
 
-  const dadosCascata = useMemo(() => (resumoPeriodo ? construirDadosCascata(resumoPeriodo) : []), [resumoPeriodo]);
+  useAoAtualizarDados(carregar);
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
@@ -253,184 +199,299 @@ export default function FinanceiroPage() {
     );
   }
 
-  const statItems: StatStripItem[] = [
-    { label: "Faturamento bruto", value: formatBRL(resumoPeriodo?.faturamentoBruto ?? 0) },
-    {
-      label: "Margem de contribuição",
-      value: resumoPeriodo?.margemContribuicaoPercentual != null
-        ? formatPercent(resumoPeriodo.margemContribuicaoPercentual * 100)
-        : "—",
-    },
-    { label: "Ticket médio", value: resumoPeriodo?.ticketMedio != null ? formatBRL(resumoPeriodo.ticketMedio) : "—" },
-    { label: "Ads", value: formatBRL(resumoPeriodo?.ads ?? 0) },
-    {
-      label: "Falta vender no mês (p/ ponto de equilíbrio)",
-      value:
-        resumoPeriodo?.pontoEquilibrioMes.faltaVender != null
-          ? formatBRL(resumoPeriodo.pontoEquilibrioMes.faltaVender)
-          : "—",
-      note: resumoPeriodo?.pontoEquilibrioMes.faltaVender === 0 ? "Meta do mês batida" : undefined,
-    },
-    {
-      label: "Faturamento × meta do mês",
-      value:
-        resumoPeriodo?.metaMes.percentualMeta != null
-          ? formatPercent(resumoPeriodo.metaMes.percentualMeta * 100)
-          : "—",
-      note: resumoPeriodo?.metaMes.metaFaturamentoMensal == null ? "Cadastre a meta em Configurações" : undefined,
-    },
-    {
-      label: "Projeção de fechamento do mês",
-      value: resumoPeriodo ? formatBRL(resumoPeriodo.metaMes.projecaoFechamento) : "—",
-      note: "Pelo ritmo de vendas até agora",
-    },
-  ];
+  const ind = resumoPeriodo?.indicadores ?? null;
+  const hoje = resumoHoje?.indicadores ?? null;
+  const qualidade = ind?.qualidade;
+  const carteiraMp = contas.find((c) => c.automatica && c.tipo === "CARTEIRA_MARKETPLACE");
+  const melhores = produtos.slice(0, 8);
+  const piores = [...produtos].sort((a, b) => a.margemContribuicao - b.margemContribuicao).slice(0, 8);
+
+  const alertas: Array<{ texto: string; href?: string; acao?: string }> = [];
+  if (qualidade && qualidade.vendasSemCusto > 0) {
+    alertas.push({
+      texto: `${qualidade.vendasSemCusto} venda(s) sem custo do produto (${moeda(qualidade.faturamentoSemCusto)} de faturamento) — o CMV e o lucro estão subestimados.`,
+      href: "/financeiro/vendas?soIncompletas=true",
+      acao: "Ver vendas",
+    });
+  }
+  if (qualidade && qualidade.vendasSemVinculo > 0) {
+    alertas.push({
+      texto: `${qualidade.vendasSemVinculo} venda(s) de anúncios sem produto vinculado.`,
+      href: "/financeiro/vendas?soIncompletas=true",
+      acao: "Ver vendas",
+    });
+  }
+  if (vinculosPendentes > 0) {
+    alertas.push({
+      texto: `${vinculosPendentes} vínculo(s) anúncio ↔ produto feitos por semelhança aguardando confirmação.`,
+      href: "/produtos/vinculos-pendentes",
+      acao: "Confirmar",
+    });
+  }
+  for (const linha of conciliacao) {
+    alertas.push({
+      texto: `Fatura do ML e vendas divergem em ${linha.tipo === "FRETE" ? "frete" : "tarifas"}: ${moeda(linha.diferenca)}.`,
+      href: "/financeiro/conferencia",
+      acao: "Conferir",
+    });
+  }
+
+  const pe = resumoPeriodo?.pontoEquilibrioMes;
+  const meta = resumoPeriodo?.metaMes;
+  const textoPontoEquilibrio = !pe
+    ? "—"
+    : pe.motivoIndisponivel === "SEM_DESPESAS_CADASTRADAS"
+      ? "Cadastre as despesas fixas"
+      : pe.motivoIndisponivel === "MARGEM_NEGATIVA"
+        ? "Margem negativa"
+        : pe.faltaVender === 0
+          ? "Atingido"
+          : moeda(pe.faltaVender);
+
+  const indicadoresPeriodo: StatStripItem[] = ind
+    ? [
+        {
+          label: "Pedidos",
+          value: ind.pedidos.toLocaleString("pt-BR"),
+          delta: variacao(resumoPeriodo?.comparacaoPeriodoAnterior.pedidos),
+          note: `${ind.unidades.toLocaleString("pt-BR")} unidades`,
+        },
+        { label: "Ticket médio", value: moeda(ind.ticketMedio) },
+        {
+          label: "Margem de contribuição",
+          value: moeda(ind.margemContribuicao),
+          delta: variacao(resumoPeriodo?.comparacaoPeriodoAnterior.margemContribuicao),
+          note: `${percentual(ind.margemContribuicaoPercentual)} do faturamento`,
+        },
+        {
+          label: "Lucro líquido",
+          value: moeda(ind.lucroLiquido),
+          note:
+            ind.totalDespesasOperacionais === 0
+              ? "sem despesas cadastradas no período"
+              : `${percentual(ind.lucroLiquidoPercentual)} · após ${moeda(ind.totalDespesasOperacionais)} de despesas`,
+        },
+        {
+          label: "Custos do Mercado Livre",
+          value: moeda(ind.custosVariaveis.tarifas + ind.custosVariaveis.frete + ind.custosVariaveis.ads + ind.custosVariaveis.armazenagemFull + ind.custosVariaveis.outrasCobrancas),
+          note: `tarifas ${moeda(ind.custosVariaveis.tarifas)} · frete ${moeda(ind.custosVariaveis.frete)}`,
+        },
+        {
+          label: "Líquido das vendas",
+          value: moeda(ind.liquidoAReceber),
+          note: "o que o ML repassa (após tarifas, frete e retenções)",
+        },
+      ]
+    : [];
 
   return (
     <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
       <PageHeader
         eyebrow="Financeiro"
         title="Visão geral"
-        subtitle={atualizadoEm ? `Atualizado às ${atualizadoEm.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}` : undefined}
         actions={
           <>
             <SeletorPeriodo valor={periodo} onChange={setPeriodo} />
-            <BotaoAtualizarFinanceiro modo="INCREMENTAL" onConcluido={carregar} />
+            <BotaoAtualizarFinanceiro modo="INCREMENTAL" />
           </>
         }
       />
 
-      {(alertaConciliacao.length > 0 || vendasIncompletasTotal > 0) && (
-        <SectionCard title="Alertas" contentClassName="space-y-2">
-          {vendasIncompletasTotal > 0 && (
-            <div className="flex items-center gap-2 text-sm text-warning">
-              <AlertTriangle className="h-4 w-4" />
-              {vendasIncompletasTotal} venda(s) incompleta(s) no período (sem custo, sem vínculo ou sem frete).{" "}
-              <Link href={`/financeiro/vendas?soIncompletas=true`} className="underline">
-                Ver vendas
-              </Link>
-            </div>
-          )}
-          {alertaConciliacao.map((linha) => (
-            <div key={linha.tipo} className="flex items-center gap-2 text-sm text-warning">
-              <AlertTriangle className="h-4 w-4" />
-              Diferença de conciliação em {linha.tipo}: {formatBRL(linha.diferenca)}.{" "}
-              <Link href="/financeiro/configuracoes" className="underline">
-                Ver conciliação
-              </Link>
+      {alertas.length > 0 && (
+        <SectionCard title="Pontos de atenção" contentClassName="space-y-2">
+          {alertas.map((alerta) => (
+            <div key={alerta.texto} className="flex items-start gap-2 text-sm text-warning">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                {alerta.texto}{" "}
+                {alerta.href && (
+                  <Link href={alerta.href} className="underline">
+                    {alerta.acao}
+                  </Link>
+                )}
+              </span>
             </div>
           ))}
         </SectionCard>
       )}
 
-      <SectionCard title="Resumo de hoje" description="Comparado com ontem e com o mesmo dia da semana passada">
-        {carregando && !resumoHoje ? (
-          <Skeleton className="h-16 rounded-md" />
-        ) : (
-          <StatStrip
-            items={[
-              { label: "Faturamento", value: formatBRL(resumoHoje?.faturamentoBruto ?? 0), delta: resumoHoje?.comparacaoOntem.faturamentoBruto.percentual != null ? resumoHoje.comparacaoOntem.faturamentoBruto.percentual * 100 : null, note: resumoHoje?.comparacaoSemanaPassada.faturamentoBruto.percentual != null ? `${formatPercent(resumoHoje.comparacaoSemanaPassada.faturamentoBruto.percentual * 100)} vs. semana passada` : undefined },
-              { label: "Pedidos", value: String(resumoHoje?.pedidos ?? 0) },
-              { label: "Unidades", value: String(resumoHoje?.unidades ?? 0) },
-              { label: "Ticket médio", value: resumoHoje?.ticketMedio != null ? formatBRL(resumoHoje.ticketMedio) : "—" },
-              { label: "Tarifas", value: formatBRL(resumoHoje?.tarifas ?? 0) },
-              { label: "Frete", value: formatBRL(resumoHoje?.frete ?? 0) },
-              { label: "Ads", value: formatBRL(resumoHoje?.ads ?? 0) },
-              { label: "Margem de contribuição", value: formatBRL(resumoHoje?.margemContribuicao ?? 0) },
-              { label: "Lucro estimado do dia", value: formatBRL(resumoHoje?.lucroEstimado ?? 0) },
-            ]}
+      {carregando && !ind ? (
+        <Skeleton className="h-[124px] rounded-md" />
+      ) : ind ? (
+        <>
+          <HeroMetric
+            label="Faturamento do período"
+            value={moeda(ind.receitaTotal)}
+            delta={variacao(resumoPeriodo?.comparacaoPeriodoAnterior.faturamento)}
+            deltaLabel="vs. período anterior"
+            context={`${DESCRICAO_MODO_FATURAMENTO[ind.config.modoFaturamento].titulo}. ${
+              ind.qualidade.vendasAguardandoDetalhes > 0
+                ? `${ind.qualidade.vendasAguardandoDetalhes} venda(s) ainda recebendo tarifa e frete reais do Mercado Pago.`
+                : "Tarifas e fretes confirmados pelo pagamento de cada venda."
+            }`}
           />
+          <StatStrip items={indicadoresPeriodo} />
+        </>
+      ) : (
+        <SectionCard>
+          <p className="py-6 text-center text-sm text-muted-foreground">Não foi possível carregar o resumo do período.</p>
+        </SectionCard>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <SectionCard title="Do faturamento ao lucro" description="Período selecionado · % sobre o faturamento">
+          {ind ? <DemonstrativoResultado indicadores={ind} /> : <Skeleton className="h-64 rounded-md" />}
+        </SectionCard>
+
+        <div className="space-y-6">
+          <SectionCard title="Hoje" description="Comparado com ontem">
+            {hoje ? (
+              <StatStrip
+                size="sm"
+                items={[
+                  {
+                    label: "Faturamento",
+                    value: moeda(hoje.receitaTotal),
+                    delta: variacao(resumoHoje?.comparacaoOntem.faturamento),
+                  },
+                  { label: "Pedidos", value: String(hoje.pedidos), note: `${hoje.unidades} unidades` },
+                  { label: "Margem de contribuição", value: moeda(hoje.margemContribuicao), note: percentual(hoje.margemContribuicaoPercentual) },
+                  { label: "Liberado hoje no Mercado Pago", value: moeda(resumoHoje?.valorALiberarHoje ?? 0) },
+                ]}
+              />
+            ) : (
+              <Skeleton className="h-24 rounded-md" />
+            )}
+          </SectionCard>
+
+          <SectionCard title="Fechamento do mês">
+            <StatStrip
+              size="sm"
+              items={[
+                {
+                  label: meta?.mesEmAndamento ? "Projeção de fechamento" : "Faturamento do mês",
+                  value: moeda(meta?.projecaoFechamento ?? null),
+                  note: meta?.mesEmAndamento ? "pelo ritmo de vendas até hoje" : undefined,
+                },
+                {
+                  label: "Meta do mês",
+                  value: meta?.percentualMeta != null ? percentual(meta.percentualMeta) : "—",
+                  note: meta?.metaFaturamentoMensal == null ? "defina em Configurações" : `de ${moeda(meta.metaFaturamentoMensal)}`,
+                },
+                {
+                  label: "Falta para o ponto de equilíbrio",
+                  value: textoPontoEquilibrio,
+                  note:
+                    pe && pe.pontoEquilibrio != null
+                      ? `equilíbrio em ${moeda(pe.pontoEquilibrio)} (despesas fixas ${moeda(pe.despesasFixasDoMes)})`
+                      : undefined,
+                },
+              ]}
+            />
+          </SectionCard>
+        </div>
+      </div>
+
+      <SectionCard title="Faturamento e margem por dia">
+        {serie.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Sem dados no período.</div>
+        ) : (
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={serie} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="dia" tickFormatter={formatarDiaCurto} tick={{ fontSize: 11 }} minTickGap={16} />
+              <YAxis tickFormatter={eixoMoeda} width={84} tick={{ fontSize: 11 }} />
+              <Tooltip
+                formatter={(valor: number, nome: string) => [moeda(valor), nome]}
+                labelFormatter={(v) => formatarDiaCurto(String(v))}
+              />
+              <Line type="monotone" dataKey="faturamento" name="Faturamento" stroke={chartColor(0)} dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="margemContribuicao" name="Margem de contribuição" stroke={chartColor(1)} dot={false} strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
         )}
       </SectionCard>
 
-      {carregando && !resumoPeriodo ? (
-        <Skeleton className="h-[124px] rounded-md" />
-      ) : (
-        <>
-          <HeroMetric
-            label="Lucro líquido do período"
-            value={formatBRL(resumoPeriodo?.lucroLiquido ?? 0)}
-            context="Margem de contribuição menos a parte proporcional das despesas fixas do mês."
-          />
-          <StatStrip items={statItems} />
-        </>
-      )}
-
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard title="Do faturamento ao lucro líquido" description="Período selecionado">
-          {dadosCascata.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Sem dados no período.</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={dadosCascata} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="nome" tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                <YAxis tickFormatter={(v) => formatBRL(v)} width={90} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(valor: number) => formatBRL(valor)} />
-                <Bar dataKey="base" stackId="cascata" fill="transparent" />
-                <Bar dataKey="altura" stackId="cascata">
-                  {dadosCascata.map((ponto, index) => (
-                    <Cell key={index} fill={ponto.positivo ? "hsl(var(--success))" : "hsl(var(--destructive))"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+        <SectionCard title="Caixa" description="Saldo da carteira do Mercado Pago, liberações e contas">
+          <StatStrip
+            size="sm"
+            items={[
+              {
+                label: carteiraMp?.nome ?? "Mercado Pago",
+                value: carteiraMp ? moeda(carteiraMp.saldoAtual) : "—",
+                note: carteiraMp?.precisaAjuste ? "informe o saldo atual em Fluxo de caixa" : "disponível agora",
+              },
+              { label: "A liberar (Mercado Pago)", value: moeda(carteiraMp?.saldoALiberar ?? 0), note: "vendas aguardando liberação" },
+              {
+                label: "Contas a pagar · 7 dias",
+                value: moeda((resumoHoje?.contasAPagar.vencendoHoje.valor ?? 0) + (resumoHoje?.contasAPagar.proximos7Dias.valor ?? 0)),
+                note:
+                  resumoHoje && resumoHoje.contasAPagar.vencidas.quantidade > 0
+                    ? `${resumoHoje.contasAPagar.vencidas.quantidade} vencida(s): ${moeda(resumoHoje.contasAPagar.vencidas.valor)}`
+                    : "nenhuma vencida",
+              },
+              { label: "Saldo projetado em 30 dias", value: moeda(saldoProjetado) },
+            ]}
+          />
+          {carteiraMp?.precisaAjuste && (
+            <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Info className="h-3.5 w-3.5" />
+              O Mercado Pago não informa o saldo para apps do Mercado Livre. Informe uma vez o saldo atual e o app passa a
+              atualizá-lo sozinho com cada liberação.{" "}
+              <Link href="/financeiro/fluxo-de-caixa" className="underline">
+                Informar saldo
+              </Link>
+            </p>
           )}
         </SectionCard>
 
-        <SectionCard title="Faturamento × margem de contribuição por dia">
-          {serieDiaria.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Sem dados no período.</div>
+        <SectionCard title="Por logística">
+          {porLogistica.length === 0 ? (
+            <div className="py-8 text-center text-sm text-muted-foreground">Sem vendas no período.</div>
           ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={serieDiaria} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="dia" tickFormatter={(v) => formatDateBR(v)} tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={(v) => formatBRL(v)} width={90} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(valor: number) => formatBRL(valor)} labelFormatter={(v) => formatDateBR(v)} />
-                <Line type="monotone" dataKey="faturamentoBruto" name="Faturamento" stroke={chartColor(0)} dot={false} />
-                <Line type="monotone" dataKey="margemContribuicao" name="Margem" stroke={chartColor(1)} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            <DataTable>
+              <DataTableHeader>
+                <DataTableRow>
+                  <DataTableHead>Logística</DataTableHead>
+                  <DataTableHead className="text-right">Pedidos</DataTableHead>
+                  <DataTableHead className="text-right">Faturamento</DataTableHead>
+                  <DataTableHead className="text-right">Frete médio</DataTableHead>
+                  <DataTableHead className="text-right">Margem</DataTableHead>
+                </DataTableRow>
+              </DataTableHeader>
+              <DataTableBody>
+                {porLogistica.map((linha) => (
+                  <DataTableRow key={linha.logistica}>
+                    <DataTableCell>{linha.rotulo}</DataTableCell>
+                    <DataTableCell numeric>{linha.pedidos}</DataTableCell>
+                    <DataTableCell numeric>{moeda(linha.faturamento)}</DataTableCell>
+                    <DataTableCell numeric>{moeda(linha.freteMedio)}</DataTableCell>
+                    <DataTableCell numeric>
+                      {moeda(linha.margemContribuicao)}{" "}
+                      <span className="text-xs text-faint">{percentual(linha.margemContribuicaoPercentual)}</span>
+                    </DataTableCell>
+                  </DataTableRow>
+                ))}
+              </DataTableBody>
+            </DataTable>
           )}
         </SectionCard>
       </div>
 
-      <SectionCard title="Por logística" description="Full × Flex × coleta no período selecionado">
-        {resumoPorLogistica.length === 0 ? (
-          <div className="py-8 text-center text-sm text-muted-foreground">Sem vendas no período.</div>
-        ) : (
-          <DataTable>
-            <DataTableHeader>
-              <DataTableRow>
-                <DataTableHead>Logística</DataTableHead>
-                <DataTableHead className="text-right">Pedidos</DataTableHead>
-                <DataTableHead className="text-right">Faturamento</DataTableHead>
-                <DataTableHead className="text-right">Frete médio</DataTableHead>
-                <DataTableHead className="text-right">Margem de contribuição</DataTableHead>
-              </DataTableRow>
-            </DataTableHeader>
-            <DataTableBody>
-              {resumoPorLogistica.map((linha) => (
-                <DataTableRow key={linha.logistica}>
-                  <DataTableCell>{linha.logistica}</DataTableCell>
-                  <DataTableCell className="text-right">{linha.pedidos}</DataTableCell>
-                  <DataTableCell className="text-right">{formatBRL(linha.faturamentoBruto)}</DataTableCell>
-                  <DataTableCell className="text-right">{linha.freteMedio != null ? formatBRL(linha.freteMedio) : "—"}</DataTableCell>
-                  <DataTableCell className="text-right">{formatBRL(linha.margemContribuicao)}</DataTableCell>
-                </DataTableRow>
-              ))}
-            </DataTableBody>
-          </DataTable>
-        )}
-      </SectionCard>
-
       <div className="grid gap-6 lg:grid-cols-2">
-        <SectionCard title="Top 10 produtos por lucro">
-          <TabelaProdutos produtos={topProdutos} />
+        <SectionCard
+          title="Produtos que mais dão margem"
+          actions={
+            <Link href="/financeiro/produtos" className="flex items-center gap-1 text-xs text-primary hover:underline">
+              Ver todos<ArrowRight className="h-3 w-3" />
+            </Link>
+          }
+        >
+          <TabelaProdutos produtos={melhores} />
         </SectionCard>
-        <SectionCard title="10 produtos com pior margem">
-          <TabelaProdutos produtos={piorProdutos} />
+        <SectionCard title="Produtos com menor margem">
+          <TabelaProdutos produtos={piores} />
         </SectionCard>
       </div>
 
@@ -442,28 +503,32 @@ export default function FinanceiroPage() {
           </Link>
         }
       >
-        {vendasComPrejuizo.length === 0 ? (
+        {vendasPrejuizo.length === 0 ? (
           <div className="py-8 text-center text-sm text-muted-foreground">Nenhuma venda com prejuízo no período.</div>
         ) : (
           <DataTable>
             <DataTableHeader>
               <DataTableRow>
                 <DataTableHead>Pedido</DataTableHead>
+                <DataTableHead>Produto</DataTableHead>
                 <DataTableHead>Data</DataTableHead>
+                <DataTableHead className="text-right">Valor</DataTableHead>
                 <DataTableHead className="text-right">Margem</DataTableHead>
               </DataTableRow>
             </DataTableHeader>
             <DataTableBody>
-              {vendasComPrejuizo.map((venda) => (
+              {vendasPrejuizo.map((venda) => (
                 <DataTableRow key={venda.id}>
                   <DataTableCell>
-                    <Link href={`/financeiro/vendas/${venda.id}`} className="text-primary hover:underline">
+                    <Link href={`/financeiro/vendas?pedido=${venda.pedidoExternoId}`} className="text-primary hover:underline">
                       #{venda.pedidoExternoId}
                     </Link>
                   </DataTableCell>
-                  <DataTableCell>{formatDateBR(venda.dataVenda)}</DataTableCell>
+                  <DataTableCell className="max-w-[280px] truncate">{venda.itens[0]?.titulo ?? "—"}</DataTableCell>
+                  <DataTableCell>{formatarDataVenda(venda.dataVenda)}</DataTableCell>
+                  <DataTableCell numeric>{moeda(venda.calculo.receitaTotal)}</DataTableCell>
                   <DataTableCell numeric emphasis>
-                    <StatusPill tone="critical">{formatBRL(venda.margemContribuicao ?? 0)}</StatusPill>
+                    <StatusPill tone="critical">{moeda(venda.calculo.margemContribuicao)}</StatusPill>
                   </DataTableCell>
                 </DataTableRow>
               ))}
@@ -472,72 +537,12 @@ export default function FinanceiroPage() {
         )}
       </SectionCard>
 
-      <SectionCard title="Contas a pagar e saldo projetado">
-        <StatStrip
-          items={[
-            { label: "Vencendo hoje", value: formatBRL(resumoHoje?.contasAPagar.vencendoHoje.valor ?? 0), note: `${resumoHoje?.contasAPagar.vencendoHoje.quantidade ?? 0} conta(s)` },
-            { label: "Vencidas", value: formatBRL(resumoHoje?.contasAPagar.vencidas.valor ?? 0), note: `${resumoHoje?.contasAPagar.vencidas.quantidade ?? 0} conta(s)` },
-            { label: "Próximos 7 dias", value: formatBRL(resumoHoje?.contasAPagar.proximos7Dias.valor ?? 0), note: `${resumoHoje?.contasAPagar.proximos7Dias.quantidade ?? 0} conta(s)` },
-            { label: "Saldo projetado (30 dias)", value: saldoProjetado != null ? formatBRL(saldoProjetado) : "—" },
-          ]}
-        />
-      </SectionCard>
-
-      <SectionCard title="Saldo por conta">
-        {contasComSaldo.length === 0 ? (
-          <div className="py-6 text-center text-sm text-muted-foreground">Nenhuma conta financeira cadastrada.</div>
-        ) : (
-          <StatStrip
-            items={contasComSaldo.map((conta) => ({
-              label: conta.nome,
-              value: formatBRL(conta.saldoAtual),
-              note: conta.origemSaldo === "API_MERCADO_PAGO" ? "API do Mercado Pago" : "Lançamentos",
-            }))}
-          />
-        )}
-      </SectionCard>
-
-      <SectionCard title="Qualidade dos dados">
-        <StatStrip
-          items={[
-            {
-              label: "Vendas incompletas no período",
-              value: String(vendasIncompletasTotal),
-              note: vendasIncompletasTotal > 0 ? "sem custo, sem vínculo ou sem frete" : "tudo completo",
-            },
-            {
-              label: "Vínculos não confirmados",
-              value: String(vinculosNaoConfirmadosTotal),
-              note: vinculosNaoConfirmadosTotal > 0 ? "anúncios vinculados por similaridade" : "tudo confirmado",
-            },
-            {
-              label: "Cobranças não mapeadas no mês",
-              value: String(cobrancasNaoMapeadasTotal),
-              note: cobrancasNaoMapeadasTotal > 0 ? "tipos de cobrança desconhecidos" : "tudo mapeado",
-            },
-          ]}
-        />
-        <div className="mt-3 flex flex-wrap gap-4 text-sm">
-          {vendasIncompletasTotal > 0 && (
-            <Link href="/financeiro/vendas?soIncompletas=true" className="underline text-warning">
-              Ver vendas incompletas
-            </Link>
-          )}
-          {vinculosNaoConfirmadosTotal > 0 && (
-            <Link href="/produtos/vinculos-pendentes" className="underline text-warning">
-              Confirmar vínculos
-            </Link>
-          )}
-          {cobrancasNaoMapeadasTotal > 0 && (
-            <Link href="/financeiro/configuracoes" className="underline text-warning">
-              Ver cobranças não mapeadas
-            </Link>
-          )}
-          <Link href="/financeiro/conferencia" className="underline text-muted-foreground">
-            Conferir cobertura do mês contra o Mercado Livre
-          </Link>
-        </div>
-      </SectionCard>
+      <p className="text-center text-xs text-faint">
+        Os números do Financeiro usam a data de criação do pedido no fuso de Brasília — o mesmo critério do Mercado Livre.{" "}
+        <Link href="/financeiro/conferencia" className="underline">
+          Conferir com o Mercado Livre
+        </Link>
+      </p>
     </div>
   );
 }
@@ -551,22 +556,23 @@ function TabelaProdutos({ produtos }: { produtos: ProdutoLinha[] }) {
       <DataTableHeader>
         <DataTableRow>
           <DataTableHead>Produto</DataTableHead>
-          <DataTableHead className="text-right">Lucro líquido</DataTableHead>
-          <DataTableHead className="text-right">Margem %</DataTableHead>
+          <DataTableHead className="text-right">Unid.</DataTableHead>
+          <DataTableHead className="text-right">Margem</DataTableHead>
+          <DataTableHead className="text-right">%</DataTableHead>
         </DataTableRow>
       </DataTableHeader>
       <DataTableBody>
         {produtos.map((produto) => (
           <DataTableRow key={produto.produtoId}>
-            <DataTableCell>
-              <Link href={`/produtos/${produto.produtoId}`} className="hover:underline">
-                {produto.nome} <span className="text-muted-foreground">({produto.sku})</span>
+            <DataTableCell className="max-w-[280px]">
+              <Link href={`/produtos/${produto.produtoId}`} className="block truncate hover:underline" title={produto.nome}>
+                {produto.nome}
               </Link>
+              <span className="text-xs text-faint">{produto.sku}</span>
             </DataTableCell>
-            <DataTableCell numeric emphasis>{formatBRL(produto.lucroLiquido)}</DataTableCell>
-            <DataTableCell numeric>
-              {produto.margemContribuicaoPercentual != null ? formatPercent(produto.margemContribuicaoPercentual * 100) : "—"}
-            </DataTableCell>
+            <DataTableCell numeric>{produto.unidades}</DataTableCell>
+            <DataTableCell numeric emphasis>{moeda(produto.margemContribuicao)}</DataTableCell>
+            <DataTableCell numeric>{percentual(produto.margemContribuicaoPercentual)}</DataTableCell>
           </DataTableRow>
         ))}
       </DataTableBody>

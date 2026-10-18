@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   CancelamentoCompetencia,
+  ModoFaturamento,
   RateioCustoFixo,
   RegimeTributario,
 } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
+import { invalidarCacheFinanceiro } from "@/modules/financeiro/relatorios/cache";
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +30,7 @@ export async function GET(request: NextRequest) {
       prazoPagamentoPadraoDias: config?.prazoPagamentoPadraoDias ?? 30,
       blingContasAtivo: config?.blingContasAtivo ?? false,
       metaFaturamentoMensal: config?.metaFaturamentoMensal ?? null,
+      modoFaturamento: config?.modoFaturamento ?? ModoFaturamento.PRODUTOS,
     });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
@@ -51,6 +54,7 @@ interface RequestBody {
   prazoPagamentoPadraoDias?: number;
   blingContasAtivo?: boolean;
   metaFaturamentoMensal?: number | null;
+  modoFaturamento?: ModoFaturamento;
 }
 
 export async function PATCH(request: NextRequest) {
@@ -77,6 +81,9 @@ export async function PATCH(request: NextRequest) {
       !Object.values(CancelamentoCompetencia).includes(body.cancelamentoNaCompetencia)
     ) {
       return NextResponse.json({ error: "cancelamentoNaCompetencia inválido" }, { status: 400 });
+    }
+    if (body.modoFaturamento && !Object.values(ModoFaturamento).includes(body.modoFaturamento)) {
+      return NextResponse.json({ error: "modoFaturamento inválido" }, { status: 400 });
     }
     if (body.rateioCustoFixo && !Object.values(RateioCustoFixo).includes(body.rateioCustoFixo)) {
       return NextResponse.json({ error: "rateioCustoFixo inválido" }, { status: 400 });
@@ -122,6 +129,7 @@ export async function PATCH(request: NextRequest) {
       }),
       ...(body.blingContasAtivo !== undefined && { blingContasAtivo: body.blingContasAtivo }),
       ...(body.metaFaturamentoMensal !== undefined && { metaFaturamentoMensal: body.metaFaturamentoMensal }),
+      ...(body.modoFaturamento && { modoFaturamento: body.modoFaturamento }),
     };
 
     const config = await prisma.configuracaoGeral.upsert({
@@ -129,6 +137,7 @@ export async function PATCH(request: NextRequest) {
       update: dados,
       create: { userId: user.contaId, ...dados },
     });
+    await invalidarCacheFinanceiro(user.contaId);
 
     return NextResponse.json(config);
   } catch (error) {

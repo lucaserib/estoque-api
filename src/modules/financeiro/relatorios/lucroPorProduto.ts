@@ -1,7 +1,9 @@
 import { CanalVenda } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { ratearCustoFixoPorProduto } from "../dominio/formulas";
+import { ratear } from "../dominio/dinheiro";
 import { comCacheFinanceiro } from "./cache";
+import { buscarVendasParaCalculo, calcularIndicadores, calcularVenda, obterConfigRelatorio } from "./motor";
 
 export type CurvaAbc = "A" | "B" | "C";
 
@@ -23,6 +25,7 @@ export interface LinhaLucroPorProduto {
   lucroLiquido: number;
   roiSobreCmv: number | null;
   curvaAbc: CurvaAbc;
+  vendasSemCusto: number;
 }
 
 export interface FiltrosLucroPorProduto {
@@ -62,103 +65,130 @@ function calcularCurvaAbc(
   return classificacao;
 }
 
+interface AcumuladoProduto {
+  produtoId: string;
+  unidades: number;
+  faturamentoBruto: number;
+  descontos: number;
+  tarifa: number;
+  frete: number;
+  ads: number;
+  imposto: number;
+  cmv: number;
+  margemContribuicao: number;
+  vendasSemCusto: number;
+}
+
+/**
+ * Resultado por produto com a MESMA regra do total (motor.calcularVenda): cada
+ * venda é calculada inteira e depois dividida entre os itens na proporção do
+ * faturamento de cada item; o CMV é o custo congelado de cada item. A soma da
+ * margem de todos os produtos é igual à margem das vendas do período (sem os
+ * custos que não pertencem a nenhuma venda — fatura do ML e ads não
+ * atribuídos —, que aparecem só no total e na DRE).
+ */
 export async function gerarLucroPorProduto(
   userId: string,
   filtros: FiltrosLucroPorProduto,
   ordenarPor: OrdenacaoLucroPorProduto = "margemContribuicao",
   ordem: "asc" | "desc" = "desc"
 ): Promise<LinhaLucroPorProduto[]> {
-  const chave = `lucro-produto:${filtros.desde.toISOString()}:${filtros.ate.toISOString()}:${filtros.canal ?? "todos"}`;
+  const config = await obterConfigRelatorio(userId);
+  const chave = `lucro-produto:${filtros.desde.toISOString()}:${filtros.ate.toISOString()}:${filtros.canal ?? "todos"}:${config.modoFaturamento}:${config.aliquotaImposto}`;
 
-  return comCacheFinanceiro(userId, chave, async () => {
-    // CMV real é quantidade × custoUnitário (por item, não por unidade) e o
-    // faturamento é quantidade × precoUnitário — os dois precisam de
-    // multiplicação por item, então busca os itens em detalhe em vez de um
-    // _sum agregado (que somaria custoUnitário "cru", sem multiplicar pela quantidade).
-    const [itensDetalhados, config] = await Promise.all([
-      prisma.vendaCanalItem.findMany({
-        where: {
-          produtoId: { not: null },
-          venda: {
-            userId,
-            dataVenda: { gte: filtros.desde, lte: filtros.ate },
-            ...(filtros.canal && { canal: filtros.canal }),
-          },
-        },
-        select: {
-          produtoId: true, quantidade: true, precoUnitario: true, descontoRateado: true,
-          tarifaVenda: true, freteRateado: true, adsRateado: true, impostoRateado: true,
-          custoUnitario: true, margemContribuicao: true,
-        },
-      }),
+  const linhas = await comCacheFinanceiro(userId, chave, async () => {
+    const [vendas, configRateio, indicadores] = await Promise.all([
+      buscarVendasParaCalculo(userId, filtros.desde, filtros.ate, { canal: filtros.canal }),
       prisma.configuracaoGeral.findUnique({ where: { userId }, select: { rateioCustoFixo: true } }),
+      calcularIndicadores(userId, filtros.desde, filtros.ate, { filtros: { canal: filtros.canal }, config }),
     ]);
 
-    if (itensDetalhados.length === 0) return [];
+    const porProduto = new Map<string, AcumuladoProduto>();
+    for (const venda of vendas) {
+      const resultado = calcularVenda(venda, config);
+      if (venda.itens.length === 0) continue;
+      if (!resultado.valida && resultado.margemContribuicao === 0) continue;
+      const pesos = venda.itens.map((item) => item.precoUnitario * item.quantidade);
+      const parte = (valor: number) => ratear(valor, pesos);
+      const receitas = parte(resultado.receitaTotal);
+      const impostos = parte(resultado.imposto);
+      const tarifas = parte(resultado.tarifa);
+      const fretes = parte(resultado.frete);
+      const ads = parte(resultado.ads + resultado.outrosCustos);
+      const descontos = parte(resultado.descontoCampanha);
 
-    const produtoIds = [
-      ...new Set(itensDetalhados.map((i) => i.produtoId).filter((id): id is string => id !== null)),
-    ];
+      venda.itens.forEach((item, i) => {
+        if (!item.produtoId) return;
+        const atual = porProduto.get(item.produtoId) ?? {
+          produtoId: item.produtoId,
+          unidades: 0,
+          faturamentoBruto: 0,
+          descontos: 0,
+          tarifa: 0,
+          frete: 0,
+          ads: 0,
+          imposto: 0,
+          cmv: 0,
+          margemContribuicao: 0,
+          vendasSemCusto: 0,
+        };
+        const cmvItem = resultado.valida ? (item.custoUnitario ?? 0) * item.quantidade : 0;
+        if (resultado.valida && item.custoUnitario == null) atual.vendasSemCusto++;
+        atual.unidades += resultado.valida ? item.quantidade : 0;
+        atual.faturamentoBruto += receitas[i];
+        atual.descontos += descontos[i];
+        atual.tarifa += tarifas[i];
+        atual.frete += fretes[i];
+        atual.ads += ads[i];
+        atual.imposto += impostos[i];
+        atual.cmv += cmvItem;
+        atual.margemContribuicao += receitas[i] - impostos[i] - tarifas[i] - fretes[i] - ads[i] - cmvItem;
+        porProduto.set(item.produtoId, atual);
+      });
+    }
+
+    if (porProduto.size === 0) return [];
+
     const produtos = await prisma.produto.findMany({
-      where: { id: { in: produtoIds } },
+      where: { id: { in: [...porProduto.keys()] } },
       select: { id: true, nome: true, sku: true },
     });
     const produtoPorId = new Map(produtos.map((p) => [p.id, p]));
 
-    const porProduto = new Map<string, Omit<LinhaLucroPorProduto, "sku" | "nome" | "margemContribuicaoPercentual" | "custoFixoRateado" | "lucroLiquido" | "roiSobreCmv" | "curvaAbc">>();
-    for (const item of itensDetalhados) {
-      if (!item.produtoId) continue;
-      const atual = porProduto.get(item.produtoId) ?? {
-        produtoId: item.produtoId, unidades: 0, faturamentoBruto: 0, descontos: 0,
-        tarifa: 0, frete: 0, ads: 0, imposto: 0, cmv: 0, margemContribuicao: 0,
-      };
-      atual.unidades += item.quantidade;
-      atual.faturamentoBruto += item.precoUnitario * item.quantidade;
-      atual.descontos += item.descontoRateado;
-      atual.tarifa += item.tarifaVenda;
-      atual.frete += item.freteRateado ?? 0;
-      atual.ads += item.adsRateado;
-      atual.imposto += item.impostoRateado;
-      atual.cmv += (item.custoUnitario ?? 0) * item.quantidade;
-      atual.margemContribuicao += item.margemContribuicao ?? 0;
-      porProduto.set(item.produtoId, atual);
-    }
-
     const linhasBase = [...porProduto.values()];
-    const despesasFixasDoPeriodo = await somarDespesasOperacionaisDoPeriodo(userId, filtros.desde, filtros.ate);
-    const rateioCustoFixo = config?.rateioCustoFixo ?? "FATURAMENTO";
     const rateio = ratearCustoFixoPorProduto(
-      despesasFixasDoPeriodo,
+      Math.max(0, indicadores.totalDespesasOperacionais),
       linhasBase.map((l) => ({ produtoId: l.produtoId, faturamento: l.faturamentoBruto, unidadesVendidas: l.unidades })),
-      rateioCustoFixo
+      configRateio?.rateioCustoFixo ?? "FATURAMENTO"
     );
     const curvaAbc = calcularCurvaAbc(linhasBase);
 
-    const linhas: LinhaLucroPorProduto[] = linhasBase.map((l) => {
+    return linhasBase.map((l): LinhaLucroPorProduto => {
       const custoFixoRateado = rateio[l.produtoId] ?? 0;
       const lucroLiquido = l.margemContribuicao - custoFixoRateado;
       const produto = produtoPorId.get(l.produtoId);
       return {
-        ...l,
+        produtoId: l.produtoId,
         sku: produto?.sku ?? "—",
         nome: produto?.nome ?? "Produto removido",
+        unidades: l.unidades,
+        faturamentoBruto: l.faturamentoBruto,
+        descontos: l.descontos,
+        tarifa: l.tarifa,
+        frete: l.frete,
+        ads: l.ads,
+        imposto: l.imposto,
+        cmv: l.cmv,
+        margemContribuicao: l.margemContribuicao,
         margemContribuicaoPercentual: l.faturamentoBruto === 0 ? null : l.margemContribuicao / l.faturamentoBruto,
         custoFixoRateado,
         lucroLiquido,
         roiSobreCmv: l.cmv === 0 ? null : lucroLiquido / l.cmv,
         curvaAbc: curvaAbc.get(l.produtoId) ?? "C",
+        vendasSemCusto: l.vendasSemCusto,
       };
     });
-
-    linhas.sort((a, b) => (ordem === "asc" ? 1 : -1) * (a[ordenarPor] - b[ordenarPor]));
-    return linhas;
   });
-}
 
-async function somarDespesasOperacionaisDoPeriodo(userId: string, desde: Date, ate: Date): Promise<number> {
-  const lancamentos = await prisma.lancamentoFinanceiro.findMany({
-    where: { userId, competencia: { gte: desde, lte: ate }, categoria: { grupoDre: "DESPESA_OPERACIONAL" } },
-    select: { tipo: true, valor: true },
-  });
-  return lancamentos.reduce((soma, l) => soma + (l.tipo === "DESPESA" ? l.valor : -l.valor), 0);
+  return [...linhas].sort((a, b) => (ordem === "asc" ? 1 : -1) * (a[ordenarPor] - b[ordenarPor]));
 }

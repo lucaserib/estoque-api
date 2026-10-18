@@ -136,6 +136,12 @@ enum RateioCustoFixo {
   NENHUM
 }
 
+enum ModoFaturamento {
+  PRODUTOS
+  PRODUTOS_E_FRETE_COMPRADOR
+  PRODUTOS_MENOS_FRETE
+}
+
 enum FreteOrigem {
   AJUSTE_MANUAL
   PAGAMENTO_CONFIRMADO
@@ -213,6 +219,7 @@ model ConfiguracaoGeral {
   prazoPagamentoPadraoDias          Int                      @default(30)
   blingContasAtivo                  Boolean                  @default(false)
   metaFaturamentoMensal             Int?
+  modoFaturamento                   ModoFaturamento          @default(PRODUTOS)
   createdAt                        DateTime @default(now())
   updatedAt                        DateTime @updatedAt
   user                             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -261,6 +268,8 @@ model MercadoLivreAccount {
   siteId        String
   isActive      Boolean                   @default(true)
   ultimaSincronizacaoFinanceiraEm DateTime?
+  financeiroProcessandoAte        DateTime?
+  versaoDadosFinanceiros          Int       @default(0)
   createdAt     DateTime                  @default(now())
   updatedAt     DateTime                  @updatedAt
   user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -779,6 +788,10 @@ model VendaCanal {
   freteAjusteManualMotivo String?
   freteAjusteManualUserId String?
   freteAjusteManualEm   DateTime?
+  valorEstornado        Int            @default(0)
+  enriquecidoEm         DateTime?
+  enriquecimentoTentativas Int         @default(0)
+  enriquecimentoErro    String?
   atualizadoNoCanalEm DateTime
   createdAt           DateTime         @default(now())
   updatedAt           DateTime         @updatedAt
@@ -790,6 +803,7 @@ model VendaCanal {
   @@unique([userId, canal, pedidoExternoId])
   @@index([userId, dataVenda])
   @@index([userId, dataLiberacao])
+  @@index([contaCanalId, enriquecidoEm])
   @@map("vendas_canal")
 }
 
@@ -1156,4 +1170,20 @@ model TarefaSincronizacaoFinanceira {
 
   @@index([userId, contaCanalId, status, prioridade])
   @@map("tarefas_sincronizacao_financeira")
+}
+
+model SincronizacaoCatalogo {
+  id             String    @id @default(uuid())
+  userId         String    @unique
+  etapa          String?
+  cursor         Json?
+  progresso      Json?
+  iniciadoEm     DateTime?
+  concluidoEm    DateTime?
+  processandoAte DateTime?
+  erro           String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("sincronizacoes_catalogo")
 }

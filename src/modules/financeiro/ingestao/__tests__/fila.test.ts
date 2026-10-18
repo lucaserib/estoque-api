@@ -1,318 +1,242 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { CanalVenda, StatusTarefaSincronizacao, TipoTarefaSincronizacao } from "@prisma/client";
-import type { MLOrder } from "@/types/mercadolivre";
 
-interface FakeTarefa {
+interface TarefaFalsa {
   id: string;
   userId: string;
-  canal: CanalVenda;
+  canal: string;
   contaCanalId: string;
-  tipo: TipoTarefaSincronizacao;
+  tipo: string;
   desde: Date | null;
   ate: Date | null;
   cursor: unknown;
   forcar: boolean;
-  status: StatusTarefaSincronizacao;
+  status: string;
   prioridade: number;
   tentativas: number;
   processados: number;
-  total: number | null;
   erro: string | null;
   bloqueadaAte: Date | null;
   criadaEm: Date;
   concluidaEm: Date | null;
 }
 
-let tarefas: FakeTarefa[] = [];
-let vendas: Array<{ pedidoExternoId: string; atualizadoNoCanalEm: Date; completo: boolean }> = [];
-let contas: Array<{ id: string; ultimaSincronizacaoFinanceiraEm: Date | null }> = [];
-let proximoId = 1;
+let tarefas: TarefaFalsa[] = [];
+let conta: { id: string; financeiroProcessandoAte: Date | null; ultimaSincronizacaoFinanceiraEm: Date | null };
+let paginas: Map<string, Array<{ id: number }[]>> = new Map();
+const chamadasBusca: Array<{ campoData: string; desde: Date; ate: Date; offset: number }> = [];
+const lotes: Array<{ ids: number[]; forcar?: boolean }> = [];
+let falharBusca = false;
+let relogio = 0;
 
-function novaTarefaFake(dados: Partial<FakeTarefa>): FakeTarefa {
-  return {
-    id: `tarefa-${proximoId++}`,
-    userId: "user-1",
-    canal: CanalVenda.MERCADO_LIVRE,
-    contaCanalId: "conta-1",
-    tipo: TipoTarefaSincronizacao.PEDIDOS_PERIODO,
-    desde: null,
-    ate: null,
-    cursor: null,
-    forcar: false,
-    status: StatusTarefaSincronizacao.PENDENTE,
-    prioridade: 0,
-    tentativas: 0,
-    processados: 0,
-    total: null,
-    erro: null,
-    bloqueadaAte: null,
-    criadaEm: new Date(),
-    concluidaEm: null,
-    ...dados,
-  };
+function aplicar(t: TarefaFalsa, data: Record<string, unknown>) {
+  for (const [campo, valor] of Object.entries(data)) {
+    if (valor && typeof valor === "object" && "increment" in (valor as Record<string, unknown>)) {
+      (t as unknown as Record<string, number>)[campo] += (valor as { increment: number }).increment;
+    } else {
+      (t as unknown as Record<string, unknown>)[campo] = valor;
+    }
+  }
 }
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     tarefaSincronizacaoFinanceira: {
-      findFirst: vi.fn(
-        async ({
-          where,
-        }: {
-          where: {
-            userId: string;
-            contaCanalId: string;
-            tipo?: TipoTarefaSincronizacao;
-            status?: StatusTarefaSincronizacao | { in: StatusTarefaSincronizacao[] };
-            desde?: Date | null;
-            ate?: Date | null;
-            OR?: Array<Record<string, unknown>>;
-          };
-        }) => {
-          let candidatos = tarefas.filter(
-            (t) => t.userId === where.userId && t.contaCanalId === where.contaCanalId
-          );
-          if (where.tipo) candidatos = candidatos.filter((t) => t.tipo === where.tipo);
-          if (where.status && !where.OR) {
-            const statusAceitos =
-              typeof where.status === "object" && "in" in where.status ? where.status.in : [where.status];
-            candidatos = candidatos.filter((t) => statusAceitos.includes(t.status));
-          }
-          if (where.OR) {
-            const agora = new Date();
-            candidatos = candidatos.filter((t) =>
-              where.OR!.some((cond) => {
-                if (cond.status === StatusTarefaSincronizacao.PENDENTE) {
-                  return t.status === StatusTarefaSincronizacao.PENDENTE;
-                }
-                return (
-                  t.status === StatusTarefaSincronizacao.EM_ANDAMENTO &&
-                  (!t.bloqueadaAte || t.bloqueadaAte < agora)
-                );
-              })
-            );
-          }
-          if ("desde" in where) candidatos = candidatos.filter((t) => t.desde?.getTime() === where.desde?.getTime());
-          if ("ate" in where) candidatos = candidatos.filter((t) => t.ate?.getTime() === where.ate?.getTime());
-
-          candidatos.sort((a, b) => b.prioridade - a.prioridade || a.criadaEm.getTime() - b.criadaEm.getTime());
-          return candidatos[0] ?? null;
-        }
-      ),
-      create: vi.fn(async ({ data }: { data: Partial<FakeTarefa> }) => {
-        const nova = novaTarefaFake(data);
-        tarefas.push(nova);
-        return nova;
+      findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        const candidatas = tarefas
+          .filter((t) => t.tentativas < 5)
+          .filter((t) => t.status === "PENDENTE" || (t.status === "EM_ANDAMENTO" && (!t.bloqueadaAte || t.bloqueadaAte.getTime() < Date.now())))
+          .filter((t) => !where.contaCanalId || t.contaCanalId === where.contaCanalId)
+          .sort((a, b) => b.prioridade - a.prioridade || a.criadaEm.getTime() - b.criadaEm.getTime());
+        if (where.tipo) return candidatas.find((t) => t.tipo === where.tipo) ?? null;
+        return candidatas[0] ?? null;
       }),
       update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const tarefa = tarefas.find((t) => t.id === where.id);
-        if (!tarefa) throw new Error("tarefa não encontrada");
-        for (const [chave, valor] of Object.entries(data)) {
-          if (valor && typeof valor === "object" && "increment" in (valor as Record<string, unknown>)) {
-            (tarefa as unknown as Record<string, number>)[chave] += (valor as { increment: number }).increment;
-          } else {
-            (tarefa as unknown as Record<string, unknown>)[chave] = valor;
-          }
-        }
-        return tarefa;
+        const t = tarefas.find((x) => x.id === where.id)!;
+        aplicar(t, data);
+        return t;
       }),
-    },
-    vendaCanal: {
-      findUnique: vi.fn(
-        async ({ where }: { where: { userId_canal_pedidoExternoId: { pedidoExternoId: string } } }) =>
-          vendas.find((v) => v.pedidoExternoId === where.userId_canal_pedidoExternoId.pedidoExternoId) ?? null
-      ),
+      count: vi.fn(async () => tarefas.filter((t) => t.tentativas < 5 && (t.status === "PENDENTE" || t.status === "EM_ANDAMENTO")).length),
+      create: vi.fn(async ({ data }: { data: Partial<TarefaFalsa> }) => {
+        const t = novaTarefa(data);
+        tarefas.push(t);
+        return t;
+      }),
     },
     mercadoLivreAccount: {
-      update: vi.fn(async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
-        const conta = contas.find((c) => c.id === where.id);
-        if (conta) Object.assign(conta, data);
+      updateMany: vi.fn(async () => {
+        if (conta.financeiroProcessandoAte && conta.financeiroProcessandoAte.getTime() > Date.now()) return { count: 0 };
+        conta.financeiroProcessandoAte = new Date(Date.now() + 60000);
+        return { count: 1 };
+      }),
+      update: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        Object.assign(conta, data);
         return conta;
       }),
+      findUnique: vi.fn(async () => conta),
     },
   },
 }));
 
-function pedidoMl(id: string, lastUpdated = "2026-05-10T14:05:00.000-04:00"): MLOrder {
-  return {
-    id,
-    status: "paid",
-    date_created: "2026-05-10T14:00:00.000-04:00",
-    date_closed: "2026-05-10T14:05:00.000-04:00",
-    last_updated: lastUpdated,
-    order_items: [
-      { item: { id: "MLB1", title: "Produto", seller_sku: "SKU-1" }, quantity: 1, unit_price: 100, sale_fee: 10 },
-    ],
-    buyer: {},
-    seller: {},
-    currency_id: "BRL",
-    shipping: { id: 555 },
-    total_amount: 100,
-    paid_amount: 100,
-    payments: [{ id: 1, status: "approved", transaction_amount: 100 }],
-  };
-}
-
-let pedidosPorDia: Record<string, MLOrder[]> = {};
-const listarPedidosCriadosNoPeriodoMock = vi.fn(async (_contaCanalId: string, desde: Date, _ate: Date) => {
-  const chaveDia = desde.toISOString().slice(0, 10);
-  return pedidosPorDia[chaveDia] ?? [];
-});
 vi.mock("../../canais/mercadoLivre/cliente", () => ({
-  listarPedidosCriadosNoPeriodo: (...args: unknown[]) =>
-    (listarPedidosCriadosNoPeriodoMock as (...a: unknown[]) => unknown)(...args),
+  buscarPaginaPedidos: vi.fn(async (_conta: string, p: { campoData: string; desde: Date; ate: Date; offset: number }) => {
+    relogio += 1000;
+    if (falharBusca) throw new Error("Mercado Livre recusou a busca de pedidos (HTTP 500)");
+    chamadasBusca.push(p);
+    const chave = `${p.campoData}:${p.desde.toISOString()}`;
+    const lista = paginas.get(chave) ?? [];
+    const indice = p.offset / 50;
+    const pedidos = lista[indice] ?? [];
+    return { pedidos, total: lista.flat().length, proximoOffset: indice + 1 < lista.length ? p.offset + 50 : null };
+  }),
 }));
 
-const adaptadorFake: { atual: Record<string, unknown> } = { atual: {} };
-vi.mock("../../canais/registro", () => ({
-  obterAdaptador: vi.fn(() => ({ canal: CanalVenda.MERCADO_LIVRE, ...adaptadorFake.atual })),
+vi.mock("../lote", () => ({
+  ingerirPedidosEmLote: vi.fn(async (_c: unknown, pedidos: Array<{ id: number }>, opcoes: { forcar?: boolean }) => {
+    lotes.push({ ids: pedidos.map((p) => p.id), forcar: opcoes.forcar });
+    return { recebidos: pedidos.length, gravados: pedidos.length, semMudanca: 0, naoRelevantes: 0, erros: 0 };
+  }),
 }));
 
-const ingerirVendaNormalizadaMock = vi.fn(async (..._args: unknown[]) => {
-  await new Promise((resolve) => setTimeout(resolve, 1));
-});
-const ingerirPedidoComRegistroDeErroMock = vi.fn(async (..._args: unknown[]) => undefined);
-const registrarErroPedidoMock = vi.fn(async (..._args: unknown[]) => undefined);
-const resolverErroPedidoMock = vi.fn(async (..._args: unknown[]) => undefined);
-const obterUserIdDaContaMock = vi.fn(async (..._args: unknown[]) => "user-1");
-
+const enriquecerMock = vi.fn(async () => ({ processados: 3, falhas: 0, restantes: 0 }));
+vi.mock("../enriquecimento", () => ({
+  enriquecerVendasPendentes: (...args: unknown[]) => enriquecerMock(...(args as [])),
+  contarVendasAguardandoDetalhes: vi.fn(async () => 0),
+}));
+vi.mock("../ingestaoAds", () => ({ ingerirGastosAdsDoDia: vi.fn(async () => ({ processados: 0 })) }));
+vi.mock("../ingestaoCobrancas", () => ({ ingerirCobrancasDoMes: vi.fn(async () => ({ processadas: 2, naoMapeadas: 0 })) }));
 vi.mock("../sincronizador", () => ({
-  ingerirVendaNormalizada: (...args: unknown[]) => ingerirVendaNormalizadaMock(...args),
-  ingerirPedidoComRegistroDeErro: (...args: unknown[]) => ingerirPedidoComRegistroDeErroMock(...args),
-  registrarErroPedido: (...args: unknown[]) => registrarErroPedidoMock(...args),
-  resolverErroPedido: (...args: unknown[]) => resolverErroPedidoMock(...args),
-  obterUserIdDaConta: (...args: unknown[]) => obterUserIdDaContaMock(...args),
-  mensagemDeErro: (erro: unknown) => (erro instanceof Error ? erro.message : "Erro desconhecido"),
+  mensagemDeErro: (e: unknown) => (e instanceof Error ? e.message : "erro"),
+  obterUserIdDaConta: vi.fn(async () => "user-1"),
   tempoMaximoLoteMs: () => 40000,
 }));
 
-vi.mock("../ingestaoAds", () => ({ ingerirGastosAdsDoDia: vi.fn(async () => ({ processados: 0 })) }));
-vi.mock("../ingestaoCobrancas", () => ({ ingerirCobrancasDoMes: vi.fn(async () => ({ processadas: 0, naoMapeadas: 0 })) }));
+const { executarFila } = await import("../fila");
 
-const { enfileirarTarefa, executarFila } = await import("../fila");
+let sequencia = 0;
+function novaTarefa(parcial: Partial<TarefaFalsa>): TarefaFalsa {
+  sequencia++;
+  return {
+    id: `t${sequencia}`,
+    userId: "user-1",
+    canal: "MERCADO_LIVRE",
+    contaCanalId: "conta-1",
+    tipo: "PEDIDOS_PERIODO",
+    desde: null,
+    ate: null,
+    cursor: null,
+    forcar: false,
+    status: "PENDENTE",
+    prioridade: 0,
+    tentativas: 0,
+    processados: 0,
+    erro: null,
+    bloqueadaAte: null,
+    criadaEm: new Date(Date.now() - 1000 * (100 - sequencia)),
+    concluidaEm: null,
+    ...parcial,
+  };
+}
+
+function lote(inicio: number, quantidade: number) {
+  return Array.from({ length: quantidade }, (_, i) => ({ id: inicio + i }));
+}
 
 beforeEach(() => {
   tarefas = [];
-  vendas = [];
-  contas = [{ id: "conta-1", ultimaSincronizacaoFinanceiraEm: null }];
-  pedidosPorDia = {};
-  proximoId = 1;
-  listarPedidosCriadosNoPeriodoMock.mockClear();
-  ingerirVendaNormalizadaMock.mockClear();
-  adaptadorFake.atual = {};
+  paginas = new Map();
+  chamadasBusca.length = 0;
+  lotes.length = 0;
+  falharBusca = false;
+  relogio = 0;
+  conta = { id: "conta-1", financeiroProcessandoAte: null, ultimaSincronizacaoFinanceiraEm: null };
+  enriquecerMock.mockClear();
 });
 
-describe("executarFila — PEDIDOS_PERIODO", () => {
-  it("F9 (Ciclo 9): período de 3 dias com 120 pedidos e timeout no meio retoma do pedido certo até concluir", async () => {
-    pedidosPorDia = {
-      "2026-05-01": Array.from({ length: 40 }, (_, i) => pedidoMl(`d1-${i}`)),
-      "2026-05-02": Array.from({ length: 40 }, (_, i) => pedidoMl(`d2-${i}`)),
-      "2026-05-03": Array.from({ length: 40 }, (_, i) => pedidoMl(`d3-${i}`)),
-    };
+const INICIO_SET = new Date("2026-09-01T03:00:00.000Z");
+const INICIO_OUT = new Date("2026-10-01T03:00:00.000Z");
+const FIM_OUT = new Date("2026-11-01T02:59:59.999Z");
 
-    await enfileirarTarefa({
-      userId: "user-1",
-      canal: CanalVenda.MERCADO_LIVRE,
-      contaCanalId: "conta-1",
-      tipo: TipoTarefaSincronizacao.PEDIDOS_PERIODO,
-      desde: new Date("2026-05-01T00:00:00.000-03:00"),
-      ate: new Date("2026-05-03T23:59:59.999-03:00"),
-    });
+describe("executarFila — importação por período", () => {
+  it("vai do mês mais recente para o mais antigo, página a página, e conclui", async () => {
+    paginas.set(`date_created:${INICIO_OUT.toISOString()}`, [lote(1, 50), lote(51, 14)]);
+    paginas.set(`date_created:${INICIO_SET.toISOString()}`, [lote(200, 30)]);
+    tarefas.push(novaTarefa({ desde: INICIO_SET, ate: FIM_OUT, forcar: true }));
 
-    let totalProcessado = 0;
-    let voltas = 0;
-    let ultimoStatus: string = "EM_ANDAMENTO";
-    while (ultimoStatus === "EM_ANDAMENTO" && voltas < 50) {
-      const resultado = await executarFila("user-1", "conta-1", 5);
-      totalProcessado += resultado.processados;
-      ultimoStatus = resultado.status;
-      voltas++;
-    }
+    const resultado = await executarFila("user-1", "conta-1", 60000);
 
-    expect(ultimoStatus).toBe("CONCLUIDA");
-    expect(totalProcessado).toBe(120);
-    expect(voltas).toBeGreaterThan(1);
-    expect(ingerirVendaNormalizadaMock).toHaveBeenCalledTimes(120);
+    expect(chamadasBusca.map((c) => [c.desde.toISOString(), c.offset])).toEqual([
+      [INICIO_OUT.toISOString(), 0],
+      [INICIO_OUT.toISOString(), 50],
+      [INICIO_SET.toISOString(), 0],
+    ]);
+    expect(chamadasBusca.every((c) => c.campoData === "date_created")).toBe(true);
+    expect(lotes.flatMap((l) => l.ids)).toHaveLength(94);
+    expect(lotes.every((l) => l.forcar === true)).toBe(true);
+    expect(tarefas[0].status).toBe("CONCLUIDA");
+    expect(tarefas[0].processados).toBe(94);
+    expect(resultado.processados).toBe(94);
+    expect(enriquecerMock).toHaveBeenCalled();
+    expect(conta.financeiroProcessandoAte).toBeNull();
   });
 
-  it("pedido sem mudança (last_updated igual e venda completa) não é reprocessado", async () => {
-    pedidosPorDia = { "2026-05-01": [pedidoMl("1", "2026-05-01T10:00:00.000-03:00")] };
-    vendas = [
-      {
-        pedidoExternoId: "1",
-        atualizadoNoCanalEm: new Date("2026-05-01T10:00:00.000-03:00"),
-        completo: true,
-      },
-    ];
+  it("retoma do cursor salvo (mês e offset) sem repetir páginas", async () => {
+    paginas.set(`date_created:${INICIO_OUT.toISOString()}`, [lote(1, 50), lote(51, 10)]);
+    tarefas.push(
+      novaTarefa({ desde: INICIO_OUT, ate: FIM_OUT, cursor: { inicioJanela: INICIO_OUT.toISOString(), offset: 50 }, processados: 50 })
+    );
 
-    await enfileirarTarefa({
-      userId: "user-1",
-      canal: CanalVenda.MERCADO_LIVRE,
-      contaCanalId: "conta-1",
-      tipo: TipoTarefaSincronizacao.PEDIDOS_PERIODO,
-      desde: new Date("2026-05-01T00:00:00.000-03:00"),
-      ate: new Date("2026-05-01T23:59:59.999-03:00"),
-    });
+    await executarFila("user-1", "conta-1", 60000);
 
-    const resultado = await executarFila("user-1", "conta-1", 40000);
-
-    expect(resultado.status).toBe("CONCLUIDA");
-    expect(resultado.processados).toBe(1);
-    expect(ingerirVendaNormalizadaMock).not.toHaveBeenCalled();
+    expect(chamadasBusca).toHaveLength(1);
+    expect(chamadasBusca[0].offset).toBe(50);
+    expect(tarefas[0].status).toBe("CONCLUIDA");
+    expect(tarefas[0].processados).toBe(60);
   });
 
-  it("pedido alterado (last_updated diferente do gravado) é reprocessado mesmo com venda completa", async () => {
-    pedidosPorDia = { "2026-05-01": [pedidoMl("1", "2026-05-01T12:00:00.000-03:00")] };
-    vendas = [
-      {
-        pedidoExternoId: "1",
-        atualizadoNoCanalEm: new Date("2026-05-01T10:00:00.000-03:00"),
-        completo: true,
-      },
-    ];
+  it("falha na API devolve a tarefa para PENDENTE com o erro e conta a tentativa", async () => {
+    falharBusca = true;
+    tarefas.push(novaTarefa({ desde: INICIO_OUT, ate: FIM_OUT }));
 
-    await enfileirarTarefa({
-      userId: "user-1",
-      canal: CanalVenda.MERCADO_LIVRE,
-      contaCanalId: "conta-1",
-      tipo: TipoTarefaSincronizacao.PEDIDOS_PERIODO,
-      desde: new Date("2026-05-01T00:00:00.000-03:00"),
-      ate: new Date("2026-05-01T23:59:59.999-03:00"),
-    });
+    const resultado = await executarFila("user-1", "conta-1", 60000);
 
-    await executarFila("user-1", "conta-1", 40000);
-
-    expect(ingerirVendaNormalizadaMock).toHaveBeenCalledTimes(1);
+    expect(resultado.status).toBe("ERRO");
+    expect(tarefas[0].status).toBe("PENDENTE");
+    expect(tarefas[0].tentativas).toBe(1);
+    expect(tarefas[0].erro).toContain("HTTP 500");
+    expect(conta.financeiroProcessandoAte).toBeNull();
   });
 
-  it("Ciclo 9 (item 7): com forcar:true reprocessa mesmo um pedido sem mudança e venda completa", async () => {
-    pedidosPorDia = { "2026-05-01": [pedidoMl("1", "2026-05-01T10:00:00.000-03:00")] };
-    vendas = [
-      {
-        pedidoExternoId: "1",
-        atualizadoNoCanalEm: new Date("2026-05-01T10:00:00.000-03:00"),
-        completo: true,
-      },
-    ];
+  it("devolve OCUPADO sem tocar em nada quando outra execução já está processando a conta", async () => {
+    conta.financeiroProcessandoAte = new Date(Date.now() + 30000);
+    tarefas.push(novaTarefa({ desde: INICIO_OUT, ate: FIM_OUT }));
 
-    await enfileirarTarefa({
-      userId: "user-1",
-      canal: CanalVenda.MERCADO_LIVRE,
-      contaCanalId: "conta-1",
-      tipo: TipoTarefaSincronizacao.PEDIDOS_PERIODO,
-      desde: new Date("2026-05-01T00:00:00.000-03:00"),
-      ate: new Date("2026-05-01T23:59:59.999-03:00"),
-      forcar: true,
-    });
+    const resultado = await executarFila("user-1", "conta-1", 60000);
 
-    const resultado = await executarFila("user-1", "conta-1", 40000);
-
-    expect(resultado.status).toBe("CONCLUIDA");
-    expect(ingerirVendaNormalizadaMock).toHaveBeenCalledTimes(1);
+    expect(resultado.status).toBe("OCUPADO");
+    expect(chamadasBusca).toHaveLength(0);
+    expect(tarefas[0].status).toBe("PENDENTE");
   });
 
-  it("devolve OCIOSO quando não há nenhuma tarefa pendente", async () => {
-    const resultado = await executarFila("user-1", "conta-1");
+  it("sem tarefas, usa o tempo para detalhar vendas e fica OCIOSO quando não sobra nada", async () => {
+    enriquecerMock.mockResolvedValueOnce({ processados: 0, falhas: 0, restantes: 0 });
+    const resultado = await executarFila("user-1", "conta-1", 60000);
+    expect(enriquecerMock).toHaveBeenCalled();
     expect(resultado.status).toBe("OCIOSO");
+  });
+});
+
+describe("executarFila — incremental", () => {
+  it("busca por data de alteração desde a última sincronização e grava o novo ponto de partida", async () => {
+    conta.ultimaSincronizacaoFinanceiraEm = new Date("2026-10-18T10:00:00.000Z");
+    const criadaEm = new Date("2026-10-18T20:00:00.000Z");
+    tarefas.push(novaTarefa({ tipo: "PEDIDOS_INCREMENTAL", criadaEm }));
+    paginas.set(`date_last_updated:${new Date("2026-10-18T08:00:00.000Z").toISOString()}`, [lote(1, 5)]);
+
+    await executarFila("user-1", "conta-1", 60000);
+
+    expect(chamadasBusca[0].campoData).toBe("date_last_updated");
+    expect(chamadasBusca[0].desde.toISOString()).toBe("2026-10-18T08:00:00.000Z");
+    expect(tarefas[0].status).toBe("CONCLUIDA");
+    expect(conta.ultimaSincronizacaoFinanceiraEm?.toISOString()).toBe(criadaEm.toISOString());
   });
 });

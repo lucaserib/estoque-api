@@ -124,14 +124,14 @@ describe("mapearPedido — carrinho com pacote (pack_id) e frete único", () => 
 });
 
 describe("mapearPedido — cancelado", () => {
-  it("preserva a data original da venda mesmo cancelado (abatido no mês da venda)", () => {
+  it("a data da venda é a de criação do pedido (mesmo critério do ML), também quando cancelado", () => {
     const normalizado = mapearPedido(
       pedidoBase({ status: "cancelled", paid_amount: 100, last_updated: "2026-06-01T10:00:00.000Z" }),
       null
     );
 
     expect(normalizado?.status).toBe(StatusVendaCanal.CANCELADA);
-    expect(normalizado?.dataVenda.toISOString()).toBe("2026-05-10T18:05:00.000Z");
+    expect(normalizado?.dataVenda.toISOString()).toBe("2026-05-10T18:00:00.000Z");
     expect(normalizado?.dataCancelamento?.toISOString()).toBe("2026-06-01T10:00:00.000Z");
   });
 });
@@ -292,5 +292,24 @@ describe("mapearCustoEnvio", () => {
     expect(mapearCustoEnvio({}).valor).toBeNull();
     expect(mapearCustoEnvio({ senders: [] }).valor).toBeNull();
     expect(mapearCustoEnvio({}).confianca).toBe("ESTIMADO");
+  });
+});
+
+describe("mapearPedido — Ciclo 10", () => {
+  it("partially_refunded vira DEVOLVIDA_PARCIAL com o valor estornado", () => {
+    const normalizado = mapearPedido(
+      pedidoBase({
+        status: "partially_refunded",
+        payments: [{ id: 1, status: "partially_refunded", transaction_amount: 100, transaction_amount_refunded: 30 }],
+      }),
+      null
+    );
+    expect(normalizado?.status).toBe(StatusVendaCanal.DEVOLVIDA_PARCIAL);
+    expect(normalizado?.valorEstornado).toBe(3000);
+  });
+
+  it("frete pago pelo comprador = paid_amount − total_amount", () => {
+    const normalizado = mapearPedido(pedidoBase({ total_amount: 100, paid_amount: 118.9 }), null);
+    expect(normalizado?.freteComprador).toBe(1890);
   });
 });

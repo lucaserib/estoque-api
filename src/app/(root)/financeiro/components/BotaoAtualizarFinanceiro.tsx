@@ -1,28 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { CheckCircle2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
-
-interface StatusResponse {
-  emAndamento: { tipo: string; processados: number; status: string } | null;
-  ultimaSincronizacaoConcluidaEm: string | null;
-  errosPendentes: number;
-  alertaWebhooksAusentes: boolean;
-}
-
-const ROTULO_TIPO_TAREFA: Record<string, string> = {
-  PEDIDOS_PERIODO: "Importando suas vendas",
-  PEDIDOS_INCREMENTAL: "Atualizando vendas recentes",
-};
-
-interface SincronizacaoResponse {
-  status: "CONCLUIDO" | "EM_ANDAMENTO";
-  processados: number;
-  erros: number;
-  proximoPasso: "CONTINUAR" | null;
-}
+import { useSincronizacaoFinanceira, type StatusSincronizacao } from "./SincronizacaoFinanceira";
 
 interface BotaoAtualizarFinanceiroProps {
   modo: "INCREMENTAL" | "PERIODO";
@@ -40,101 +22,75 @@ function formatarDataHora(iso: string): string {
   });
 }
 
-export function BotaoAtualizarFinanceiro({ modo, desde, ate, onConcluido }: BotaoAtualizarFinanceiroProps) {
-  const [status, setStatus] = useState<StatusResponse | null>(null);
-  const [sincronizando, setSincronizando] = useState(false);
-  const onConcluidoRef = useRef(onConcluido);
-  onConcluidoRef.current = onConcluido;
-
-  const carregarStatus = useCallback(async (): Promise<StatusResponse | null> => {
-    try {
-      const resposta = await fetch("/api/financeiro/sincronizacao/status");
-      if (!resposta.ok) return null;
-      const dados: StatusResponse = await resposta.json();
-      setStatus(dados);
-      return dados;
-    } catch {
-      return null;
+export function descreverProgresso(status: StatusSincronizacao | null): string | null {
+  if (!status || !status.contaConectada) return null;
+  const tarefa = status.tarefas[0];
+  if (tarefa) {
+    if (tarefa.tipo === "PEDIDOS_PERIODO") {
+      return `Importando vendas${tarefa.mesAtual ? ` de ${tarefa.mesAtual}` : ""} · ${tarefa.processados.toLocaleString("pt-BR")} pedidos lidos`;
     }
-  }, []);
+    if (tarefa.tipo === "PEDIDOS_INCREMENTAL") return "Buscando vendas novas e alteradas";
+    if (tarefa.tipo === "COBRANCAS") return "Lendo a fatura do Mercado Livre";
+    if (tarefa.tipo === "ADS") return "Lendo gastos de publicidade";
+    return "Sincronizando";
+  }
+  if (status.vendasAguardandoDetalhes > 0) {
+    return `Detalhando ${status.vendasAguardandoDetalhes.toLocaleString("pt-BR")} venda(s): tarifa, frete e liberação`;
+  }
+  return null;
+}
 
-  useEffect(() => {
-    let cancelado = false;
-    let processadosAntes = -1;
-
-    const acompanhar = async () => {
-      while (!cancelado) {
-        const dados = await carregarStatus();
-        if (!dados?.emAndamento) break;
-        if (dados.emAndamento.processados === processadosAntes) break;
-        processadosAntes = dados.emAndamento.processados;
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-      if (!cancelado) onConcluidoRef.current?.();
-    };
-
-    acompanhar();
-    return () => {
-      cancelado = true;
-    };
-  }, [carregarStatus]);
-
-  const atualizar = useCallback(async () => {
-    setSincronizando(true);
-    try {
-      let continuar = true;
-      while (continuar) {
-        const resposta = await fetch("/api/financeiro/sincronizacao", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            modo,
-            desde: desde?.toISOString(),
-            ate: ate?.toISOString(),
-          }),
-        });
-        if (!resposta.ok) break;
-        const resultado: SincronizacaoResponse = await resposta.json();
-        continuar = resultado.proximoPasso === "CONTINUAR";
-      }
-      await carregarStatus();
-      onConcluido?.();
-    } finally {
-      setSincronizando(false);
-    }
-  }, [modo, desde, ate, carregarStatus, onConcluido]);
-
-  const corSaude: "success" | "warning" | "critical" =
-    status && status.errosPendentes > 0
-      ? status.errosPendentes > 10
-        ? "critical"
-        : "warning"
-      : "success";
+export function BotaoAtualizarFinanceiro({ modo, desde, ate }: BotaoAtualizarFinanceiroProps) {
+  const { status, processando, atualizando, erro, atualizar } = useSincronizacaoFinanceira();
+  const progresso = descreverProgresso(status);
+  const ocupado = atualizando || processando;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {status?.emAndamento && (
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {status && !status.contaConectada && (
+        <StatusPill tone="warning">
+          <Link href="/integracoes" className="underline">
+            Conecte o Mercado Livre
+          </Link>
+        </StatusPill>
+      )}
+      {progresso && (
         <StatusPill tone="info">
-          <RefreshCw className="mr-1 inline h-3 w-3 animate-spin" />
-          {ROTULO_TIPO_TAREFA[status.emAndamento.tipo] ?? "Sincronizando"}: {status.emAndamento.processados} pedido(s)
+          <RefreshCw className={`mr-1 inline h-3 w-3 ${ocupado ? "animate-spin" : ""}`} />
+          {progresso}
+        </StatusPill>
+      )}
+      {status?.contaConectada && !progresso && !ocupado && (
+        <StatusPill tone="success">
+          <CheckCircle2 className="mr-1 inline h-3 w-3" />
+          Dados em dia
+          {status.ultimaAtualizacaoEm ? ` · ${formatarDataHora(status.ultimaAtualizacaoEm)}` : ""}
+        </StatusPill>
+      )}
+      {status && status.vendasComFalhaDeDetalhe > 0 && (
+        <StatusPill tone="warning">
+          <Link href="/financeiro/vendas?aguardandoDetalhes=true" className="underline">
+            {status.vendasComFalhaDeDetalhe} venda(s) sem detalhe do pagamento
+          </Link>
         </StatusPill>
       )}
       {status?.alertaWebhooksAusentes && (
-        <StatusPill tone="warning">
-          Notificações do ML não estão chegando — confira a URL e os tópicos no app do ML
-        </StatusPill>
+        <StatusPill tone="warning">Notificações do ML não estão chegando</StatusPill>
       )}
-      {status?.errosPendentes != null && status.errosPendentes > 0 && (
-        <StatusPill tone={corSaude}>{status.errosPendentes} pendência(s)</StatusPill>
-      )}
-      {status?.ultimaSincronizacaoConcluidaEm && (
-        <span className="text-xs text-muted-foreground">
-          Atualizado em {formatarDataHora(status.ultimaSincronizacaoConcluidaEm)}
-        </span>
-      )}
-      <Button variant="outline" size="sm" onClick={atualizar} disabled={sincronizando}>
-        <RefreshCw className={`mr-2 h-4 w-4 ${sincronizando ? "animate-spin" : ""}`} />
-        {sincronizando ? "Atualizando…" : "Atualizar dados"}
+      {erro && <StatusPill tone="critical">{erro}</StatusPill>}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => atualizar({ modo, desde, ate })}
+        disabled={atualizando}
+        title={
+          modo === "PERIODO"
+            ? "Busca de novo no Mercado Livre todos os pedidos do período exibido"
+            : "Busca as vendas novas e alteradas desde a última atualização"
+        }
+      >
+        <RefreshCw className={`mr-2 h-4 w-4 ${atualizando ? "animate-spin" : ""}`} />
+        {atualizando ? "Atualizando…" : modo === "PERIODO" ? "Reprocessar período" : "Atualizar dados"}
       </Button>
     </div>
   );

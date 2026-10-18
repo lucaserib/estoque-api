@@ -19,6 +19,7 @@ import {
 import { formatBRL, formatPercent, formatNumberBR } from "@/lib/format";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "../components/SeletorPeriodo";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
+import { useAoAtualizarDados } from "../components/SincronizacaoFinanceira";
 
 interface LinhaProduto {
   produtoId: string;
@@ -31,6 +32,12 @@ interface LinhaProduto {
   custoFixoRateado: number;
   lucroLiquido: number;
   roiSobreCmv: number | null;
+  tarifa: number;
+  frete: number;
+  ads: number;
+  imposto: number;
+  cmv: number;
+  vendasSemCusto: number;
   curvaAbc: "A" | "B" | "C";
 }
 
@@ -71,6 +78,8 @@ export default function LucroPorProdutoPage() {
     if (podeVerFinanceiro) carregar();
   }, [podeVerFinanceiro, carregar]);
 
+  useAoAtualizarDados(carregar);
+
   const alternarOrdenacao = (campo: CampoOrdenacao) => {
     if (ordenarPor === campo) {
       setOrdem((o) => (o === "asc" ? "desc" : "asc"));
@@ -89,21 +98,29 @@ export default function LucroPorProdutoPage() {
   }
 
   const produtosComMargemNegativa = produtos.filter((p) => p.margemContribuicao < 0);
+  const produtosSemCusto = produtos.filter((p) => p.vendasSemCusto > 0);
 
   return (
     <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
       <PageHeader
         eyebrow="Financeiro"
         title="Lucro por produto"
-        subtitle="Curva ABC e margem por SKU no período."
+        subtitle="Margem de cada produto com a mesma regra da DRE (faturamento − impostos − tarifas − frete − ads − custo). O lucro líquido desconta a parte das despesas fixas."
         actions={<SeletorPeriodo valor={periodo} onChange={setPeriodo} />}
       />
 
-      {produtosComMargemNegativa.length > 0 && (
-        <SectionCard>
-          <div className="text-sm text-destructive">
-            {produtosComMargemNegativa.length} produto(s) com margem de contribuição negativa no período.
-          </div>
+      {(produtosComMargemNegativa.length > 0 || produtosSemCusto.length > 0) && (
+        <SectionCard contentClassName="space-y-1 text-sm">
+          {produtosComMargemNegativa.length > 0 && (
+            <div className="text-destructive">
+              {produtosComMargemNegativa.length} produto(s) com margem de contribuição negativa no período.
+            </div>
+          )}
+          {produtosSemCusto.length > 0 && (
+            <div className="text-warning">
+              {produtosSemCusto.length} produto(s) vendidos sem custo cadastrado: a margem deles aparece acima da real.
+            </div>
+          )}
         </SectionCard>
       )}
 
@@ -132,6 +149,8 @@ export default function LucroPorProdutoPage() {
                     Margem <ArrowUpDown className="ml-1 h-3 w-3" />
                   </Button>
                 </DataTableHead>
+                <DataTableHead className="text-right">Tarifas + frete</DataTableHead>
+                <DataTableHead className="text-right">Custo (CMV)</DataTableHead>
                 <DataTableHead className="text-right">ROI/CMV</DataTableHead>
                 <DataTableHead className="text-right">
                   <Button variant="ghost" size="sm" className="h-6 px-1" onClick={() => alternarOrdenacao("lucroLiquido")}>
@@ -157,6 +176,13 @@ export default function LucroPorProdutoPage() {
                       <span className="ml-1 text-xs text-muted-foreground">
                         ({formatPercent(produto.margemContribuicaoPercentual * 100)})
                       </span>
+                    )}
+                  </DataTableCell>
+                  <DataTableCell numeric>{formatBRL(produto.tarifa + produto.frete)}</DataTableCell>
+                  <DataTableCell numeric>
+                    {formatBRL(produto.cmv)}
+                    {produto.vendasSemCusto > 0 && (
+                      <StatusPill tone="warning" className="ml-1">sem custo</StatusPill>
                     )}
                   </DataTableCell>
                   <DataTableCell numeric>{produto.roiSobreCmv != null ? formatPercent(produto.roiSobreCmv * 100) : "—"}</DataTableCell>

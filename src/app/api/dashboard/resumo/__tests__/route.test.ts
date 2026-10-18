@@ -94,13 +94,22 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-const RESUMO_PERIODO_VAZIO = {
-  desde: new Date(), ate: new Date(),
-  pedidos: 0, unidades: 0, faturamentoBruto: 0, cancelamentos: 0, descontos: 0,
-  tarifas: 0, frete: 0, ads: 0, impostos: 0, cmv: 0, margemContribuicao: 0,
-  margemContribuicaoPercentual: null, ticketMedio: null, lucroLiquido: 0,
-  pontoEquilibrioMes: { pontoEquilibrio: 0, faturamentoBrutoAteAgora: 0, faltaVender: 0 },
-};
+function resumoPeriodo(ind: Record<string, unknown> = {}) {
+  return {
+    desde: new Date(),
+    ate: new Date(),
+    indicadores: {
+      pedidos: 0,
+      unidades: 0,
+      receitaTotal: 0,
+      margemContribuicao: 0,
+      margemContribuicaoPercentual: null,
+      ticketMedio: null,
+      ...ind,
+    },
+  };
+}
+const RESUMO_PERIODO_VAZIO = resumoPeriodo();
 
 function criarRequest(query = "") {
   return new NextRequest(
@@ -140,13 +149,11 @@ describe("GET /api/dashboard/resumo", () => {
       // A primeira chamada (período atual) recebe `desde` mais recente que a segunda (período anterior).
       const ehPeriodoAtual = desde.getTime() > Date.now() - 31 * 24 * 60 * 60 * 1000;
       return ehPeriodoAtual
-        ? {
-            ...RESUMO_PERIODO_VAZIO,
-            pedidos: 10, unidades: 25, faturamentoBruto: 100000, cancelamentos: 5000,
-            descontos: 2000, impostos: 3000, margemContribuicao: 40000,
-            margemContribuicaoPercentual: 0.4, ticketMedio: 10000,
-          }
-        : { ...RESUMO_PERIODO_VAZIO, faturamentoBruto: 80000 };
+        ? resumoPeriodo({
+            pedidos: 10, unidades: 25, receitaTotal: 90000, margemContribuicao: 40000,
+            margemContribuicaoPercentual: 0.4, ticketMedio: 9000,
+          })
+        : resumoPeriodo({ receitaTotal: 80000 });
     });
     listarVendasComLucroMock.mockResolvedValue({ vendas: [], total: 3, pagina: 1, porPagina: 1 });
 
@@ -154,13 +161,12 @@ describe("GET /api/dashboard/resumo", () => {
     const response = await GET(criarRequest());
     const body = await response.json();
 
-    // receita líquida = 100000 - 5000 - 2000 - 3000 = 90000
+    // faturamento do período = o mesmo número do Financeiro (motor único)
     expect(body.metricas.faturamentoLiquido.valor).toBe(90000);
     expect(body.metricas.unidadesVendidas).toBe(25);
     expect(body.metricas.margemContribuicao.valor).toBe(40000);
     expect(body.metricas.margemContribuicao.percentual).toBeCloseTo(40);
     expect(body.metricas.margemContribuicao.produtosSemCustoNaVenda).toBe(3);
-    // receita líquida anterior = 80000 (sem deduções) → delta = (90000-80000)/80000*100
     expect(body.metricas.faturamentoLiquido.deltaPercentual).toBeCloseTo(12.5);
   });
 

@@ -28,6 +28,7 @@ vi.mock("@/lib/prisma", () => ({
       }),
     },
     cobrancaCanal: {
+      deleteMany: vi.fn(async () => ({ count: 0 })),
       upsert: vi.fn(
         async ({
           where,
