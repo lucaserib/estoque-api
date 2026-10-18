@@ -168,6 +168,7 @@ model User {
   resumosFinanceirosDiarios ResumoFinanceiroDiario[]
   sincronizacoesFinanceiras SincronizacaoFinanceira[]
   sincronizacoesFinanceirasErros SincronizacaoFinanceiraErro[]
+  tarefasSincronizacaoFinanceira TarefaSincronizacaoFinanceira[]
   mapeamentosCategoriaBling MapeamentoCategoriaBling[]
 
   @@index([contaId])
@@ -1033,4 +1034,49 @@ model SincronizacaoFinanceiraErro {
   @@unique([userId, canal, pedidoExternoId, etapa])
   @@index([userId, canal, resolvidoEm])
   @@map("sincronizacoes_financeiras_erros")
+}
+
+enum TipoTarefaSincronizacao {
+  PEDIDOS_PERIODO
+  PEDIDOS_INCREMENTAL
+  ADS
+  COBRANCAS
+  PAGAMENTOS
+  PRODUTOS_ML
+  BLING_PRODUTOS
+  BLING_ESTOQUE
+  BLING_CONTAS
+}
+
+enum StatusTarefaSincronizacao {
+  PENDENTE
+  EM_ANDAMENTO
+  CONCLUIDA
+  ERRO
+}
+
+model TarefaSincronizacaoFinanceira {
+  id           String                     @id @default(uuid())
+  userId       String
+  canal        CanalVenda
+  contaCanalId String
+  tipo         TipoTarefaSincronizacao
+  desde        DateTime?
+  ate          DateTime?
+  cursor       Json?
+  status       StatusTarefaSincronizacao  @default(PENDENTE)
+  prioridade   Int                        @default(0)
+  tentativas   Int                        @default(0)
+  processados  Int                        @default(0)
+  total        Int?
+  erro         String?
+  bloqueadaAte DateTime?
+  criadaEm     DateTime                   @default(now())
+  atualizadaEm DateTime                   @updatedAt
+  concluidaEm  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, contaCanalId, status, prioridade])
+  @@map("tarefas_sincronizacao_financeira")
 }

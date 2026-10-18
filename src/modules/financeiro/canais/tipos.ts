@@ -119,6 +119,7 @@ export interface AdaptadorCanalFinanceiro {
     conta: ContaCanal,
     pedidoExternoId: string
   ): Promise<LiberacaoPagamentoNormalizada>;
+  obterDescontos?(conta: ContaCanal, pedidoExternoId: string): Promise<unknown>;
   listarGastosAds?(conta: ContaCanal, dia: Date): Promise<GastoAdsNormalizado[]>;
   listarCobrancas?(
     conta: ContaCanal,

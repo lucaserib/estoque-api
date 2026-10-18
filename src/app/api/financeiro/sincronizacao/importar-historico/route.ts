@@ -2,20 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
-import { continuarBackfill } from "@/modules/financeiro/ingestao/sincronizador";
+import { enfileirarPeriodo, executarFila } from "@/modules/financeiro/ingestao/fila";
 
 export const maxDuration = 60;
+
+const DIAS_PADRAO_HISTORICO = 365;
 
 interface RequestBody {
   accountId?: string;
   dias?: number;
 }
 
-/**
- * Chamada repetidamente pela tela (botão "Importar histórico" com barra de
- * progresso, Fase 7): cada chamada processa um lote e devolve o status
- * acumulado. A tela chama de novo enquanto status for EM_ANDAMENTO.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -39,9 +36,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const resultado = await continuarBackfill(conta.id, body.dias);
+    const dias = body.dias ?? DIAS_PADRAO_HISTORICO;
+    const ate = new Date();
+    const desde = new Date(ate.getTime() - dias * 24 * 60 * 60 * 1000);
 
-    return NextResponse.json(resultado);
+    await enfileirarPeriodo(conta.id, desde, ate, 20);
+    const resultadoFila = await executarFila(user.contaId, conta.id);
+
+    return NextResponse.json({
+      status: resultadoFila.status === "EM_ANDAMENTO" ? "EM_ANDAMENTO" : "CONCLUIDO",
+      processados: resultadoFila.processados,
+    });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
     if (permissaoResponse) return permissaoResponse;

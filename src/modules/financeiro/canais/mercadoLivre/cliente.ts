@@ -165,6 +165,11 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
     return mapearPedido(pedido, descontos);
   },
 
+  async obterDescontos(conta: ContaCanal, pedidoExternoId: string): Promise<unknown> {
+    const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
+    return buscarDiscounts(pedidoExternoId, accessToken);
+  },
+
   async obterCustoEnvio(
     conta: ContaCanal,
     envioId: string

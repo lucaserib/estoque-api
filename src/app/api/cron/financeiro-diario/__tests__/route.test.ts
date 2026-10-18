@@ -3,13 +3,18 @@ import { NextRequest } from "next/server";
 
 process.env.CRON_SECRET = "segredo-cron";
 
-const reprocessarUltimosDiasMock = vi.fn();
-const continuarBackfillMock = vi.fn();
 const reprocessarErrosPendentesMock = vi.fn();
 vi.mock("@/modules/financeiro/ingestao/sincronizador", () => ({
-  reprocessarUltimosDias: (accountId: string) => reprocessarUltimosDiasMock(accountId),
-  continuarBackfill: (accountId: string) => continuarBackfillMock(accountId),
   reprocessarErrosPendentes: (accountId: string) => reprocessarErrosPendentesMock(accountId),
+}));
+
+const enfileirarIncrementalMock = vi.fn();
+const executarFilaMock = vi.fn();
+vi.mock("@/modules/financeiro/ingestao/fila", () => ({
+  enfileirarIncremental: (accountId: string, prioridade: number) =>
+    enfileirarIncrementalMock(accountId, prioridade),
+  executarFila: (userId: string, contaCanalId: string, orcamentoMs: number) =>
+    executarFilaMock(userId, contaCanalId, orcamentoMs),
 }));
 
 const ingerirGastosAdsDoDiaMock = vi.fn();
@@ -20,6 +25,15 @@ vi.mock("@/modules/financeiro/ingestao/ingestaoAds", () => ({
 const ingerirCobrancasDoMesMock = vi.fn();
 vi.mock("@/modules/financeiro/ingestao/ingestaoCobrancas", () => ({
   ingerirCobrancasDoMes: (accountId: string, mes: string) => ingerirCobrancasDoMesMock(accountId, mes),
+}));
+
+const conferirMesMock = vi.fn();
+const importarFaltantesMock = vi.fn();
+vi.mock("@/modules/financeiro/relatorios/conferencia", () => ({
+  conferirMes: (userId: string, accountId: string, competencia: unknown) =>
+    conferirMesMock(userId, accountId, competencia),
+  importarFaltantes: (accountId: string, pedidosExternoId: string[]) =>
+    importarFaltantesMock(accountId, pedidosExternoId),
 }));
 
 const gerarLancamentosDeTodasAsRecorrenciasMock = vi.fn();
@@ -43,9 +57,6 @@ vi.mock("@/lib/prisma", () => ({
     user: {
       findMany: vi.fn(async () => [{ id: "dono-1" }]),
     },
-    sincronizacaoFinanceira: {
-      findFirst: vi.fn(async () => null),
-    },
   },
 }));
 
@@ -58,11 +69,18 @@ function criarRequest(authorization?: string) {
 }
 
 beforeEach(() => {
-  reprocessarUltimosDiasMock.mockReset();
-  continuarBackfillMock.mockReset().mockResolvedValue({ status: "EM_ANDAMENTO", processados: 0 });
   reprocessarErrosPendentesMock.mockReset().mockResolvedValue({ processados: 0 });
+  enfileirarIncrementalMock.mockReset().mockResolvedValue({ id: "tarefa-1" });
+  executarFilaMock.mockReset().mockResolvedValue({
+    tarefaId: null,
+    tipo: null,
+    status: "OCIOSO",
+    processados: 0,
+  });
   ingerirGastosAdsDoDiaMock.mockReset().mockResolvedValue({ processados: 0 });
   ingerirCobrancasDoMesMock.mockReset().mockResolvedValue({ processadas: 0, naoMapeadas: 0 });
+  conferirMesMock.mockReset().mockResolvedValue({ faltando: [], divergentes: [], coberturaPercentual: 100 });
+  importarFaltantesMock.mockReset().mockResolvedValue({ importados: 0, erros: 0 });
   gerarLancamentosDeTodasAsRecorrenciasMock.mockReset().mockResolvedValue({ gerados: 0 });
   gerarAlertasFinanceirosMock.mockReset().mockResolvedValue({
     contasAVencer: 0,
@@ -78,10 +96,12 @@ describe("GET /api/cron/financeiro-diario", () => {
     expect(response.status).toBe(401);
   });
 
-  it("reprocessa todas as contas ativas e soma os pedidos, ads e cobranças processados", async () => {
-    reprocessarUltimosDiasMock
-      .mockResolvedValueOnce({ processados: 3 })
-      .mockResolvedValueOnce({ processados: 2 });
+  it("enfileira o incremental e drena a fila de cada conta ativa, somando ads e cobranças processados", async () => {
+    executarFilaMock
+      .mockResolvedValueOnce({ tarefaId: "t1", tipo: "PEDIDOS_INCREMENTAL", status: "CONCLUIDA", processados: 3 })
+      .mockResolvedValueOnce({ tarefaId: null, tipo: null, status: "OCIOSO", processados: 0 })
+      .mockResolvedValueOnce({ tarefaId: "t2", tipo: "PEDIDOS_INCREMENTAL", status: "CONCLUIDA", processados: 2 })
+      .mockResolvedValueOnce({ tarefaId: null, tipo: null, status: "OCIOSO", processados: 0 });
     ingerirGastosAdsDoDiaMock
       .mockResolvedValueOnce({ processados: 1 })
       .mockResolvedValueOnce({ processados: 4 });
@@ -98,31 +118,37 @@ describe("GET /api/cron/financeiro-diario", () => {
     expect(body.gastosAdsProcessados).toBe(5);
     expect(body.cobrancasProcessadas).toBe(2);
     expect(body.erros).toBe(0);
-    expect(reprocessarUltimosDiasMock).toHaveBeenCalledWith("conta-1");
-    expect(reprocessarUltimosDiasMock).toHaveBeenCalledWith("conta-2");
+    expect(enfileirarIncrementalMock).toHaveBeenCalledWith("conta-1", 5);
+    expect(enfileirarIncrementalMock).toHaveBeenCalledWith("conta-2", 5);
     expect(ingerirGastosAdsDoDiaMock).toHaveBeenCalledWith("conta-1", expect.any(Date));
     expect(ingerirCobrancasDoMesMock).toHaveBeenCalledWith("conta-1", expect.stringMatching(/^\d{4}-\d{2}$/));
   });
 
-  it("uma conta com erro no reprocessamento de pedidos não impede ads/cobranças nem as demais contas", async () => {
-    reprocessarUltimosDiasMock
+  it("para de drenar a fila da conta ao ver ERRO ou OCIOSO, sem travar nas outras contas", async () => {
+    executarFilaMock
+      .mockResolvedValueOnce({ tarefaId: "t1", tipo: "PEDIDOS_PERIODO", status: "ERRO", processados: 0 })
+      .mockResolvedValueOnce({ tarefaId: null, tipo: null, status: "OCIOSO", processados: 0 });
+
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.contasProcessadas).toBe(2);
+    expect(executarFilaMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("uma conta com erro ao enfileirar não impede ads/cobranças nem as demais contas", async () => {
+    enfileirarIncrementalMock
       .mockRejectedValueOnce(new Error("ML indisponível"))
-      .mockResolvedValueOnce({ processados: 4 });
+      .mockResolvedValueOnce({ id: "tarefa-1" });
 
     const response = await GET(criarRequest("Bearer segredo-cron"));
     const body = await response.json();
 
     expect(response.status).toBe(200);
     expect(body.contasProcessadas).toBe(1);
-    expect(body.pedidosProcessados).toBe(4);
     expect(body.erros).toBe(1);
     expect(ingerirGastosAdsDoDiaMock).toHaveBeenCalledTimes(2);
-  });
-
-  it("F4 (Ciclo 8): continua um backfill pendente, mas não inicia um novo quando não há nenhum em andamento", async () => {
-    const response = await GET(criarRequest("Bearer segredo-cron"));
-    expect(response.status).toBe(200);
-    expect(continuarBackfillMock).not.toHaveBeenCalled();
   });
 
   it("F4 (Ciclo 8): reprocessa erros pendentes de cada conta ativa", async () => {
@@ -132,8 +158,33 @@ describe("GET /api/cron/financeiro-diario", () => {
     expect(reprocessarErrosPendentesMock).toHaveBeenCalledWith("conta-2");
   });
 
+  it("F8 (Ciclo 9): confere o mês corrente e o anterior de cada conta, e importa os faltantes", async () => {
+    conferirMesMock
+      .mockResolvedValueOnce({ faltando: ["1", "2"], divergentes: [], coberturaPercentual: 90 })
+      .mockResolvedValueOnce({ faltando: [], divergentes: [], coberturaPercentual: 100 })
+      .mockResolvedValue({ faltando: [], divergentes: [], coberturaPercentual: 100 });
+    importarFaltantesMock.mockResolvedValueOnce({ importados: 2, erros: 0 });
+
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(conferirMesMock).toHaveBeenCalledTimes(4);
+    expect(importarFaltantesMock).toHaveBeenCalledWith("conta-1", ["1", "2"]);
+    expect(body.faltantesImportados).toBe(2);
+  });
+
+  it("erro na conferência de uma conta é contado mas não derruba a rota", async () => {
+    conferirMesMock.mockRejectedValueOnce(new Error("ML indisponível"));
+
+    const response = await GET(criarRequest("Bearer segredo-cron"));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.erros).toBeGreaterThan(0);
+  });
+
   it("erro em ads de uma conta é contado mas não derruba a rota", async () => {
-    reprocessarUltimosDiasMock.mockResolvedValue({ processados: 1 });
     ingerirGastosAdsDoDiaMock.mockRejectedValueOnce(new Error("endpoint de ads indisponível"));
     ingerirGastosAdsDoDiaMock.mockResolvedValueOnce({ processados: 1 });
 

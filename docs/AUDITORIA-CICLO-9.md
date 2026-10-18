@@ -25,3 +25,26 @@ Esses números são o alvo de 100% de cobertura verificado pela ferramenta de co
 - A busca por `order.date_created` fatiada por dia ainda não tem orçamento de tempo nem cursor persistido (isso é o item 2/3 da Fase 1) — para um mês com volume normal (até alguns milhares de pedidos) a chamada síncrona da rota deve caber no `maxDuration` de 60s; meses muito maiores podem precisar da fila da Fase 1.
 
 **Resultado ao final da fase:** `tsc`/`lint`/`next build` limpos; `npm test` com 560 testes passando (13 novos).
+
+## Fase 1 — Sincronização correta e completa
+
+**Construído:**
+- **Fila de tarefas persistida** (`TarefaSincronizacaoFinanceira`, novo modelo): `enfileirarTarefa`/`executarFila` em `ingestao/fila.ts`. Cada execução pega a tarefa de maior prioridade `PENDENTE` ou `EM_ANDAMENTO` com a trava expirada, processa até um orçamento de tempo (`FINANCEIRO_TEMPO_MAXIMO_LOTE_MS`, default 40s) e sempre libera a trava antes de devolver o controle — mesmo quando a tarefa ainda não terminou (**bug real encontrado e corrigido durante o teste do cenário do prompt**: a trava de 2 min ficava presa depois de um lote parcial, impedindo a própria chamada seguinte de continuar — só uma chamada de um processo *diferente* deveria ser bloqueada).
+- **`PEDIDOS_PERIODO`** busca por `order.date_created` (via `listarPedidosCriadosNoPeriodo`, Fase 0), com cursor por dia + índice dentro do dia, checado a cada pedido — corrige **S1** (`PERIODO` ignorava o período pedido) e **S3** (sem orçamento de tempo, "timeout" deixava `processados: 0` em loop).
+- **Menos chamadas por pedido** (S5): como `/orders/search` já devolve o pedido completo, `ingerirPedidoBrutoComRegistro` usa o objeto já em mãos — só busca descontos quando a tag `order_has_discount` está presente, sem `GET /orders/{id}` redundante.
+- **Pular o que não mudou** (item 4): se `last_updated` do pedido bate com `VendaCanal.atualizadoNoCanalEm` gravado e a venda está completa, não reprocessa — a não ser que o pedido realmente tenha mudado.
+- **`PEDIDOS_INCREMENTAL`** continua usando `order.date_last_updated` (correto para "o que mudou desde a última sync"), agora dentro da mesma fila, com cursor salvo por página.
+- **Backfill unificado**: `continuarBackfill`/`reprocessarUltimosDias` (Ciclo 8) foram removidos — `BACKFILL` e `PERIODO` agora são a mesma coisa (`PEDIDOS_PERIODO` com um período maior e prioridade mais alta), evitando dois mecanismos de sincronização paralelos. `orquestrador.sincronizarFinanceiro`, o cron e `importar-historico` passam a enfileirar+executar pela fila.
+- **Ads de todos os dias do período** (S6): o orquestrador deixou de buscar só "ontem" e passou a percorrer cada dia entre `desde` e `ate`.
+- **Trava mais curta** (S3): `MINUTOS_TRAVA_EXPIRADA` do orquestrador caiu de 10 para 2 minutos.
+- **Início automático real** (item 5): `GET /api/financeiro/sincronizacao/status` — chamado por toda tela do Financeiro ao montar — verifica se existe algum `PEDIDOS_PERIODO` concluído; se não, enfileira um de 365 dias (prioridade alta) e já drena um pedaço da fila (8s) na própria chamada. `BotaoAtualizarFinanceiro` passou a ficar chamando esse status a cada 2s enquanto houver `emAndamento`, mostrando "Importando suas vendas: N pedido(s)" sem precisar de clique.
+- **Saúde dos webhooks** (item 7): o mesmo status devolve `ultimoWebhookPorTopico` (via `MercadoLivreWebhook`) e `alertaWebhooksAusentes` (true quando houve venda nas últimas 24h mas nenhum webhook `orders_v2` chegou no mesmo período) — mostrado como selo de aviso no componente.
+- **Cron diário** (item 8): por conta ativa, enfileira o incremental e drena a fila (até 3 rodadas de 8s — cobre também qualquer `PEDIDOS_PERIODO` pendente de um backfill grande), e agora roda a **conferência** (Fase 0) do mês corrente e do mês anterior, importando os faltantes automaticamente.
+- Testes novos cobrindo exatamente os três cenários do item 9 do prompt: período de 3 dias com 120 pedidos e "timeout" simulado retomando do pedido certo até concluir; pedido sem mudança não reprocessado; pedido alterado reprocessado mesmo com venda completa.
+
+**Deixado pendente, com motivo:**
+- **Concorrência de 4 pedidos por vez**: os pedidos de uma página são processados em série, não em paralelo. Dado que a ingestão já é idempotente e o orçamento de tempo+cursor por pedido já resolve o problema de "nunca terminar" (a causa raiz de S3/S4), a paralelização ficou como otimização de performance, não de correção, fora do tempo desta fase.
+- **`PAGAMENTOS`, `PRODUTOS_ML`, `BLING_PRODUTOS`, `BLING_ESTOQUE`, `BLING_CONTAS`**: os tipos já existem no enum da fila (schema pronto), mas nenhum chamador os enfileira ainda e o executor não tem handler — `PAGAMENTOS` é construído na Fase 2 (fonte real de tarifa/frete/líquido); os `BLING_*`/`PRODUTOS_ML` entram quando a Fase 5 unificar a sincronização de produtos e do Bling.
+- **"Importando X de Y pedidos"**: o progresso mostrado é "N pedidos processados", não "N de Y" — o `Y` (total) exigiria uma chamada extra a `paging.total` por dia só para exibição, sem valor para a correção em si; fica como melhoria de UI futura.
+
+**Resultado ao final da fase:** `tsc`/`lint`/`next build` limpos; `npm test` com 564 testes passando.

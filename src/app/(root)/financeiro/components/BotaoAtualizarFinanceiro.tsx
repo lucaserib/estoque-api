@@ -1,15 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
 
 interface StatusResponse {
-  emAndamento: { tipo: string; processados: number; iniciadoEm: string } | null;
+  emAndamento: { tipo: string; processados: number; status: string } | null;
   ultimaSincronizacaoConcluidaEm: string | null;
   errosPendentes: number;
+  alertaWebhooksAusentes: boolean;
 }
+
+const ROTULO_TIPO_TAREFA: Record<string, string> = {
+  PEDIDOS_PERIODO: "Importando suas vendas",
+  PEDIDOS_INCREMENTAL: "Atualizando vendas recentes",
+};
 
 interface SincronizacaoResponse {
   status: "CONCLUIDO" | "EM_ANDAMENTO";
@@ -37,19 +43,40 @@ function formatarDataHora(iso: string): string {
 export function BotaoAtualizarFinanceiro({ modo, desde, ate, onConcluido }: BotaoAtualizarFinanceiroProps) {
   const [status, setStatus] = useState<StatusResponse | null>(null);
   const [sincronizando, setSincronizando] = useState(false);
+  const onConcluidoRef = useRef(onConcluido);
+  onConcluidoRef.current = onConcluido;
 
-  const carregarStatus = useCallback(async () => {
+  const carregarStatus = useCallback(async (): Promise<StatusResponse | null> => {
     try {
       const resposta = await fetch("/api/financeiro/sincronizacao/status");
-      if (!resposta.ok) return;
-      setStatus(await resposta.json());
+      if (!resposta.ok) return null;
+      const dados: StatusResponse = await resposta.json();
+      setStatus(dados);
+      return dados;
     } catch {
-      return;
+      return null;
     }
   }, []);
 
   useEffect(() => {
-    carregarStatus();
+    let cancelado = false;
+    let processadosAntes = -1;
+
+    const acompanhar = async () => {
+      while (!cancelado) {
+        const dados = await carregarStatus();
+        if (!dados?.emAndamento) break;
+        if (dados.emAndamento.processados === processadosAntes) break;
+        processadosAntes = dados.emAndamento.processados;
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+      if (!cancelado) onConcluidoRef.current?.();
+    };
+
+    acompanhar();
+    return () => {
+      cancelado = true;
+    };
   }, [carregarStatus]);
 
   const atualizar = useCallback(async () => {
@@ -86,6 +113,17 @@ export function BotaoAtualizarFinanceiro({ modo, desde, ate, onConcluido }: Bota
 
   return (
     <div className="flex flex-wrap items-center gap-2">
+      {status?.emAndamento && (
+        <StatusPill tone="info">
+          <RefreshCw className="mr-1 inline h-3 w-3 animate-spin" />
+          {ROTULO_TIPO_TAREFA[status.emAndamento.tipo] ?? "Sincronizando"}: {status.emAndamento.processados} pedido(s)
+        </StatusPill>
+      )}
+      {status?.alertaWebhooksAusentes && (
+        <StatusPill tone="warning">
+          Notificações do ML não estão chegando — confira a URL e os tópicos no app do ML
+        </StatusPill>
+      )}
       {status?.errosPendentes != null && status.errosPendentes > 0 && (
         <StatusPill tone={corSaude}>{status.errosPendentes} pendência(s)</StatusPill>
       )}

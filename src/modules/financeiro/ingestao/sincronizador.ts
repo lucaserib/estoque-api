@@ -21,20 +21,17 @@ import { invalidarCacheFinanceiro } from "../relatorios/cache";
 
 const PENDENCIA_SEM_VINCULO = "SEM_VINCULO";
 const PENDENCIA_LIBERACAO_ESTIMADA = "LIBERACAO_ESTIMADA";
-const DIAS_PADRAO_REPROCESSAMENTO = 3;
-const DIAS_PADRAO_BACKFILL = 90;
-const DIAS_MAXIMO_BACKFILL = 365;
 const TENTATIVAS_MAXIMAS_ERRO = 5;
 
-function tempoMaximoLoteMs(): number {
+export function tempoMaximoLoteMs(): number {
   return Number(process.env.FINANCEIRO_TEMPO_MAXIMO_LOTE_MS ?? 40000);
 }
 
-function mensagemDeErro(erro: unknown): string {
+export function mensagemDeErro(erro: unknown): string {
   return erro instanceof Error ? erro.message : "Erro desconhecido";
 }
 
-async function registrarErroPedido(
+export async function registrarErroPedido(
   userId: string,
   canal: CanalVenda,
   pedidoExternoId: string,
@@ -48,7 +45,7 @@ async function registrarErroPedido(
   });
 }
 
-async function resolverErroPedido(
+export async function resolverErroPedido(
   userId: string,
   canal: CanalVenda,
   pedidoExternoId: string
@@ -59,7 +56,7 @@ async function resolverErroPedido(
   });
 }
 
-async function ingerirPedidoComRegistroDeErro(
+export async function ingerirPedidoComRegistroDeErro(
   accountId: string,
   userId: string,
   canal: CanalVenda,
@@ -593,47 +590,20 @@ export async function ingerirPedidoMercadoLivre(
   return { ingerido: true };
 }
 
-const HORAS_SOBREPOSICAO_INCREMENTAL = 2;
+export async function ingerirVendaNormalizada(
+  contaCanal: ContaCanal,
+  adaptador: AdaptadorCanalFinanceiro,
+  normalizado: VendaCanalNormalizada
+): Promise<void> {
+  await persistirVendaNormalizada(contaCanal, adaptador, normalizado);
+}
 
-export async function reprocessarUltimosDias(
-  accountId: string,
-  dias: number = DIAS_PADRAO_REPROCESSAMENTO
-): Promise<{ processados: number }> {
-  const conta = await prisma.mercadoLivreAccount.findUniqueOrThrow({
+export async function obterUserIdDaConta(accountId: string): Promise<string | null> {
+  const conta = await prisma.mercadoLivreAccount.findUnique({
     where: { id: accountId },
-    select: { userId: true, ultimaSincronizacaoFinanceiraEm: true },
+    select: { userId: true },
   });
-  const contaCanal: ContaCanal = { contaCanalId: accountId, userId: conta.userId };
-  const adaptador = obterAdaptador(CanalVenda.MERCADO_LIVRE);
-
-  const ate = new Date();
-  const desde = conta.ultimaSincronizacaoFinanceiraEm
-    ? new Date(conta.ultimaSincronizacaoFinanceiraEm.getTime() - HORAS_SOBREPOSICAO_INCREMENTAL * 60 * 60 * 1000)
-    : new Date(ate.getTime() - dias * 24 * 60 * 60 * 1000);
-
-  let processados = 0;
-  let cursor: string | null = null;
-  do {
-    const pagina = await adaptador.listarPedidosAlterados(contaCanal, desde, ate, cursor);
-    for (const pedido of pagina.pedidos) {
-      await ingerirPedidoComRegistroDeErro(
-        accountId,
-        contaCanal.userId,
-        adaptador.canal,
-        pedido.pedidoExternoId,
-        "INCREMENTAL"
-      );
-      processados++;
-    }
-    cursor = pagina.cursor;
-  } while (cursor);
-
-  await prisma.mercadoLivreAccount.update({
-    where: { id: accountId },
-    data: { ultimaSincronizacaoFinanceiraEm: new Date() },
-  });
-
-  return { processados };
+  return conta?.userId ?? null;
 }
 
 export async function reprocessarErrosPendentes(accountId: string): Promise<{ processados: number }> {
@@ -656,101 +626,3 @@ export async function reprocessarErrosPendentes(accountId: string): Promise<{ pr
   return { processados };
 }
 
-interface CursorBackfill {
-  desde: string;
-  ate: string;
-  offset: number;
-}
-
-export async function continuarBackfill(
-  accountId: string,
-  diasHistorico: number = DIAS_PADRAO_BACKFILL
-): Promise<{ status: "CONCLUIDO" | "EM_ANDAMENTO"; processados: number }> {
-  const diasEfetivos = Math.min(diasHistorico, DIAS_MAXIMO_BACKFILL);
-  const conta = await prisma.mercadoLivreAccount.findUniqueOrThrow({
-    where: { id: accountId },
-    select: { userId: true },
-  });
-  const userId = conta.userId;
-  const canal = CanalVenda.MERCADO_LIVRE;
-
-  let sincronizacao = await prisma.sincronizacaoFinanceira.findFirst({
-    where: { userId, canal, tipo: "BACKFILL", status: "EM_ANDAMENTO" },
-    orderBy: { iniciadoEm: "desc" },
-  });
-
-  if (!sincronizacao) {
-    const agora = new Date();
-    const desde = new Date(agora.getTime() - diasEfetivos * 24 * 60 * 60 * 1000);
-    const cursorInicial: CursorBackfill = { desde: desde.toISOString(), ate: agora.toISOString(), offset: 0 };
-    sincronizacao = await prisma.sincronizacaoFinanceira.create({
-      data: { userId, canal, tipo: "BACKFILL", status: "EM_ANDAMENTO", cursor: cursorInicial },
-    });
-  }
-
-  let cursorAtual = sincronizacao.cursor as unknown as CursorBackfill;
-  const contaCanal: ContaCanal = { contaCanalId: accountId, userId };
-  const adaptador = obterAdaptador(canal);
-
-  try {
-    let processadosNoLote = 0;
-    const inicioLote = Date.now();
-    let offsetAtual: string | null = String(cursorAtual.offset);
-
-    while (Date.now() - inicioLote < tempoMaximoLoteMs()) {
-      const pagina = await adaptador.listarPedidosAlterados(
-        contaCanal,
-        new Date(cursorAtual.desde),
-        new Date(cursorAtual.ate),
-        offsetAtual
-      );
-
-      for (const pedido of pagina.pedidos) {
-        await ingerirPedidoComRegistroDeErro(
-          accountId,
-          userId,
-          canal,
-          pedido.pedidoExternoId,
-          "BACKFILL"
-        );
-        processadosNoLote++;
-      }
-
-      offsetAtual = pagina.cursor;
-      cursorAtual = { ...cursorAtual, offset: Number(offsetAtual ?? 0) };
-
-      if (!pagina.temMais) {
-        await prisma.sincronizacaoFinanceira.update({
-          where: { id: sincronizacao.id },
-          data: {
-            status: "CONCLUIDO",
-            concluidoEm: new Date(),
-            cursor: cursorAtual,
-            processados: { increment: pagina.pedidos.length },
-          },
-        });
-        await prisma.mercadoLivreAccount.update({
-          where: { id: accountId },
-          data: { ultimaSincronizacaoFinanceiraEm: new Date() },
-        });
-        return { status: "CONCLUIDO", processados: processadosNoLote };
-      }
-
-      await prisma.sincronizacaoFinanceira.update({
-        where: { id: sincronizacao.id },
-        data: { cursor: cursorAtual, processados: { increment: pagina.pedidos.length } },
-      });
-    }
-
-    return { status: "EM_ANDAMENTO", processados: processadosNoLote };
-  } catch (erro) {
-    await prisma.sincronizacaoFinanceira.update({
-      where: { id: sincronizacao.id },
-      data: {
-        status: "ERRO",
-        erro: mensagemDeErro(erro),
-      },
-    });
-    throw erro;
-  }
-}

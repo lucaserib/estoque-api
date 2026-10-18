@@ -1,8 +1,9 @@
 import { CanalVenda } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { continuarBackfill, reprocessarUltimosDias } from "./sincronizador";
+import { enfileirarPeriodo, enfileirarIncremental, executarFila } from "./fila";
 import { ingerirGastosAdsDoDia } from "./ingestaoAds";
 import { ingerirCobrancasDoMes } from "./ingestaoCobrancas";
+import { inicioDoDia, fimDoDia } from "../dominio/periodo";
 
 export type ModoSincronizacao = "INCREMENTAL" | "PERIODO" | "BACKFILL";
 
@@ -19,7 +20,7 @@ export interface ResultadoSincronizacao {
   proximoPasso: "CONTINUAR" | null;
 }
 
-const MINUTOS_TRAVA_EXPIRADA = 10;
+const MINUTOS_TRAVA_EXPIRADA = 2;
 
 function mesReferenciaDe(data: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -53,6 +54,8 @@ export async function obterTravaAtiva(userId: string, canal: CanalVenda) {
   });
 }
 
+const DIAS_PADRAO_INCREMENTAL = 2;
+
 export async function sincronizarFinanceiro(
   accountId: string,
   parametros: ParametrosSincronizacao
@@ -63,39 +66,38 @@ export async function sincronizarFinanceiro(
   });
   const canal = CanalVenda.MERCADO_LIVRE;
 
-  const registro =
-    parametros.modo === "BACKFILL"
-      ? null
-      : await prisma.sincronizacaoFinanceira.create({
-          data: { userId: conta.userId, canal, tipo: parametros.modo, status: "EM_ANDAMENTO" },
-        });
+  const registro = await prisma.sincronizacaoFinanceira.create({
+    data: { userId: conta.userId, canal, tipo: parametros.modo, status: "EM_ANDAMENTO" },
+  });
 
   try {
-    let processados = 0;
-    let status: "CONCLUIDO" | "EM_ANDAMENTO" = "CONCLUIDO";
+    const ate = parametros.ate ?? new Date();
+    const desde =
+      parametros.desde ??
+      (parametros.modo === "INCREMENTAL"
+        ? new Date(ate.getTime() - DIAS_PADRAO_INCREMENTAL * 24 * 60 * 60 * 1000)
+        : ate);
 
-    if (parametros.modo === "BACKFILL") {
-      const resultado = await continuarBackfill(accountId);
-      processados = resultado.processados;
-      status = resultado.status;
-    } else if (parametros.modo === "PERIODO" && parametros.desde) {
-      const dias = Math.max(
-        1,
-        Math.ceil((Date.now() - parametros.desde.getTime()) / (24 * 60 * 60 * 1000))
-      );
-      const resultado = await reprocessarUltimosDias(accountId, dias);
-      processados = resultado.processados;
+    if (parametros.modo === "INCREMENTAL") {
+      await enfileirarIncremental(accountId, 10);
     } else {
-      const resultado = await reprocessarUltimosDias(accountId);
-      processados = resultado.processados;
+      await enfileirarPeriodo(accountId, desde, ate, parametros.modo === "BACKFILL" ? 20 : 10);
     }
 
-    let erros = 0;
-    const ate = parametros.ate ?? new Date();
-    const desde = parametros.desde ?? ate;
+    const resultadoFila = await executarFila(conta.userId, accountId);
+    const processados = resultadoFila.processados;
+    const status: "CONCLUIDO" | "EM_ANDAMENTO" =
+      resultadoFila.status === "EM_ANDAMENTO" ? "EM_ANDAMENTO" : "CONCLUIDO";
+
+    let erros = resultadoFila.status === "ERRO" ? 1 : 0;
 
     try {
-      await ingerirGastosAdsDoDia(accountId, new Date(ate.getTime() - 24 * 60 * 60 * 1000));
+      let cursorDia = inicioDoDia(desde);
+      const fimPeriodo = fimDoDia(ate);
+      while (cursorDia <= fimPeriodo) {
+        await ingerirGastosAdsDoDia(accountId, cursorDia);
+        cursorDia = new Date(fimDoDia(cursorDia).getTime() + 1);
+      }
     } catch (erro) {
       erros++;
       console.error("[ORQUESTRADOR_FINANCEIRO] Erro ao ingerir ads:", erro);
@@ -110,12 +112,14 @@ export async function sincronizarFinanceiro(
       }
     }
 
-    if (registro) {
-      await prisma.sincronizacaoFinanceira.update({
-        where: { id: registro.id },
-        data: { status: "CONCLUIDO", concluidoEm: new Date(), processados },
-      });
-    }
+    await prisma.sincronizacaoFinanceira.update({
+      where: { id: registro.id },
+      data: {
+        status: status === "CONCLUIDO" ? "CONCLUIDO" : "EM_ANDAMENTO",
+        concluidoEm: status === "CONCLUIDO" ? new Date() : null,
+        processados,
+      },
+    });
 
     return {
       status,
@@ -124,15 +128,13 @@ export async function sincronizarFinanceiro(
       proximoPasso: status === "EM_ANDAMENTO" ? "CONTINUAR" : null,
     };
   } catch (erro) {
-    if (registro) {
-      await prisma.sincronizacaoFinanceira.update({
-        where: { id: registro.id },
-        data: {
-          status: "ERRO",
-          erro: erro instanceof Error ? erro.message : "Erro desconhecido",
-        },
-      });
-    }
+    await prisma.sincronizacaoFinanceira.update({
+      where: { id: registro.id },
+      data: {
+        status: "ERRO",
+        erro: erro instanceof Error ? erro.message : "Erro desconhecido",
+      },
+    });
     throw erro;
   }
 }

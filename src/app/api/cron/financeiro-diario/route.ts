@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { CanalVenda } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import {
-  reprocessarUltimosDias,
-  continuarBackfill,
-  reprocessarErrosPendentes,
-} from "@/modules/financeiro/ingestao/sincronizador";
+import { reprocessarErrosPendentes } from "@/modules/financeiro/ingestao/sincronizador";
+import { enfileirarIncremental, executarFila } from "@/modules/financeiro/ingestao/fila";
 import { ingerirGastosAdsDoDia } from "@/modules/financeiro/ingestao/ingestaoAds";
 import { ingerirCobrancasDoMes } from "@/modules/financeiro/ingestao/ingestaoCobrancas";
+import { conferirMes, importarFaltantes } from "@/modules/financeiro/relatorios/conferencia";
+import { competenciaDe } from "@/modules/financeiro/dominio/periodo";
 import { gerarLancamentosDeTodasAsRecorrencias } from "@/modules/financeiro/lancamentos/recorrencias";
 import { gerarAlertasFinanceiros } from "@/modules/financeiro/alertas";
 
 export const maxDuration = 60;
+
+const ORCAMENTO_FILA_MS = 8000;
+const RODADAS_MAXIMAS_FILA = 3;
 
 function mesReferenciaDe(data: Date): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -21,18 +22,12 @@ function mesReferenciaDe(data: Date): string {
   }).format(data);
 }
 
-/**
- * Único cron diário do financeiro (plano Hobby da Vercel só roda 1x/dia por
- * rota). Por conta ML: reprocessa os últimos 3 dias (cancelamentos,
- * devoluções, frete que chega depois), o gasto de ads de ontem e a cobrança
- * do mês corrente (idempotente — vai se corrigindo sozinha dia a dia até o
- * ML finalizar a fatura). Por conta (dono), independente de ter ML: gera os
- * lançamentos PREVISTO das recorrências ativas e os alertas financeiros
- * (contas a vencer/vencidas, venda com prejuízo, divergência de
- * conciliação — Ciclo 7 Fase 8). O "snapshot" diário (ResumoFinanceiroDiario)
- * já é escrito como efeito colateral da própria ingestão acima, não é um
- * passo separado.
- */
+function competenciaAnteriorA(competencia: { ano: number; mes: number }) {
+  return competencia.mes === 1
+    ? { ano: competencia.ano - 1, mes: 12 }
+    : { ano: competencia.ano, mes: competencia.mes - 1 };
+}
+
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
 
@@ -54,24 +49,31 @@ export async function GET(request: NextRequest) {
 
   const ontem = new Date(Date.now() - 24 * 60 * 60 * 1000);
   const mesCorrente = mesReferenciaDe(new Date());
+  const competenciaAtual = competenciaDe(new Date());
+  const competenciaAnterior = competenciaAnteriorA(competenciaAtual);
 
   let contasProcessadas = 0;
   let pedidosProcessados = 0;
   let gastosAdsProcessados = 0;
   let cobrancasProcessadas = 0;
+  let faltantesImportados = 0;
   let lancamentosRecorrentesGerados = 0;
   let alertasGerados = 0;
   let erros = 0;
 
   for (const conta of contasAtivas) {
     try {
-      const resultado = await reprocessarUltimosDias(conta.id);
-      pedidosProcessados += resultado.processados;
+      await enfileirarIncremental(conta.id, 5);
+      for (let rodada = 0; rodada < RODADAS_MAXIMAS_FILA; rodada++) {
+        const resultado = await executarFila(conta.userId, conta.id, ORCAMENTO_FILA_MS);
+        pedidosProcessados += resultado.processados;
+        if (resultado.status === "OCIOSO" || resultado.status === "ERRO") break;
+      }
       contasProcessadas++;
     } catch (error) {
       erros++;
       console.error(
-        `[CRON_FINANCEIRO_DIARIO] Erro ao reprocessar pedidos da conta ${conta.id}:`,
+        `[CRON_FINANCEIRO_DIARIO] Erro ao processar a fila da conta ${conta.id}:`,
         error
       );
     }
@@ -99,19 +101,6 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-      const backfillPendente = await prisma.sincronizacaoFinanceira.findFirst({
-        where: { userId: conta.userId, canal: CanalVenda.MERCADO_LIVRE, tipo: "BACKFILL", status: "EM_ANDAMENTO" },
-      });
-      if (backfillPendente) await continuarBackfill(conta.id);
-    } catch (error) {
-      erros++;
-      console.error(
-        `[CRON_FINANCEIRO_DIARIO] Erro ao continuar backfill da conta ${conta.id}:`,
-        error
-      );
-    }
-
-    try {
       await reprocessarErrosPendentes(conta.id);
     } catch (error) {
       erros++;
@@ -119,6 +108,22 @@ export async function GET(request: NextRequest) {
         `[CRON_FINANCEIRO_DIARIO] Erro ao reprocessar erros pendentes da conta ${conta.id}:`,
         error
       );
+    }
+
+    for (const competencia of [competenciaAtual, competenciaAnterior]) {
+      try {
+        const resultadoConferencia = await conferirMes(conta.userId, conta.id, competencia);
+        if (resultadoConferencia.faltando.length > 0) {
+          const resultadoImportacao = await importarFaltantes(conta.id, resultadoConferencia.faltando);
+          faltantesImportados += resultadoImportacao.importados;
+        }
+      } catch (error) {
+        erros++;
+        console.error(
+          `[CRON_FINANCEIRO_DIARIO] Erro ao conferir ${competencia.ano}-${competencia.mes} da conta ${conta.id}:`,
+          error
+        );
+      }
     }
   }
 
@@ -156,6 +161,7 @@ export async function GET(request: NextRequest) {
     pedidosProcessados,
     gastosAdsProcessados,
     cobrancasProcessadas,
+    faltantesImportados,
     lancamentosRecorrentesGerados,
     alertasGerados,
     erros,

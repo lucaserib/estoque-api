@@ -61,11 +61,27 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-const reprocessarUltimosDiasMock = vi.fn(async () => ({ processados: 3 }));
-const continuarBackfillMock = vi.fn(async () => ({ status: "EM_ANDAMENTO" as const, processados: 10 }));
-vi.mock("../sincronizador", () => ({
-  reprocessarUltimosDias: reprocessarUltimosDiasMock,
-  continuarBackfill: continuarBackfillMock,
+interface ResultadoExecucaoFilaFake {
+  tarefaId: string | null;
+  tipo: string | null;
+  status: "OCIOSO" | "CONCLUIDA" | "EM_ANDAMENTO" | "ERRO";
+  processados: number;
+}
+
+const enfileirarIncrementalMock = vi.fn(async (..._args: unknown[]) => ({ id: "tarefa-1" }));
+const enfileirarPeriodoMock = vi.fn(async (..._args: unknown[]) => ({ id: "tarefa-1" }));
+const executarFilaMock = vi.fn(
+  async (..._args: unknown[]): Promise<ResultadoExecucaoFilaFake> => ({
+    tarefaId: "tarefa-1",
+    tipo: "PEDIDOS_PERIODO",
+    status: "CONCLUIDA",
+    processados: 3,
+  })
+);
+vi.mock("../fila", () => ({
+  enfileirarIncremental: (...args: unknown[]) => enfileirarIncrementalMock(...args),
+  enfileirarPeriodo: (...args: unknown[]) => enfileirarPeriodoMock(...args),
+  executarFila: (...args: unknown[]) => executarFilaMock(...args),
 }));
 
 const ingerirGastosAdsDoDiaMock = vi.fn(async () => ({ processados: 0 }));
@@ -80,51 +96,71 @@ beforeEach(() => {
   contas = [{ id: "conta-1", userId: "user-1" }];
   sincronizacoes = [];
   proximoId = 1;
-  reprocessarUltimosDiasMock.mockClear();
-  continuarBackfillMock.mockClear();
+  enfileirarIncrementalMock.mockClear();
+  enfileirarPeriodoMock.mockClear();
+  executarFilaMock.mockClear().mockResolvedValue({
+    tarefaId: "tarefa-1",
+    tipo: "PEDIDOS_PERIODO",
+    status: "CONCLUIDA",
+    processados: 3,
+  });
   ingerirGastosAdsDoDiaMock.mockClear();
   ingerirCobrancasDoMesMock.mockClear();
 });
 
 describe("sincronizarFinanceiro", () => {
-  it("INCREMENTAL chama reprocessarUltimosDias e ingere ads/cobranças do período", async () => {
+  it("INCREMENTAL enfileira PEDIDOS_INCREMENTAL, executa a fila e ingere ads/cobranças do período", async () => {
     const resultado = await sincronizarFinanceiro("conta-1", { modo: "INCREMENTAL" });
 
-    expect(reprocessarUltimosDiasMock).toHaveBeenCalled();
+    expect(enfileirarIncrementalMock).toHaveBeenCalledWith("conta-1", 10);
+    expect(executarFilaMock).toHaveBeenCalledWith("user-1", "conta-1");
     expect(ingerirGastosAdsDoDiaMock).toHaveBeenCalled();
     expect(ingerirCobrancasDoMesMock).toHaveBeenCalled();
     expect(resultado.status).toBe("CONCLUIDO");
     expect(resultado.processados).toBe(3);
   });
 
-  it("BACKFILL chama continuarBackfill e devolve EM_ANDAMENTO sem criar um segundo registro de sincronização", async () => {
+  it("BACKFILL enfileira PEDIDOS_PERIODO com prioridade alta e devolve EM_ANDAMENTO quando a fila ainda não terminou", async () => {
+    executarFilaMock.mockResolvedValueOnce({
+      tarefaId: "tarefa-1",
+      tipo: "PEDIDOS_PERIODO",
+      status: "EM_ANDAMENTO",
+      processados: 10,
+    });
+
     const resultado = await sincronizarFinanceiro("conta-1", { modo: "BACKFILL" });
 
-    expect(continuarBackfillMock).toHaveBeenCalled();
+    expect(enfileirarPeriodoMock).toHaveBeenCalledWith("conta-1", expect.anything(), expect.anything(), 20);
     expect(resultado.status).toBe("EM_ANDAMENTO");
     expect(resultado.proximoPasso).toBe("CONTINUAR");
-    expect(sincronizacoes).toHaveLength(0);
   });
 
-  it("PERIODO ingere cobranças de todos os meses entre desde e até", async () => {
+  it("PERIODO enfileira PEDIDOS_PERIODO com o desde/até pedidos e ingere cobranças de todos os meses entre eles", async () => {
     await sincronizarFinanceiro("conta-1", {
       modo: "PERIODO",
       desde: new Date("2026-03-15T00:00:00.000Z"),
       ate: new Date("2026-05-10T00:00:00.000Z"),
     });
 
+    expect(enfileirarPeriodoMock).toHaveBeenCalledWith(
+      "conta-1",
+      new Date("2026-03-15T00:00:00.000Z"),
+      new Date("2026-05-10T00:00:00.000Z"),
+      10
+    );
     expect(ingerirCobrancasDoMesMock).toHaveBeenCalledTimes(3);
   });
 
-  it("registra a sincronização como CONCLUIDO para INCREMENTAL/PERIODO", async () => {
+  it("registra a sincronização como CONCLUIDO quando a fila termina", async () => {
     await sincronizarFinanceiro("conta-1", { modo: "INCREMENTAL" });
 
     expect(sincronizacoes).toHaveLength(1);
     expect(sincronizacoes[0].status).toBe("CONCLUIDO");
+    expect(sincronizacoes[0].processados).toBe(3);
   });
 
-  it("marca ERRO e relança quando reprocessarUltimosDias falha", async () => {
-    reprocessarUltimosDiasMock.mockRejectedValueOnce(new Error("falha de rede"));
+  it("marca ERRO e relança quando a fila falha", async () => {
+    executarFilaMock.mockRejectedValueOnce(new Error("falha de rede"));
 
     await expect(sincronizarFinanceiro("conta-1", { modo: "INCREMENTAL" })).rejects.toThrow("falha de rede");
     expect(sincronizacoes[0].status).toBe("ERRO");
@@ -150,7 +186,7 @@ describe("obterTravaAtiva", () => {
   it("ignora uma sincronização EM_ANDAMENTO velha (trava expirada)", async () => {
     sincronizacoes.push({
       id: "sinc-velha", userId: "user-1", canal: CanalVenda.MERCADO_LIVRE, tipo: "INCREMENTAL",
-      status: "EM_ANDAMENTO", iniciadoEm: new Date(Date.now() - 60 * 60 * 1000), concluidoEm: null,
+      status: "EM_ANDAMENTO", iniciadoEm: new Date(Date.now() - 10 * 60 * 1000), concluidoEm: null,
       processados: 0, erro: null,
     });
 
