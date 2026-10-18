@@ -73,6 +73,7 @@ interface ConfigFinanceiro {
   gerarContaAPagarAoConfirmarCompra: boolean;
   prazoPagamentoPadraoDias: number;
   blingContasAtivo: boolean;
+  metaFaturamentoMensal: number | null;
 }
 
 interface RegraFrete {
@@ -175,6 +176,7 @@ export default function ConfiguracoesFinanceiroPage() {
 
   const [aliquotaInput, setAliquotaInput] = useState("0");
   const [custoEnvioFlexInput, setCustoEnvioFlexInput] = useState("");
+  const [metaFaturamentoMensalInput, setMetaFaturamentoMensalInput] = useState("");
   const [salvandoConfig, setSalvandoConfig] = useState(false);
 
   const [regrasFrete, setRegrasFrete] = useState<RegraFrete[]>([]);
@@ -233,6 +235,9 @@ export default function ConfiguracoesFinanceiroPage() {
         setConfig(dados);
         setAliquotaInput((dados.aliquotaImposto * 100).toFixed(2));
         setCustoEnvioFlexInput(dados.custoEnvioFlex != null ? (dados.custoEnvioFlex / 100).toFixed(2) : "");
+        setMetaFaturamentoMensalInput(
+          dados.metaFaturamentoMensal != null ? (dados.metaFaturamentoMensal / 100).toFixed(2) : ""
+        );
       }
     } catch (error) {
       console.error("Erro ao carregar configurações do financeiro:", error);
@@ -263,6 +268,7 @@ export default function ConfiguracoesFinanceiroPage() {
           gerarContaAPagarAoConfirmarCompra: config.gerarContaAPagarAoConfirmarCompra,
           prazoPagamentoPadraoDias: config.prazoPagamentoPadraoDias,
           blingContasAtivo: config.blingContasAtivo,
+          metaFaturamentoMensal: metaFaturamentoMensalInput ? paraCentavos(metaFaturamentoMensalInput) : null,
         }),
       });
       if (!resposta.ok) throw new Error();
@@ -652,6 +658,11 @@ export default function ConfiguracoesFinanceiroPage() {
                 <div>
                   <Label>Custo fixo do envio Flex (R$, opcional)</Label>
                   <Input type="number" step="0.01" min="0" value={custoEnvioFlexInput} onChange={(e) => setCustoEnvioFlexInput(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Meta de faturamento mensal (R$, opcional)</Label>
+                  <Input type="number" step="0.01" min="0" value={metaFaturamentoMensalInput} onChange={(e) => setMetaFaturamentoMensalInput(e.target.value)} />
+                  <p className="mt-1 text-xs text-muted-foreground">Usada na Visão geral para mostrar faturamento × meta e a projeção de fechamento do mês.</p>
                 </div>
                 <div className="flex items-center gap-2 pt-6">
                   <Switch checked={config.usarImpostoEstimado} onCheckedChange={(v) => setConfig({ ...config, usarImpostoEstimado: v })} />

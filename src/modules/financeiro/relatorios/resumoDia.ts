@@ -82,13 +82,15 @@ async function despesasFixasDoMes(userId: string, competencia: Competencia): Pro
 interface ContasAPagarResumo {
   vencendoHoje: { quantidade: number; valor: number };
   vencidas: { quantidade: number; valor: number };
+  proximos7Dias: { quantidade: number; valor: number };
 }
 
 async function contasAPagarDoDia(userId: string, dia: Date): Promise<ContasAPagarResumo> {
   const inicio = inicioDoDia(dia);
   const fim = fimDoDia(dia);
+  const fim7Dias = fimDoDia(new Date(dia.getTime() + 7 * 24 * 60 * 60 * 1000));
 
-  const [vencendoHoje, vencidas] = await Promise.all([
+  const [vencendoHoje, vencidas, proximos7Dias] = await Promise.all([
     prisma.lancamentoFinanceiro.findMany({
       where: { userId, tipo: TipoLancamento.DESPESA, status: StatusLancamento.PREVISTO, vencimento: { gte: inicio, lte: fim } },
       select: { valor: true },
@@ -97,11 +99,16 @@ async function contasAPagarDoDia(userId: string, dia: Date): Promise<ContasAPaga
       where: { userId, tipo: TipoLancamento.DESPESA, status: StatusLancamento.PREVISTO, vencimento: { lt: inicio } },
       select: { valor: true },
     }),
+    prisma.lancamentoFinanceiro.findMany({
+      where: { userId, tipo: TipoLancamento.DESPESA, status: StatusLancamento.PREVISTO, vencimento: { gte: inicio, lte: fim7Dias } },
+      select: { valor: true },
+    }),
   ]);
 
   return {
     vencendoHoje: { quantidade: vencendoHoje.length, valor: vencendoHoje.reduce((s, l) => s + l.valor, 0) },
     vencidas: { quantidade: vencidas.length, valor: vencidas.reduce((s, l) => s + l.valor, 0) },
+    proximos7Dias: { quantidade: proximos7Dias.length, valor: proximos7Dias.reduce((s, l) => s + l.valor, 0) },
   };
 }
 
@@ -130,6 +137,11 @@ export interface ResumoDia extends TotaisResumo {
     margemContribuicao: Diferenca;
     pedidos: Diferenca;
   };
+  comparacaoSemanaPassada: {
+    faturamentoBruto: Diferenca;
+    margemContribuicao: Diferenca;
+    pedidos: Diferenca;
+  };
   contasAPagar: ContasAPagarResumo;
   valorALiberarMercadoPago: number;
 }
@@ -148,12 +160,15 @@ export async function gerarResumoDia(
     const ontemFim = fimDoDia(ontemInicio);
     const seteDiasAtrasInicio = inicioDoDia(new Date(dia.getTime() - 7 * 24 * 60 * 60 * 1000));
     const seteDiasAtrasFim = fimDoDia(new Date(dia.getTime() - 1 * 24 * 60 * 60 * 1000));
+    const semanaPassadaInicio = inicioDoDia(new Date(dia.getTime() - 7 * 24 * 60 * 60 * 1000));
+    const semanaPassadaFim = fimDoDia(semanaPassadaInicio);
 
-    const [totaisHoje, totaisOntem, totaisUltimos7Dias, despesasFixas, contasAPagar, valorALiberar] =
+    const [totaisHoje, totaisOntem, totaisUltimos7Dias, totaisSemanaPassada, despesasFixas, contasAPagar, valorALiberar] =
       await Promise.all([
         somarPeriodo(userId, dia, fim, canal),
         somarPeriodo(userId, ontemInicio, ontemFim, canal),
         somarPeriodo(userId, seteDiasAtrasInicio, seteDiasAtrasFim, canal),
+        somarPeriodo(userId, semanaPassadaInicio, semanaPassadaFim, canal),
         despesasFixasDoMes(userId, competenciaDe(dia)),
         contasAPagarDoDia(userId, dia),
         valorALiberarNoDia(userId, dia),
@@ -180,6 +195,11 @@ export async function gerarResumoDia(
         faturamentoBruto: calcularDiferenca(totaisHoje.faturamentoBruto, mediaUltimos7Dias.faturamentoBruto),
         margemContribuicao: calcularDiferenca(totaisHoje.margemContribuicao, mediaUltimos7Dias.margemContribuicao),
         pedidos: calcularDiferenca(totaisHoje.pedidos, mediaUltimos7Dias.pedidos),
+      },
+      comparacaoSemanaPassada: {
+        faturamentoBruto: calcularDiferenca(totaisHoje.faturamentoBruto, totaisSemanaPassada.faturamentoBruto),
+        margemContribuicao: calcularDiferenca(totaisHoje.margemContribuicao, totaisSemanaPassada.margemContribuicao),
+        pedidos: calcularDiferenca(totaisHoje.pedidos, totaisSemanaPassada.pedidos),
       },
       contasAPagar,
       valorALiberarMercadoPago: valorALiberar,
@@ -242,6 +262,55 @@ async function calcularPontoEquilibrioDoMes(
   return { pontoEquilibrio, faturamentoBrutoAteAgora: totaisDoMes.faturamentoBruto, faltaVender };
 }
 
+export interface MetaMes {
+  metaFaturamentoMensal: number | null;
+  percentualMeta: number | null;
+  diasTranscorridos: number;
+  diasNoMes: number;
+  projecaoFechamento: number;
+}
+
+/**
+ * Projeção de fechamento pelo ritmo atual: faturamento do mês até agora ÷
+ * dias já transcorridos × dias totais do mês. Usa o mês de `algumDiaDoMes`
+ * de calendário inteiro, igual ao ponto de equilíbrio — não o período
+ * arbitrário escolhido na tela.
+ */
+async function calcularMetaMes(
+  userId: string,
+  algumDiaDoMes: Date,
+  canal?: CanalVenda
+): Promise<MetaMes> {
+  const competencia = competenciaDe(algumDiaDoMes);
+  const inicioMes = inicioDoMes(algumDiaDoMes);
+
+  const [totaisDoMes, config] = await Promise.all([
+    somarPeriodo(userId, inicioMes, fimDoDia(algumDiaDoMes), canal),
+    prisma.configuracaoGeral.findUnique({ where: { userId }, select: { metaFaturamentoMensal: true } }),
+  ]);
+
+  const diasTranscorridos = Math.max(
+    1,
+    Math.round((inicioDoDia(algumDiaDoMes).getTime() - inicioMes.getTime()) / (24 * 60 * 60 * 1000)) + 1
+  );
+  const totalDiasNoMes = diasNoMes(competencia);
+  const projecaoFechamento = Math.round((totaisDoMes.faturamentoBruto / diasTranscorridos) * totalDiasNoMes);
+
+  const metaFaturamentoMensal = config?.metaFaturamentoMensal ?? null;
+  const percentualMeta =
+    metaFaturamentoMensal == null || metaFaturamentoMensal === 0
+      ? null
+      : totaisDoMes.faturamentoBruto / metaFaturamentoMensal;
+
+  return {
+    metaFaturamentoMensal,
+    percentualMeta,
+    diasTranscorridos,
+    diasNoMes: totalDiasNoMes,
+    projecaoFechamento,
+  };
+}
+
 export interface ResumoPeriodo extends TotaisResumo {
   desde: Date;
   ate: Date;
@@ -249,6 +318,7 @@ export interface ResumoPeriodo extends TotaisResumo {
   ticketMedio: number | null;
   lucroLiquido: number;
   pontoEquilibrioMes: PontoEquilibrioMes;
+  metaMes: MetaMes;
 }
 
 /**
@@ -265,10 +335,11 @@ export async function gerarResumoPeriodo(
   const chave = `resumo-periodo:${desde.toISOString()}:${ate.toISOString()}:${canal ?? "todos"}`;
 
   return comCacheFinanceiro(userId, chave, async () => {
-    const [totais, despesaFixaRateada, pontoEquilibrioMes] = await Promise.all([
+    const [totais, despesaFixaRateada, pontoEquilibrioMes, metaMes] = await Promise.all([
       somarPeriodo(userId, desde, ate, canal),
       despesaFixaRateadaNoPeriodo(userId, desde, ate),
       calcularPontoEquilibrioDoMes(userId, ate, canal),
+      calcularMetaMes(userId, ate, canal),
     ]);
 
     const receitaLiquida = totais.faturamentoBruto - totais.cancelamentos - totais.impostos;
@@ -281,6 +352,7 @@ export async function gerarResumoPeriodo(
       ticketMedio: totais.pedidos === 0 ? null : totais.faturamentoBruto / totais.pedidos,
       lucroLiquido: totais.margemContribuicao - despesaFixaRateada,
       pontoEquilibrioMes,
+      metaMes,
     };
   });
 }

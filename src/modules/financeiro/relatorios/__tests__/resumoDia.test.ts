@@ -35,6 +35,7 @@ interface FakeVenda {
 let resumos: FakeResumo[] = [];
 let lancamentos: FakeLancamento[] = [];
 let vendas: FakeVenda[] = [];
+let metaFaturamentoMensalPorUsuario: Record<string, number | null> = {};
 
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -93,6 +94,13 @@ vi.mock("@/lib/prisma", () => ({
           )
       ),
     },
+    configuracaoGeral: {
+      findUnique: vi.fn(async ({ where }: { where: { userId: string } }) =>
+        metaFaturamentoMensalPorUsuario[where.userId] !== undefined
+          ? { metaFaturamentoMensal: metaFaturamentoMensalPorUsuario[where.userId] }
+          : null
+      ),
+    },
   },
 }));
 
@@ -118,6 +126,7 @@ beforeEach(() => {
   resumos = [];
   lancamentos = [];
   vendas = [];
+  metaFaturamentoMensalPorUsuario = {};
 });
 
 describe("gerarResumoDia", () => {
@@ -195,6 +204,32 @@ describe("gerarResumoDia", () => {
 
     expect(resultadoResumo.valorALiberarMercadoPago).toBe(10000);
   });
+
+  it("Ciclo 9 (Fase 6): compara com o mesmo dia da semana passada (dia exato, não média)", async () => {
+    resumos.push(resumo({ dia: new Date("2026-05-15T03:00:00.000Z"), faturamentoBruto: 10000, pedidos: 5, margemContribuicao: 2000 }));
+    resumos.push(resumo({ dia: new Date("2026-05-08T03:00:00.000Z"), faturamentoBruto: 4000, pedidos: 2, margemContribuicao: 800 }));
+    // um dia qualquer dentro do intervalo "últimos 7 dias" que NÃO deve contaminar a comparação de semana passada
+    resumos.push(resumo({ dia: new Date("2026-05-12T03:00:00.000Z"), faturamentoBruto: 99999, pedidos: 99, margemContribuicao: 99999 }));
+
+    const resultadoResumo = await gerarResumoDia("user-1", HOJE);
+
+    expect(resultadoResumo.comparacaoSemanaPassada.faturamentoBruto.valorComparado).toBe(4000);
+    expect(resultadoResumo.comparacaoSemanaPassada.pedidos.valorComparado).toBe(2);
+    expect(resultadoResumo.comparacaoSemanaPassada.faturamentoBruto.percentual).toBe((10000 - 4000) / 4000);
+  });
+
+  it("Ciclo 9 (Fase 6): contas a pagar dos próximos 7 dias, separado de 'vencendo hoje'", async () => {
+    lancamentos.push(
+      { userId: "user-1", tipo: "DESPESA", status: "PREVISTO", valor: 1000, vencimento: new Date("2026-05-15T12:00:00.000Z"), competencia: new Date("2026-05-15"), categoriaGrupoDre: "DESPESA_OPERACIONAL" },
+      { userId: "user-1", tipo: "DESPESA", status: "PREVISTO", valor: 2000, vencimento: new Date("2026-05-18T12:00:00.000Z"), competencia: new Date("2026-05-18"), categoriaGrupoDre: "DESPESA_OPERACIONAL" },
+      { userId: "user-1", tipo: "DESPESA", status: "PREVISTO", valor: 3000, vencimento: new Date("2026-05-25T12:00:00.000Z"), competencia: new Date("2026-05-25"), categoriaGrupoDre: "DESPESA_OPERACIONAL" }
+    );
+
+    const resultadoResumo = await gerarResumoDia("user-1", HOJE);
+
+    expect(resultadoResumo.contasAPagar.proximos7Dias.valor).toBe(1000 + 2000);
+    expect(resultadoResumo.contasAPagar.proximos7Dias.quantidade).toBe(2);
+  });
 });
 
 describe("gerarResumoPeriodo", () => {
@@ -265,6 +300,37 @@ describe("gerarResumoPeriodo", () => {
     );
 
     expect(resultado.pontoEquilibrioMes.faltaVender).toBe(0);
+  });
+
+  it("Ciclo 9 (Fase 6): meta mensal — percentualMeta e projeção de fechamento pelo ritmo atual", async () => {
+    metaFaturamentoMensalPorUsuario["user-1"] = 100000;
+    // mês de maio: dias 1 a 10 somando 50000, dia 10 é o "ate" (10 dias transcorridos de 31)
+    for (let dia = 1; dia <= 10; dia++) {
+      resumos.push(resumo({ dia: new Date(`2026-05-${String(dia).padStart(2, "0")}T03:00:00.000Z`), faturamentoBruto: 5000 }));
+    }
+
+    const resultado = await gerarResumoPeriodo(
+      "user-1",
+      new Date("2026-05-01T00:00:00.000Z"),
+      new Date("2026-05-10T23:59:59.000Z")
+    );
+
+    expect(resultado.metaMes.metaFaturamentoMensal).toBe(100000);
+    expect(resultado.metaMes.percentualMeta).toBe(0.5);
+    expect(resultado.metaMes.diasTranscorridos).toBe(10);
+    expect(resultado.metaMes.diasNoMes).toBe(31);
+    expect(resultado.metaMes.projecaoFechamento).toBe(Math.round((50000 / 10) * 31));
+  });
+
+  it("sem meta cadastrada: percentualMeta é null, nunca zero ou NaN", async () => {
+    const resultado = await gerarResumoPeriodo(
+      "user-1",
+      new Date("2026-05-01T00:00:00.000Z"),
+      new Date("2026-05-10T23:59:59.000Z")
+    );
+
+    expect(resultado.metaMes.metaFaturamentoMensal).toBeNull();
+    expect(resultado.metaMes.percentualMeta).toBeNull();
   });
 });
 

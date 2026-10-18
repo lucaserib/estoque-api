@@ -91,3 +91,10 @@ Esta fase corrigiu os dois bugs que faziam a DRE e o resumo do período divergir
 ## Vínculo anúncio↔produto não confirmado (Ciclo 9, Fase 5)
 
 Todo vínculo entre um anúncio do Mercado Livre e um produto local tem uma origem (`ProdutoMercadoLivre.vinculoOrigem`: `SKU_EXATO`, `EAN`, `SIMILARIDADE` ou `MANUAL`) e uma confirmação (`vinculoConfirmado`). Vínculos por SKU exato, EAN ou feitos manualmente nascem confirmados; por **similaridade de título nascem sempre não confirmados**, mesmo com alta confiança de correspondência — exigem revisão humana em Produtos → "Confirme estes vínculos" antes de contar sem ressalva. Uma venda cujo item usa um vínculo não confirmado grava o CMV normalmente (o custo aparece, a margem é calculada), mas entra com a pendência `VINCULO_NAO_CONFIRMADO` — sinaliza que aquele número pode estar vindo de um produto errado, sem impedir o cálculo.
+
+## Comparações e meta mensal (Ciclo 9, Fase 6)
+
+- **Comparação com ontem** vs. **com a semana passada**: dois números diferentes. "Ontem" é o dia de calendário anterior. "Semana passada" é o mesmo dia da semana, exatamente 7 dias atrás (ex.: quinta-feira com quinta-feira) — não confundir com `comparacaoMedia7Dias` (a média dos últimos 7 dias corridos), que é uma terceira métrica, já existente desde ciclos anteriores.
+- **Meta de faturamento mensal**: campo opcional (`ConfiguracaoGeral.metaFaturamentoMensal`, em Configurações). `percentualMeta` = faturamento do mês até agora ÷ meta. Sem meta cadastrada, `percentualMeta` é `null` (nunca 0% ou 100% inventado).
+- **Projeção de fechamento do mês**: faturamento do mês até agora ÷ dias já transcorridos do mês × dias totais do mês — uma extrapolação simples do ritmo atual, não uma previsão estatística. Sempre calculada (não depende de meta cadastrada).
+- **Por logística**: agrupamento de vendas por `VendaCanal.logistica` tal como o canal grava (Full = `fulfillment`, Flex = `self_service`, coleta = `drop_off`), sem reclassificar. Frete médio de um grupo é `null` quando nenhuma venda do grupo tem frete confirmado — nunca um zero que pareça "frete grátis".

@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
       gerarContaAPagarAoConfirmarCompra: config?.gerarContaAPagarAoConfirmarCompra ?? true,
       prazoPagamentoPadraoDias: config?.prazoPagamentoPadraoDias ?? 30,
       blingContasAtivo: config?.blingContasAtivo ?? false,
+      metaFaturamentoMensal: config?.metaFaturamentoMensal ?? null,
     });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
@@ -49,6 +50,7 @@ interface RequestBody {
   gerarContaAPagarAoConfirmarCompra?: boolean;
   prazoPagamentoPadraoDias?: number;
   blingContasAtivo?: boolean;
+  metaFaturamentoMensal?: number | null;
 }
 
 export async function PATCH(request: NextRequest) {
@@ -83,6 +85,12 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "custoEnvioFlex deve ser um número não negativo" }, { status: 400 });
     }
     if (
+      body.metaFaturamentoMensal != null &&
+      (typeof body.metaFaturamentoMensal !== "number" || body.metaFaturamentoMensal < 0)
+    ) {
+      return NextResponse.json({ error: "metaFaturamentoMensal deve ser um número não negativo" }, { status: 400 });
+    }
+    if (
       body.diasLiberacaoPadrao !== undefined &&
       (typeof body.diasLiberacaoPadrao !== "number" || body.diasLiberacaoPadrao < 0)
     ) {
@@ -113,6 +121,7 @@ export async function PATCH(request: NextRequest) {
         prazoPagamentoPadraoDias: body.prazoPagamentoPadraoDias,
       }),
       ...(body.blingContasAtivo !== undefined && { blingContasAtivo: body.blingContasAtivo }),
+      ...(body.metaFaturamentoMensal !== undefined && { metaFaturamentoMensal: body.metaFaturamentoMensal }),
     };
 
     const config = await prisma.configuracaoGeral.upsert({

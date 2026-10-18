@@ -75,6 +75,26 @@ describe("PATCH /api/financeiro/configuracoes", () => {
     expect(resposta.status).toBe(400);
   });
 
+  it("Ciclo 9 (Fase 6): responde 400 para metaFaturamentoMensal negativa", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+    const resposta = await PATCH(criarRequestPatch({ metaFaturamentoMensal: -1 }) as never);
+    expect(resposta.status).toBe(400);
+  });
+
+  it("Ciclo 9 (Fase 6): atualiza metaFaturamentoMensal via upsert", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+    upsertMock.mockResolvedValue({ metaFaturamentoMensal: 10000000 });
+
+    const resposta = await PATCH(criarRequestPatch({ metaFaturamentoMensal: 10000000 }) as never);
+
+    expect(resposta.status).toBe(200);
+    expect(upsertMock).toHaveBeenCalledWith({
+      where: { userId: "conta-1" },
+      update: { metaFaturamentoMensal: 10000000 },
+      create: { userId: "conta-1", metaFaturamentoMensal: 10000000 },
+    });
+  });
+
   it("F4 (Ciclo 8): responde 400 para prazoPagamentoPadraoDias negativo", async () => {
     verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
     const resposta = await PATCH(criarRequestPatch({ prazoPagamentoPadraoDias: -1 }) as never);

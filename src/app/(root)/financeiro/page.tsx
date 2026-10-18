@@ -37,13 +37,20 @@ import { BotaoAtualizarFinanceiro } from "./components/BotaoAtualizarFinanceiro"
 
 interface ResumoDiaResponse {
   faturamentoBruto: number;
+  unidades: number;
   pedidos: number;
+  tarifas: number;
+  frete: number;
+  ads: number;
   margemContribuicao: number;
   lucroEstimado: number;
+  ticketMedio: number | null;
   comparacaoOntem: { faturamentoBruto: { percentual: number | null } };
+  comparacaoSemanaPassada: { faturamentoBruto: { percentual: number | null } };
   contasAPagar: {
     vencendoHoje: { quantidade: number; valor: number };
     vencidas: { quantidade: number; valor: number };
+    proximos7Dias: { quantidade: number; valor: number };
   };
 }
 
@@ -61,11 +68,24 @@ interface ResumoPeriodoResponse {
   ticketMedio: number | null;
   lucroLiquido: number;
   pontoEquilibrioMes: { faltaVender: number | null };
+  metaMes: {
+    metaFaturamentoMensal: number | null;
+    percentualMeta: number | null;
+    projecaoFechamento: number;
+  };
 }
 
 interface PontoSerie {
   dia: string;
   faturamentoBruto: number;
+  margemContribuicao: number;
+}
+
+interface ResumoLogistica {
+  logistica: string;
+  pedidos: number;
+  faturamentoBruto: number;
+  freteMedio: number | null;
   margemContribuicao: number;
 }
 
@@ -152,6 +172,9 @@ export default function FinanceiroPage() {
   const [piorProdutos, setPiorProdutos] = useState<ProdutoLinha[]>([]);
   const [vendasComPrejuizo, setVendasComPrejuizo] = useState<VendaPrejuizo[]>([]);
   const [vendasIncompletasTotal, setVendasIncompletasTotal] = useState(0);
+  const [vinculosNaoConfirmadosTotal, setVinculosNaoConfirmadosTotal] = useState(0);
+  const [cobrancasNaoMapeadasTotal, setCobrancasNaoMapeadasTotal] = useState(0);
+  const [resumoPorLogistica, setResumoPorLogistica] = useState<ResumoLogistica[]>([]);
   const [saldoProjetado, setSaldoProjetado] = useState<number | null>(null);
   const [alertaConciliacao, setAlertaConciliacao] = useState<LinhaConciliacaoAlerta[]>([]);
   const [contasComSaldo, setContasComSaldo] = useState<ContaComSaldo[]>([]);
@@ -173,6 +196,9 @@ export default function FinanceiroPage() {
       saldoResp,
       conciliacaoResp,
       contasComSaldoResp,
+      vinculosPendentesResp,
+      cobrancasNaoMapeadasResp,
+      porLogisticaResp,
     ] = await Promise.all([
       buscarJson<ResumoDiaResponse>("/api/financeiro/resumo-dia"),
       buscarJson<ResumoPeriodoResponse>(`/api/financeiro/resumo-periodo?desde=${desdeIso}&ate=${ateIso}`),
@@ -187,6 +213,9 @@ export default function FinanceiroPage() {
       buscarJson<SaldoProjetadoResponse>("/api/financeiro/fluxo-caixa/saldo-projetado?dias=30"),
       buscarJson<{ linhas: LinhaConciliacaoAlerta[] }>(`/api/financeiro/conciliacao?mes=${mesAtualIso}`),
       buscarJson<{ contas: ContaComSaldo[] }>("/api/financeiro/contas-financeiras?comSaldo=true"),
+      buscarJson<{ vinculos: unknown[] }>("/api/produtos/vinculos-pendentes"),
+      buscarJson<{ linhas: Array<{ quantidade: number }> }>(`/api/financeiro/cobrancas-nao-mapeadas?mes=${mesAtualIso}`),
+      buscarJson<{ resumo: ResumoLogistica[] }>(`/api/financeiro/por-logistica?desde=${desdeIso}&ate=${ateIso}`),
     ]);
 
     setResumoHoje(resumoDiaResp);
@@ -200,6 +229,11 @@ export default function FinanceiroPage() {
     setSaldoProjetado(saldoResp?.saldoProjetado ?? null);
     setAlertaConciliacao((conciliacaoResp?.linhas ?? []).filter((l) => l.alerta));
     setContasComSaldo(contasComSaldoResp?.contas ?? []);
+    setVinculosNaoConfirmadosTotal(vinculosPendentesResp?.vinculos.length ?? 0);
+    setCobrancasNaoMapeadasTotal(
+      (cobrancasNaoMapeadasResp?.linhas ?? []).reduce((soma, l) => soma + l.quantidade, 0)
+    );
+    setResumoPorLogistica(porLogisticaResp?.resumo ?? []);
 
     setAtualizadoEm(new Date());
     setCarregando(false);
@@ -236,6 +270,19 @@ export default function FinanceiroPage() {
           ? formatBRL(resumoPeriodo.pontoEquilibrioMes.faltaVender)
           : "—",
       note: resumoPeriodo?.pontoEquilibrioMes.faltaVender === 0 ? "Meta do mês batida" : undefined,
+    },
+    {
+      label: "Faturamento × meta do mês",
+      value:
+        resumoPeriodo?.metaMes.percentualMeta != null
+          ? formatPercent(resumoPeriodo.metaMes.percentualMeta * 100)
+          : "—",
+      note: resumoPeriodo?.metaMes.metaFaturamentoMensal == null ? "Cadastre a meta em Configurações" : undefined,
+    },
+    {
+      label: "Projeção de fechamento do mês",
+      value: resumoPeriodo ? formatBRL(resumoPeriodo.metaMes.projecaoFechamento) : "—",
+      note: "Pelo ritmo de vendas até agora",
     },
   ];
 
@@ -276,14 +323,19 @@ export default function FinanceiroPage() {
         </SectionCard>
       )}
 
-      <SectionCard title="Resumo de hoje" description="Comparado com ontem">
+      <SectionCard title="Resumo de hoje" description="Comparado com ontem e com o mesmo dia da semana passada">
         {carregando && !resumoHoje ? (
           <Skeleton className="h-16 rounded-md" />
         ) : (
           <StatStrip
             items={[
-              { label: "Faturamento", value: formatBRL(resumoHoje?.faturamentoBruto ?? 0), delta: resumoHoje?.comparacaoOntem.faturamentoBruto.percentual != null ? resumoHoje.comparacaoOntem.faturamentoBruto.percentual * 100 : null },
+              { label: "Faturamento", value: formatBRL(resumoHoje?.faturamentoBruto ?? 0), delta: resumoHoje?.comparacaoOntem.faturamentoBruto.percentual != null ? resumoHoje.comparacaoOntem.faturamentoBruto.percentual * 100 : null, note: resumoHoje?.comparacaoSemanaPassada.faturamentoBruto.percentual != null ? `${formatPercent(resumoHoje.comparacaoSemanaPassada.faturamentoBruto.percentual * 100)} vs. semana passada` : undefined },
               { label: "Pedidos", value: String(resumoHoje?.pedidos ?? 0) },
+              { label: "Unidades", value: String(resumoHoje?.unidades ?? 0) },
+              { label: "Ticket médio", value: resumoHoje?.ticketMedio != null ? formatBRL(resumoHoje.ticketMedio) : "—" },
+              { label: "Tarifas", value: formatBRL(resumoHoje?.tarifas ?? 0) },
+              { label: "Frete", value: formatBRL(resumoHoje?.frete ?? 0) },
+              { label: "Ads", value: formatBRL(resumoHoje?.ads ?? 0) },
               { label: "Margem de contribuição", value: formatBRL(resumoHoje?.margemContribuicao ?? 0) },
               { label: "Lucro estimado do dia", value: formatBRL(resumoHoje?.lucroEstimado ?? 0) },
             ]}
@@ -344,6 +396,35 @@ export default function FinanceiroPage() {
         </SectionCard>
       </div>
 
+      <SectionCard title="Por logística" description="Full × Flex × coleta no período selecionado">
+        {resumoPorLogistica.length === 0 ? (
+          <div className="py-8 text-center text-sm text-muted-foreground">Sem vendas no período.</div>
+        ) : (
+          <DataTable>
+            <DataTableHeader>
+              <DataTableRow>
+                <DataTableHead>Logística</DataTableHead>
+                <DataTableHead className="text-right">Pedidos</DataTableHead>
+                <DataTableHead className="text-right">Faturamento</DataTableHead>
+                <DataTableHead className="text-right">Frete médio</DataTableHead>
+                <DataTableHead className="text-right">Margem de contribuição</DataTableHead>
+              </DataTableRow>
+            </DataTableHeader>
+            <DataTableBody>
+              {resumoPorLogistica.map((linha) => (
+                <DataTableRow key={linha.logistica}>
+                  <DataTableCell>{linha.logistica}</DataTableCell>
+                  <DataTableCell className="text-right">{linha.pedidos}</DataTableCell>
+                  <DataTableCell className="text-right">{formatBRL(linha.faturamentoBruto)}</DataTableCell>
+                  <DataTableCell className="text-right">{linha.freteMedio != null ? formatBRL(linha.freteMedio) : "—"}</DataTableCell>
+                  <DataTableCell className="text-right">{formatBRL(linha.margemContribuicao)}</DataTableCell>
+                </DataTableRow>
+              ))}
+            </DataTableBody>
+          </DataTable>
+        )}
+      </SectionCard>
+
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="Top 10 produtos por lucro">
           <TabelaProdutos produtos={topProdutos} />
@@ -396,6 +477,7 @@ export default function FinanceiroPage() {
           items={[
             { label: "Vencendo hoje", value: formatBRL(resumoHoje?.contasAPagar.vencendoHoje.valor ?? 0), note: `${resumoHoje?.contasAPagar.vencendoHoje.quantidade ?? 0} conta(s)` },
             { label: "Vencidas", value: formatBRL(resumoHoje?.contasAPagar.vencidas.valor ?? 0), note: `${resumoHoje?.contasAPagar.vencidas.quantidade ?? 0} conta(s)` },
+            { label: "Próximos 7 dias", value: formatBRL(resumoHoje?.contasAPagar.proximos7Dias.valor ?? 0), note: `${resumoHoje?.contasAPagar.proximos7Dias.quantidade ?? 0} conta(s)` },
             { label: "Saldo projetado (30 dias)", value: saldoProjetado != null ? formatBRL(saldoProjetado) : "—" },
           ]}
         />
@@ -413,6 +495,48 @@ export default function FinanceiroPage() {
             }))}
           />
         )}
+      </SectionCard>
+
+      <SectionCard title="Qualidade dos dados">
+        <StatStrip
+          items={[
+            {
+              label: "Vendas incompletas no período",
+              value: String(vendasIncompletasTotal),
+              note: vendasIncompletasTotal > 0 ? "sem custo, sem vínculo ou sem frete" : "tudo completo",
+            },
+            {
+              label: "Vínculos não confirmados",
+              value: String(vinculosNaoConfirmadosTotal),
+              note: vinculosNaoConfirmadosTotal > 0 ? "anúncios vinculados por similaridade" : "tudo confirmado",
+            },
+            {
+              label: "Cobranças não mapeadas no mês",
+              value: String(cobrancasNaoMapeadasTotal),
+              note: cobrancasNaoMapeadasTotal > 0 ? "tipos de cobrança desconhecidos" : "tudo mapeado",
+            },
+          ]}
+        />
+        <div className="mt-3 flex flex-wrap gap-4 text-sm">
+          {vendasIncompletasTotal > 0 && (
+            <Link href="/financeiro/vendas?soIncompletas=true" className="underline text-warning">
+              Ver vendas incompletas
+            </Link>
+          )}
+          {vinculosNaoConfirmadosTotal > 0 && (
+            <Link href="/produtos/vinculos-pendentes" className="underline text-warning">
+              Confirmar vínculos
+            </Link>
+          )}
+          {cobrancasNaoMapeadasTotal > 0 && (
+            <Link href="/financeiro/configuracoes" className="underline text-warning">
+              Ver cobranças não mapeadas
+            </Link>
+          )}
+          <Link href="/financeiro/conferencia" className="underline text-muted-foreground">
+            Conferir cobertura do mês contra o Mercado Livre
+          </Link>
+        </div>
       </SectionCard>
     </div>
   );
