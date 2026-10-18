@@ -1,6 +1,14 @@
+import { OrigemVinculoProduto } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import Fuse from "fuse.js";
 import { normalizeSku } from "@/lib/sku";
+
+const ORIGEM_POR_TIPO: Record<MatchResult["matchType"], OrigemVinculoProduto> = {
+  ean: OrigemVinculoProduto.EAN,
+  sku: OrigemVinculoProduto.SKU_EXATO,
+  fuzzy: OrigemVinculoProduto.SIMILARIDADE,
+  manual: OrigemVinculoProduto.MANUAL,
+};
 
 // ==================== TYPES ====================
 
@@ -241,31 +249,34 @@ export class ProductMatchingService {
 
     for (const match of matches) {
       try {
-        // Verificar se é match automático (alta confiança)
-        if (match.status === "matched" && match.confidence >= 85) {
-          // Buscar ou criar ProdutoMercadoLivre
-          const existingML = await prisma.produtoMercadoLivre.findFirst({
-            where: {
-              mlItemId: match.mlProduct.mlItemId,
-              mercadoLivreAccountId: mlAccountId,
+        // EAN e SKU exato nascem confirmados; similaridade (fuzzy) nasce
+        // sempre não confirmada, mesmo com confiança alta — precisa de
+        // revisão humana antes do CMV contar com ela sem ressalva.
+        const origem = ORIGEM_POR_TIPO[match.matchType];
+        const confirmado = match.matchType !== "fuzzy";
+
+        const existingML = await prisma.produtoMercadoLivre.findFirst({
+          where: {
+            mlItemId: match.mlProduct.mlItemId,
+            mercadoLivreAccountId: mlAccountId,
+          },
+        });
+
+        if (existingML) {
+          await prisma.produtoMercadoLivre.update({
+            where: { id: existingML.id },
+            data: {
+              produtoId: match.localProduct.id,
+              syncStatus: confirmado ? "matched" : "pending_review",
+              vinculoOrigem: origem,
+              vinculoConfirmado: confirmado,
             },
           });
 
-          if (existingML) {
-            // Atualizar vinculação
-            await prisma.produtoMercadoLivre.update({
-              where: { id: existingML.id },
-              data: {
-                produtoId: match.localProduct.id,
-                syncStatus: "matched",
-              },
-            });
-
-            success++;
-            details.push(
-              `✅ ${match.localProduct.sku} ↔ ${match.mlProduct.mlItemId} (${match.matchType})`
-            );
-          }
+          success++;
+          details.push(
+            `${confirmado ? "✅" : "⚠️"} ${match.localProduct.sku} ↔ ${match.mlProduct.mlItemId} (${match.matchType}${confirmado ? "" : ", não confirmado"})`
+          );
         }
       } catch (error) {
         errors++;

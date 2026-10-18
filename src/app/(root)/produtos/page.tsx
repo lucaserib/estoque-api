@@ -56,6 +56,7 @@ const ProdutosPageContent = () => {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [pendingCount, setPendingCount] = useState(0);
+  const [vinculosPendentesCount, setVinculosPendentesCount] = useState(0);
   const [updatingVendas, setUpdatingVendas] = useState(false);
   const [updatingBlingStock, setUpdatingBlingStock] = useState(false);
   const [blingAccount, setBlingAccount] = useState<BlingAccountStatus | null>(
@@ -78,6 +79,21 @@ const ProdutosPageContent = () => {
     };
 
     loadBlingStatus();
+  }, []);
+
+  useEffect(() => {
+    const loadVinculosPendentes = async () => {
+      try {
+        const response = await fetch("/api/produtos/vinculos-pendentes");
+        if (!response.ok) return;
+        const body: { vinculos: unknown[] } = await response.json();
+        setVinculosPendentesCount(body.vinculos.length);
+      } catch (error) {
+        console.error("Erro ao verificar vínculos pendentes:", error);
+      }
+    };
+
+    loadVinculosPendentes();
   }, []);
 
   useEffect(() => {
@@ -340,6 +356,17 @@ const ProdutosPageContent = () => {
                 Importar Estoque
               </Button>
             </Link>
+            {vinculosPendentesCount > 0 && (
+              <Link href="/produtos/vinculos-pendentes">
+                <Button variant="outline" className="gap-2 relative">
+                  <Link2 className="h-4 w-4" />
+                  Confirme estes vínculos
+                  <span className="ml-1 bg-warning text-warning-foreground text-xs rounded-full px-2 py-0.5">
+                    {vinculosPendentesCount}
+                  </span>
+                </Button>
+              </Link>
+            )}
             {pendingCount > 0 && (
               <Link href="/produtos/vincular">
                 <Button variant="outline" className="gap-2 relative">

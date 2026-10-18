@@ -93,7 +93,12 @@ let regrasFreteLogistica: Array<{
   valor: number;
   percentual: number;
 }> = [];
-let vinculosMl: Array<{ mlItemId: string; mercadoLivreAccountId: string; produtoId: string | null }> = [];
+let vinculosMl: Array<{
+  mlItemId: string;
+  mercadoLivreAccountId: string;
+  produtoId: string | null;
+  vinculoConfirmado?: boolean;
+}> = [];
 let produtos: Array<{
   id: string;
   sku: string;
@@ -178,7 +183,9 @@ vi.mock("@/lib/prisma", () => ({
           const vinculo = vinculosMl.find(
             (v) => v.mlItemId === chave.mlItemId && v.mercadoLivreAccountId === chave.mercadoLivreAccountId
           );
-          return vinculo ? { produtoId: vinculo.produtoId } : null;
+          return vinculo
+            ? { produtoId: vinculo.produtoId, vinculoConfirmado: vinculo.vinculoConfirmado ?? true }
+            : null;
         }
       ),
     },
@@ -683,6 +690,19 @@ describe("ingerirPedidoMercadoLivre", () => {
     expect(vendas[0].itens[0].produtoId).toBeNull();
     expect(vendas[0].completo).toBe(false);
     expect(vendas[0].faltando).toContain("SEM_VINCULO");
+  });
+
+  it("Ciclo 9 (Fase 5): vínculo não confirmado (ex.: similaridade) gera pendência VINCULO_NAO_CONFIRMADO, mas o CMV continua aparecendo", async () => {
+    produtos.push({ id: "produto-1", sku: "SKU-1", userId: "user-1", isKit: false, custoMedio: 5000 });
+    vinculosMl.push({ mlItemId: "MLB1", mercadoLivreAccountId: "conta-1", produtoId: "produto-1", vinculoConfirmado: false });
+    adaptadorFake.atual = { obterPedido: vi.fn(async () => normalizado()) };
+
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+
+    expect(vendas[0].itens[0].produtoId).toBe("produto-1");
+    expect(vendas[0].itens[0].custoUnitario).toBe(5000);
+    expect(vendas[0].faltando).toContain("VINCULO_NAO_CONFIRMADO");
+    expect(vendas[0].faltando).not.toContain("SEM_VINCULO");
   });
 
   it("custo fica congelado: reprocessar não sobrescreve um custoUnitario já gravado", async () => {

@@ -6,7 +6,7 @@ import { NotificationService } from "@/services/notificationService";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { pickMlImageUrl } from "@/lib/imageUrl";
 import { serializeWithEAN } from "@/utils/api";
-import { fetchMlWithBackoff } from "@/lib/mlFetch";
+import { obterPrecoAtualAnuncio } from "@/services/mercadoLivrePreco";
 
 export async function GET(request: NextRequest) {
   try {
@@ -147,63 +147,14 @@ export async function POST(request: NextRequest) {
               let hasPromotion = false;
               let promotionDiscount = 0;
 
-              if (!originalPrice || originalPrice <= currentPrice) {
-                try {
-
-                  const pricesResponse = await fetchMlWithBackoff(
-                    `https://api.mercadolibre.com/items/${itemId}/prices`,
-                    {
-                      headers: { Authorization: `Bearer ${accessToken}` },
-                    }
-                  );
-
-                  if (pricesResponse.ok) {
-                    const pricesData = await pricesResponse.json();
-
-                    const standardPrice = pricesData.prices?.find(
-                      (p: {
-                        type?: string;
-                        amount?: number;
-                        regular_amount?: number;
-                        conditions?: { context_restrictions?: string[] };
-                      }) =>
-                        p.type === "standard" &&
-                        p.conditions?.context_restrictions?.includes(
-                          "channel_marketplace"
-                        )
-                    );
-
-                    const promotionPrice = pricesData.prices?.find(
-                      (p: {
-                        type?: string;
-                        amount?: number;
-                        regular_amount?: number;
-                        conditions?: { context_restrictions?: string[] };
-                      }) =>
-                        p.type === "promotion" &&
-                        p.conditions?.context_restrictions?.includes(
-                          "channel_marketplace"
-                        )
-                    );
-
-                    if (promotionPrice && promotionPrice.regular_amount) {
-                      currentPrice = Math.round(promotionPrice.amount * 100);
-                      originalPrice = Math.round(
-                        promotionPrice.regular_amount * 100
-                      );
-                      hasPromotion = true;
-
-                    } else if (standardPrice) {
-                      currentPrice = Math.round(standardPrice.amount * 100);
-                    }
-                  }
-                } catch (priceError) {
-                  console.error(
-                    `[SYNC] ❌ Erro ao buscar preços para ${itemId}:`,
-                    priceError
-                  );
+              const precoAtual = await obterPrecoAtualAnuncio(itemId, accessToken);
+              if (precoAtual) {
+                currentPrice = precoAtual.precoAtual;
+                if (precoAtual.temPromocao) {
+                  originalPrice = precoAtual.precoOriginal;
+                  hasPromotion = true;
                 }
-              } else {
+              } else if (originalPrice && originalPrice > currentPrice) {
                 hasPromotion = true;
               }
 

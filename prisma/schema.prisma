@@ -41,6 +41,13 @@ enum ArmazemTipo {
   OUTRO
 }
 
+enum OrigemVinculoProduto {
+  SKU_EXATO
+  EAN
+  SIMILARIDADE
+  MANUAL
+}
+
 enum CanalVenda {
   MERCADO_LIVRE
   SHOPEE
@@ -306,6 +313,8 @@ model ProdutoMercadoLivre {
   mlUltimoEnvioEstoqueEm DateTime?
   mlAutoStockPausado    Boolean             @default(false)
   mlVariationId         String?
+  vinculoOrigem         OrigemVinculoProduto?
+  vinculoConfirmado     Boolean             @default(true)
   mercadoLivreAccount   MercadoLivreAccount @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)
   produto               Produto?            @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 

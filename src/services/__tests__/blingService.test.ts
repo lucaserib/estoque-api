@@ -180,3 +180,53 @@ describe("BlingService — Fase 1 (JWT e trava de refresh)", () => {
     expect(accountState.isActive).toBe(true);
   });
 });
+
+describe("BlingService.extractImageInfo", () => {
+  it("Ciclo 9 (Fase 5, P4): URL de externas com assinatura S3 (Expires/X-Amz) é marcada temporaria=true", async () => {
+    const { BlingService } = await import("@/services/blingService");
+
+    const info = BlingService.extractImageInfo({
+      midia: {
+        imagens: {
+          externas: [
+            {
+              link: "https://bucket.s3.amazonaws.com/foto.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=3600",
+            },
+          ],
+        },
+      },
+    } as never);
+
+    expect(info?.temporaria).toBe(true);
+  });
+
+  it("URL de externas sem assinatura continua temporaria=false", async () => {
+    const { BlingService } = await import("@/services/blingService");
+
+    const info = BlingService.extractImageInfo({
+      midia: { imagens: { externas: [{ link: "https://cdn.exemplo.com/foto.jpg" }] } },
+    } as never);
+
+    expect(info?.temporaria).toBe(false);
+  });
+
+  it("internas continua sempre temporaria=true (comportamento já existente)", async () => {
+    const { BlingService } = await import("@/services/blingService");
+
+    const info = BlingService.extractImageInfo({
+      midia: { imagens: { internas: [{ linkMiniatura: "https://bling.com.br/foto-mini.jpg" }] } },
+    } as never);
+
+    expect(info?.temporaria).toBe(true);
+  });
+
+  it("imagensURL/imagemURL genérica com assinatura S3 também é marcada temporaria=true", async () => {
+    const { BlingService } = await import("@/services/blingService");
+
+    const info = BlingService.extractImageInfo({
+      imagemURL: "https://outro-bucket.s3.sa-east-1.amazonaws.com/foto.png?Signature=abc123",
+    } as never);
+
+    expect(info?.temporaria).toBe(true);
+  });
+});

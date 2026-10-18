@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ArmazemTipo } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
@@ -108,13 +109,19 @@ export async function GET(request: NextRequest) {
 
     const produtosComFull = Object.entries(estoqueFullPorProduto);
     if (produtosComFull.length > 0) {
+      const armazemFullExistente = await prisma.armazem.findFirst({
+        where: { userId: user.contaId, nome: FULL_ARMAZEM_NOME },
+      });
       const armazemFull =
-        (await prisma.armazem.findFirst({
-          where: { userId: user.contaId, nome: FULL_ARMAZEM_NOME },
-        })) ??
-        (await prisma.armazem.create({
-          data: { nome: FULL_ARMAZEM_NOME, userId: user.contaId },
-        }));
+        armazemFullExistente && armazemFullExistente.tipo !== ArmazemTipo.FULL_ML
+          ? await prisma.armazem.update({
+              where: { id: armazemFullExistente.id },
+              data: { tipo: ArmazemTipo.FULL_ML },
+            })
+          : armazemFullExistente ??
+            (await prisma.armazem.create({
+              data: { nome: FULL_ARMAZEM_NOME, userId: user.contaId, tipo: ArmazemTipo.FULL_ML },
+            }));
 
       for (const [produtoId, quantidade] of produtosComFull) {
         try {

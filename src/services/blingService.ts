@@ -745,10 +745,22 @@ export class BlingService {
     }
   }
 
+  /**
+   * Ciclo 9 (Fase 5, P4): URL assinada (S3/`Expires`) pode vir em qualquer um
+   * dos três campos — o campo de origem não é confiável para decidir se a
+   * URL expira. Antes, só `internas[].linkMiniatura` era tratado como
+   * temporário; `externas[].link` e `imagensURL`/`imagemURL` eram salvos
+   * como definitivos mesmo quando a URL já trazia assinatura S3, e por isso
+   * nunca passavam por `rehostTemporaryImage`.
+   */
+  static pareceUrlAssinada(url: string): boolean {
+    return /X-Amz-|Expires=|Signature=/i.test(url) || /\.s3[.\-][\w-]*\.amazonaws\.com/i.test(url);
+  }
+
   static extractImageInfo(product: BlingProduct): BlingImageInfo | null {
     const externa = normalizeImageUrl(product.midia?.imagens?.externas?.[0]?.link ?? null);
     if (externa) {
-      return { url: externa, temporaria: false };
+      return { url: externa, temporaria: this.pareceUrlAssinada(externa) };
     }
 
     const interna = normalizeImageUrl(
@@ -761,7 +773,7 @@ export class BlingService {
     const generica = normalizeImageUrl(
       product.midia?.imagens?.imagensURL?.[0] ?? product.imagemURL ?? null
     );
-    return generica ? { url: generica, temporaria: false } : null;
+    return generica ? { url: generica, temporaria: this.pareceUrlAssinada(generica) } : null;
   }
 
   static extractEAN(product: BlingProduct): string | null {

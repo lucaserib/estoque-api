@@ -30,13 +30,29 @@ export async function vincularProdutoPorSku(
   return produto?.id ?? null;
 }
 
+export interface VinculoResolvido {
+  produtoId: string | null;
+  confirmado: boolean;
+}
+
 export async function vincularProduto(
   userId: string,
   accountId: string,
   item: { anuncioExternoId: string; sku: string | null }
-): Promise<string | null> {
-  const porAnuncio = await vincularProdutoPorAnuncio(accountId, item.anuncioExternoId);
-  if (porAnuncio) return porAnuncio;
-  if (!item.sku) return null;
-  return vincularProdutoPorSku(userId, item.sku);
+): Promise<VinculoResolvido> {
+  const vinculo = await prisma.produtoMercadoLivre.findUnique({
+    where: {
+      mlItemId_mercadoLivreAccountId: {
+        mlItemId: item.anuncioExternoId,
+        mercadoLivreAccountId: accountId,
+      },
+    },
+    select: { produtoId: true, vinculoConfirmado: true },
+  });
+  if (vinculo?.produtoId) {
+    return { produtoId: vinculo.produtoId, confirmado: vinculo.vinculoConfirmado };
+  }
+  if (!item.sku) return { produtoId: null, confirmado: true };
+  const produtoId = await vincularProdutoPorSku(userId, item.sku);
+  return { produtoId, confirmado: true };
 }

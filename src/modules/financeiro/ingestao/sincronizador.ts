@@ -22,6 +22,7 @@ import { invalidarCacheFinanceiro } from "../relatorios/cache";
 
 const PENDENCIA_SEM_VINCULO = "SEM_VINCULO";
 const PENDENCIA_LIBERACAO_ESTIMADA = "LIBERACAO_ESTIMADA";
+const PENDENCIA_VINCULO_NAO_CONFIRMADO = "VINCULO_NAO_CONFIRMADO";
 const TENTATIVAS_MAXIMAS_ERRO = 5;
 
 export function tempoMaximoLoteMs(): number {
@@ -460,6 +461,7 @@ interface ItensPreparados {
   vinculos: Array<string | null>;
   descontosCusteadosMlRateados: number[];
   custosFreteManualPorItem: Array<number | null>;
+  algumVinculoNaoConfirmado: boolean;
 }
 
 async function prepararItens(
@@ -472,10 +474,12 @@ async function prepararItens(
   const zerar = statusZeraQuantidade(normalizado.status);
   const itensEntrada: ItemVendaEntrada[] = [];
   const custosFreteManualPorItem: Array<number | null> = [];
+  let algumVinculoNaoConfirmado = false;
 
   for (const item of normalizado.itens) {
-    const produtoId = await vincularProduto(userId, accountId, item);
+    const { produtoId, confirmado } = await vincularProduto(userId, accountId, item);
     vinculos.push(produtoId);
+    if (!confirmado) algumVinculoNaoConfirmado = true;
 
     const itemExistente = vendaExistente?.itens.find(
       (i) =>
@@ -510,7 +514,7 @@ async function prepararItens(
     itensEntrada
   );
 
-  return { itensEntrada, vinculos, descontosCusteadosMlRateados, custosFreteManualPorItem };
+  return { itensEntrada, vinculos, descontosCusteadosMlRateados, custosFreteManualPorItem, algumVinculoNaoConfirmado };
 }
 
 async function persistirVendaNormalizada(
@@ -542,7 +546,7 @@ async function persistirVendaNormalizada(
     include: { itens: true },
   });
 
-  const { itensEntrada, vinculos, descontosCusteadosMlRateados, custosFreteManualPorItem } =
+  const { itensEntrada, vinculos, descontosCusteadosMlRateados, custosFreteManualPorItem, algumVinculoNaoConfirmado } =
     await prepararItens(userId, contaCanal.contaCanalId, normalizadoOriginal, vendaExistente);
 
   const pagamento = await resolverPagamentoDetalhado(contaCanal, adaptador, normalizadoOriginal);
@@ -588,6 +592,7 @@ async function persistirVendaNormalizada(
       ...resultado.faltando,
       ...(semVinculo ? [PENDENCIA_SEM_VINCULO] : []),
       ...(liberacao.estimado ? [PENDENCIA_LIBERACAO_ESTIMADA] : []),
+      ...(algumVinculoNaoConfirmado ? [PENDENCIA_VINCULO_NAO_CONFIRMADO] : []),
     ]),
   ];
 

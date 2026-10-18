@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { OrigemVinculoProduto } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
@@ -67,6 +68,8 @@ export async function POST(request: NextRequest) {
       data: {
         produtoId: localProductId,
         syncStatus: "synced",
+        vinculoOrigem: OrigemVinculoProduto.MANUAL,
+        vinculoConfirmado: true,
       },
     });
 
