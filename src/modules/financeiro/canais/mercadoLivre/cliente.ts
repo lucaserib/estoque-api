@@ -12,12 +12,14 @@ import type {
   EnvioNormalizado,
   GastoAdsNormalizado,
   LiberacaoPagamentoNormalizada,
+  PagamentoNormalizado,
   PaginaPedidos,
   VendaCanalNormalizada,
 } from "../tipos";
 import { mapearCustoEnvio, mapearEnvio, mapearPedido } from "./mapeador";
 import { mapearGastoAds, type GastoAdsBruto } from "./mapeadorAds";
 import { mapearCobranca, type CobrancaBruta } from "./mapeadorCobrancas";
+import { mapearPagamento, type PagamentoBruto } from "./mapeadorPagamento";
 
 const BASE_URL = "https://api.mercadolibre.com";
 const LIMITE_POR_PAGINA = 50;
@@ -168,6 +170,24 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
   async obterDescontos(conta: ContaCanal, pedidoExternoId: string): Promise<unknown> {
     const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
     return buscarDiscounts(pedidoExternoId, accessToken);
+  },
+
+  async obterPagamentoDetalhado(
+    conta: ContaCanal,
+    pagamentoExternoId: string
+  ): Promise<PagamentoNormalizado> {
+    const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);
+    const resposta = await fetchMlWithBackoff(
+      `https://api.mercadopago.com/v1/payments/${pagamentoExternoId}`,
+      { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+    );
+    if (!resposta.ok) {
+      throw new Error(
+        `Erro ao buscar pagamento ${pagamentoExternoId} no Mercado Pago: ${resposta.status}`
+      );
+    }
+
+    return mapearPagamento((await resposta.json()) as PagamentoBruto);
   },
 
   async obterCustoEnvio(

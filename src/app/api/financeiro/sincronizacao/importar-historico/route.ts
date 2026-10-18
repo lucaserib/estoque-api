@@ -11,6 +11,7 @@ const DIAS_PADRAO_HISTORICO = 365;
 interface RequestBody {
   accountId?: string;
   dias?: number;
+  forcar?: boolean;
 }
 
 export async function POST(request: NextRequest) {
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     const ate = new Date();
     const desde = new Date(ate.getTime() - dias * 24 * 60 * 60 * 1000);
 
-    await enfileirarPeriodo(conta.id, desde, ate, 20);
+    await enfileirarPeriodo(conta.id, desde, ate, 20, body.forcar ?? false);
     const resultadoFila = await executarFila(user.contaId, conta.id);
 
     return NextResponse.json({

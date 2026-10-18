@@ -727,6 +727,8 @@ model VendaCanal {
   outrosCustos        Int              @default(0)
   margemContribuicao  Int?
   valorLiquidoReceber Int?
+  retencaoDividas     Int              @default(0)
+  statusLiberacao     String?
   completo            Boolean          @default(true)
   faltando            String[]         @default([])
   freteConfianca      Confianca        @default(ESTIMADO)
@@ -735,6 +737,7 @@ model VendaCanal {
   updatedAt           DateTime         @updatedAt
   user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   itens               VendaCanalItem[]
+  cobrancasPagamento  CobrancaPagamento[]
   lancamentosFinanceiros LancamentoFinanceiro[]
 
   @@unique([userId, canal, pedidoExternoId])
@@ -1002,6 +1005,25 @@ model SincronizacaoFinanceira {
   @@map("sincronizacoes_financeiras")
 }
 
+model CobrancaPagamento {
+  id                 String   @id @default(uuid())
+  vendaId            String
+  pagamentoExternoId String
+  nome               String
+  tipo               String
+  valor              Int
+  estornado          Int      @default(0)
+  destino            String?
+  metadata           Json?
+  createdAt          DateTime @default(now())
+
+  venda VendaCanal @relation(fields: [vendaId], references: [id], onDelete: Cascade)
+
+  @@unique([vendaId, pagamentoExternoId, nome])
+  @@index([vendaId])
+  @@map("cobrancas_pagamento")
+}
+
 model MapeamentoCategoriaBling {
   id                   String   @id @default(uuid())
   userId               String
@@ -1064,6 +1086,7 @@ model TarefaSincronizacaoFinanceira {
   desde        DateTime?
   ate          DateTime?
   cursor       Json?
+  forcar       Boolean                    @default(false)
   status       StatusTarefaSincronizacao  @default(PENDENTE)
   prioridade   Int                        @default(0)
   tentativas   Int                        @default(0)

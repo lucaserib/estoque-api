@@ -62,6 +62,22 @@ Testado com 3 pedidos reais (comum, 2 unidades, cancelado pós-pagamento). Subst
 - `GET https://api.mercadopago.com/v1/payments/{id}` devolvendo `order.id` (usado no webhook de `payments` para religar ao pedido) — não confirmado.
 - Devoluções (frete de retorno cobrado do vendedor via claims) e Full/Flex além do `logistic_type` básico: pendente para uma fase seguinte.
 
+## Ciclo 9 — confirmado em produção (18/10/2026, conta LEAPSTORE, pedido 2000019043297364)
+
+A fonte real de tarifa, frete e retenção por venda **não é** `sale_fee`/`/shipments/{id}/costs` (estimativas), é o pagamento no Mercado Pago.
+
+| Campo | Confirmado |
+|---|---|
+| `GET https://api.mercadopago.com/v1/payments/{id}` | `fee_details` vem **vazio**; a fonte real é `charges_details[]`, com `name`, `type`, `accounts.{from,to}`, `amounts.{original,refunded}`, `metadata`, `reserve_id` (quando aplicável). |
+| Tarifa de venda | Soma de `ml_sale_fee` + `mp_processing_fee` + qualquer `mp_financing_*` (ex.: `mp_financing_1x_fee`). No pedido de referência: `0,04 + 0,71 + 2,24 = 2,99`, igual ao `sale_fee` do pedido — a estimativa antiga já batia neste caso, mas não detalhava por componente nem cobria estorno parcial (`amounts.refunded`). |
+| Frete do vendedor | Soma das cobranças com `type: "shipping"` ou nome iniciado por `shp_` (ex.: `shp_fulfillment`, 6,85). Tem prioridade sobre `/shipments/{id}/costs` quando o pagamento está disponível. |
+| Retenção de dívida | `fee_spl` (e qualquer cobrança com `metadata.source === "direct-charges"` ou `reserve_id` presente) — o ML descontando da venda para quitar fatura/Full/ads. **Fica fora da margem de contribuição da venda** (não é custo do produto), mas reduz o líquido recebido e entra no fluxo de caixa. No pedido de referência: `fee_spl` 12,14, com `metadata.source: "direct-charges"` e `reserve_id` preenchido. Importante: `fee_spl.type` é `"fee"` — **igual ao tipo das tarifas** — por isso a checagem de retenção precisa vir antes da checagem de tarifa por nome exato (`mapeadorPagamento.ts`), nunca só por `type`. |
+| Líquido a receber | `transaction_details.net_received_amount` (12,72 no pedido de referência) — usado direto, sem recalcular a partir dos componentes. |
+| Liberação | `money_release_date`/`money_release_status` já confirmados desde o Ciclo 8 continuam vindo do mesmo payload. |
+| Pagamento vinculado ao pedido | `payments[].id` dentro do pedido (`/orders/{id}` ou `/orders/search`) — usado como `pagamentoExternoId` para buscar o pagamento detalhado; prioriza o pagamento `approved`, cai para o primeiro da lista se nenhum estiver aprovado. |
+
+Sem pagamento disponível (pedido ainda não tem `payments[]`, ou a chamada ao Mercado Pago falha), a venda continua usando a estimativa antiga (`sale_fee` por item, `/shipments/{id}/costs`), marcada `confianca: ESTIMADO` — nenhum número passa a faltar por causa desta mudança.
+
 ## Como usar o diagnóstico
 
 ```

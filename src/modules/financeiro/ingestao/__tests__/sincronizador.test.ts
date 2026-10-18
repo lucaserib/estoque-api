@@ -46,11 +46,25 @@ interface FakeVenda {
   outrosCustos: number;
   margemContribuicao: number | null;
   valorLiquidoReceber: number | null;
+  retencaoDividas?: number;
+  statusLiberacao?: string | null;
   completo: boolean;
   faltando: string[];
   freteConfianca: Confianca;
   atualizadoNoCanalEm: Date;
   itens: FakeItem[];
+}
+
+interface FakeCobrancaPagamento {
+  id: string;
+  vendaId: string;
+  pagamentoExternoId: string;
+  nome: string;
+  tipo: string;
+  valor: number;
+  estornado: number;
+  destino: string | null;
+  metadata: unknown;
 }
 
 interface FakeSincronizacao {
@@ -70,6 +84,7 @@ let configuracoes: Array<{ userId: string; aliquotaImposto: number; custoEnvioFl
 let vinculosMl: Array<{ mlItemId: string; mercadoLivreAccountId: string; produtoId: string | null }> = [];
 let produtos: Array<{ id: string; sku: string; userId: string; isKit: boolean; custoMedio: number | null }> = [];
 let vendas: FakeVenda[] = [];
+let cobrancasPagamento: FakeCobrancaPagamento[] = [];
 let gastosAds: Array<{ userId: string; canal: CanalVenda; dia: Date; custo: number }> = [];
 let resumos: Array<{ userId: string; dia: Date; canal: CanalVenda } & Record<string, number>> = [];
 let sincronizacoes: FakeSincronizacao[] = [];
@@ -93,6 +108,7 @@ function resetFakeDb() {
   vinculosMl = [];
   produtos = [];
   vendas = [];
+  cobrancasPagamento = [];
   gastosAds = [];
   resumos = [];
   sincronizacoes = [];
@@ -309,6 +325,36 @@ vi.mock("@/lib/prisma", () => ({
         }
       ),
     },
+    cobrancaPagamento: {
+      upsert: vi.fn(
+        async ({
+          where,
+          create,
+          update,
+        }: {
+          where: {
+            vendaId_pagamentoExternoId_nome: { vendaId: string; pagamentoExternoId: string; nome: string };
+          };
+          create: Omit<FakeCobrancaPagamento, "id">;
+          update: Partial<FakeCobrancaPagamento>;
+        }) => {
+          const chave = where.vendaId_pagamentoExternoId_nome;
+          const existente = cobrancasPagamento.find(
+            (c) =>
+              c.vendaId === chave.vendaId &&
+              c.pagamentoExternoId === chave.pagamentoExternoId &&
+              c.nome === chave.nome
+          );
+          if (existente) {
+            Object.assign(existente, update);
+            return existente;
+          }
+          const nova: FakeCobrancaPagamento = { id: novoId(), ...create };
+          cobrancasPagamento.push(nova);
+          return nova;
+        }
+      ),
+    },
     resumoFinanceiroDiario: {
       upsert: vi.fn(
         async ({
@@ -521,6 +567,7 @@ function normalizado(parcial: Partial<VendaCanalNormalizada> = {}): VendaCanalNo
     status: StatusVendaCanal.PAGA,
     logistica: "drop_off",
     envioExternoId: "555",
+    pagamentoExternoId: null,
     freteComprador: 0,
     descontoVendedorTotal: 0,
     descontoCusteadoPeloMlTotal: 0,
@@ -697,6 +744,42 @@ describe("ingerirPedidoMercadoLivre", () => {
 
     expect(vendaAAtualizada.freteVendedor! + vendaB.freteVendedor!).toBe(1000);
     expect(vendaB.freteVendedor!).toBeGreaterThan(vendaAAtualizada.freteVendedor!); // B faturou mais
+  });
+
+  it("Ciclo 9 (uma fórmula, um lugar): pagamento do Mercado Pago sobrescreve tarifa/frete estimados e grava retenção, status de liberação e cobranças", async () => {
+    adaptadorFake.atual = {
+      obterPedido: vi.fn(async () =>
+        normalizado({ pagamentoExternoId: "PAY1", itens: [
+          { anuncioExternoId: "MLB1", variacaoExternaId: null, sku: "SKU-1", titulo: "Produto 1", quantidade: 1, precoUnitario: 10000, precoCheio: null, tarifaTotal: 1000 },
+        ] })
+      ),
+      obterCustoEnvio: vi.fn(async () => ({ valor: 800, confianca: Confianca.CONFIRMADO })),
+      obterPagamentoDetalhado: vi.fn(async () => ({
+        pagamentoExternoId: "PAY1",
+        tarifaVenda: 299,
+        freteVendedor: 685,
+        retencaoDividas: 1214,
+        valorLiquidoReceber: 1272,
+        dataLiberacao: null,
+        statusLiberacao: "released",
+        cobrancas: [
+          { nome: "ml_sale_fee", tipo: "fee", valor: 71, estornado: 0, destino: null, metadata: null },
+          { nome: "fee_spl", tipo: "fee", valor: 1214, estornado: 0, destino: null, metadata: { source: "direct-charges" } },
+        ],
+        desconhecidos: [],
+      })),
+    };
+
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
+
+    expect(vendas[0].tarifaVenda).toBe(299);
+    expect(vendas[0].freteVendedor).toBe(685);
+    expect(vendas[0].retencaoDividas).toBe(1214);
+    expect(vendas[0].statusLiberacao).toBe("released");
+    expect(vendas[0].valorLiquidoReceber).toBe(1272);
+    expect(vendas[0].itens[0].tarifaVenda).toBe(299);
+    expect(cobrancasPagamento).toHaveLength(2);
+    expect(cobrancasPagamento.find((c) => c.nome === "fee_spl")?.valor).toBe(1214);
   });
 });
 

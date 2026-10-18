@@ -40,7 +40,18 @@ describe("GET /api/financeiro/resumo-periodo", () => {
     await GET(criarRequest("?desde=2026-05-01&ate=2026-05-07&canal=MERCADO_LIVRE"));
 
     expect(gerarResumoPeriodoMock).toHaveBeenCalledWith(
-      "conta-1", new Date("2026-05-01"), new Date("2026-05-07"), "MERCADO_LIVRE"
+      "conta-1", expect.any(Date), expect.any(Date), "MERCADO_LIVRE"
     );
+  });
+
+  it("C3 (Ciclo 9): sempre normaliza desde/ate para o início/fim do dia em SP, incluindo o dia de hoje", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+    gerarResumoPeriodoMock.mockResolvedValue({});
+
+    await GET(criarRequest("?desde=2026-05-01T00:00:00.000Z&ate=2026-05-01T00:00:00.000Z"));
+
+    const [, desdeChamado, ateChamado] = gerarResumoPeriodoMock.mock.calls[0] as [string, Date, Date];
+    expect(desdeChamado.toISOString()).toBe("2026-04-30T03:00:00.000Z");
+    expect(ateChamado.toISOString()).toBe("2026-05-01T02:59:59.999Z");
   });
 });

@@ -11,6 +11,7 @@ interface FakeTarefa {
   desde: Date | null;
   ate: Date | null;
   cursor: unknown;
+  forcar: boolean;
   status: StatusTarefaSincronizacao;
   prioridade: number;
   tentativas: number;
@@ -37,6 +38,7 @@ function novaTarefaFake(dados: Partial<FakeTarefa>): FakeTarefa {
     desde: null,
     ate: null,
     cursor: null,
+    forcar: false,
     status: StatusTarefaSincronizacao.PENDENTE,
     prioridade: 0,
     tentativas: 0,
@@ -280,6 +282,32 @@ describe("executarFila — PEDIDOS_PERIODO", () => {
 
     await executarFila("user-1", "conta-1", 40000);
 
+    expect(ingerirVendaNormalizadaMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("Ciclo 9 (item 7): com forcar:true reprocessa mesmo um pedido sem mudança e venda completa", async () => {
+    pedidosPorDia = { "2026-05-01": [pedidoMl("1", "2026-05-01T10:00:00.000-03:00")] };
+    vendas = [
+      {
+        pedidoExternoId: "1",
+        atualizadoNoCanalEm: new Date("2026-05-01T10:00:00.000-03:00"),
+        completo: true,
+      },
+    ];
+
+    await enfileirarTarefa({
+      userId: "user-1",
+      canal: CanalVenda.MERCADO_LIVRE,
+      contaCanalId: "conta-1",
+      tipo: TipoTarefaSincronizacao.PEDIDOS_PERIODO,
+      desde: new Date("2026-05-01T00:00:00.000-03:00"),
+      ate: new Date("2026-05-01T23:59:59.999-03:00"),
+      forcar: true,
+    });
+
+    const resultado = await executarFila("user-1", "conta-1", 40000);
+
+    expect(resultado.status).toBe("CONCLUIDA");
     expect(ingerirVendaNormalizadaMock).toHaveBeenCalledTimes(1);
   });
 

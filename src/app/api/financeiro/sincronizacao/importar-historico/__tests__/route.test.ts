@@ -6,8 +6,8 @@ vi.mock("@/helpers/verifyUser", () => ({ verifyUser: verifyUserMock }));
 const enfileirarPeriodoMock = vi.fn();
 const executarFilaMock = vi.fn();
 vi.mock("@/modules/financeiro/ingestao/fila", () => ({
-  enfileirarPeriodo: (accountId: string, desde: Date, ate: Date, prioridade: number) =>
-    enfileirarPeriodoMock(accountId, desde, ate, prioridade),
+  enfileirarPeriodo: (accountId: string, desde: Date, ate: Date, prioridade: number, forcar: boolean) =>
+    enfileirarPeriodoMock(accountId, desde, ate, prioridade, forcar),
   executarFila: (userId: string, accountId: string) => executarFilaMock(userId, accountId),
 }));
 
@@ -72,7 +72,8 @@ describe("POST /api/financeiro/sincronizacao/importar-historico", () => {
       "conta-ml-1",
       expect.any(Date),
       expect.any(Date),
-      20
+      20,
+      false
     );
     expect(executarFilaMock).toHaveBeenCalledWith("conta-dona", "conta-ml-1");
   });
@@ -86,5 +87,20 @@ describe("POST /api/financeiro/sincronizacao/importar-historico", () => {
     const [, desde, ate] = enfileirarPeriodoMock.mock.calls[0] as [string, Date, Date, number];
     const dias = Math.round((ate.getTime() - desde.getTime()) / (24 * 60 * 60 * 1000));
     expect(dias).toBe(365);
+  });
+
+  it("Ciclo 9 (item 7): repassa forcar:true para reprocessar mesmo o que já está completo", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-dona", role: "ADMIN" });
+    executarFilaMock.mockResolvedValue({ status: "EM_ANDAMENTO", processados: 10 });
+
+    await POST(criarRequest({ dias: 365, forcar: true }) as never);
+
+    expect(enfileirarPeriodoMock).toHaveBeenCalledWith(
+      "conta-ml-1",
+      expect.any(Date),
+      expect.any(Date),
+      20,
+      true
+    );
   });
 });

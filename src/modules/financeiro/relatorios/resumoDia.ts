@@ -231,7 +231,7 @@ async function calcularPontoEquilibrioDoMes(
   ]);
 
   const receitaLiquidaDoMes =
-    totaisDoMes.faturamentoBruto - totaisDoMes.cancelamentos - totaisDoMes.descontos - totaisDoMes.impostos;
+    totaisDoMes.faturamentoBruto - totaisDoMes.cancelamentos - totaisDoMes.impostos;
   const margemContribuicaoPercentual =
     receitaLiquidaDoMes === 0 ? null : totaisDoMes.margemContribuicao / receitaLiquidaDoMes;
 
@@ -271,7 +271,7 @@ export async function gerarResumoPeriodo(
       calcularPontoEquilibrioDoMes(userId, ate, canal),
     ]);
 
-    const receitaLiquida = totais.faturamentoBruto - totais.cancelamentos - totais.descontos - totais.impostos;
+    const receitaLiquida = totais.faturamentoBruto - totais.cancelamentos - totais.impostos;
 
     return {
       desde,

@@ -5,6 +5,7 @@ import { obterAdaptador } from "../canais/registro";
 import type {
   AdaptadorCanalFinanceiro,
   ContaCanal,
+  PagamentoNormalizado,
   VendaCanalNormalizada,
 } from "../canais/tipos";
 import {
@@ -164,6 +165,31 @@ async function resolverLiberacao(
     normalizado.dataVenda.getTime() + diasLiberacaoPadrao * 24 * 60 * 60 * 1000
   );
   return { dataLiberacao: estimativa, valorLiquidoOverride: null, estimado: true };
+}
+
+async function resolverPagamentoDetalhado(
+  contaCanal: ContaCanal,
+  adaptador: AdaptadorCanalFinanceiro,
+  normalizado: VendaCanalNormalizada
+): Promise<PagamentoNormalizado | null> {
+  if (!normalizado.pagamentoExternoId || !adaptador.obterPagamentoDetalhado) return null;
+
+  try {
+    return await adaptador.obterPagamentoDetalhado(contaCanal, normalizado.pagamentoExternoId);
+  } catch (erro) {
+    console.error("[PAGAMENTO_ML] Erro ao buscar detalhe do pagamento:", erro);
+    return null;
+  }
+}
+
+function aplicarTarifaConfirmada(
+  itensEntrada: ItemVendaEntrada[],
+  pagamento: PagamentoNormalizado
+): void {
+  const tarifasRateadas = ratearCustoVendaPorItem(pagamento.tarifaVenda, itensEntrada);
+  itensEntrada.forEach((item, i) => {
+    item.tarifaTotal = tarifasRateadas[i];
+  });
 }
 
 async function resolverFreteTotalDoPedidoAtual(
@@ -363,12 +389,14 @@ async function persistirVendaNormalizada(
     adaptador,
     normalizadoOriginal
   );
-  const freteTotalPedido = await resolverFreteTotalDoPedidoAtual(
+  const pagamento = await resolverPagamentoDetalhado(contaCanal, adaptador, normalizadoOriginal);
+  const freteEstimado = await resolverFreteTotalDoPedidoAtual(
     contaCanal,
     adaptador,
     normalizadoOriginal,
     config.custoEnvioFlex
   );
+  const freteTotalPedido = pagamento ? pagamento.freteVendedor : freteEstimado;
   const liberacao = await resolverLiberacao(
     contaCanal,
     adaptador,
@@ -393,6 +421,10 @@ async function persistirVendaNormalizada(
     normalizadoOriginal,
     vendaExistente
   );
+
+  if (pagamento) {
+    aplicarTarifaConfirmada(itensEntrada, pagamento);
+  }
 
   const resultado: ResultadoVenda = calcularResultadoVenda(
     { freteTotal: freteTotalPedido, adsAtribuido: vendaExistente?.adsAtribuido ?? 0 },
@@ -433,7 +465,10 @@ async function persistirVendaNormalizada(
     cmv: resultado.cmv,
     outrosCustos: 0,
     margemContribuicao: resultado.margemContribuicao,
-    valorLiquidoReceber: liberacao.valorLiquidoOverride ?? calcularValorLiquidoReceber(resultado),
+    valorLiquidoReceber:
+      pagamento?.valorLiquidoReceber ?? liberacao.valorLiquidoOverride ?? calcularValorLiquidoReceber(resultado),
+    retencaoDividas: pagamento?.retencaoDividas ?? 0,
+    statusLiberacao: pagamento?.statusLiberacao ?? null,
     completo,
     faltando,
     freteConfianca: freteTotalPedido == null ? Confianca.ESTIMADO : Confianca.CONFIRMADO,
@@ -483,7 +518,45 @@ async function persistirVendaNormalizada(
     }),
   ]);
 
+  if (pagamento) {
+    await persistirCobrancasPagamento(venda.id, pagamento);
+  }
+
   await atualizarResumoDoDia(userId, origem.canal, normalizadoOriginal.dataVenda);
+}
+
+async function persistirCobrancasPagamento(
+  vendaId: string,
+  pagamento: PagamentoNormalizado
+): Promise<void> {
+  for (const cobranca of pagamento.cobrancas) {
+    await prisma.cobrancaPagamento.upsert({
+      where: {
+        vendaId_pagamentoExternoId_nome: {
+          vendaId,
+          pagamentoExternoId: pagamento.pagamentoExternoId,
+          nome: cobranca.nome,
+        },
+      },
+      create: {
+        vendaId,
+        pagamentoExternoId: pagamento.pagamentoExternoId,
+        nome: cobranca.nome,
+        tipo: cobranca.tipo,
+        valor: cobranca.valor,
+        estornado: cobranca.estornado,
+        destino: cobranca.destino,
+        metadata: cobranca.metadata ?? undefined,
+      },
+      update: {
+        tipo: cobranca.tipo,
+        valor: cobranca.valor,
+        estornado: cobranca.estornado,
+        destino: cobranca.destino,
+        metadata: cobranca.metadata ?? undefined,
+      },
+    });
+  }
 }
 
 export async function atualizarResumoDoDia(

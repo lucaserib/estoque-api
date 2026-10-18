@@ -27,6 +27,7 @@ export interface VendaCanalNormalizada {
   status: StatusVendaCanal;
   logistica: string | null;
   envioExternoId: string | null;
+  pagamentoExternoId: string | null;
   freteComprador: number;
   /** Nível do pedido inteiro — a camada de ingestão rateia entre os itens. */
   descontoVendedorTotal: number;
@@ -91,6 +92,27 @@ export interface LiberacaoNormalizada {
   dataLiberacao: Date;
 }
 
+export interface CobrancaPagamentoNormalizada {
+  nome: string;
+  tipo: string;
+  valor: number;
+  estornado: number;
+  destino: string | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface PagamentoNormalizado {
+  pagamentoExternoId: string;
+  tarifaVenda: number;
+  freteVendedor: number;
+  retencaoDividas: number;
+  valorLiquidoReceber: number | null;
+  dataLiberacao: Date | null;
+  statusLiberacao: string | null;
+  cobrancas: CobrancaPagamentoNormalizada[];
+  desconhecidos: string[];
+}
+
 /**
  * Contrato estável entre o domínio financeiro e cada canal de venda. O
  * domínio só conhece os tipos `*Normalizada` acima — nada aqui menciona
@@ -120,6 +142,10 @@ export interface AdaptadorCanalFinanceiro {
     pedidoExternoId: string
   ): Promise<LiberacaoPagamentoNormalizada>;
   obterDescontos?(conta: ContaCanal, pedidoExternoId: string): Promise<unknown>;
+  obterPagamentoDetalhado?(
+    conta: ContaCanal,
+    pagamentoExternoId: string
+  ): Promise<PagamentoNormalizado>;
   listarGastosAds?(conta: ContaCanal, dia: Date): Promise<GastoAdsNormalizado[]>;
   listarCobrancas?(
     conta: ContaCanal,

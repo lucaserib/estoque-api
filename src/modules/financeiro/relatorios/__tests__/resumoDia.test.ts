@@ -209,6 +209,27 @@ describe("gerarResumoPeriodo", () => {
     expect(resultado.ticketMedio).toBe(6000);
   });
 
+  it("C1 (Ciclo 9): desconto é informativo e não reduz a receita líquida do período", async () => {
+    resumos.push(
+      resumo({
+        dia: new Date("2026-05-10T03:00:00.000Z"),
+        faturamentoBruto: 10000,
+        cancelamentos: 2000,
+        descontos: 5000,
+        impostos: 0,
+        margemContribuicao: 3000,
+      })
+    );
+
+    const resultado = await gerarResumoPeriodo(
+      "user-1",
+      new Date("2026-05-10T00:00:00.000Z"),
+      new Date("2026-05-10T23:59:59.999Z")
+    );
+
+    expect(resultado.margemContribuicaoPercentual).toBe(3000 / 8000);
+  });
+
   it("rateia a despesa fixa diária corretamente quando o período cruza dois meses", async () => {
     // abril tem 30 dias (despesa fixa de 3000/dia), maio tem 31 (despesa fixa de 3100/dia)
     lancamentos.push(

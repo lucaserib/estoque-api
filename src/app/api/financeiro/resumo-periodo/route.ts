@@ -3,6 +3,7 @@ import { CanalVenda } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { gerarResumoPeriodo } from "@/modules/financeiro/relatorios/resumoDia";
+import { inicioDoDia, fimDoDia } from "@/modules/financeiro/dominio/periodo";
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,7 +18,12 @@ export async function GET(request: NextRequest) {
     }
     const canal = (searchParams.get("canal") as CanalVenda) || undefined;
 
-    const resumo = await gerarResumoPeriodo(user.contaId, new Date(desde), new Date(ate), canal);
+    const resumo = await gerarResumoPeriodo(
+      user.contaId,
+      inicioDoDia(new Date(desde)),
+      fimDoDia(new Date(ate)),
+      canal
+    );
     return NextResponse.json(resumo);
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);

@@ -41,6 +41,7 @@ export interface ParametrosEnfileirar {
   desde?: Date | null;
   ate?: Date | null;
   prioridade?: number;
+  forcar?: boolean;
 }
 
 export async function enfileirarTarefa(
@@ -54,6 +55,7 @@ export async function enfileirarTarefa(
       status: { in: [StatusTarefaSincronizacao.PENDENTE, StatusTarefaSincronizacao.EM_ANDAMENTO] },
       desde: params.desde ?? null,
       ate: params.ate ?? null,
+      forcar: params.forcar ?? false,
     },
     orderBy: { criadaEm: "desc" },
   });
@@ -77,6 +79,7 @@ export async function enfileirarTarefa(
       desde: params.desde ?? null,
       ate: params.ate ?? null,
       prioridade: params.prioridade ?? 0,
+      forcar: params.forcar ?? false,
     },
   });
 }
@@ -199,7 +202,7 @@ async function executarPedidosPeriodo(
         tarefa.canal,
         pedidosDoDia[indiceNoDia],
         "PEDIDOS_PERIODO",
-        false
+        tarefa.forcar
       );
       processadosNoLote++;
       indiceNoDia++;
@@ -385,7 +388,8 @@ export async function enfileirarPeriodo(
   accountId: string,
   desde: Date,
   ate: Date,
-  prioridade = 0
+  prioridade = 0,
+  forcar = false
 ): Promise<TarefaSincronizacaoFinanceira | null> {
   const userId = await obterUserIdDaConta(accountId);
   if (!userId) return null;
@@ -397,6 +401,7 @@ export async function enfileirarPeriodo(
     desde,
     ate,
     prioridade,
+    forcar,
   });
 }
 

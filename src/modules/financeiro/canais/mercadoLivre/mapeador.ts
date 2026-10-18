@@ -21,6 +21,7 @@ interface DescontosBruto {
 }
 
 interface PagamentoBruto {
+  id?: number | string;
   status?: string;
   transaction_amount?: number;
   transaction_amount_refunded?: number;
@@ -161,6 +162,13 @@ function extrairDataLiberacao(payments: unknown): Date | null {
   return aprovado?.money_release_date ? new Date(aprovado.money_release_date) : null;
 }
 
+function extrairPagamentoExternoId(payments: unknown): string | null {
+  const lista = listaPagamentos(payments);
+  if (lista.length === 0) return null;
+  const aprovado = lista.find((p) => p.status === "approved") ?? lista[0];
+  return aprovado?.id != null ? String(aprovado.id) : null;
+}
+
 function extrairFreteComprador(shipping: Record<string, unknown>): number {
   const custo = shipping.cost ?? shipping.list_cost;
   return typeof custo === "number" ? Math.round(custo * 100) : 0;
@@ -196,6 +204,7 @@ export function mapearPedido(
     status,
     logistica,
     envioExternoId,
+    pagamentoExternoId: extrairPagamentoExternoId(pedido.payments),
     freteComprador: extrairFreteComprador(shipping),
     descontoVendedorTotal: somarDescontoVendedor(descontosBrutos),
     descontoCusteadoPeloMlTotal: somarDescontoCusteadoPeloMl(descontosBrutos),
