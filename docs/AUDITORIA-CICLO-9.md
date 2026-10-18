@@ -146,3 +146,47 @@ Boa parte do painel já existia de ciclos anteriores (ponto de equilíbrio, lucr
 - **Produtos: curva ABC**: classificar produtos em A/B/C pela contribuição acumulada de faturamento é uma funcionalidade nova de análise, sem pedido específico de produto além desta linha do prompt — adiado para não competir pelo tempo da Fase 7 (verificação final), que ainda falta nesta mesma execução. "Produtos com venda e sem custo" já aparece de forma indireta no contador de vendas incompletas (uma das três causas mostradas é "sem custo"), mas não como lista dedicada de produtos.
 
 **Resultado ao final da fase:** `tsc`/`lint`/`next build` limpos; `npm test` com 661 testes passando (13 novos).
+
+## Fase 7 — Verificação
+
+**Checagens automáticas (rodadas agora, nesta máquina):**
+- `npx tsc --noEmit`: limpo.
+- `npx next lint`: limpo (0 warnings, 0 erros).
+- `npm test`: **661 testes passando**, 104 arquivos de teste, 0 falhas. O ciclo começou em 547 testes (antes da Fase 0) e terminou em 661 — **114 testes novos** ao longo das 7 fases, cobrindo cada bug e cada fonte de verdade documentados nas seções acima.
+- `npx next build`: compila limpo (todas as rotas e páginas novas das 7 fases aparecem no manifesto de build, incluindo `/produtos/vinculos-pendentes`, `/api/financeiro/por-logistica`, `/api/financeiro/contas-financeiras/movimentos-carteira`, etc.).
+- `npm run build` completo (que roda `prisma migrate deploy` antes do build): **não roda nesta máquina** — não há `DATABASE_URL` configurada neste ambiente de desenvolvimento (limitação pré-existente, documentada desde ciclos anteriores). As 8 migrações deste ciclo (listadas abaixo) são todas aditivas (`ADD COLUMN IF NOT EXISTS`, `CREATE TABLE IF NOT EXISTS`, `CREATE TYPE` com tratamento de `duplicate_object`) — confirmado por `grep` que nenhuma contém `DROP`, `ALTER COLUMN ... TYPE` ou `RENAME`. `npx prisma generate` roda limpo a cada fase, confirmando que o schema é válido.
+- `npx prisma generate`: limpo, Prisma Client gerado sem erros.
+
+**Migrações deste ciclo** (todas aditivas, nenhuma destrutiva):
+1. `20261018100000_financeiro_ciclo9_fase1_fila` — `TarefaSincronizacaoFinanceira`.
+2. `20261018110000_financeiro_ciclo9_fase2_pagamento` — `CobrancaPagamento`, `VendaCanal.retencaoDividas`/`statusLiberacao`.
+3. `20261018120000_financeiro_ciclo9_fase2_forcar` — `TarefaSincronizacaoFinanceira.forcar`.
+4. `20261018130000_financeiro_ciclo9_fase3_frete` — `FreteOrigem`, ajuste manual de frete, `RegraFreteLogistica`, `Produto.custoFreteManual`/`custoEmbalagem`.
+5. `20261018140000_financeiro_ciclo9_fase4_saldo` — `ContaFinanceira` automática e saldo externo.
+6. `20261018150000_financeiro_ciclo9_fase5_full_armazem` — correção de dados do armazém Full (`UPDATE`, não destrutivo — corrige `tipo` de registros já existentes).
+7. `20261018160000_financeiro_ciclo9_fase5_vinculo` — `OrigemVinculoProduto`, `vinculoConfirmado`.
+8. `20261018170000_financeiro_ciclo9_fase6_meta` — `ConfiguracaoGeral.metaFaturamentoMensal`.
+
+**Documentação atualizada**: `docs/financeiro/fontes-mercado-livre.md` (seções "Ciclo 9" com o payload de `charges_details` e o status do endpoint de saldo) e `docs/financeiro/definicoes.md` (reescrito com as fórmulas de cada número do financeiro, a prioridade completa do frete, saldo em conta, comparações e meta mensal) — ambos atualizados incrementalmente a cada fase, não só nesta.
+
+### Lista de aceite — para o Lucas confirmar depois do deploy em produção
+
+Nenhum destes itens pôde ser verificado nesta sessão: o ambiente de desenvolvimento usado não alcança `api.mercadolibre.com`/`api.mercadopago.com` (bloqueado por `PolicyAgent` do próprio Mercado Livre, confirmado desde o Ciclo 6) nem tem acesso ao banco de produção. Cada item abaixo é uma afirmação sobre o que o código **deveria** fazer agora — a confirmação real só acontece em produção.
+
+- [ ] **Conferência de outubro e setembro**: abrir Financeiro → Conferência, escolher outubro e setembro, clicar em "Importar faltantes"/"Reprocessar divergentes" até 100% de cobertura. Totais esperados: outubro (dias 1–18) 152 pedidos pagos e R$ 5.440,72; setembro 103 pedidos e R$ 3.366,11 — sem divergências abertas na tabela.
+- [ ] **Mesma venda, mesmos valores em todas as telas**: escolher uma venda recente e comparar o valor de faturamento/tarifa/frete/margem em Financeiro → Vendas, na DRE do mês, na Visão geral (se estiver no período do dia) e na ficha do produto vendido (Produtos → produto → "Margem por canal"). Nenhum dos quatro lugares tem uma fórmula própria desde a Fase 2 (tarifa/frete) — mas o serviço único de relatórios (item 2 da Fase 2) não foi construído, então cada tela ainda lê sua própria query; divergência aqui seria um sinal real de bug, não esperado, mas não blindado por uma consolidação completa.
+- [ ] **Pedido 2000019043297364**: tarifa R$ 2,99, frete R$ 6,85, retenção R$ 12,14 fora da margem, líquido R$ 12,72, liberação 16/11 — conferir em Financeiro → Vendas → detalhe do pedido (ou no diagnóstico `?tipo=pagamento&id=<id_do_pagamento>`). Esse é o teste direto do `mapeadorPagamento.ts` (Fase 2) contra o pedido real que motivou a correção.
+- [ ] **Saldo disponível do MP**: comparar Financeiro → Fluxo de caixa → "Saldo por conta" (linha "Mercado Pago — <apelido>") com o saldo mostrado no app oficial do Mercado Pago. **Risco conhecido**: o endpoint usado (`/users/{mlUserId}/mercadopago_account/balance`) nunca foi confirmado contra uma resposta real (Fase 4) — se os nomes de campo estiverem errados, o saldo ficará em branco (nunca errado/inventado) e precisará de correção no endpoint ou nos nomes de campo em `canais/mercadoPago/saldo.ts`.
+- [ ] **Armazém Full como `FULL_ML`**: em Estoque → Armazéns, confirmar que "Full (Mercado Livre)" aparece com o tipo correto (a migração da Fase 5 já corrige isso no deploy; a sincronização também se autocorrige caso encontre o tipo errado).
+- [ ] **Preço de MLB4019629019 igual ao do anúncio no ML**: rodar uma sincronização manual (Produtos → "Atualizar Dados ML" ou Mercado Livre → Produtos → sincronizar) e comparar o preço mostrado com o preço real do anúncio no painel do Mercado Livre. Vale só para a sincronização manual (`sync/route.ts`) — o webhook automático ainda usa a lógica antiga (Fase 5, P2 deferido).
+- [ ] **Cobranças de setembro com tipos reais**: em Financeiro → Configurações → Conciliação de fatura, escolher setembro e conferir se as linhas de cobrança têm tipo reconhecido e o total bate com a fatura do Mercado Livre daquele mês. **Risco conhecido**: `mapeadorCobrancas.ts` não foi reescrito nesta fase (C5, deferido desde a Fase 2) — os nomes de campo (`charge_type`/`amount`/`id`) continuam não confirmados contra um payload real.
+
+### Passos manuais do Lucas (já listados no prompt original, repetidos aqui por conveniência)
+1. App do Mercado Livre → Notificações: confirmar que a URL `https://estoque-api-4iqj.vercel.app/api/mercadolivre/webhook` está configurada com os tópicos `orders_v2`, `shipments`, `payments`, `claims` e `items`.
+2. Depois do deploy: abrir Financeiro → Conferência, escolher outubro e setembro, e deixar importar/reprocessar até 100%.
+3. Em Financeiro → Configurações → "Frete por logística": cadastrar o custo do Flex ou de entrega própria, se usar essas logísticas (Fase 3).
+4. Em Produtos → "Confirme estes vínculos": revisar os vínculos criados por similaridade de título, incluindo o caso MLB4019629019 ↔ KITADAPUSB citado no prompt original (Fase 5).
+5. Em Financeiro → Configurações: cadastrar a meta de faturamento mensal, se quiser ver o indicador na Visão geral (Fase 6).
+6. Considerar rodar `POST /api/financeiro/sincronizacao/importar-historico` com `{"forcar": true}` para os últimos 12 meses, para que vendas antigas (ingeridas antes da Fase 2) passem a usar o pagamento real do Mercado Pago em vez da estimativa por `sale_fee` — ação de operação, não automática (consome uma chamada ao Mercado Pago por pagamento).
+
+**Resultado ao final da fase:** `tsc`/`lint`/`next build`/`npm test` (661 testes) limpos. Commit final desta fase e `git push origin master` ao final, conforme pedido.
