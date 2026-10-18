@@ -2,6 +2,8 @@ import { CanalVenda, Confianca } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchMlWithBackoff } from "@/lib/mlFetch";
+import { inicioDoDia, fimDoDia } from "../../dominio/periodo";
+import type { MLOrder } from "@/types/mercadolivre";
 import type {
   AdaptadorCanalFinanceiro,
   CobrancaNormalizada,
@@ -50,6 +52,50 @@ async function buscarDiscounts(
   );
   if (!resposta.ok) return null;
   return resposta.json();
+}
+
+export async function listarPedidosCriadosNoPeriodo(
+  contaCanalId: string,
+  desde: Date,
+  ate: Date
+): Promise<MLOrder[]> {
+  const { accessToken, mlUserId } = await obterAccessTokenEMlUserId(contaCanalId);
+  const pedidos: MLOrder[] = [];
+
+  let diaCursor = inicioDoDia(desde);
+  while (diaCursor <= ate) {
+    const fimDoDiaAtual = fimDoDia(diaCursor);
+    const fimEfetivo = fimDoDiaAtual < ate ? fimDoDiaAtual : ate;
+
+    let offset = 0;
+    while (true) {
+      const params = new URLSearchParams({
+        seller: mlUserId,
+        offset: String(offset),
+        limit: String(LIMITE_POR_PAGINA),
+        sort: "date_asc",
+        "order.date_created.from": diaCursor.toISOString(),
+        "order.date_created.to": fimEfetivo.toISOString(),
+      });
+
+      const resposta = await fetchMlWithBackoff(
+        `${BASE_URL}/orders/search?${params.toString()}`,
+        { headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" } }
+      );
+      if (!resposta.ok) break;
+
+      const dados = (await resposta.json()) as { results: MLOrder[]; paging: { total: number } };
+      pedidos.push(...dados.results);
+
+      offset += LIMITE_POR_PAGINA;
+      const tetoDisponivel = Math.min(dados.paging.total, ML_MAX_OFFSET);
+      if (dados.results.length < LIMITE_POR_PAGINA || offset >= tetoDisponivel) break;
+    }
+
+    diaCursor = new Date(fimEfetivo.getTime() + 1);
+  }
+
+  return pedidos;
 }
 
 export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {

@@ -20,6 +20,7 @@ import {
   Wallet,
   FileBarChart,
   CreditCard,
+  ClipboardCheck,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -282,6 +283,9 @@ const Sidebar = () => {
               isCollapsed={isSidebarCollapsed}
             >
               <SidebarSubLink href="/financeiro" icon={Layout} label="Visão geral" />
+              {isAdmin && (
+                <SidebarSubLink href="/financeiro/conferencia" icon={ClipboardCheck} label="Conferência" />
+              )}
               <SidebarSubLink href="/financeiro/dre" icon={FileBarChart} label="DRE" />
               <SidebarSubLink href="/financeiro/vendas" icon={BarChart3} label="Lucro por venda" />
               <SidebarSubLink href="/financeiro/produtos" icon={Package} label="Lucro por produto" />
