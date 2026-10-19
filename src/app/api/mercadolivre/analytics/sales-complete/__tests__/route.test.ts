@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { NextRequest } from "next/server";
 
+const verifyUserMock = vi.fn(async () => ({ id: "user-1", role: "ADMIN" }));
 vi.mock("@/helpers/verifyUser", () => ({
-  verifyUser: vi.fn(async () => ({ id: "user-1" })),
+  verifyUser: verifyUserMock,
 }));
 
 const mockAccount = {
@@ -12,13 +13,14 @@ const mockAccount = {
   isActive: true,
 };
 
+const produtoMercadoLivreFindManyMock = vi.fn(async (..._args: unknown[]) => [] as unknown[]);
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     mercadoLivreAccount: {
       findFirst: vi.fn(async () => mockAccount),
     },
     produtoMercadoLivre: {
-      findMany: vi.fn(async () => []),
+      findMany: (...args: unknown[]) => produtoMercadoLivreFindManyMock(...args),
     },
   },
 }));
@@ -150,5 +152,48 @@ describe("GET /api/mercadolivre/analytics/sales-complete", () => {
     expect(body.data.summary.totalShippingCostReal).toBe(2000);
     expect(body.data.summary.shippingCostsIncompletos).toBe(0);
     expect(body.data.summary.netRevenue).toBe(100 - 10 - 2000);
+  });
+
+  it("esconde custoMedio e estimatedProfit dos produtos para papel sem VER_CUSTO", async () => {
+    verifyUserMock.mockResolvedValueOnce({ id: "user-1", role: "VENDAS" });
+    produtoMercadoLivreFindManyMock.mockImplementationOnce(async (...callArgs: unknown[]) => {
+      const args = callArgs[0] as { select: Record<string, unknown> };
+      return args.select.produto ? [{ mlItemId: "item-0", produto: { custoMedio: 5000 } }] : [];
+    });
+
+    const { GET } = await import("../route");
+    const { mlCache } = await import("@/lib/cache");
+    await mlCache.invalidatePattern("sales-complete");
+
+    const request = new NextRequest(
+      "http://localhost/api/mercadolivre/analytics/sales-complete?accountId=acc-1&period=30"
+    );
+    const response = await GET(request);
+    const body = await response.json();
+
+    const produto = body.data.trends.topProducts.find((p: { mlItemId: string }) => p.mlItemId === "item-0");
+    expect(produto.custoMedio).toBeNull();
+    expect(produto.estimatedProfit).toBeNull();
+  });
+
+  it("mostra custoMedio e estimatedProfit para ADMIN", async () => {
+    verifyUserMock.mockResolvedValueOnce({ id: "user-1", role: "ADMIN" });
+    produtoMercadoLivreFindManyMock.mockImplementationOnce(async (...callArgs: unknown[]) => {
+      const args = callArgs[0] as { select: Record<string, unknown> };
+      return args.select.produto ? [{ mlItemId: "item-0", produto: { custoMedio: 5000 } }] : [];
+    });
+
+    const { GET } = await import("../route");
+    const { mlCache } = await import("@/lib/cache");
+    await mlCache.invalidatePattern("sales-complete");
+
+    const request = new NextRequest(
+      "http://localhost/api/mercadolivre/analytics/sales-complete?accountId=acc-1&period=30"
+    );
+    const response = await GET(request);
+    const body = await response.json();
+
+    const produto = body.data.trends.topProducts.find((p: { mlItemId: string }) => p.mlItemId === "item-0");
+    expect(produto.custoMedio).toBe(50);
   });
 });

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import { calcularTodasPendencias } from "@/services/pendenciasService";
 import { NotificationService } from "@/services/notificationService";
@@ -67,6 +68,7 @@ export async function GET(request: NextRequest) {
         `[CRON_CADASTRO_INCOMPLETO] Erro ao processar conta ${conta.id}:`,
         error
       );
+      Sentry.captureException(error, { tags: { cron: "cadastro-incompleto", contaId: conta.id } });
     }
   }
 

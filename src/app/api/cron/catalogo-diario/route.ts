@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import { sincronizarCatalogoSeNecessario } from "@/modules/catalogo/sincronizacao";
 
@@ -28,6 +29,7 @@ export async function GET(request: NextRequest) {
       const status = await sincronizarCatalogoSeNecessario(userId, orcamentoPorConta, { horasValidade: 20 });
       resultados.push({ userId, etapa: status.etapa, erro: status.erro });
     } catch (error) {
+      Sentry.captureException(error, { tags: { cron: "catalogo-diario", contaId: userId } });
       resultados.push({ userId, etapa: null, erro: error instanceof Error ? error.message : "erro" });
     }
   }

@@ -1,8 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { NextRequest } from "next/server";
 
-const { verifyUserMock } = vi.hoisted(() => ({ verifyUserMock: vi.fn() }));
+const { verifyUserMock, getServerSessionMock } = vi.hoisted(() => ({
+  verifyUserMock: vi.fn(),
+  getServerSessionMock: vi.fn(),
+}));
 vi.mock("@/helpers/verifyUser", () => ({ verifyUser: verifyUserMock }));
-vi.mock("next-auth", () => ({ getServerSession: vi.fn() }));
+vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }));
 vi.mock("@/lib/auth", () => ({ authOptions: {} }));
 
 const notifyPedidoConcluidoMock = vi.fn();
@@ -48,6 +52,15 @@ vi.mock("@/lib/prisma", () => ({
       ),
     },
     pedidoCompra: {
+      findMany: vi.fn(async () =>
+        pedidos.map((pedido) => ({
+          ...pedido,
+          fornecedor: { nome: "Fornecedor X" },
+          produtos: pedidoProdutos
+            .filter((pp) => pp.pedidoId === pedido.id)
+            .map((pp) => ({ ...pp, produto: { custoMedio: 1000 } })),
+        }))
+      ),
       findUnique: vi.fn(async ({ where }: { where: { id: number } }) => {
         const pedido = pedidos.find((p) => p.id === where.id);
         if (!pedido) return null;
@@ -133,7 +146,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-const { PUT } = await import("../route");
+const { PUT, GET } = await import("../route");
 
 function criarRequestPut(body: Record<string, unknown>) {
   return new Request("http://localhost/api/pedidos-compra", {
@@ -145,6 +158,8 @@ function criarRequestPut(body: Record<string, unknown>) {
 beforeEach(() => {
   verifyUserMock.mockReset();
   verifyUserMock.mockResolvedValue({ id: "user-1", contaId: "conta-1", role: "ADMIN" });
+  getServerSessionMock.mockReset();
+  getServerSessionMock.mockResolvedValue({ user: { id: "user-1", contaId: "conta-1", role: "ADMIN" } });
   notifyPedidoConcluidoMock.mockReset();
   gerarContaAPagarDePedidoCompraMock.mockReset();
   pedidos = [];
@@ -275,5 +290,50 @@ describe("PUT /api/pedidos-compra — confirmar recebimento", () => {
     );
 
     expect(gerarContaAPagarDePedidoCompraMock).not.toHaveBeenCalled();
+  });
+});
+
+function criarRequestGet() {
+  return new NextRequest("http://localhost/api/pedidos-compra");
+}
+
+describe("GET /api/pedidos-compra", () => {
+  it("esconde custo para ESTOQUE, que tem acesso de visualização mas não VER_CUSTO", async () => {
+    getServerSessionMock.mockResolvedValue({ user: { id: "user-1", contaId: "conta-1", role: "ESTOQUE" } });
+    pedidos.push({
+      id: 1,
+      userId: "conta-1",
+      fornecedorId: "forn-1",
+      status: "pendente",
+      armazemId: null,
+      dataConclusao: null,
+      comentarios: null,
+    });
+    pedidoProdutos.push({ id: 1, pedidoId: 1, produtoId: "produto-1", quantidade: 10, custo: 20000, multiplicador: 1 });
+
+    const response = await GET(criarRequestGet());
+    const body = await response.json();
+
+    expect(body[0].produtos[0].custo).toBe(0);
+    expect(body[0].produtos[0].produto.custoMedio).toBeNull();
+  });
+
+  it("mostra custo para ADMIN", async () => {
+    pedidos.push({
+      id: 1,
+      userId: "conta-1",
+      fornecedorId: "forn-1",
+      status: "pendente",
+      armazemId: null,
+      dataConclusao: null,
+      comentarios: null,
+    });
+    pedidoProdutos.push({ id: 1, pedidoId: 1, produtoId: "produto-1", quantidade: 10, custo: 20000, multiplicador: 1 });
+
+    const response = await GET(criarRequestGet());
+    const body = await response.json();
+
+    expect(body[0].produtos[0].custo).toBe(20000);
+    expect(body[0].produtos[0].produto.custoMedio).toBe(1000);
   });
 });

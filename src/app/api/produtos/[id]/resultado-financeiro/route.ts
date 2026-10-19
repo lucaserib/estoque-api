@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
+import { exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { gerarLucroPorProduto } from "@/modules/financeiro/relatorios/lucroPorProduto";
 import { listarVendasComLucro } from "@/modules/financeiro/relatorios/lucroPorVenda";
 
@@ -11,6 +12,7 @@ export async function GET(
 ) {
   try {
     const user = await verifyUser(request);
+    exigirVisualizacao(user.role, "FINANCEIRO_VER");
     const { id } = await params;
 
     const ate = new Date();
@@ -38,6 +40,9 @@ export async function GET(
       vendasIncompletas: vendasIncompletas.total,
     });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao calcular resultado financeiro do produto:", error);
     return NextResponse.json(
       { error: "Erro ao calcular resultado financeiro do produto" },

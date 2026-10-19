@@ -1,6 +1,7 @@
 import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { podeVer } from "@/lib/permissoes";
 
 
 // Função para tratar requisições GET
@@ -142,9 +143,10 @@ export async function PUT(request: NextRequest) {
         id: estoque.produto.id,
         nome: estoque.produto.nome,
         sku: estoque.produto.sku,
-        custoMedio: estoque.produto.custoMedio
-          ? Number(estoque.produto.custoMedio)
-          : null,
+        custoMedio:
+          podeVer(user.role, "VER_CUSTO") && estoque.produto.custoMedio
+            ? Number(estoque.produto.custoMedio)
+            : null,
         isKit: estoque.produto.isKit,
         ean: estoque.produto.ean ? estoque.produto.ean.toString() : null,
         userId: estoque.produto.userId,

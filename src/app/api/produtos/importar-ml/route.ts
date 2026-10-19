@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { resolverCustoProduto } from "@/lib/custo";
 import { pickMlImageUrl } from "@/lib/imageUrl";
+import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
@@ -115,6 +116,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "EDITAR_PRODUTO");
     const body = await request.json();
     const { accountId, selectedItems, defaultValues } = body;
 
@@ -240,6 +242,9 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao importar produtos ML:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

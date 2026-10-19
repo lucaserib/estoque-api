@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
+import { podeVer } from "@/lib/permissoes";
 
 /**
  * GET /api/produtos/buscar-por-ean?ean=7891234567890
@@ -42,13 +43,15 @@ export async function GET(request: NextRequest) {
       0
     );
 
+    const verCusto = podeVer(user.role, "VER_CUSTO");
+
     return NextResponse.json({
       produto: {
         id: produto.id,
         nome: produto.nome,
         sku: produto.sku,
         ean: produto.ean?.toString(),
-        preco: produto.custoMedio ?? 0,
+        preco: verCusto ? produto.custoMedio ?? 0 : 0,
         quantidadeDisponivel,
         unidade: "un",
       },

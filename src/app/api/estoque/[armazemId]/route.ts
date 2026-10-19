@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { verifyUser } from "@/helpers/verifyUser";
+import { podeVer } from "@/lib/permissoes";
 
 export async function GET(
   request: NextRequest,
@@ -34,6 +35,8 @@ export async function GET(
       include: { produto: true },
     });
 
+    const verCusto = podeVer(user.role, "VER_CUSTO");
+
     const serializedEstoque = estoque.map((item) => ({
       produtoId: item.produtoId,
       armazemId: item.armazemId,
@@ -44,9 +47,10 @@ export async function GET(
         nome: item.produto.nome,
         sku: item.produto.sku,
         isKit: item.produto.isKit,
-        custoMedio: item.produto.custoMedio
-          ? Number(item.produto.custoMedio)
-          : null,
+        custoMedio:
+          verCusto && item.produto.custoMedio
+            ? Number(item.produto.custoMedio)
+            : null,
         ean: item.produto.ean ? item.produto.ean.toString() : null,
       },
     }));

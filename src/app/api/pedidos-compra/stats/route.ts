@@ -2,6 +2,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { subDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
+import { podeVer } from "@/lib/permissoes";
 
 
 export async function GET(request: NextRequest) {
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
       {
         pendentes: pendingOrdersCount,
         concluidos: completedOrdersCount,
-        valorTotal: totalValue,
+        valorTotal: podeVer(user.role, "VER_CUSTO") ? totalValue : null,
       },
       { status: 200 }
     );

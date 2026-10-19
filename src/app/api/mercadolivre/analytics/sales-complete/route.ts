@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { withCache, createCacheKey } from "@/lib/cache";
 import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
+import { podeVer } from "@/lib/permissoes";
 
 interface SalesProduct {
   mlItemId: string;
@@ -661,6 +662,7 @@ export async function GET(request: NextRequest) {
         vinculados.map((v) => [v.mlItemId, v.produto?.custoMedio ?? null])
       );
 
+      const verCusto = podeVer(user.role, "VER_CUSTO");
       analytics.trends.topProducts = analytics.trends.topProducts.map(
         (product) => {
           const custoMedio = custoPorItem.get(product.mlItemId) ?? null;
@@ -668,9 +670,9 @@ export async function GET(request: NextRequest) {
             custoMedio !== null ? custoMedio / 100 : null;
           return {
             ...product,
-            custoMedio: custoEmReais,
+            custoMedio: verCusto ? custoEmReais : null,
             estimatedProfit:
-              custoEmReais !== null && custoEmReais > 0
+              verCusto && custoEmReais !== null && custoEmReais > 0
                 ? product.totalRevenue -
                   product.saleFees -
                   custoEmReais * product.totalSales

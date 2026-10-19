@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
+import { podeVer } from "@/lib/permissoes";
 import { calcularReposicaoConta } from "@/services/reposicaoService";
 
 /**
@@ -16,15 +17,15 @@ import { calcularReposicaoConta } from "@/services/reposicaoService";
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    const verCusto = podeVer(user.role, "VER_CUSTO");
 
     const { sugestoes, parcial } = await calcularReposicaoConta(user.contaId);
 
     const results = sugestoes
       .filter((s) => s.status === "critico" || s.status === "atencao")
       .map((s) => {
-        const custoTotalCompraReais = s.custoTotalCompra
-          ? s.custoTotalCompra / 100
-          : 0;
+        const custoTotalCompraReais =
+          verCusto && s.custoTotalCompra ? s.custoTotalCompra / 100 : 0;
 
         const reposicaoFull = s.temAnuncioFull
           ? {
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
           produtoId: s.produtoId,
           produtoNome: s.nome,
           sku: s.sku,
-          custoMedio: s.custoMedio || 0,
+          custoMedio: verCusto ? s.custoMedio || 0 : 0,
           tipoAnuncio,
           estoqueLocal: s.estoqueLocal,
           estoqueFull: s.estoqueFullDisponivel + s.estoqueFullEmTransito,

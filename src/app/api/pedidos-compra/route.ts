@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma, PedidoCompra } from "@prisma/client";
 import { serializeWithEAN } from "@/utils/api";
 import { NotificationService } from "@/services/notificationService";
-import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
+import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse, podeVer } from "@/lib/permissoes";
 import { gerarContaAPagarDePedidoCompra } from "@/modules/financeiro/lancamentos/pedidoCompra";
 
 const serializeBigInt = (obj: unknown): unknown => {
@@ -247,8 +247,11 @@ export async function GET(request: NextRequest) {
         quantidade: number;
         custo: number;
         multiplicador: number;
+        produto?: { custoMedio: number | null } & Record<string, unknown>;
       }[];
     };
+
+    const verCusto = podeVer(session.user.role, "VER_CUSTO");
 
     const pedidosWithProducts = pedidos.map((pedido) => {
       const pedidoWithProdutos = pedido as PedidoCompra;
@@ -260,7 +263,16 @@ export async function GET(request: NextRequest) {
         console.warn(`Pedido #${pedido.id} não tem produtos associados`);
       }
 
-      return pedidoWithProdutos;
+      if (verCusto) return pedidoWithProdutos;
+
+      return {
+        ...pedidoWithProdutos,
+        produtos: pedidoWithProdutos.produtos?.map((produtoPedido) => ({
+          ...produtoPedido,
+          custo: 0,
+          produto: produtoPedido.produto ? { ...produtoPedido.produto, custoMedio: null } : undefined,
+        })),
+      };
     });
 
     return NextResponse.json(serializeWithEAN(pedidosWithProducts));

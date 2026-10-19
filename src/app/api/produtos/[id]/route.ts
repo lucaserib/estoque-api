@@ -3,6 +3,7 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { normalizeImageUrl } from "@/lib/imageUrl";
 import { serializeWithEAN } from "@/utils/api";
+import { podeVer } from "@/lib/permissoes";
 
 /**
  * GET /api/produtos/[id]
@@ -116,13 +117,28 @@ export async function GET(
       );
     }
 
+    const verCusto = podeVer(user.role, "VER_CUSTO");
+
     const produtoSerialized = {
       ...produto,
       imagemUrl: normalizeImageUrl(produto.imagemUrl),
-      custoMedio: Number(produto.custoMedio),
+      custoMedio: verCusto ? Number(produto.custoMedio) : null,
       estoques: produto.estoques.map((estoque) => ({
         ...estoque,
         quantidade: Number(estoque.quantidade),
+      })),
+      componentes: produto.componentes.map((componente) => ({
+        ...componente,
+        produto: { ...componente.produto, custoMedio: verCusto ? componente.produto.custoMedio : null },
+      })),
+      fornecedores: produto.fornecedores.map((fornecedor) => ({
+        ...fornecedor,
+        preco: verCusto ? fornecedor.preco : null,
+        precoUnitario: verCusto ? fornecedor.precoUnitario : null,
+      })),
+      pedidos: produto.pedidos.map((item) => ({
+        ...item,
+        custo: verCusto ? item.custo : null,
       })),
       ProdutoMercadoLivre: produto.ProdutoMercadoLivre.map((ml) => ({
         ...ml,

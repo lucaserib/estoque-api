@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { withCache, createCacheKey } from "@/lib/cache";
 import { calcularTodasPendencias } from "@/services/pendenciasService";
+import { podeVer } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,9 +29,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    const verCusto = podeVer(user.role, "VER_CUSTO");
+
     const porCodigo: Record<
       string,
-      { quantidade: number; valorEstoqueAfetado: number }
+      { quantidade: number; valorEstoqueAfetado: number | null }
     > = {};
 
     for (const item of todos) {
@@ -38,12 +41,13 @@ export async function GET(request: NextRequest) {
         if (!porCodigo[pendencia.codigo]) {
           porCodigo[pendencia.codigo] = {
             quantidade: 0,
-            valorEstoqueAfetado: 0,
+            valorEstoqueAfetado: verCusto ? 0 : null,
           };
         }
         porCodigo[pendencia.codigo].quantidade += 1;
-        if (item.custoMedio != null) {
-          porCodigo[pendencia.codigo].valorEstoqueAfetado +=
+        if (verCusto && item.custoMedio != null) {
+          porCodigo[pendencia.codigo].valorEstoqueAfetado =
+            (porCodigo[pendencia.codigo].valorEstoqueAfetado ?? 0) +
             item.estoqueTotal * item.custoMedio;
         }
       }

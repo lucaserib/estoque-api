@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { fetchMlWithBackoff } from "@/lib/mlFetch";
 
 /**
  * API OTIMIZADA para atualizar preços promocionais em lote
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
         batch.map(async (produto) => {
           try {
             // ✅ API OFICIAL: Buscar preços usando endpoint /prices
-            const response = await fetch(
+            const response = await fetchMlWithBackoff(
               `https://api.mercadolibre.com/items/${produto.mlItemId}/prices`,
               {
                 headers: { Authorization: `Bearer ${accessToken}` },

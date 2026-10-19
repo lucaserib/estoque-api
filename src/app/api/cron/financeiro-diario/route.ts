@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import { enfileirarCobrancas, enfileirarIncremental, executarFila } from "@/modules/financeiro/ingestao/fila";
 import { garantirHistoricoAtualizado } from "@/modules/financeiro/ingestao/statusSincronizacao";
@@ -70,12 +71,14 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       erros++;
       console.error(`[CRON_FINANCEIRO_DIARIO] Erro ao sincronizar a conta ${conta.id}:`, error);
+      Sentry.captureException(error, { tags: { cron: "financeiro-diario", etapa: "sincronizar-conta", contaId: conta.id } });
     }
 
     try {
       await sincronizarSaldoMercadoPago(conta.id);
     } catch (error) {
       console.error(`[CRON_FINANCEIRO_DIARIO] Erro ao preparar a conta Mercado Pago ${conta.id}:`, error);
+      Sentry.captureException(error, { tags: { cron: "financeiro-diario", etapa: "saldo-mercado-pago", contaId: conta.id } });
     }
   }
 
@@ -86,6 +89,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       erros++;
       console.error(`[CRON_FINANCEIRO_DIARIO] Erro ao gerar recorrências da conta ${dono.id}:`, error);
+      Sentry.captureException(error, { tags: { cron: "financeiro-diario", etapa: "recorrencias", contaId: dono.id } });
     }
 
     try {
@@ -99,6 +103,7 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       erros++;
       console.error(`[CRON_FINANCEIRO_DIARIO] Erro ao gerar alertas da conta ${dono.id}:`, error);
+      Sentry.captureException(error, { tags: { cron: "financeiro-diario", etapa: "alertas", contaId: dono.id } });
     }
   }
 

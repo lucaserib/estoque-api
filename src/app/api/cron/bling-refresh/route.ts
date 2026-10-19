@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import {
   BlingService,
@@ -51,12 +52,14 @@ export async function GET(request: NextRequest) {
           `[CRON_BLING] Erro transitório ao renovar conta ${account.id}:`,
           error
         );
+        Sentry.captureException(error, { tags: { cron: "bling-refresh", contaId: account.id } });
       } else {
         erros++;
         console.error(
           `[CRON_BLING] Falha ao renovar conta ${account.id}:`,
           error
         );
+        Sentry.captureException(error, { tags: { cron: "bling-refresh", contaId: account.id } });
       }
     }
 

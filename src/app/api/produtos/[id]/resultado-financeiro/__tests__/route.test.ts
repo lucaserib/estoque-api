@@ -69,4 +69,13 @@ describe("GET /api/produtos/[id]/resultado-financeiro", () => {
       expect.objectContaining({ produtoId: "prod-1", soIncompletas: true })
     );
   });
+
+  it("responde 403 para papel sem FINANCEIRO_VER", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "VENDAS" });
+
+    const response = await GET(criarRequest(), params());
+
+    expect(response.status).toBe(403);
+    expect(gerarLucroPorProdutoMock).not.toHaveBeenCalled();
+  });
 });

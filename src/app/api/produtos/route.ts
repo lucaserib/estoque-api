@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeSku } from "@/lib/sku";
 import { normalizeImageUrl } from "@/lib/imageUrl";
 import { Prisma } from "@prisma/client";
-import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
+import { exigirPermissao, permissaoErrorResponse, podeVer } from "@/lib/permissoes";
 
 const safeEANConversion = (ean: string | null): bigint | null => {
   if (!ean) return null;
@@ -62,7 +62,7 @@ type ProdutoComRelacoes = Prisma.ProdutoGetPayload<{
   include: typeof produtoListInclude;
 }>;
 
-function enriquecerProduto(produto: ProdutoComRelacoes) {
+function enriquecerProduto(produto: ProdutoComRelacoes, verCusto: boolean) {
   const totalVendas90d = produto.ProdutoMercadoLivre.reduce(
     (sum, ml) => sum + (ml.mlSold90Days || 0),
     0
@@ -93,6 +93,20 @@ function enriquecerProduto(produto: ProdutoComRelacoes) {
 
   return {
     ...produto,
+    custoMedio: verCusto ? produto.custoMedio : null,
+    custoOrigem: verCusto ? produto.custoOrigem : null,
+    custoAtualizadoEm: verCusto ? produto.custoAtualizadoEm : null,
+    custoFreteManual: verCusto ? produto.custoFreteManual : null,
+    custoEmbalagem: verCusto ? produto.custoEmbalagem : null,
+    componentes: produto.componentes.map((componente) => ({
+      ...componente,
+      produto: { ...componente.produto, custoMedio: verCusto ? componente.produto.custoMedio : null },
+    })),
+    fornecedores: produto.fornecedores.map((fornecedor) => ({
+      ...fornecedor,
+      preco: verCusto ? fornecedor.preco : null,
+      precoUnitario: verCusto ? fornecedor.precoUnitario : null,
+    })),
     imagemUrl: imagemResolvida,
     _mlTotalVendas: totalVendas90d,
     _mlEstoqueFull: estoqueFullTotal,
@@ -104,7 +118,7 @@ function enriquecerProduto(produto: ProdutoComRelacoes) {
           id: fornecedorPrincipal.fornecedor.id,
           nome: fornecedorPrincipal.fornecedor.nome,
           prazoEntregaDias: fornecedorPrincipal.prazoEntregaDias,
-          precoUnitario: fornecedorPrincipal.precoUnitario,
+          precoUnitario: verCusto ? fornecedorPrincipal.precoUnitario : null,
         }
       : null,
   };
@@ -118,6 +132,7 @@ export async function GET(req: NextRequest) {
 
   try {
     const user = await verifyUser(req);
+    const verCusto = podeVer(user.role, "VER_CUSTO");
 
     if (id) {
       const produto = await prisma.produto.findUnique({
@@ -136,7 +151,7 @@ export async function GET(req: NextRequest) {
       }
 
       return NextResponse.json(
-        serializeWithEAN(enriquecerProduto(produto))
+        serializeWithEAN(enriquecerProduto(produto, verCusto))
       );
     }
 
@@ -157,7 +172,7 @@ export async function GET(req: NextRequest) {
     });
 
     const produtosComDados = produtos
-      .map(enriquecerProduto)
+      .map((produto) => enriquecerProduto(produto, verCusto))
       .sort((a, b) => b._mlTotalVendas - a._mlTotalVendas);
 
     return NextResponse.json(serializeWithEAN(produtosComDados));

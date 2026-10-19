@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
+import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirVisualizacao(user.role, "VER_CUSTO");
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status"); // 'pending', 'configured', 'all'
 
@@ -115,6 +117,9 @@ export async function GET(request: NextRequest) {
       stats,
     });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao buscar produtos ML importados:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
@@ -126,6 +131,7 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const user = await verifyUser(request);
+    exigirPermissao(user.role, "EDITAR_PRODUTO");
     const body = await request.json();
     const { productId, updates } = body;
 
@@ -185,6 +191,9 @@ export async function PATCH(request: NextRequest) {
       product: updatedProduct,
     });
   } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+
     console.error("Erro ao atualizar produto:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

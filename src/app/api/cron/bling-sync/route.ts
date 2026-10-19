@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import { BlingReconnectError, BlingTransientError } from "@/services/blingService";
 import { processarEventoWebhookBling } from "@/services/blingWebhookProcessor";
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
         console.error(`[CRON_BLING_SYNC] Conta ${conta.id} indisponível, tentando na próxima execução:`, error);
       } else {
         console.error(`[CRON_BLING_SYNC] Erro ao sincronizar contas financeiras da conta ${conta.id}:`, error);
+        Sentry.captureException(error, { tags: { cron: "bling-sync", contaId: conta.id } });
       }
     }
   }

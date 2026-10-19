@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { withCache, createCacheKey } from "@/lib/cache";
+import { podeVer } from "@/lib/permissoes";
 
 type AlertSeverity = "critical" | "warning" | "info";
 type AlertType = "stock" | "sync" | "sales";
@@ -97,6 +98,21 @@ export async function GET(request: NextRequest) {
       "realtime"
     );
 
+    const verCusto = podeVer(user.role, "VER_CUSTO");
+    const alertasSemCustoSeNecessario = verCusto
+      ? alerts
+      : alerts.map((alert) => {
+          const products = (alert.details as { products?: Array<Record<string, unknown>> } | undefined)?.products;
+          if (!products) return alert;
+          return {
+            ...alert,
+            details: {
+              ...alert.details,
+              products: products.map((p) => ({ ...p, cost: null, margin: null })),
+            },
+          };
+        });
+
     // ✅ ESTATÍSTICAS DOS ALERTAS
     const stats = {
       total: alerts.length,
@@ -113,7 +129,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: {
-        alerts,
+        alerts: alertasSemCustoSeNecessario,
         stats,
         metadata: {
           accountId,
