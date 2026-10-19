@@ -23,11 +23,15 @@ interface ReplenishmentItem {
   tipoAnuncio: "full" | "local" | "ambos";
   estoqueLocal: number;
   estoqueFull: number;
+  estoqueFullDisponivel: number;
+  estoqueFullEmTransito: number;
+  estoqueFullIndisponivel: number;
   estoqueTotal: number;
   mediaVendasPeriodo: number;
   mediaDiaria: number;
   analysisPeriodDays: number;
   statusGeral: "ok" | "atencao" | "critico";
+  dataRupturaPrevista: string | null;
   reposicaoFull: {
     necessaria: boolean;
     quantidadeSugerida: number;
@@ -143,23 +147,39 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
         </DataTableCell>
 
         <DataTableCell numeric>
-          <span className="font-medium text-info">
-            {item.estoqueFull > 0 ? item.estoqueFull : "-"}
-          </span>
+          {item.estoqueFull > 0 ? (
+            <div className="flex flex-col items-end">
+              <span className="font-medium text-info">{item.estoqueFull}</span>
+              {item.estoqueFullIndisponivel > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  +{item.estoqueFullIndisponivel} indisp.
+                </span>
+              )}
+            </div>
+          ) : (
+            <span className="text-muted-foreground">-</span>
+          )}
         </DataTableCell>
 
         <DataTableCell numeric>
-          <span
-            className={
-              diasRestantesMenor < 3
-                ? "font-bold text-destructive"
-                : diasRestantesMenor < 7
-                ? "font-bold text-warning"
-                : "font-bold text-foreground"
-            }
-          >
-            {diasRestantesMenor > 999 ? "∞" : `${diasRestantesMenor}d`}
-          </span>
+          <div className="flex flex-col items-end">
+            <span
+              className={
+                diasRestantesMenor < 3
+                  ? "font-bold text-destructive"
+                  : diasRestantesMenor < 7
+                  ? "font-bold text-warning"
+                  : "font-bold text-foreground"
+              }
+            >
+              {diasRestantesMenor > 999 ? "∞" : `${diasRestantesMenor}d`}
+            </span>
+            {item.dataRupturaPrevista && (
+              <span className="text-xs text-muted-foreground">
+                ruptura {new Date(item.dataRupturaPrevista + "T00:00:00").toLocaleDateString("pt-BR")}
+              </span>
+            )}
+          </div>
         </DataTableCell>
 
         <DataTableCell numeric>

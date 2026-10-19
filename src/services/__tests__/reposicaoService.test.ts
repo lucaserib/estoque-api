@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   calcularSugestaoReposicao,
   explodirDemandaKits,
+  calcularCapitalParado,
   DadosProdutoReposicao,
 } from "@/services/reposicaoService";
 
@@ -14,10 +15,11 @@ function dadosBase(
     sku: "SKU1",
     custoMedio: 1000,
     vendas30Dias: 30,
-    vendas31a90Dias: 60,
+    vendasPeriodoAnteriorDias: 60,
     estoqueLocal: 10,
     estoqueFullDisponivel: 0,
     estoqueFullEmTransito: 0,
+    estoqueFullIndisponivel: 0,
     pedidosEmAbertoUnidades: 0,
     temAnuncioFull: false,
     fornecedorPrincipal: null,
@@ -26,6 +28,7 @@ function dadosBase(
       fullReleaseDays: 3,
       safetyStock: 10,
       minCoverageDays: 30,
+      analysisPeriodDays: 90,
     },
     ...overrides,
   };
@@ -69,13 +72,14 @@ describe("calcularSugestaoReposicao", () => {
     const resultado = calcularSugestaoReposicao(
       dadosBase({
         vendas30Dias: 1,
-        vendas31a90Dias: 1,
+        vendasPeriodoAnteriorDias: 1,
         estoqueLocal: 9,
         config: {
           avgDeliveryDays: 7,
           fullReleaseDays: 3,
           safetyStock: 10,
           minCoverageDays: 30,
+          analysisPeriodDays: 90,
         },
         fornecedorPrincipal: {
           fornecedorId: "f1",
@@ -122,7 +126,7 @@ describe("calcularSugestaoReposicao", () => {
 
   it("estoque zerado marca status crítico", () => {
     const resultado = calcularSugestaoReposicao(
-      dadosBase({ estoqueLocal: 0, vendas30Dias: 0, vendas31a90Dias: 0 })
+      dadosBase({ estoqueLocal: 0, vendas30Dias: 0, vendasPeriodoAnteriorDias: 0 })
     );
 
     expect(resultado.status).toBe("critico");
@@ -154,6 +158,60 @@ describe("calcularSugestaoReposicao", () => {
     );
 
     expect(resultado.quantidadeSugeridaEnvioFull).toBe(0);
+  });
+
+  it("janela de 30 dias usa só vendas30Dias na demanda diária", () => {
+    const resultado = calcularSugestaoReposicao(
+      dadosBase({
+        vendas30Dias: 30,
+        vendasPeriodoAnteriorDias: 0,
+        config: {
+          avgDeliveryDays: 7,
+          fullReleaseDays: 3,
+          safetyStock: 10,
+          minCoverageDays: 30,
+          analysisPeriodDays: 30,
+        },
+      })
+    );
+
+    expect(resultado.demandaDiaria).toBe(1);
+  });
+
+  it("janela de 60 dias pesa vendasPeriodoAnteriorDias sobre 30 dias restantes", () => {
+    const resultado = calcularSugestaoReposicao(
+      dadosBase({
+        vendas30Dias: 30,
+        vendasPeriodoAnteriorDias: 15,
+        config: {
+          avgDeliveryDays: 7,
+          fullReleaseDays: 3,
+          safetyStock: 10,
+          minCoverageDays: 30,
+          analysisPeriodDays: 60,
+        },
+      })
+    );
+
+    expect(resultado.demandaDiaria).toBeCloseTo(1 * 0.7 + 0.5 * 0.3);
+  });
+
+  it("janela de 90 dias pesa vendasPeriodoAnteriorDias sobre 60 dias restantes", () => {
+    const resultado = calcularSugestaoReposicao(
+      dadosBase({
+        vendas30Dias: 30,
+        vendasPeriodoAnteriorDias: 60,
+        config: {
+          avgDeliveryDays: 7,
+          fullReleaseDays: 3,
+          safetyStock: 10,
+          minCoverageDays: 30,
+          analysisPeriodDays: 90,
+        },
+      })
+    );
+
+    expect(resultado.demandaDiaria).toBeCloseTo(1 * 0.7 + 1 * 0.3);
   });
 });
 
@@ -197,5 +255,68 @@ describe("explodirDemandaKits", () => {
     const resultado = explodirDemandaKits(vendas, new Map());
 
     expect(resultado.get("p1")).toEqual({ v30: 5, v90: 5 });
+  });
+});
+
+describe("calcularCapitalParado", () => {
+  const agora = new Date("2026-10-19T12:00:00Z");
+
+  it("produto sem venda há mais do que o limite entra na lista, valorizado pelo custo", () => {
+    const resultado = calcularCapitalParado(
+      [{ id: "p1", nome: "Produto 1", sku: "SKU1", estoqueLocal: 10, custoMedio: 500 }],
+      new Map([["p1", new Date("2026-06-01T00:00:00Z")]]),
+      60,
+      agora
+    );
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].valorParado).toBe(5000);
+    expect(resultado[0].diasSemVenda).toBeGreaterThanOrEqual(60);
+  });
+
+  it("produto vendido dentro do limite não entra na lista", () => {
+    const resultado = calcularCapitalParado(
+      [{ id: "p1", nome: "Produto 1", sku: "SKU1", estoqueLocal: 10, custoMedio: 500 }],
+      new Map([["p1", new Date("2026-10-01T00:00:00Z")]]),
+      60,
+      agora
+    );
+
+    expect(resultado).toHaveLength(0);
+  });
+
+  it("produto nunca vendido entra na lista com diasSemVenda nulo", () => {
+    const resultado = calcularCapitalParado(
+      [{ id: "p1", nome: "Produto 1", sku: "SKU1", estoqueLocal: 5, custoMedio: 200 }],
+      new Map(),
+      60,
+      agora
+    );
+
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].diasSemVenda).toBeNull();
+    expect(resultado[0].ultimaVenda).toBeNull();
+  });
+
+  it("produto sem estoque local não entra na lista mesmo sem venda recente", () => {
+    const resultado = calcularCapitalParado(
+      [{ id: "p1", nome: "Produto 1", sku: "SKU1", estoqueLocal: 0, custoMedio: 200 }],
+      new Map(),
+      60,
+      agora
+    );
+
+    expect(resultado).toHaveLength(0);
+  });
+
+  it("produto sem custo médio entra na lista com valorParado nulo, nunca parcial", () => {
+    const resultado = calcularCapitalParado(
+      [{ id: "p1", nome: "Produto 1", sku: "SKU1", estoqueLocal: 10, custoMedio: null }],
+      new Map(),
+      60,
+      agora
+    );
+
+    expect(resultado[0].valorParado).toBeNull();
   });
 });

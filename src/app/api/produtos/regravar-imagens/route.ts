@@ -12,13 +12,6 @@ interface RequestBody {
   cursor?: string | null;
 }
 
-/**
- * Regrava no Vercel Blob toda `Produto.imagemUrl` já salva que ainda é uma
- * URL assinada do S3 do Bling (`X-Amz-*`/`Expires=`/domínio `*.s3.*.amazonaws.com`)
- * — essas expiram, e a detecção corrigida (Ciclo 9) só vale para sincronizações
- * futuras. Pagina por `id` com cursor, para rodar em várias chamadas sem
- * passar do tempo limite da Vercel.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

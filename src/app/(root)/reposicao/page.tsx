@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/data-table";
 import { ReplenishmentTableRow } from "./components/ReplenishmentTableRow";
 import { ReplenishmentDetailModal } from "./components/ReplenishmentDetailModal";
+import { CapitalParadoCard } from "./components/CapitalParadoCard";
 
 interface BatchAnalysisResult {
   produtoId: string;
@@ -35,11 +36,15 @@ interface BatchAnalysisResult {
   tipoAnuncio: "full" | "local" | "ambos";
   estoqueLocal: number;
   estoqueFull: number;
+  estoqueFullDisponivel: number;
+  estoqueFullEmTransito: number;
+  estoqueFullIndisponivel: number;
   estoqueTotal: number;
   mediaVendasPeriodo: number;
   mediaDiaria: number;
   analysisPeriodDays: number;
   statusGeral: "ok" | "atencao" | "critico";
+  dataRupturaPrevista: string | null;
   reposicaoFull: {
     necessaria: boolean;
     quantidadeSugerida: number;
@@ -351,6 +356,8 @@ const ReposicaoPage = () => {
           )}
         </>
       )}
+
+      <CapitalParadoCard />
 
       {/* Modal de Detalhes */}
       {selectedProdutoId && (

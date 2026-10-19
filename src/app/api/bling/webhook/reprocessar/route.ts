@@ -6,11 +6,6 @@ import { processarEventoWebhookBling } from "@/services/blingWebhookProcessor";
 
 export const maxDuration = 45;
 
-/**
- * Reprocessa os webhooks do Bling que falharam (processado=false, erro
- * preenchido) para as contas Bling ativas do usuário. `processarEventoWebhookBling`
- * já ignora eventos já processados, então é seguro chamar de novo.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

@@ -301,13 +301,6 @@ describe("calcularIndicadores — uma fórmula para tudo", () => {
     expect(resumo.comparacaoOntem.pedidos.percentual).toBeNull();
   });
 
-  /**
-   * Prompt definitivo, Parte 3 item 4: a mesma venda tem de aparecer com o
-   * mesmo número em Vendas, DRE, Visão geral/dashboard e Produtos. Isola o
-   * pedido de referência (2000019043297364) sozinho no mês, sem nenhuma
-   * outra venda ou lançamento, e confere a margem de contribuição exata
-   * (3470 − 208 − 299 − 685 − 1800 = 478) em cada um dos quatro caminhos.
-   */
   it("mesma venda, mesmo número em Vendas, DRE, resumo do período (Visão geral/dashboard) e Produtos", async () => {
     banco.dados.vendas.push(vendaReal());
 
@@ -327,8 +320,6 @@ describe("calcularIndicadores — uma fórmula para tudo", () => {
     const vendaNaLista = listaVendas.vendas.find((v) => v.pedidoExternoId === "2000019043297364")!;
     expect(vendaNaLista.calculo.margemContribuicao).toBe(margemEsperada);
 
-    // dashboard (/api/dashboard/resumo) lê margemContribuicao direto de gerarResumoPeriodo,
-    // sem recalcular — o mesmo resumo já confere o caminho do dashboard.
     expect(resumo.indicadores.faturamento).toBe(dre.meses[0].faturamento);
     expect(vendaNaLista.calculo.faturamento).toBe(dre.meses[0].faturamento);
     expect(kit.faturamentoBruto).toBe(dre.meses[0].faturamento);

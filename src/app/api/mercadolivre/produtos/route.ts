@@ -97,9 +97,6 @@ export async function GET(request: NextRequest) {
           : { lastSyncAt: sortOrder as "asc" | "desc" },
     });
 
-    // Dados de vendas lidos do snapshot já sincronizado (VendaCanal), nunca
-    // calculados pela API do ML na hora — mesma fonte usada pelo motor do
-    // financeiro, em centavos (Int), sem o bug de float de "unit_price × 100".
     const salesData: Map<string, { quantity: number; revenue: number }> = new Map();
     const salesDataPreviousMonth: Map<string, { quantity: number; revenue: number }> = new Map();
 

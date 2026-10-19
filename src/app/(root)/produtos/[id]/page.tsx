@@ -84,7 +84,23 @@ interface ProdutoFicha extends Produto {
     isKit: boolean;
     saida: { id: string; data: string };
   }>;
+  movimentacoesEstoque?: Array<{
+    id: string;
+    quantidadeAnterior: number;
+    quantidadeNova: number;
+    origem: "IMPORTACAO_PLANILHA" | "AJUSTE_MANUAL" | "SINCRONIZACAO_FULL_ML" | "SINCRONIZACAO_BLING";
+    observacao: string | null;
+    createdAt: string;
+    armazem: { nome: string };
+  }>;
 }
+
+const ORIGEM_MOVIMENTACAO_LABEL: Record<string, string> = {
+  IMPORTACAO_PLANILHA: "Importação de planilha",
+  AJUSTE_MANUAL: "Ajuste manual",
+  SINCRONIZACAO_FULL_ML: "Sincronização Full (ML)",
+  SINCRONIZACAO_BLING: "Sincronização Bling",
+};
 
 interface StockItem {
   produtoId: string;
@@ -712,6 +728,45 @@ export default function ProdutoFichaPage() {
                         <DataTableRow key={index}>
                           <DataTableCell>{item.quantidade}</DataTableCell>
                           <DataTableCell>{formatDateBR(item.saida.data)}</DataTableCell>
+                        </DataTableRow>
+                      ))}
+                    </DataTableBody>
+                  </DataTable>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle className="text-base">Movimentações de estoque</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                {!produto.movimentacoesEstoque ||
+                produto.movimentacoesEstoque.length === 0 ? (
+                  <p className="p-6 text-center text-sm text-muted-foreground">
+                    Nenhuma movimentação registrada.
+                  </p>
+                ) : (
+                  <DataTable>
+                    <DataTableHeader>
+                      <DataTableRow>
+                        <DataTableHead>Armazém</DataTableHead>
+                        <DataTableHead>De</DataTableHead>
+                        <DataTableHead>Para</DataTableHead>
+                        <DataTableHead>Origem</DataTableHead>
+                        <DataTableHead>Data</DataTableHead>
+                      </DataTableRow>
+                    </DataTableHeader>
+                    <DataTableBody>
+                      {produto.movimentacoesEstoque.map((mov) => (
+                        <DataTableRow key={mov.id}>
+                          <DataTableCell>{mov.armazem.nome}</DataTableCell>
+                          <DataTableCell>{mov.quantidadeAnterior}</DataTableCell>
+                          <DataTableCell>{mov.quantidadeNova}</DataTableCell>
+                          <DataTableCell>
+                            {ORIGEM_MOVIMENTACAO_LABEL[mov.origem] ?? mov.origem}
+                          </DataTableCell>
+                          <DataTableCell>{formatDateBR(mov.createdAt)}</DataTableCell>
                         </DataTableRow>
                       ))}
                     </DataTableBody>

@@ -1,12 +1,12 @@
+import { CanalVenda, StatusVendaCanal } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { MercadoLivreService } from "@/services/mercadoLivreService";
-import { fetchOrdersWithFallback } from "@/lib/mlOrders";
 
 export interface ConfigReposicao {
   avgDeliveryDays: number;
   fullReleaseDays: number;
   safetyStock: number;
   minCoverageDays: number;
+  analysisPeriodDays: number;
 }
 
 export interface FornecedorPrincipalInfo {
@@ -23,10 +23,11 @@ export interface DadosProdutoReposicao {
   sku: string;
   custoMedio: number | null;
   vendas30Dias: number;
-  vendas31a90Dias: number;
+  vendasPeriodoAnteriorDias: number;
   estoqueLocal: number;
   estoqueFullDisponivel: number;
   estoqueFullEmTransito: number;
+  estoqueFullIndisponivel: number;
   pedidosEmAbertoUnidades: number;
   temAnuncioFull: boolean;
   fornecedorPrincipal: FornecedorPrincipalInfo | null;
@@ -41,6 +42,7 @@ export interface SugestaoReposicao {
   estoqueLocal: number;
   estoqueFullDisponivel: number;
   estoqueFullEmTransito: number;
+  estoqueFullIndisponivel: number;
   pedidosEmAbertoUnidades: number;
   temAnuncioFull: boolean;
   demandaDiaria: number;
@@ -48,6 +50,9 @@ export interface SugestaoReposicao {
   estoqueDisponivel: number;
   pontoPedido: number;
   coberturaDias: number | null;
+  coberturaDiasLocal: number | null;
+  coberturaDiasFull: number | null;
+  dataRupturaPrevista: string | null;
   quantidadeSugeridaCompraUnidades: number;
   quantidadeSugeridaCompraCaixas: number;
   quantidadeSugeridaEnvioFull: number;
@@ -58,16 +63,14 @@ export interface SugestaoReposicao {
   status: "ok" | "atencao" | "critico";
 }
 
-/**
- * Cálculo puro, sem acesso a banco/API — recebe os dados já agregados pelo
- * chamador (calcularReposicaoConta) e devolve a sugestão para um produto.
- */
 export function calcularSugestaoReposicao(
   dados: DadosProdutoReposicao
 ): SugestaoReposicao {
-  // Média ponderada: últimos 30 dias pesam mais que o intervalo 31-90.
+  const diasRestante = dados.config.analysisPeriodDays - 30;
   const demandaDiaria =
-    (dados.vendas30Dias / 30) * 0.7 + (dados.vendas31a90Dias / 60) * 0.3;
+    diasRestante <= 0
+      ? dados.vendas30Dias / 30
+      : (dados.vendas30Dias / 30) * 0.7 + (dados.vendasPeriodoAnteriorDias / diasRestante) * 0.3;
 
   const leadTimeBase =
     dados.fornecedorPrincipal?.prazoEntregaDias ?? dados.config.avgDeliveryDays;
@@ -85,6 +88,18 @@ export function calcularSugestaoReposicao(
     demandaDiaria * dados.config.minCoverageDays + dados.config.safetyStock;
   const coberturaDias =
     demandaDiaria > 0 ? estoqueDisponivel / demandaDiaria : null;
+  const coberturaDiasLocal =
+    demandaDiaria > 0 ? dados.estoqueLocal / demandaDiaria : null;
+  const coberturaDiasFull =
+    demandaDiaria > 0 && dados.temAnuncioFull
+      ? (dados.estoqueFullDisponivel + dados.estoqueFullEmTransito) / demandaDiaria
+      : null;
+  const dataRupturaPrevista =
+    coberturaDias != null
+      ? new Date(Date.now() + Math.floor(coberturaDias) * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .slice(0, 10)
+      : null;
 
   let quantidadeSugeridaCompraUnidades = 0;
   if (estoqueDisponivel <= pontoPedido) {
@@ -109,10 +124,6 @@ export function calcularSugestaoReposicao(
     }
   }
 
-  // Envio ao Full: o Full precisa de estoque para cobrir seu próprio prazo
-  // de reposição (fullReleaseDays); se estiver curto e o local tiver
-  // sobra além do próprio estoque de segurança, sugere mover a diferença
-  // (limitada pela sobra local disponível).
   let quantidadeSugeridaEnvioFull = 0;
   if (dados.temAnuncioFull) {
     const necessarioNoFull = demandaDiaria * dados.config.fullReleaseDays;
@@ -156,6 +167,7 @@ export function calcularSugestaoReposicao(
     estoqueLocal: dados.estoqueLocal,
     estoqueFullDisponivel: dados.estoqueFullDisponivel,
     estoqueFullEmTransito: dados.estoqueFullEmTransito,
+    estoqueFullIndisponivel: dados.estoqueFullIndisponivel,
     pedidosEmAbertoUnidades: dados.pedidosEmAbertoUnidades,
     temAnuncioFull: dados.temAnuncioFull,
     demandaDiaria,
@@ -163,6 +175,9 @@ export function calcularSugestaoReposicao(
     estoqueDisponivel,
     pontoPedido,
     coberturaDias,
+    coberturaDiasLocal,
+    coberturaDiasFull,
+    dataRupturaPrevista,
     quantidadeSugeridaCompraUnidades,
     quantidadeSugeridaCompraCaixas,
     quantidadeSugeridaEnvioFull,
@@ -179,11 +194,6 @@ export interface VendasPorProduto {
   v90: number;
 }
 
-/**
- * Soma a demanda de cada kit vendido na demanda dos seus componentes
- * (Componente.quantidade por unidade de kit). A entrada do próprio kit
- * permanece no mapa (produto pré-montado também pode ter estoque próprio).
- */
 export function explodirDemandaKits(
   vendasPorProduto: Map<string, VendasPorProduto>,
   componentesPorKit: Map<string, Array<{ produtoId: string; quantidade: number }>>
@@ -211,26 +221,23 @@ export function explodirDemandaKits(
 
 const NOVENTA_DIAS_MS = 90 * 24 * 60 * 60 * 1000;
 const TRINTA_DIAS_MS = 30 * 24 * 60 * 60 * 1000;
-const STATUS_VENDA_VALIDOS = [
-  "paid",
-  "delivered",
-  "ready_to_ship",
-  "shipped",
-  "handling",
+const STATUS_VENDA_VALIDOS: StatusVendaCanal[] = [
+  StatusVendaCanal.PAGA,
+  StatusVendaCanal.DEVOLVIDA_PARCIAL,
+  StatusVendaCanal.EM_MEDIACAO,
 ];
+
+function vendasNoPeriodoAnterior(v90: number, analysisPeriodDays: number): number {
+  if (analysisPeriodDays <= 30) return 0;
+  const diasRestante = analysisPeriodDays - 30;
+  return Math.round(v90 * (diasRestante / 60));
+}
 
 export interface ReposicaoContaResultado {
   sugestoes: SugestaoReposicao[];
   parcial: boolean;
 }
 
-/**
- * Monta os dados de cada produto (vendas ML + saídas manuais explodidas por
- * kit, estoque local, snapshot do Full da Fase 5, pedidos de compra em
- * aberto, config por produto com fallback global) e aplica
- * calcularSugestaoReposicao. Uma única chamada ao ML por conta (pedidos do
- * período) — nunca uma chamada por produto.
- */
 export async function calcularReposicaoConta(
   userId: string
 ): Promise<ReposicaoContaResultado> {
@@ -238,7 +245,7 @@ export async function calcularReposicaoConta(
   const haNoventaDias = new Date(agora.getTime() - NOVENTA_DIAS_MS);
   const haTrintaDias = new Date(agora.getTime() - TRINTA_DIAS_MS);
 
-  const [produtos, configs, mlAccount, pedidosAbertos, configGeral, saidas] =
+  const [produtos, configs, pedidosAbertos, configGeral, saidas, itensVendidos] =
     await Promise.all([
       prisma.produto.findMany({
         where: { userId, ativo: true },
@@ -269,15 +276,13 @@ export async function calcularReposicaoConta(
               mlLogisticType: true,
               mlFullDisponivel: true,
               mlFullEmTransito: true,
+              mlFullIndisponivel: true,
             },
           },
           componentes: { select: { produtoId: true, quantidade: true } },
         },
       }),
       prisma.stockReplenishmentConfig.findMany({ where: { userId } }),
-      prisma.mercadoLivreAccount.findFirst({
-        where: { userId, isActive: true },
-      }),
       prisma.pedidoProduto.findMany({
         where: { pedido: { userId, status: "pendente" } },
         select: { produtoId: true, quantidade: true, multiplicador: true },
@@ -289,6 +294,22 @@ export async function calcularReposicaoConta(
           produtoId: true,
           quantidade: true,
           saida: { select: { data: true } },
+        },
+      }),
+      prisma.vendaCanalItem.findMany({
+        where: {
+          produtoId: { not: null },
+          venda: {
+            userId,
+            canal: CanalVenda.MERCADO_LIVRE,
+            status: { in: STATUS_VENDA_VALIDOS },
+            dataVenda: { gte: haNoventaDias, lte: agora },
+          },
+        },
+        select: {
+          produtoId: true,
+          quantidade: true,
+          venda: { select: { dataVenda: true } },
         },
       }),
     ]);
@@ -304,50 +325,15 @@ export async function calcularReposicaoConta(
     );
   }
 
-  const vendasPorMlItem = new Map<string, VendasPorProduto>();
-  let parcial = false;
-
-  if (mlAccount) {
-    try {
-      const accessToken = await MercadoLivreService.getValidToken(mlAccount.id);
-      const { orders, parcial: pedidosParcial } = await fetchOrdersWithFallback({
-        accessToken,
-        sellerId: mlAccount.mlUserId,
-        dateFrom: haNoventaDias,
-        dateTo: agora,
-      });
-      parcial = pedidosParcial;
-
-      for (const order of orders) {
-        if (!STATUS_VENDA_VALIDOS.includes(order.status)) continue;
-        const dataPedido = new Date(order.date_created);
-        const recente = dataPedido >= haTrintaDias;
-
-        for (const item of order.order_items) {
-          const atual = vendasPorMlItem.get(item.item.id) ?? { v30: 0, v90: 0 };
-          if (recente) atual.v30 += item.quantity;
-          else atual.v90 += item.quantity;
-          vendasPorMlItem.set(item.item.id, atual);
-        }
-      }
-    } catch (error) {
-      console.error("[REPOSICAO] Erro ao buscar pedidos do ML:", error);
-      parcial = true;
-    }
-  }
-
   const vendasPorProduto = new Map<string, VendasPorProduto>();
 
-  for (const produto of produtos) {
-    for (const pml of produto.ProdutoMercadoLivre) {
-      const vendasItem = vendasPorMlItem.get(pml.mlItemId);
-      if (!vendasItem) continue;
-      const atual = vendasPorProduto.get(produto.id) ?? { v30: 0, v90: 0 };
-      vendasPorProduto.set(produto.id, {
-        v30: atual.v30 + vendasItem.v30,
-        v90: atual.v90 + vendasItem.v90,
-      });
-    }
+  for (const item of itensVendidos) {
+    const produtoId = item.produtoId as string;
+    const recente = item.venda.dataVenda >= haTrintaDias;
+    const atual = vendasPorProduto.get(produtoId) ?? { v30: 0, v90: 0 };
+    if (recente) atual.v30 += item.quantidade;
+    else atual.v90 += item.quantidade;
+    vendasPorProduto.set(produtoId, atual);
   }
 
   for (const detalhe of saidas) {
@@ -378,6 +364,7 @@ export async function calcularReposicaoConta(
   const sugestoes = produtos.map((produto) => {
     const vendas = demandaExplodida.get(produto.id) ?? { v30: 0, v90: 0 };
     const config = configPorProduto.get(produto.id);
+    const analysisPeriodDays = config?.analysisPeriodDays ?? 90;
     const estoqueLocal = produto.estoques.reduce(
       (sum, e) => sum + e.quantidade,
       0
@@ -393,10 +380,11 @@ export async function calcularReposicaoConta(
       sku: produto.sku,
       custoMedio: produto.custoMedio,
       vendas30Dias: vendas.v30,
-      vendas31a90Dias: vendas.v90,
+      vendasPeriodoAnteriorDias: vendasNoPeriodoAnterior(vendas.v90, analysisPeriodDays),
       estoqueLocal,
       estoqueFullDisponivel: anuncioFull?.mlFullDisponivel ?? 0,
       estoqueFullEmTransito: anuncioFull?.mlFullEmTransito ?? 0,
+      estoqueFullIndisponivel: anuncioFull?.mlFullIndisponivel ?? 0,
       pedidosEmAbertoUnidades: pedidosAbertosPorProduto.get(produto.id) ?? 0,
       temAnuncioFull: !!anuncioFull,
       fornecedorPrincipal: fornecedorPrincipal
@@ -414,9 +402,120 @@ export async function calcularReposicaoConta(
         fullReleaseDays: config?.fullReleaseDays ?? 3,
         safetyStock: config?.safetyStock ?? 10,
         minCoverageDays: config?.minCoverageDays ?? 30,
+        analysisPeriodDays,
       },
     });
   });
 
-  return { sugestoes, parcial };
+  return { sugestoes, parcial: false };
+}
+
+export interface ProdutoCapitalParado {
+  produtoId: string;
+  nome: string;
+  sku: string;
+  estoqueLocal: number;
+  custoMedio: number | null;
+  valorParado: number | null;
+  ultimaVenda: string | null;
+  diasSemVenda: number | null;
+}
+
+export function calcularCapitalParado(
+  produtos: Array<{
+    id: string;
+    nome: string;
+    sku: string;
+    estoqueLocal: number;
+    custoMedio: number | null;
+  }>,
+  ultimaVendaPorProduto: Map<string, Date>,
+  limiteDias: number,
+  agora: Date
+): ProdutoCapitalParado[] {
+  const resultado: ProdutoCapitalParado[] = [];
+
+  for (const produto of produtos) {
+    if (produto.estoqueLocal <= 0) continue;
+
+    const ultimaVenda = ultimaVendaPorProduto.get(produto.id) ?? null;
+    const diasSemVenda = ultimaVenda
+      ? Math.floor((agora.getTime() - ultimaVenda.getTime()) / (24 * 60 * 60 * 1000))
+      : null;
+
+    if (diasSemVenda != null && diasSemVenda < limiteDias) continue;
+
+    resultado.push({
+      produtoId: produto.id,
+      nome: produto.nome,
+      sku: produto.sku,
+      estoqueLocal: produto.estoqueLocal,
+      custoMedio: produto.custoMedio,
+      valorParado:
+        produto.custoMedio != null ? produto.custoMedio * produto.estoqueLocal : null,
+      ultimaVenda: ultimaVenda ? ultimaVenda.toISOString().slice(0, 10) : null,
+      diasSemVenda,
+    });
+  }
+
+  return resultado.sort((a, b) => (b.valorParado ?? 0) - (a.valorParado ?? 0));
+}
+
+export async function calcularCapitalParadoConta(
+  userId: string,
+  limiteDias: number
+): Promise<ProdutoCapitalParado[]> {
+  const agora = new Date();
+
+  const [produtos, itensVendidos, saidas] = await Promise.all([
+    prisma.produto.findMany({
+      where: { userId, ativo: true },
+      select: {
+        id: true,
+        nome: true,
+        sku: true,
+        custoMedio: true,
+        estoques: {
+          where: { armazem: { tipo: "LOCAL" } },
+          select: { quantidade: true },
+        },
+      },
+    }),
+    prisma.vendaCanalItem.findMany({
+      where: {
+        produtoId: { not: null },
+        venda: { userId, status: { in: STATUS_VENDA_VALIDOS } },
+      },
+      select: { produtoId: true, venda: { select: { dataVenda: true } } },
+    }),
+    prisma.detalhesSaida.findMany({
+      where: { saida: { userId } },
+      select: { produtoId: true, saida: { select: { data: true } } },
+    }),
+  ]);
+
+  const ultimaVendaPorProduto = new Map<string, Date>();
+  for (const item of itensVendidos) {
+    const produtoId = item.produtoId as string;
+    const atual = ultimaVendaPorProduto.get(produtoId);
+    if (!atual || item.venda.dataVenda > atual) {
+      ultimaVendaPorProduto.set(produtoId, item.venda.dataVenda);
+    }
+  }
+  for (const saida of saidas) {
+    const atual = ultimaVendaPorProduto.get(saida.produtoId);
+    if (!atual || saida.saida.data > atual) {
+      ultimaVendaPorProduto.set(saida.produtoId, saida.saida.data);
+    }
+  }
+
+  const produtosComEstoque = produtos.map((p) => ({
+    id: p.id,
+    nome: p.nome,
+    sku: p.sku,
+    custoMedio: p.custoMedio,
+    estoqueLocal: p.estoques.reduce((sum, e) => sum + e.quantidade, 0),
+  }));
+
+  return calcularCapitalParado(produtosComEstoque, ultimaVendaPorProduto, limiteDias, agora);
 }

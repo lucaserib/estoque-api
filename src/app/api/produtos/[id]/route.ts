@@ -93,6 +93,19 @@ export async function GET(
           orderBy: { id: "desc" },
           take: 20,
         },
+        movimentacoesEstoque: {
+          select: {
+            id: true,
+            quantidadeAnterior: true,
+            quantidadeNova: true,
+            origem: true,
+            observacao: true,
+            createdAt: true,
+            armazem: { select: { nome: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          take: 30,
+        },
       },
     });
 
