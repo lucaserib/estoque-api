@@ -372,6 +372,12 @@ export async function PUT(request: NextRequest) {
             produtoRecebido.quantidade *
             (produtoRecebido.multiplicador || produtoPedido.multiplicador || 1);
 
+          const novoCustoMedio = await calcularCustoMedioPonderado(
+            produtoRecebido.produtoId,
+            quantidadeFinal,
+            produtoRecebido.custo
+          );
+
           if (estoqueExiste) {
             await prisma.estoque.update({
               where: {
@@ -392,11 +398,6 @@ export async function PUT(request: NextRequest) {
             });
           }
 
-          const novoCustoMedio = await calcularCustoMedioPonderado(
-            produtoRecebido.produtoId,
-            quantidadeFinal,
-            produtoRecebido.custo
-          );
           await prisma.produto.update({
             where: { id: produtoRecebido.produtoId },
             data: { custoMedio: novoCustoMedio },
