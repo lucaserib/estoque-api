@@ -300,4 +300,37 @@ describe("calcularIndicadores — uma fórmula para tudo", () => {
     expect(resumo.comparacaoOntem.faturamento.percentual).toBeNull();
     expect(resumo.comparacaoOntem.pedidos.percentual).toBeNull();
   });
+
+  /**
+   * Prompt definitivo, Parte 3 item 4: a mesma venda tem de aparecer com o
+   * mesmo número em Vendas, DRE, Visão geral/dashboard e Produtos. Isola o
+   * pedido de referência (2000019043297364) sozinho no mês, sem nenhuma
+   * outra venda ou lançamento, e confere a margem de contribuição exata
+   * (3470 − 208 − 299 − 685 − 1800 = 478) em cada um dos quatro caminhos.
+   */
+  it("mesma venda, mesmo número em Vendas, DRE, resumo do período (Visão geral/dashboard) e Produtos", async () => {
+    banco.dados.vendas.push(vendaReal());
+
+    const margemEsperada = 3470 - 208 - 299 - 685 - 1800;
+
+    const [dre, resumo, linhasPorProduto, listaVendas] = await Promise.all([
+      gerarDre("user-1", { ano: 2026, mes: 10 }, 1),
+      gerarResumoPeriodo("user-1", OUT_INICIO, OUT_FIM),
+      gerarLucroPorProduto("user-1", { desde: OUT_INICIO, ate: OUT_FIM }),
+      listarVendasComLucro("user-1", { desde: OUT_INICIO, ate: OUT_FIM, porPagina: 10 }),
+    ]);
+
+    expect(dre.meses[0].margemContribuicao).toBe(margemEsperada);
+    expect(resumo.indicadores.margemContribuicao).toBe(margemEsperada);
+    const kit = linhasPorProduto.find((l) => l.produtoId === "prod-kit")!;
+    expect(kit.margemContribuicao).toBe(margemEsperada);
+    const vendaNaLista = listaVendas.vendas.find((v) => v.pedidoExternoId === "2000019043297364")!;
+    expect(vendaNaLista.calculo.margemContribuicao).toBe(margemEsperada);
+
+    // dashboard (/api/dashboard/resumo) lê margemContribuicao direto de gerarResumoPeriodo,
+    // sem recalcular — o mesmo resumo já confere o caminho do dashboard.
+    expect(resumo.indicadores.faturamento).toBe(dre.meses[0].faturamento);
+    expect(vendaNaLista.calculo.faturamento).toBe(dre.meses[0].faturamento);
+    expect(kit.faturamentoBruto).toBe(dre.meses[0].faturamento);
+  });
 });

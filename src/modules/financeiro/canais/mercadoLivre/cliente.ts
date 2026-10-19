@@ -331,7 +331,7 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
         {
           headers: {
             Authorization: `Bearer ${accessToken}`,
-            "Api-Version": "2",
+            "Api-Version": "1",
             Accept: "application/json",
           },
         }
