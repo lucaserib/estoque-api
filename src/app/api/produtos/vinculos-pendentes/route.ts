@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
+import { normalizeSku } from "@/lib/sku";
+
+type MotivoPendencia = "NAO_CONFIRMADO" | "SKU_DIVERGENTE";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,25 +15,39 @@ export async function GET(request: NextRequest) {
       where: {
         mercadoLivreAccount: { userId: user.contaId },
         produtoId: { not: null },
-        vinculoConfirmado: false,
       },
       select: {
         id: true,
         mlItemId: true,
         mlTitle: true,
+        mlSellerSku: true,
         vinculoOrigem: true,
+        vinculoConfirmado: true,
         produto: { select: { id: true, nome: true, sku: true } },
       },
       orderBy: { lastSyncAt: "desc" },
     });
 
+    const pendentes = vinculos
+      .map((v) => {
+        const motivos: MotivoPendencia[] = [];
+        if (!v.vinculoConfirmado) motivos.push("NAO_CONFIRMADO");
+        if (v.mlSellerSku && v.produto && normalizeSku(v.mlSellerSku) !== normalizeSku(v.produto.sku)) {
+          motivos.push("SKU_DIVERGENTE");
+        }
+        return { v, motivos };
+      })
+      .filter(({ motivos }) => motivos.length > 0);
+
     return NextResponse.json({
-      vinculos: vinculos.map((v) => ({
+      vinculos: pendentes.map(({ v, motivos }) => ({
         id: v.id,
         mlItemId: v.mlItemId,
         mlTitle: v.mlTitle,
+        mlSellerSku: v.mlSellerSku,
         origem: v.vinculoOrigem,
         produto: v.produto,
+        motivos,
       })),
     });
   } catch (error) {
@@ -44,7 +61,8 @@ export async function GET(request: NextRequest) {
 
 interface RequestBody {
   id?: string;
-  acao?: "confirmar" | "rejeitar";
+  acao?: "confirmar" | "rejeitar" | "trocar";
+  novoProdutoId?: string;
 }
 
 export async function PATCH(request: NextRequest) {
@@ -69,10 +87,25 @@ export async function PATCH(request: NextRequest) {
         where: { id: vinculo.id },
         data: { vinculoConfirmado: true, syncStatus: "matched" },
       });
-    } else {
+    } else if (body.acao === "rejeitar") {
       await prisma.produtoMercadoLivre.update({
         where: { id: vinculo.id },
         data: { produtoId: null, vinculoOrigem: null, vinculoConfirmado: true, syncStatus: "pending" },
+      });
+    } else {
+      if (!body.novoProdutoId) {
+        return NextResponse.json({ error: "novoProdutoId é obrigatório para trocar o vínculo" }, { status: 400 });
+      }
+      const novoProduto = await prisma.produto.findFirst({
+        where: { id: body.novoProdutoId, userId: user.contaId },
+        select: { id: true },
+      });
+      if (!novoProduto) {
+        return NextResponse.json({ error: "Produto novo não encontrado" }, { status: 404 });
+      }
+      await prisma.produtoMercadoLivre.update({
+        where: { id: vinculo.id },
+        data: { produtoId: novoProduto.id, vinculoOrigem: "MANUAL", vinculoConfirmado: true, syncStatus: "matched" },
       });
     }
 
@@ -81,7 +114,7 @@ export async function PATCH(request: NextRequest) {
     const permissaoResponse = permissaoErrorResponse(error);
     if (permissaoResponse) return permissaoResponse;
 
-    console.error("Erro ao confirmar/rejeitar vínculo:", error);
-    return NextResponse.json({ error: "Erro ao confirmar vínculo" }, { status: 500 });
+    console.error("Erro ao confirmar/rejeitar/trocar vínculo:", error);
+    return NextResponse.json({ error: "Erro ao atualizar vínculo" }, { status: 500 });
   }
 }

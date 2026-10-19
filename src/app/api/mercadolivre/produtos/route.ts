@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { StatusVendaCanal } from "@prisma/client";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
-import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { inicioDoMes, fimDoMes } from "@/modules/financeiro/dominio/periodo";
 
 export async function GET(request: NextRequest) {
   try {
@@ -96,170 +97,43 @@ export async function GET(request: NextRequest) {
           : { lastSyncAt: sortOrder as "asc" | "desc" },
     });
 
-    // Buscar dados de vendas se necessário (para ordenação por vendas)
-    const salesData: Map<string, { quantity: number; revenue: number }> =
-      new Map();
-    let salesDataPreviousMonth: Map<
-      string,
-      { quantity: number; revenue: number }
-    > = new Map();
+    // Dados de vendas lidos do snapshot já sincronizado (VendaCanal), nunca
+    // calculados pela API do ML na hora — mesma fonte usada pelo motor do
+    // financeiro, em centavos (Int), sem o bug de float de "unit_price × 100".
+    const salesData: Map<string, { quantity: number; revenue: number }> = new Map();
+    const salesDataPreviousMonth: Map<string, { quantity: number; revenue: number }> = new Map();
 
-    // Declarar datas no escopo correto - CORREÇÃO CRÍTICA de timezone
     const hoje = new Date();
-    const inicioEsteMs = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const fimEsteMs = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0); // Último dia do mês atual
+    const inicioEsteMs = inicioDoMes(hoje);
+    const fimEsteMs = fimDoMes(hoje);
+    const mesAnteriorRef = new Date(inicioEsteMs.getTime() - 1);
+    const inicioMsAnterior = inicioDoMes(mesAnteriorRef);
+    const fimMsAnterior = fimDoMes(mesAnteriorRef);
 
-    // Ajustar para final do dia sem problemas de timezone
-    fimEsteMs.setHours(23, 59, 59, 999);
+    const itensVendidos = await prisma.vendaCanalItem.findMany({
+      where: {
+        venda: {
+          userId: user.contaId,
+          canal: "MERCADO_LIVRE",
+          status: { in: [StatusVendaCanal.PAGA, StatusVendaCanal.DEVOLVIDA_PARCIAL, StatusVendaCanal.EM_MEDIACAO] },
+          dataVenda: { gte: inicioMsAnterior, lte: fimEsteMs },
+        },
+      },
+      select: {
+        anuncioExternoId: true,
+        quantidade: true,
+        precoUnitario: true,
+        venda: { select: { dataVenda: true } },
+      },
+    });
 
-
-    // ✅ CORREÇÃO: Sempre buscar dados de vendas para mostrar informações completas
-    if (
-      sortBy === "sales" ||
-      sortBy === "smart" ||
-      filterStatus === "active" ||
-      sortBy === "lastSync"
-    ) {
-      try {
-
-        const accessToken = await MercadoLivreService.getValidToken(accountId);
-
-        // ✅ CORREÇÃO CRÍTICA: Buscar TODOS os pedidos com paginação completa
-
-        const allOrders = [];
-        let offset = 0;
-        const limit = 50;
-        let hasMore = true;
-
-        while (hasMore && offset < 1000) {
-          // Máximo 1000 pedidos (20 páginas)
-          try {
-            const batchOrders = await MercadoLivreService.getUserOrders(
-              accessToken,
-              {
-                seller: account.mlUserId,
-                offset,
-                limit,
-                sort: "date_desc",
-              }
-            );
-
-            allOrders.push(...batchOrders.results);
-
-            // Se retornou menos que o limite, chegamos ao fim
-            hasMore = batchOrders.results.length === limit;
-            offset += limit;
-
-            // Delay para não sobrecarregar a API
-            await new Promise((resolve) => setTimeout(resolve, 200));
-          } catch (batchError) {
-            break;
-          }
-        }
-
-        const orders = {
-          results: allOrders,
-          paging: { total: allOrders.length },
-        };
-
-
-        // ✅ CORREÇÃO CRÍTICA: Processar vendas DESTE MÊS (não últimos 30 dias)
-        // inicioEsteMs e fimEsteMs já declarados no escopo superior
-
-        const validStatuses = [
-          "paid",
-          "delivered",
-          "ready_to_ship",
-          "shipped",
-          "handling",
-        ];
-
-
-        const validOrders = orders.results.filter((order) => {
-          const orderDate = new Date(order.date_created);
-          return (
-            validStatuses.includes(order.status) &&
-            orderDate >= inicioEsteMs &&
-            orderDate <= fimEsteMs
-          );
-        });
-
-
-        validOrders.forEach((order) => {
-          order.order_items.forEach((item) => {
-            const existing = salesData.get(item.item.id);
-            // ✅ CORREÇÃO CRÍTICA: item.unit_price da API de pedidos vem com valor reduzido
-            // Precisa multiplicar por 100 para ficar compatível com nossos preços em centavos
-            const unitPriceInCents = (item.unit_price || 0) * 100;
-            const itemRevenue = unitPriceInCents * item.quantity;
-
-            if (existing) {
-              existing.quantity += item.quantity;
-              existing.revenue += itemRevenue;
-            } else {
-              salesData.set(item.item.id, {
-                quantity: item.quantity,
-                revenue: itemRevenue,
-              });
-            }
-
-            // Debug: Log vendas encontradas com preço correto
-          });
-        });
-
-
-        // ✅ NOVO: Buscar dados do MÊS ANTERIOR para comparação
-
-        const inicioMsAnterior = new Date(
-          hoje.getFullYear(),
-          hoje.getMonth() - 1,
-          1
-        );
-        const fimMsAnterior = new Date(
-          hoje.getFullYear(),
-          hoje.getMonth(),
-          0,
-          23,
-          59,
-          59
-        );
-
-
-        // ✅ CORREÇÃO: Usar os pedidos já coletados (evitar busca duplicada)
-
-        const previousMonthValidOrders = allOrders.filter((order) => {
-          const orderDate = new Date(order.date_created);
-          return (
-            validStatuses.includes(order.status) &&
-            orderDate >= inicioMsAnterior &&
-            orderDate <= fimMsAnterior
-          );
-        });
-
-        // Processar vendas do mês anterior
-        salesDataPreviousMonth = new Map();
-
-        previousMonthValidOrders.forEach((order) => {
-          order.order_items.forEach((item) => {
-            const existing = salesDataPreviousMonth.get(item.item.id);
-            const unitPriceInCents = (item.unit_price || 0) * 100;
-            const itemRevenue = unitPriceInCents * item.quantity;
-
-            if (existing) {
-              existing.quantity += item.quantity;
-              existing.revenue += itemRevenue;
-            } else {
-              salesDataPreviousMonth.set(item.item.id, {
-                quantity: item.quantity,
-                revenue: itemRevenue,
-              });
-            }
-          });
-        });
-
-      } catch (error) {
-        console.warn("Erro ao buscar dados de vendas para ordenação:", error);
-      }
+    for (const item of itensVendidos) {
+      const estaNesteMes = item.venda.dataVenda >= inicioEsteMs && item.venda.dataVenda <= fimEsteMs;
+      const mapa = estaNesteMes ? salesData : salesDataPreviousMonth;
+      const atual = mapa.get(item.anuncioExternoId) ?? { quantity: 0, revenue: 0 };
+      atual.quantity += item.quantidade;
+      atual.revenue += item.precoUnitario * item.quantidade;
+      mapa.set(item.anuncioExternoId, atual);
     }
 
     // Mapear produtos com informações completas

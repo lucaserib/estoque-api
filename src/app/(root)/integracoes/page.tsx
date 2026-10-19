@@ -96,6 +96,8 @@ export default function IntegracoesPage() {
   const [syncingML, setSyncingML] = useState(false);
   const [syncingBlingProdutos, setSyncingBlingProdutos] = useState(false);
   const [syncingBlingEstoque, setSyncingBlingEstoque] = useState(false);
+  const [regravandoImagens, setRegravandoImagens] = useState(false);
+  const [reprocessandoWebhooks, setReprocessandoWebhooks] = useState(false);
   const [conectandoBling, setConectandoBling] = useState(false);
   const [erroBling, setErroBling] = useState<string | null>(null);
   const [diagnosticoBling, setDiagnosticoBling] = useState<DiagnosticoConfigBling | null>(null);
@@ -227,6 +229,48 @@ export default function IntegracoesPage() {
       toast.error("Erro ao sincronizar estoque do Bling");
     } finally {
       setSyncingBlingEstoque(false);
+    }
+  };
+
+  const handleRegravarImagens = async () => {
+    setRegravandoImagens(true);
+    try {
+      let cursor: string | null = null;
+      let regravados = 0;
+      let concluido = false;
+      while (!concluido) {
+        const response: Response = await fetch("/api/produtos/regravar-imagens", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cursor }),
+        });
+        if (!response.ok) throw new Error("Erro ao regravar imagens");
+        const data: { regravados: number; proximoCursor: string | null; concluido: boolean } =
+          await response.json();
+        regravados += data.regravados;
+        cursor = data.proximoCursor;
+        concluido = data.concluido;
+      }
+      toast.success(`${regravados} imagem(ns) regravada(s) no Vercel Blob.`);
+    } catch {
+      toast.error("Erro ao regravar imagens do Bling.");
+    } finally {
+      setRegravandoImagens(false);
+    }
+  };
+
+  const handleReprocessarWebhooksBling = async () => {
+    setReprocessandoWebhooks(true);
+    try {
+      const response = await fetch("/api/bling/webhook/reprocessar", { method: "POST" });
+      if (!response.ok) throw new Error();
+      const data = await response.json();
+      toast.success(`${data.reprocessados} webhook(s) reprocessado(s).`);
+      loadData();
+    } catch {
+      toast.error("Erro ao reprocessar webhooks do Bling.");
+    } finally {
+      setReprocessandoWebhooks(false);
     }
   };
 
@@ -429,13 +473,23 @@ export default function IntegracoesPage() {
               </div>
               <div className="flex justify-between gap-4 py-2.5 text-sm">
                 <span className="text-muted-foreground">Webhooks (24h)</span>
-                <span className="font-medium text-foreground">
+                <span className="flex items-center gap-2 font-medium text-foreground">
                   {blingAccount.webhooksRecebidos24h} recebido(s)
                   {blingAccount.webhooksComErro24h > 0 && (
                     <span className="text-destructive">
-                      {" "}
                       · {blingAccount.webhooksComErro24h} com erro
                     </span>
+                  )}
+                  {blingAccount.webhooksComErro24h > 0 && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-xs"
+                      disabled={reprocessandoWebhooks}
+                      onClick={handleReprocessarWebhooksBling}
+                    >
+                      {reprocessandoWebhooks ? "Reprocessando…" : "Reprocessar"}
+                    </Button>
                   )}
                 </span>
               </div>
@@ -472,6 +526,21 @@ export default function IntegracoesPage() {
                         <RefreshCw className="h-4 w-4" />
                       )}
                       Sincronizar estoque
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRegravarImagens}
+                      disabled={regravandoImagens}
+                      className="gap-2"
+                      title="Regrava no Vercel Blob as imagens de produto que ainda são URLs assinadas do S3 do Bling (expiram)"
+                    >
+                      {regravandoImagens ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-4 w-4" />
+                      )}
+                      Regravar imagens expiradas
                     </Button>
                   </>
                 ) : (

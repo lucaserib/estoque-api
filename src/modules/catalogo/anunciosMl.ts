@@ -96,6 +96,7 @@ async function montarDadosAnuncio(item: MLItem, accessToken: string, conta: Cont
   const logistica = item.shipping?.logistic_type ?? null;
   return {
     mlTitle: item.title,
+    mlSellerSku: MercadoLivreService.extractRealSku(item),
     mlPrice: precoAtual,
     mlOriginalPrice: precoOriginal,
     mlBasePrice: item.base_price ? Math.round(item.base_price * 100) : null,

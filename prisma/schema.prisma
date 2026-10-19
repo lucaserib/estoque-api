@@ -323,6 +323,7 @@ model ProdutoMercadoLivre {
   mlUltimoEnvioEstoqueEm DateTime?
   mlAutoStockPausado    Boolean             @default(false)
   mlVariationId         String?
+  mlSellerSku           String?
   vinculoOrigem         OrigemVinculoProduto?
   vinculoConfirmado     Boolean             @default(true)
   mercadoLivreAccount   MercadoLivreAccount @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)

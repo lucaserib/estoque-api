@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import {
@@ -16,18 +17,28 @@ import {
   DataTableRow,
 } from "@/components/ui/data-table";
 
+type Motivo = "NAO_CONFIRMADO" | "SKU_DIVERGENTE";
+
 interface VinculoPendente {
   id: string;
   mlItemId: string;
   mlTitle: string;
+  mlSellerSku: string | null;
   origem: string | null;
   produto: { id: string; nome: string; sku: string } | null;
+  motivos: Motivo[];
 }
+
+const ROTULO_MOTIVO: Record<Motivo, string> = {
+  NAO_CONFIRMADO: "Vínculo por similaridade",
+  SKU_DIVERGENTE: "SKU do anúncio diverge",
+};
 
 export default function VinculosPendentesPage() {
   const [vinculos, setVinculos] = useState<VinculoPendente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [processando, setProcessando] = useState<string | null>(null);
+  const [skuTrocaPorId, setSkuTrocaPorId] = useState<Record<string, string>>({});
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -62,12 +73,43 @@ export default function VinculosPendentesPage() {
     }
   };
 
+  const trocarPorSku = async (id: string) => {
+    const sku = (skuTrocaPorId[id] ?? "").trim();
+    if (!sku) {
+      toast.error("Informe o SKU do produto certo.");
+      return;
+    }
+    setProcessando(id);
+    try {
+      const buscaResposta = await fetch(`/api/produtos?sku=${encodeURIComponent(sku)}`);
+      if (!buscaResposta.ok) throw new Error();
+      const produto = await buscaResposta.json();
+      const novoProdutoId = Array.isArray(produto) ? produto[0]?.id : produto?.id;
+      if (!novoProdutoId) {
+        toast.error(`Nenhum produto encontrado com o SKU "${sku}".`);
+        return;
+      }
+
+      const resposta = await fetch("/api/produtos/vinculos-pendentes", {
+        method: "PATCH",
+        body: JSON.stringify({ id, acao: "trocar", novoProdutoId }),
+      });
+      if (!resposta.ok) throw new Error();
+      toast.success("Vínculo trocado.");
+      setVinculos((atual) => atual.filter((v) => v.id !== id));
+    } catch {
+      toast.error("Erro ao trocar o vínculo.");
+    } finally {
+      setProcessando(null);
+    }
+  };
+
   return (
-    <div className="container mx-auto max-w-[1200px] space-y-6 p-6">
+    <div className="container mx-auto max-w-[1300px] space-y-6 p-6">
       <PageHeader
         eyebrow="Produtos"
         title="Confirme estes vínculos"
-        subtitle="Anúncios vinculados por similaridade de título — confirme ou desfaça antes de confiar no CMV dessas vendas."
+        subtitle="Anúncios vinculados por similaridade de título ou com SKU divergente do produto — confirme, troque ou desfaça antes de confiar no CMV dessas vendas."
       />
 
       <SectionCard title={`${vinculos.length} vínculo(s) pendente(s)`}>
@@ -82,8 +124,9 @@ export default function VinculosPendentesPage() {
             <DataTableHeader>
               <DataTableRow>
                 <DataTableHead>Anúncio (ML)</DataTableHead>
+                <DataTableHead>SKU do anúncio</DataTableHead>
                 <DataTableHead>Produto vinculado</DataTableHead>
-                <DataTableHead>Origem</DataTableHead>
+                <DataTableHead>Motivo</DataTableHead>
                 <DataTableHead className="text-right">Ações</DataTableHead>
               </DataTableRow>
             </DataTableHeader>
@@ -94,14 +137,33 @@ export default function VinculosPendentesPage() {
                     <div className="font-medium">{v.mlTitle}</div>
                     <div className="text-xs text-muted-foreground">{v.mlItemId}</div>
                   </DataTableCell>
+                  <DataTableCell>{v.mlSellerSku ?? "—"}</DataTableCell>
                   <DataTableCell>
                     {v.produto ? `${v.produto.nome} (${v.produto.sku})` : "—"}
                   </DataTableCell>
                   <DataTableCell>
-                    <StatusPill tone="warning">{v.origem ?? "—"}</StatusPill>
+                    <div className="flex flex-wrap gap-1">
+                      {v.motivos.map((motivo) => (
+                        <StatusPill key={motivo} tone="warning">{ROTULO_MOTIVO[motivo]}</StatusPill>
+                      ))}
+                    </div>
                   </DataTableCell>
                   <DataTableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap justify-end items-center gap-2">
+                      <Input
+                        className="h-8 w-32"
+                        placeholder="SKU certo"
+                        value={skuTrocaPorId[v.id] ?? ""}
+                        onChange={(e) => setSkuTrocaPorId((atual) => ({ ...atual, [v.id]: e.target.value }))}
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={processando === v.id}
+                        onClick={() => trocarPorSku(v.id)}
+                      >
+                        Trocar
+                      </Button>
                       <Button
                         size="sm"
                         variant="outline"
