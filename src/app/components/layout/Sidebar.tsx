@@ -21,6 +21,7 @@ import {
   FileBarChart,
   CreditCard,
   ClipboardCheck,
+  HeartPulse,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -302,6 +303,12 @@ const Sidebar = () => {
           href="/integracoes"
           icon={Zap}
           label="Integrações"
+          isCollapsed={isSidebarCollapsed}
+        />
+        <SidebarLink
+          href="/saude-dados"
+          icon={HeartPulse}
+          label="Saúde dos dados"
           isCollapsed={isSidebarCollapsed}
         />
         <SidebarLink

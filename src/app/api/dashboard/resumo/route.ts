@@ -4,10 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { withCache, createCacheKey } from "@/lib/cache";
 import { podeVer } from "@/lib/permissoes";
 import { calcularTodasPendencias } from "@/services/pendenciasService";
-import { calcularReposicaoConta } from "@/services/reposicaoService";
+import { calcularReposicaoConta, calcularCapitalParadoConta } from "@/services/reposicaoService";
 import { gerarResumoPeriodo, gerarSerieDiaria } from "@/modules/financeiro/relatorios/resumoDia";
 import { gerarLucroPorProduto } from "@/modules/financeiro/relatorios/lucroPorProduto";
 import { listarVendasComLucro } from "@/modules/financeiro/relatorios/lucroPorVenda";
+import { calcularSaldoTotalAtual } from "@/modules/financeiro/relatorios/saldoContas";
 
 type BlocoResultado<T> = { dados: T; parcial: boolean; erro?: string };
 
@@ -95,6 +96,11 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
   const reposicaoBloco = await comFallback(
     () => calcularReposicaoConta(userId),
     { sugestoes: [], parcial: false }
+  );
+
+  const caixaBloco = await comFallback(
+    () => calcularSaldoTotalAtual(userId),
+    0
   );
 
   const estoqueLocalBloco = await comFallback(async () => {
@@ -228,20 +234,16 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
     (s) => s.coberturaDias != null && s.coberturaDias < s.leadTimeDias
   ).length;
 
-  const SESSENTA_DIAS_MS = 60 * 24 * 60 * 60 * 1000;
-  const capitalParado = sugestoes
-    .filter(
-      (s) =>
-        s.demandaDiaria === 0 &&
-        (s.coberturaDias == null || s.coberturaDias > 120) &&
-        s.estoqueLocal > 0
-    )
-    .map((s) => ({
-      produtoId: s.produtoId,
-      nome: s.nome,
-      estoqueLocal: s.estoqueLocal,
-      valor: verCusto && s.custoMedio != null ? s.estoqueLocal * s.custoMedio : null,
-    }));
+  const capitalParadoBloco = await comFallback(
+    () => calcularCapitalParadoConta(userId, 60),
+    [] as Awaited<ReturnType<typeof calcularCapitalParadoConta>>
+  );
+  const capitalParado = capitalParadoBloco.dados.map((p) => ({
+    produtoId: p.produtoId,
+    nome: p.nome,
+    estoqueLocal: p.estoqueLocal,
+    valor: verCusto ? p.valorParado : null,
+  }));
 
   return {
     geradoEm: agora.toISOString(),
@@ -289,7 +291,7 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
       rompeAntesDoProximoPedido,
     },
     capitalParado: {
-      parcial: reposicaoBloco.parcial,
+      parcial: capitalParadoBloco.parcial,
       itens: capitalParado,
       valorTotal: capitalParado.reduce((s, i) => s + (i.valor ?? 0), 0),
     },
@@ -305,6 +307,10 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
     integracoes: {
       parcial: integracoesBloco.parcial,
       ...integracoesBloco.dados,
+    },
+    caixa: {
+      parcial: caixaBloco.parcial,
+      saldoTotal: verCusto ? caixaBloco.dados : null,
     },
   };
 }

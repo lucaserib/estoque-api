@@ -53,6 +53,22 @@ vi.mock("@/services/reposicaoService", () => ({
     ],
     parcial: false,
   })),
+  calcularCapitalParadoConta: vi.fn(async () => [
+    {
+      produtoId: "p2",
+      nome: "Produto Parado",
+      sku: "SKU2",
+      estoqueLocal: 8,
+      custoMedio: 1000,
+      valorParado: 8000,
+      ultimaVenda: null,
+      diasSemVenda: null,
+    },
+  ]),
+}));
+
+vi.mock("@/modules/financeiro/relatorios/saldoContas", () => ({
+  calcularSaldoTotalAtual: vi.fn(async () => 50000),
 }));
 
 const resumoPeriodoMock = vi.fn();
@@ -181,6 +197,21 @@ describe("GET /api/dashboard/resumo", () => {
     expect(body.metricas.valorEstoqueCusto).toBeNull();
     expect(body.vendas.topPorMargem).toEqual([]);
     expect(body.estoque.topProdutos[0].valor).toBeNull();
+    expect(body.capitalParado.itens[0].valor).toBeNull();
+    expect(body.caixa.saldoTotal).toBeNull();
+  });
+
+  it("capital parado vem da mesma fonte usada pela Reposição (calcularCapitalParadoConta)", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-6", role: "ADMIN" });
+    const { GET } = await import("../route");
+
+    const response = await GET(criarRequest());
+    const body = await response.json();
+
+    expect(body.capitalParado.itens).toEqual([
+      { produtoId: "p2", nome: "Produto Parado", estoqueLocal: 8, valor: 8000 },
+    ]);
+    expect(body.capitalParado.valorTotal).toBe(8000);
   });
 
   it("expõe campos financeiros para ADMIN", async () => {
@@ -192,6 +223,7 @@ describe("GET /api/dashboard/resumo", () => {
 
     expect(body.metricas.margemContribuicao).not.toBeNull();
     expect(body.metricas.valorEstoqueCusto).not.toBeNull();
+    expect(body.caixa.saldoTotal).toBe(50000);
   });
 
   it("reflete a contagem de pendências por código", async () => {

@@ -1,6 +1,16 @@
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { VendaML } from "../types";
+
+const STATUS_PAGAMENTO_LABEL: Record<string, string> = {
+  approved: "Aprovado",
+  pending: "Pendente",
+  in_process: "Em análise",
+  rejected: "Rejeitado",
+  cancelled: "Cancelado",
+  refunded: "Reembolsado",
+  charged_back: "Contestado",
+};
 import {
   Dialog,
   DialogContent,
@@ -263,7 +273,7 @@ export function VendaMLDetalhesDialog({
                             : "bg-warning/10 text-warning"
                         }
                       >
-                        {payment.status}
+                        {(payment.status && STATUS_PAGAMENTO_LABEL[payment.status]) ?? payment.status ?? "—"}
                       </Badge>
                     </div>
                   ))}

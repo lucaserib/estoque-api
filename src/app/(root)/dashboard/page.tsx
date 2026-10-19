@@ -150,6 +150,10 @@ interface ResumoResponse {
       anunciosComErro: number;
     } | null;
   };
+  caixa: {
+    parcial: boolean;
+    saldoTotal: number | null;
+  };
 }
 
 export default function DashboardPage() {
@@ -221,6 +225,12 @@ export default function DashboardPage() {
             resumo.metricas.valorEstoqueCusto.produtosSemCusto > 0
               ? `${resumo.metricas.valorEstoqueCusto.produtosSemCusto} produto(s) sem custo não somados`
               : undefined,
+        }
+      : null,
+    podeVerCusto && resumo?.caixa.saldoTotal != null
+      ? {
+          label: "Saldo em conta",
+          value: formatBRL(resumo.caixa.saldoTotal),
         }
       : null,
   ].filter((item): item is StatStripItem => item !== null);
