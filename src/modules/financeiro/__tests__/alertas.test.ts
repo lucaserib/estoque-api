@@ -68,18 +68,25 @@ const notifyContaAVencerMock = vi.fn();
 const notifyContaVencidaMock = vi.fn();
 const notifyVendaComPrejuizoMock = vi.fn();
 const notifyDivergenciaConciliacaoMock = vi.fn();
+const notifyEstoqueCriticoMock = vi.fn();
 vi.mock("@/services/notificationService", () => ({
   NotificationService: {
     notifyContaAVencer: (...args: unknown[]) => notifyContaAVencerMock(...args),
     notifyContaVencida: (...args: unknown[]) => notifyContaVencidaMock(...args),
     notifyVendaComPrejuizo: (...args: unknown[]) => notifyVendaComPrejuizoMock(...args),
     notifyDivergenciaConciliacao: (...args: unknown[]) => notifyDivergenciaConciliacaoMock(...args),
+    notifyEstoqueCritico: (...args: unknown[]) => notifyEstoqueCriticoMock(...args),
   },
 }));
 
 const gerarRelatorioConciliacaoMock = vi.fn();
 vi.mock("../relatorios/conciliacao", () => ({
   gerarRelatorioConciliacao: (...args: unknown[]) => gerarRelatorioConciliacaoMock(...args),
+}));
+
+const calcularReposicaoContaMock = vi.fn();
+vi.mock("@/services/reposicaoService", () => ({
+  calcularReposicaoConta: (...args: unknown[]) => calcularReposicaoContaMock(...args),
 }));
 
 const { gerarAlertasFinanceiros } = await import("../alertas");
@@ -98,8 +105,11 @@ beforeEach(() => {
   notifyContaVencidaMock.mockReset();
   notifyVendaComPrejuizoMock.mockReset();
   notifyDivergenciaConciliacaoMock.mockReset();
+  notifyEstoqueCriticoMock.mockReset();
   gerarRelatorioConciliacaoMock.mockReset();
   gerarRelatorioConciliacaoMock.mockResolvedValue({ mesReferencia: "2026-10", canal: "MERCADO_LIVRE", linhas: [] });
+  calcularReposicaoContaMock.mockReset();
+  calcularReposicaoContaMock.mockResolvedValue({ sugestoes: [], parcial: false });
 });
 
 describe("gerarAlertasFinanceiros", () => {
@@ -167,5 +177,22 @@ describe("gerarAlertasFinanceiros", () => {
 
     expect(resultado.divergenciasConciliacao).toBe(1);
     expect(notifyDivergenciaConciliacaoMock).toHaveBeenCalledWith("user-1", mesReferenciaAtual(), "Tarifa de venda", 200);
+  });
+
+  it("notifica estoque crítico para cada produto em ruptura prevista", async () => {
+    calcularReposicaoContaMock.mockResolvedValue({
+      sugestoes: [
+        { produtoId: "p1", nome: "Produto 1", status: "critico" },
+        { produtoId: "p2", nome: "Produto 2", status: "ok" },
+        { produtoId: "p3", nome: "Produto 3", status: "atencao" },
+      ],
+      parcial: false,
+    });
+
+    const resultado = await gerarAlertasFinanceiros("user-1");
+
+    expect(resultado.rupturasPrevistas).toBe(1);
+    expect(notifyEstoqueCriticoMock).toHaveBeenCalledWith("user-1", "Produto 1", "p1");
+    expect(notifyEstoqueCriticoMock).toHaveBeenCalledTimes(1);
   });
 });

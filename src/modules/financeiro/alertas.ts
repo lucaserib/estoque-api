@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NotificationService } from "@/services/notificationService";
 import { inicioDoDia, fimDoDia, competenciaDe } from "./dominio/periodo";
 import { gerarRelatorioConciliacao } from "./relatorios/conciliacao";
+import { calcularReposicaoConta } from "@/services/reposicaoService";
 
 const TRES_DIAS_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -11,6 +12,7 @@ export interface ResultadoAlertasFinanceiros {
   contasVencidas: number;
   vendasComPrejuizo: number;
   divergenciasConciliacao: number;
+  rupturasPrevistas: number;
 }
 
 /**
@@ -84,10 +86,17 @@ export async function gerarAlertasFinanceiros(userId: string): Promise<Resultado
     );
   }
 
+  const { sugestoes } = await calcularReposicaoConta(userId);
+  const emRuptura = sugestoes.filter((s) => s.status === "critico");
+  for (const sugestao of emRuptura) {
+    await NotificationService.notifyEstoqueCritico(userId, sugestao.nome, sugestao.produtoId);
+  }
+
   return {
     contasAVencer: aVencer.length,
     contasVencidas: vencidas.length,
     vendasComPrejuizo: vendasComPrejuizo.length,
     divergenciasConciliacao: linhasComAlerta.length,
+    rupturasPrevistas: emRuptura.length,
   };
 }

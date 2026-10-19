@@ -94,7 +94,8 @@ export async function GET(request: NextRequest) {
         resultadoAlertas.contasAVencer +
         resultadoAlertas.contasVencidas +
         resultadoAlertas.vendasComPrejuizo +
-        resultadoAlertas.divergenciasConciliacao;
+        resultadoAlertas.divergenciasConciliacao +
+        resultadoAlertas.rupturasPrevistas;
     } catch (error) {
       erros++;
       console.error(`[CRON_FINANCEIRO_DIARIO] Erro ao gerar alertas da conta ${dono.id}:`, error);

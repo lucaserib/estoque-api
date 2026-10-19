@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Download, FileText } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +17,8 @@ import {
   DataTableRow,
 } from "@/components/ui/data-table";
 import { formatBRL, formatPercent, formatNumberBR } from "@/lib/format";
+import { exportToExcel } from "@/utils/excelExport";
+import { loadPDF, addTableToPDF, canUsePDF } from "@/utils/pdfHelper";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "../components/SeletorPeriodo";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
 import { useAoAtualizarDados } from "../components/SincronizacaoFinanceira";
@@ -100,13 +102,61 @@ export default function LucroPorProdutoPage() {
   const produtosComMargemNegativa = produtos.filter((p) => p.margemContribuicao < 0);
   const produtosSemCusto = produtos.filter((p) => p.vendasSemCusto > 0);
 
+  const linhaExportavel = (produto: LinhaProduto) => ({
+    SKU: produto.sku,
+    Produto: produto.nome,
+    Unidades: produto.unidades,
+    Faturamento: produto.faturamentoBruto / 100,
+    Margem: produto.margemContribuicao / 100,
+    "Tarifas + frete": (produto.tarifa + produto.frete) / 100,
+    "Custo (CMV)": produto.cmv / 100,
+    "Lucro líquido": produto.lucroLiquido / 100,
+    ABC: produto.curvaAbc,
+  });
+
+  const exportarXlsx = () => {
+    exportToExcel(produtos.map(linhaExportavel), `lucro-por-produto-${periodo.desde.toISOString().slice(0, 10)}`, "Produtos");
+  };
+
+  const exportarPdf = async () => {
+    if (!canUsePDF()) return;
+    const doc = await loadPDF();
+    doc.setFontSize(16);
+    doc.text("Lucro por produto", 14, 18);
+    addTableToPDF(doc, {
+      head: [["SKU", "Produto", "Unidades", "Faturamento", "Margem", "Custo (CMV)", "Lucro líquido", "ABC"]],
+      body: produtos.map((produto) => [
+        produto.sku,
+        produto.nome,
+        formatNumberBR(produto.unidades),
+        formatBRL(produto.faturamentoBruto),
+        formatBRL(produto.margemContribuicao),
+        formatBRL(produto.cmv),
+        formatBRL(produto.lucroLiquido),
+        produto.curvaAbc,
+      ]),
+      startY: 28,
+    });
+    doc.save(`lucro-por-produto-${periodo.desde.toISOString().slice(0, 10)}.pdf`);
+  };
+
   return (
     <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
       <PageHeader
         eyebrow="Financeiro"
         title="Lucro por produto"
         subtitle="Margem de cada produto com a mesma regra da DRE (faturamento − impostos − tarifas − frete − ads − custo). O lucro líquido desconta a parte das despesas fixas."
-        actions={<SeletorPeriodo valor={periodo} onChange={setPeriodo} />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportarXlsx} disabled={produtos.length === 0}>
+              <Download className="mr-1 h-4 w-4" /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportarPdf} disabled={produtos.length === 0}>
+              <FileText className="mr-1 h-4 w-4" /> PDF
+            </Button>
+            <SeletorPeriodo valor={periodo} onChange={setPeriodo} />
+          </div>
+        }
       />
 
       {(produtosComMargemNegativa.length > 0 || produtosSemCusto.length > 0) && (

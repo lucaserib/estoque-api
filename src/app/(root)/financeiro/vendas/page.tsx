@@ -2,7 +2,9 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Search } from "lucide-react";
+import { Download, FileText, Loader2, Search } from "lucide-react";
+import { exportToExcel } from "@/utils/excelExport";
+import { loadPDF, addTableToPDF, canUsePDF } from "@/utils/pdfHelper";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { Button } from "@/components/ui/button";
@@ -173,13 +175,13 @@ function VendasPageContent() {
   const [motivoFrete, setMotivoFrete] = useState("");
   const [salvandoFrete, setSalvandoFrete] = useState(false);
 
+  const [exportando, setExportando] = useState(false);
   const POR_PAGINA = 25;
   const filtrandoPorPedido = /^\d{8,}$/.test(buscaAplicada.trim());
 
-  const carregar = useCallback(async () => {
-    setCarregando(true);
-    try {
-      const params = new URLSearchParams({ pagina: String(pagina), porPagina: String(POR_PAGINA) });
+  const montarParamsFiltro = useCallback(
+    (porPagina: number) => {
+      const params = new URLSearchParams({ pagina: "1", porPagina: String(porPagina) });
       if (!filtrandoPorPedido) {
         params.set("desde", periodo.desde.toISOString());
         params.set("ate", periodo.ate.toISOString());
@@ -190,6 +192,16 @@ function VendasPageContent() {
       if (aguardandoDetalhes) params.set("aguardandoDetalhes", "true");
       if (produtoId) params.set("produtoId", produtoId);
       if (buscaAplicada.trim()) params.set("busca", buscaAplicada.trim());
+      return params;
+    },
+    [periodo, status, soPrejuizo, soIncompletas, aguardandoDetalhes, produtoId, buscaAplicada, filtrandoPorPedido]
+  );
+
+  const carregar = useCallback(async () => {
+    setCarregando(true);
+    try {
+      const params = montarParamsFiltro(POR_PAGINA);
+      params.set("pagina", String(pagina));
 
       const resposta = await fetch(`/api/financeiro/vendas?${params.toString()}`, { cache: "no-store" });
       if (resposta.ok) {
@@ -200,7 +212,7 @@ function VendasPageContent() {
     } finally {
       setCarregando(false);
     }
-  }, [periodo, status, soPrejuizo, soIncompletas, aguardandoDetalhes, produtoId, pagina, buscaAplicada, filtrandoPorPedido]);
+  }, [montarParamsFiltro, pagina]);
 
   useEffect(() => {
     if (podeVerFinanceiro) carregar();
@@ -250,6 +262,67 @@ function VendasPageContent() {
     }
   };
 
+  const buscarTodasParaExportar = async (): Promise<VendaLista[]> => {
+    const params = montarParamsFiltro(Math.max(total, 1));
+    const resposta = await fetch(`/api/financeiro/vendas?${params.toString()}`, { cache: "no-store" });
+    if (!resposta.ok) return [];
+    const body = await resposta.json();
+    return body.vendas as VendaLista[];
+  };
+
+  const linhaExportavel = (venda: VendaLista) => ({
+    Pedido: venda.pedidoExternoId,
+    Data: formatarDataHora(venda.dataVenda),
+    Status: STATUS_ROTULO[venda.status] ?? venda.status,
+    Logística: venda.logisticaRotulo,
+    Faturamento: venda.calculo.valida ? venda.calculo.faturamento / 100 : venda.calculo.vendaBruta / 100,
+    Tarifa: venda.calculo.tarifa / 100,
+    Frete: venda.calculo.semFrete ? 0 : venda.calculo.frete / 100,
+    Custo: venda.calculo.semCusto ? 0 : venda.calculo.cmv / 100,
+    Margem: venda.calculo.margemContribuicao / 100,
+  });
+
+  const exportarXlsx = async () => {
+    setExportando(true);
+    try {
+      const todasVendas = await buscarTodasParaExportar();
+      exportToExcel(todasVendas.map(linhaExportavel), `vendas-${periodo.desde.toISOString().slice(0, 10)}`, "Vendas");
+    } finally {
+      setExportando(false);
+    }
+  };
+
+  const exportarPdf = async () => {
+    if (!canUsePDF()) return;
+    setExportando(true);
+    try {
+      const todasVendas = await buscarTodasParaExportar();
+      const doc = await loadPDF();
+      doc.setFontSize(16);
+      doc.text("Vendas", 14, 18);
+      addTableToPDF(doc, {
+        head: [["Pedido", "Data", "Status", "Faturamento", "Tarifa", "Frete", "Custo", "Margem"]],
+        body: todasVendas.map((venda) => {
+          const linha = linhaExportavel(venda);
+          return [
+            linha.Pedido,
+            linha.Data,
+            linha.Status,
+            moeda(venda.calculo.valida ? venda.calculo.faturamento : venda.calculo.vendaBruta),
+            moeda(venda.calculo.tarifa),
+            venda.calculo.semFrete ? "—" : moeda(venda.calculo.frete),
+            venda.calculo.semCusto ? "—" : moeda(venda.calculo.cmv),
+            moeda(venda.calculo.margemContribuicao),
+          ];
+        }),
+        startY: 28,
+      });
+      doc.save(`vendas-${periodo.desde.toISOString().slice(0, 10)}.pdf`);
+    } finally {
+      setExportando(false);
+    }
+  };
+
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
       <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
@@ -267,7 +340,17 @@ function VendasPageContent() {
         eyebrow="Financeiro"
         title="Vendas"
         subtitle="Cada pedido com faturamento, tarifas, frete, custo e margem — os mesmos números da Visão geral e da DRE."
-        actions={<BotaoAtualizarFinanceiro modo="INCREMENTAL" />}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportarXlsx} disabled={exportando || total === 0}>
+              <Download className="mr-1 h-4 w-4" /> Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportarPdf} disabled={exportando || total === 0}>
+              <FileText className="mr-1 h-4 w-4" /> PDF
+            </Button>
+            <BotaoAtualizarFinanceiro modo="INCREMENTAL" />
+          </div>
+        }
       />
 
       <SectionCard>

@@ -63,7 +63,7 @@ beforeEach(() => {
   garantirHistoricoMock.mockReset().mockResolvedValue(undefined);
   corrigirMesMock.mockReset().mockResolvedValue({ lote: { gravados: 2 } });
   recorrenciasMock.mockReset().mockResolvedValue({ gerados: 1 });
-  alertasMock.mockReset().mockResolvedValue({ contasAVencer: 1, contasVencidas: 1, vendasComPrejuizo: 2, divergenciasConciliacao: 1 });
+  alertasMock.mockReset().mockResolvedValue({ contasAVencer: 1, contasVencidas: 1, vendasComPrejuizo: 2, divergenciasConciliacao: 1, rupturasPrevistas: 0 });
   saldoMock.mockReset().mockResolvedValue(undefined);
 });
 
