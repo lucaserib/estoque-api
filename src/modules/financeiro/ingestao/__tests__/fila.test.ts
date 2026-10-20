@@ -193,6 +193,49 @@ describe("executarFila — importação por período", () => {
     expect(tarefas[0].processados).toBe(60);
   });
 
+  it("orçamento de tempo acaba no meio da tarefa e a retomada conclui sem repetir páginas", async () => {
+    vi.useFakeTimers();
+    const clienteModule = await import("../../canais/mercadoLivre/cliente");
+    const buscarPaginaPedidosMock = clienteModule.buscarPaginaPedidos as unknown as ReturnType<typeof vi.fn>;
+    const implementacaoOriginal = buscarPaginaPedidosMock.getMockImplementation() as (...args: unknown[]) => Promise<unknown>;
+
+    try {
+      paginas.set(`date_created:${INICIO_OUT.toISOString()}`, [lote(1, 50), lote(51, 10)]);
+      tarefas.push(novaTarefa({ desde: INICIO_OUT, ate: FIM_OUT, forcar: true }));
+
+      let chamada = 0;
+      buscarPaginaPedidosMock.mockImplementation(async (...args: unknown[]) => {
+        chamada++;
+        const resultado = await implementacaoOriginal(...args);
+        if (chamada === 1) vi.advanceTimersByTime(60000);
+        return resultado;
+      });
+
+      const parcial = await executarFila("user-1", "conta-1", 10000);
+
+      expect(chamadasBusca).toHaveLength(1);
+      expect(parcial.status).not.toBe("CONCLUIDA");
+      expect(tarefas[0].status).not.toBe("CONCLUIDA");
+      expect(tarefas[0].cursor).toEqual({ inicioJanela: INICIO_OUT.toISOString(), offset: 50 });
+      expect(tarefas[0].processados).toBe(50);
+
+      chamadasBusca.length = 0;
+      chamada = 0;
+      tarefas[0].status = "PENDENTE";
+      tarefas[0].bloqueadaAte = null;
+
+      await executarFila("user-1", "conta-1", 60000);
+
+      expect(chamadasBusca).toHaveLength(1);
+      expect(chamadasBusca[0].offset).toBe(50);
+      expect(tarefas[0].status).toBe("CONCLUIDA");
+      expect(tarefas[0].processados).toBe(60);
+    } finally {
+      buscarPaginaPedidosMock.mockImplementation(implementacaoOriginal);
+      vi.useRealTimers();
+    }
+  });
+
   it("falha na API devolve a tarefa para PENDENTE com o erro e conta a tentativa", async () => {
     falharBusca = true;
     tarefas.push(novaTarefa({ desde: INICIO_OUT, ate: FIM_OUT }));
