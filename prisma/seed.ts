@@ -1,5 +1,14 @@
-import { PrismaClient } from "@prisma/client";
+import {
+  PrismaClient,
+  CanalVenda,
+  StatusVendaCanal,
+  FreteOrigem,
+  ModoFaturamento,
+  RegimeTributario,
+} from "@prisma/client";
 import { hash } from "bcryptjs";
+import { calcularVenda } from "../src/modules/financeiro/relatorios/motor";
+import { mapearCobranca } from "../src/modules/financeiro/canais/mercadoLivre/mapeadorCobrancas";
 
 const prisma = new PrismaClient();
 
@@ -45,6 +54,14 @@ async function main() {
     });
   } else {
     console.log(`👤 Usuário já existe: ${userEmail}`);
+  }
+
+  const produtoExistente = await prisma.produto.findFirst({ where: { userId: user.id } });
+  if (produtoExistente) {
+    console.log("↩️  Dados aleatórios de desenvolvimento já existem, pulando para o e2e...");
+    await seedE2E();
+    console.log("✅ Seed concluído com sucesso!");
+    return;
   }
 
   // Criar fornecedores
@@ -412,7 +429,302 @@ async function main() {
     );
   }
 
+  await seedE2E();
+
   console.log("✅ Seed concluído com sucesso!");
+}
+
+async function seedE2E() {
+  console.log("🧪 Semeando dados determinísticos para e2e...");
+
+  const email = "e2e@skubo.test";
+  const hashed = await hash("e2eteste123", 10);
+  const existente = await prisma.user.findUnique({ where: { email } });
+  const usuario = existente
+    ? await prisma.user.update({ where: { email }, data: { password: hashed } })
+    : await prisma.user.create({ data: { email, name: "E2E Skubo", password: hashed } });
+
+  await prisma.vendaCanal.deleteMany({ where: { userId: usuario.id } });
+  await prisma.cobrancaCanal.deleteMany({ where: { userId: usuario.id } });
+  await prisma.produtoMercadoLivre.deleteMany({
+    where: { mercadoLivreAccount: { userId: usuario.id } },
+  });
+  await prisma.estoque.deleteMany({ where: { produto: { userId: usuario.id } } });
+  await prisma.componente.deleteMany({ where: { kit: { userId: usuario.id } } });
+  await prisma.produto.deleteMany({ where: { userId: usuario.id } });
+  await prisma.mercadoLivreAccount.deleteMany({ where: { userId: usuario.id } });
+  await prisma.blingAccount.deleteMany({ where: { userId: usuario.id } });
+
+  const armazem = await prisma.armazem.upsert({
+    where: { userId_blingDepositoId: { userId: usuario.id, blingDepositoId: "e2e-deposito" } },
+    update: {},
+    create: { nome: "Depósito E2E", userId: usuario.id, tipo: "LOCAL", blingDepositoId: "e2e-deposito" },
+  });
+
+  const produtosSimples = [];
+  for (let i = 1; i <= 18; i++) {
+    const custoMedio = 1000 + i * 50;
+    const produto = await prisma.produto.create({
+      data: {
+        nome: `E2E Produto ${i}`,
+        sku: `E2E-SKU-${i}`,
+        ean: BigInt(`789${i.toString().padStart(10, "0")}`),
+        custoMedio,
+        precoVenda: custoMedio * 2,
+        isKit: false,
+        ativo: true,
+        userId: usuario.id,
+      },
+    });
+    produtosSimples.push(produto);
+    await prisma.estoque.create({
+      data: { produtoId: produto.id, armazemId: armazem.id, quantidade: 50, estoqueSeguranca: 5 },
+    });
+  }
+
+  const kits = [];
+  for (const [indice, pares] of [[0, 1], [2, 3]].entries()) {
+    const [a, b] = pares as unknown as [number, number];
+    const kit = await prisma.produto.create({
+      data: {
+        nome: `E2E Kit Combo ${indice + 1}`,
+        sku: `E2E-KIT-${indice + 1}`,
+        ean: BigInt(`788${(indice + 1).toString().padStart(10, "0")}`),
+        isKit: true,
+        ativo: true,
+        userId: usuario.id,
+      },
+    });
+    kits.push(kit);
+    await prisma.componente.create({
+      data: { kitId: kit.id, produtoId: produtosSimples[a].id, quantidade: 2 },
+    });
+    await prisma.componente.create({
+      data: { kitId: kit.id, produtoId: produtosSimples[b].id, quantidade: 1 },
+    });
+    await prisma.estoque.create({
+      data: { produtoId: kit.id, armazemId: armazem.id, quantidade: 10, estoqueSeguranca: 2 },
+    });
+  }
+
+  const seiHorasDepois = new Date(Date.now() + 6 * 60 * 60 * 1000);
+  const mlAccount = await prisma.mercadoLivreAccount.create({
+    data: {
+      userId: usuario.id,
+      mlUserId: "999000111",
+      accessToken: "e2e-fake-access-token",
+      refreshToken: "e2e-fake-refresh-token",
+      expiresAt: seiHorasDepois,
+      nickname: "LEAPSTORE_E2E",
+      siteId: "MLB",
+      isActive: true,
+    },
+  });
+
+  await prisma.blingAccount.create({
+    data: {
+      userId: usuario.id,
+      accessToken: "e2e-fake-bling-access",
+      refreshToken: "e2e-fake-bling-refresh",
+      expiresAt: seiHorasDepois,
+      isActive: true,
+      blingCompanyId: "e2e-company-1",
+    },
+  });
+
+  for (let i = 0; i < produtosSimples.length; i++) {
+    const produto = produtosSimples[i];
+    await prisma.produtoMercadoLivre.create({
+      data: {
+        produtoId: produto.id,
+        mercadoLivreAccountId: mlAccount.id,
+        mlItemId: `MLB${1000 + i}`,
+        mlTitle: produto.nome,
+        mlPrice: produto.precoVenda ?? produto.custoMedio ?? 0,
+        mlAvailableQuantity: 20,
+        mlStatus: "active",
+        mlShippingMode: i < 9 ? "fulfillment" : "me2",
+        mlTarifaVenda: Math.round((produto.precoVenda ?? 0) * 0.11),
+        mlCustoFrete: i < 9 ? 0 : 1200,
+        mlSellerSku: produto.sku,
+        vinculoConfirmado: true,
+      },
+    });
+  }
+
+  const kit2UnidadesMlItemId = "MLB2000";
+  await prisma.produtoMercadoLivre.create({
+    data: {
+      produtoId: null,
+      mercadoLivreAccountId: mlAccount.id,
+      mlItemId: kit2UnidadesMlItemId,
+      mlTitle: `Kit 2 ${produtosSimples[0].nome}`,
+      mlPrice: (produtosSimples[0].precoVenda ?? 0) * 2,
+      mlAvailableQuantity: 15,
+      mlStatus: "active",
+      mlShippingMode: "me2",
+      mlSellerSku: produtosSimples[0].sku,
+      vinculoConfirmado: false,
+      syncStatus: "pending",
+    },
+  });
+
+  const config = {
+    aliquotaImposto: 0,
+    modoFaturamento: ModoFaturamento.PRODUTOS,
+    regimeTributario: RegimeTributario.SIMPLES,
+    usarImpostoEstimado: true,
+  };
+
+  const agora = new Date();
+  const mesAtualAncora = new Date(agora.getFullYear(), agora.getMonth(), 1, 15, 0, 0);
+  const mesAnteriorAncora = new Date(agora.getFullYear(), agora.getMonth() - 1, 1, 15, 0, 0);
+
+  const vendasParaCobranca: Array<{ pedidoExternoId: string; dataVenda: Date; mes: Date }> = [];
+
+  for (let i = 1; i <= 60; i++) {
+    const mes = i <= 30 ? mesAtualAncora : mesAnteriorAncora;
+    const dia = ((i - 1) % 27) + 1;
+    const dataVenda = new Date(mes.getFullYear(), mes.getMonth(), dia, 10 + (i % 8), 30, 0);
+
+    const souKit2Unidades = i % 20 === 0;
+    const produtoIndice = (i - 1) % produtosSimples.length;
+    const produto = produtosSimples[produtoIndice];
+
+    const anuncioExternoId = souKit2Unidades ? kit2UnidadesMlItemId : `MLB${1000 + produtoIndice}`;
+    const quantidade = souKit2Unidades ? 2 : 1;
+    const precoUnitario = produto.precoVenda ?? produto.custoMedio ?? 0;
+    const faturamentoBruto = precoUnitario * quantidade;
+    const tarifaVenda = Math.round(faturamentoBruto * 0.11);
+    const freteVendedor = i % 3 === 0 ? 0 : 1200;
+    const cmv = souKit2Unidades ? null : (produto.custoMedio ?? 0) * quantidade;
+    const pedidoExternoId = `20000000${(1000 + i).toString()}`;
+
+    const vendaParaCalculo = {
+      id: "temp",
+      pedidoExternoId,
+      dataVenda,
+      status: StatusVendaCanal.PAGA,
+      logistica: souKit2Unidades ? "me2" : produtoIndice < 9 ? "fulfillment" : "me2",
+      faturamentoBruto,
+      valorEstornado: 0,
+      descontoVendedor: 0,
+      tarifaVenda,
+      freteVendedor,
+      freteComprador: 0,
+      adsAtribuido: 0,
+      cmv,
+      outrosCustos: 0,
+      valorLiquidoReceber: faturamentoBruto - tarifaVenda - freteVendedor,
+      retencaoDividas: 0,
+      dataLiberacao: new Date(dataVenda.getTime() + 14 * 24 * 60 * 60 * 1000),
+      enriquecidoEm: dataVenda,
+      freteOrigem: FreteOrigem.PAGAMENTO_CONFIRMADO,
+      faltando: souKit2Unidades ? ["SEM_VINCULO"] : [],
+      itens: [],
+    };
+    const calculado = calcularVenda(vendaParaCalculo, config);
+
+    const venda = await prisma.vendaCanal.create({
+      data: {
+        userId: usuario.id,
+        canal: CanalVenda.MERCADO_LIVRE,
+        contaCanalId: mlAccount.id,
+        pedidoExternoId,
+        dataVenda,
+        status: StatusVendaCanal.PAGA,
+        logistica: vendaParaCalculo.logistica,
+        faturamentoBruto,
+        descontoVendedor: 0,
+        tarifaVenda,
+        freteVendedor,
+        freteComprador: 0,
+        impostoEstimado: calculado.imposto,
+        adsAtribuido: 0,
+        cmv,
+        outrosCustos: 0,
+        margemContribuicao: calculado.margemContribuicao,
+        valorLiquidoReceber: vendaParaCalculo.valorLiquidoReceber,
+        retencaoDividas: 0,
+        completo: !souKit2Unidades,
+        faltando: vendaParaCalculo.faltando,
+        freteOrigem: FreteOrigem.PAGAMENTO_CONFIRMADO,
+        enriquecidoEm: dataVenda,
+        atualizadoNoCanalEm: dataVenda,
+        dataLiberacao: vendaParaCalculo.dataLiberacao,
+      },
+    });
+
+    await prisma.vendaCanalItem.create({
+      data: {
+        vendaId: venda.id,
+        produtoId: souKit2Unidades ? null : produto.id,
+        sku: produto.sku,
+        anuncioExternoId,
+        titulo: souKit2Unidades ? `Kit 2 ${produto.nome}` : produto.nome,
+        quantidade,
+        precoUnitario,
+        tarifaVenda,
+        freteRateado: freteVendedor,
+        custoUnitario: souKit2Unidades ? null : produto.custoMedio,
+        margemContribuicao: souKit2Unidades ? null : calculado.margemContribuicao,
+      },
+    });
+
+    vendasParaCobranca.push({ pedidoExternoId, dataVenda, mes });
+  }
+
+  let detalheId = 1;
+  for (const mes of [mesAtualAncora, mesAnteriorAncora]) {
+    const mesReferencia = `${mes.getFullYear()}-${(mes.getMonth() + 1).toString().padStart(2, "0")}`;
+    const vendasDoMes = vendasParaCobranca.filter(
+      (v) => v.mes.getFullYear() === mes.getFullYear() && v.mes.getMonth() === mes.getMonth()
+    );
+    const amostra = vendasDoMes.slice(0, 5);
+
+    const linhas: Array<{ subTipo: string; valor: number; pedidoExternoId: string; data: Date }> = [];
+    for (const venda of amostra) {
+      linhas.push({ subTipo: "CVVML", valor: 5.5, pedidoExternoId: venda.pedidoExternoId, data: venda.dataVenda });
+      linhas.push({ subTipo: "CFFE", valor: 12, pedidoExternoId: venda.pedidoExternoId, data: venda.dataVenda });
+      linhas.push({ subTipo: "CVVPRC", valor: 1.2, pedidoExternoId: venda.pedidoExternoId, data: venda.dataVenda });
+    }
+
+    for (const linha of linhas) {
+      const bruto = {
+        charge_info: {
+          detail_id: detalheId++,
+          detail_amount: linha.valor,
+          detail_type: "CHARGE",
+          detail_sub_type: linha.subTipo,
+          transaction_detail: linha.subTipo,
+          creation_date_time: linha.data.toISOString(),
+        },
+        sales_info: [{ order_id: linha.pedidoExternoId }],
+      };
+      const normalizada = mapearCobranca(bruto, "BILL");
+      if (!normalizada) continue;
+
+      await prisma.cobrancaCanal.create({
+        data: {
+          userId: usuario.id,
+          canal: CanalVenda.MERCADO_LIVRE,
+          contaCanalId: mlAccount.id,
+          mesReferencia,
+          detalheExternoId: normalizada.detalheExternoId,
+          tipoExterno: normalizada.tipoExterno,
+          tipoNormalizado: normalizada.tipoNormalizado,
+          valor: normalizada.valor,
+          pedidoExternoId: normalizada.pedidoExternoId,
+          anuncioExternoId: normalizada.anuncioExternoId,
+          data: normalizada.data,
+          coberturaPedido: normalizada.coberturaPedido,
+        },
+      });
+    }
+  }
+
+  console.log(`  ✓ Usuário e2e: ${email} / senha: e2eteste123`);
+  console.log(`  ✓ ${produtosSimples.length} produtos, ${kits.length} kits, 60 vendas, cobranças de 2 meses`);
 }
 
 // Função auxiliar para embaralhar um array
