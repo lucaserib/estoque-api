@@ -88,6 +88,8 @@ Quando um número parecer errado, confira primeiro **de onde ele vem** antes de 
 - **Sugestão de reposição**: `src/services/reposicaoService.ts` — demanda vem de pedidos pagos do ML (uma chamada por conta, nunca por produto) mais saídas manuais, explodida por kit; estoque disponível soma local + Full (do snapshot) + pedidos de compra em aberto.
 - **Saldo de estoque do Bling**: gravado em `Estoque.quantidade` pela sincronização (`blingProductSync.ts`); `EstoqueMovimentacao.origem` registra se a última mudança veio do Bling ou de outra fonte (usado para detectar divergência).
 - **Todo número do Financeiro** (faturamento, margem, lucro, por produto, por logística, DRE, dashboard): `src/modules/financeiro/relatorios/motor.ts` (`calcularVenda`, `calcularIndicadores`, `agruparVendas`). Nenhuma tela ou rota calcula por conta própria. As definições estão em `docs/financeiro/definicoes.md`. A venda cai no dia da **criação** do pedido (fuso de SP), igual ao ML.
+- **Vínculo anúncio → produto (e "kit com N")**: só `src/modules/catalogo/vinculos.ts` grava `ProdutoMercadoLivre.produtoId` a partir da interface (rota `POST /api/catalogo/vinculos`; as rotas antigas delegam para ele). Anúncio que vende N unidades do mesmo SKU aponta para um produto-kit com um único componente × N (`obterOuCriarKitDeQuantidade`); reposição, custo, envio de estoque e Financeiro tratam como kit sem regra especial. Trocar o vínculo chama `revincularVendasDoAnuncio` (refaz custo/CMV das vendas já gravadas).
+- **Lista da tela Produtos**: `src/modules/catalogo/listaProdutos.ts` (`GET /api/produtos/lista`) — paginada no servidor, ordem ativos → vendidos em 90 dias (Financeiro; venda de kit conta no componente) → com estoque → nome. Estoque local nunca inclui o armazém Full.
 - **Vendas do ML no Financeiro**: `VendaCanal`, gravada em duas etapas. Primeiro o lote rápido (`ingestao/lote.ts`), direto do `/orders/search`; depois o detalhamento (`ingestao/enriquecimento.ts`), com o pagamento do Mercado Pago (tarifa e frete reais, retenção, líquido, liberação). `enriquecidoEm = null` significa "ainda sem o detalhe do pagamento". A fila fica em `ingestao/fila.ts` e a prova contra o ML em `relatorios/conferencia.ts` (tela Financeiro → Conferência).
 
 ### Key Business Logic
@@ -161,4 +163,6 @@ All business data is scoped by **account** (`User.contaId`), not by individual u
 - Next.js config: `next.config.mjs` (includes ML image domains)
 
 ### Ciclo atual
-O histórico de auditorias e planos de execução por ciclo vive em `docs/` (`docs/AUDITORIA-CICLO-10.md` é o registro vivo do ciclo em andamento) e `docs/historico/` (ciclos e documentos anteriores já concluídos). O plano mestre do produto é `PROMPT-DEFINITIVO-LEAP-STOCK.md` na raiz.
+O histórico de auditorias e planos de execução por ciclo vive em `docs/` e `docs/historico/`. Ciclo em andamento: **Ciclo 13** — plano em `PROMPT-CICLO-13-PRODUTO-FINAL.md` (raiz, substitui as Fases 2–6 do Ciclo 12), diagnóstico em `docs/ANALISE-CRITICA-PRODUTO.md`. O plano mestre do produto é `PROMPT-DEFINITIVO-LEAP-STOCK.md` na raiz.
+
+Período padrão das telas de resumo é o **mês atual** (`resolverPeriodoRapido` em `modules/financeiro/dominio/periodo.ts`). Datas mandadas ao Bling usam `formatarDataHoraBrasilia` (o Bling lê hora local, não UTC).
