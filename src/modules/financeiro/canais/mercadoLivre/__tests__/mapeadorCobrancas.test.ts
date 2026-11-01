@@ -56,4 +56,22 @@ describe("mapearCobranca — formato real de /billing/.../details", () => {
   it("linha sem detail_id é recusada (nunca grava com id vazio)", () => {
     expect(mapearCobranca(linha({ detail_id: undefined }))).toBeNull();
   });
+
+  it("sub-tipos reais da fatura (CVVML, CVVPRC, CFFE, CFONPN...) são cobranças da venda e não entram de novo na DRE", () => {
+    const casos: Array<[string, string]> = [
+      ["CVVML", "TARIFA_VENDA"],
+      ["CVVPRC", "TARIFA_MERCADO_PAGO"],
+      ["CVVFN", "TARIFA_MERCADO_PAGO"],
+      ["CVVFNU", "TARIFA_MERCADO_PAGO"],
+      ["CFONPN", "TARIFA_MERCADO_PAGO"],
+      ["CFFE", "FRETE"],
+      ["CFFI", "FRETE"],
+    ];
+    for (const [subTipo, esperado] of casos) {
+      const r = mapearCobranca(linha({ detail_sub_type: subTipo }))!;
+      expect(r.tipoNormalizado).toBe(esperado);
+      // mesmo sem order_id na linha: é tarifa/frete de uma venda, já descontado no pagamento dela
+      expect(r.coberturaPedido).toBe(true);
+    }
+  });
 });

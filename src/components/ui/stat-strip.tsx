@@ -24,19 +24,20 @@ const StatStrip = React.forwardRef<HTMLDivElement, StatStripProps>(
       {items.map((item) => (
         <div
           key={item.label}
-          className="rounded-lg border border-border bg-card px-5 py-[18px] shadow-card"
+          className="min-w-0 rounded-lg border border-border bg-card px-5 py-[18px] shadow-card"
         >
           <p className="text-sm text-muted-foreground">{item.label}</p>
           <p
             className={cn(
-              "mt-3 font-mono font-semibold leading-none tracking-tight tabular-nums text-foreground",
-              size === "sm" ? "text-lg" : "text-[27px]"
+              // leading-tight + break-words: valor longo quebra em linha nova sem sobrepor a de cima
+              "mt-3 break-words font-mono font-semibold leading-tight tracking-tight tabular-nums text-foreground",
+              size === "sm" ? "text-lg" : "text-2xl sm:text-[27px]"
             )}
           >
             {item.value}
           </p>
           {((item.delta !== undefined && item.delta !== null) || item.note) && (
-            <div className="mt-2.5 flex items-center gap-1.5">
+            <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
               {item.delta !== undefined && item.delta !== null && (
                 <DeltaIndicator delta={item.delta} />
               )}

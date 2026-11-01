@@ -28,7 +28,7 @@ const Navbar = () => {
   useClickOutside(dropdownRef, () => setIsDropdownOpen(false));
 
   return (
-    <div className="flex h-[60px] w-full items-center gap-3.5 border-b border-border bg-card px-1 mb-6">
+    <div className="mb-6 flex h-[60px] w-full min-w-0 items-center gap-2 border-b border-border bg-card px-1 sm:gap-3.5">
       <button
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-fg2 hover:bg-muted md:hidden"
         onClick={toggleSidebar}
@@ -36,7 +36,7 @@ const Navbar = () => {
         <Menu className="h-4 w-4" />
       </button>
 
-      <div className="flex min-w-[220px] max-w-[420px] flex-1 items-center gap-2.5 rounded-full border border-border bg-accent px-3.5 py-2">
+      <div className="hidden min-w-0 max-w-[420px] flex-1 items-center gap-2.5 rounded-full border border-border bg-accent px-3.5 py-2 sm:flex">
         <Search className="h-[15px] w-[15px] shrink-0 text-faint" />
         <input
           type="search"

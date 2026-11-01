@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { BlingService, BlingReconnectError } from "@/services/blingService";
 import { blingErrorResponse } from "@/lib/blingApi";
 import { normalizeSku } from "@/lib/sku";
+import { formatarDataHoraBrasilia } from "@/modules/financeiro/dominio/periodo";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import {
   aplicarDetalheProdutoBling,
@@ -25,7 +26,8 @@ interface LocalProdutoResumo {
 }
 
 function formatarDataBling(data: Date): string {
-  return data.toISOString().slice(0, 19).replace("T", " ");
+  // Hora de Brasília, com 1h de folga: o Bling lê o filtro como hora local.
+  return formatarDataHoraBrasilia(new Date(data.getTime() - 60 * 60 * 1000));
 }
 
 async function processarImportacao(

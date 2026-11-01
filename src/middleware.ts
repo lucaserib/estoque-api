@@ -79,5 +79,6 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"], // Protege todas as rotas exceto estáticas e APIs
+  // manifest, ícones e /pwa ficam públicos: o navegador busca sem cookie ao instalar o app.
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon.png|apple-icon.png|pwa/|brand/).*)"], // Protege todas as rotas exceto estáticas e APIs
 };

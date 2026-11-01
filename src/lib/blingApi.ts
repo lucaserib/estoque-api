@@ -4,6 +4,7 @@ import {
   BlingRateLimitError,
   BlingApiError,
   BlingTransientError,
+  BlingEscopoError,
 } from "@/services/blingService";
 
 export interface ApiError {
@@ -17,6 +18,10 @@ export function blingErrorResponse(error: unknown): NextResponse<ApiError> {
       { error: error.message, code: error.code },
       { status: 401 }
     );
+  }
+
+  if (error instanceof BlingEscopoError) {
+    return NextResponse.json({ error: error.message, code: error.code }, { status: 403 });
   }
 
   if (error instanceof BlingRateLimitError) {

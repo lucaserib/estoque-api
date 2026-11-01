@@ -39,6 +39,24 @@ const POR_SUB_TIPO: Record<string, string> = {
   CEW: "ASSINATURA",
 };
 
+/**
+ * Famílias de sub-tipo vistas na fatura real da LEAPSTORE (out/2026) e que
+ * não estão na documentação: todas são cobranças POR VENDA que o pagamento
+ * de cada pedido já desconta (sale_fee e frete do vendedor). Antes caíam em
+ * NAO_MAPEADO e entravam de novo na DRE como "Outras cobranças do ML" — em
+ * outubro, R$ 1.942,36 contados duas vezes (margem 1,5% em vez de ~29%).
+ */
+const POR_PREFIXO: Array<[RegExp, string]> = [
+  [/^CVVPRC/, "TARIFA_MERCADO_PAGO"], // custo por cobrar no Mercado Pago
+  [/^CVVFN/, "TARIFA_MERCADO_PAGO"], // taxa de parcelamento / de recebimento (CVVFN, CVVFNU)
+  [/^CFON/, "TARIFA_MERCADO_PAGO"], // taxa de parcelamento equivalente ao acréscimo do comprador
+  [/^CVV/, "TARIFA_VENDA"], // custo por vender no Mercado Livre (CVVML e variações)
+  [/^CFF/, "FRETE"], // tarifa de envio (CFFE intermunicipal, CFFI interno ao município)
+];
+
+/** Sub-tipos que são sempre de uma venda específica, mesmo quando a linha vem sem order_id. */
+const SEMPRE_DA_VENDA = /^(CVV|CFON|CFF)/;
+
 /** Quando o sub-tipo não é conhecido, o concept_type ainda diz a natureza da cobrança. */
 const POR_CONCEITO: Record<string, string> = {
   SHIPPING: "FRETE",
@@ -55,6 +73,8 @@ const TIPOS_COBERTOS_PELO_PEDIDO = new Set(["TARIFA_VENDA", "FRETE", "BONIFICACA
 
 export function classificarCobranca(subTipo: string | null, conceito: string | null): string {
   if (subTipo && POR_SUB_TIPO[subTipo]) return POR_SUB_TIPO[subTipo];
+  const porPrefixo = subTipo ? POR_PREFIXO.find(([padrao]) => padrao.test(subTipo)) : undefined;
+  if (porPrefixo) return porPrefixo[1];
   if (conceito && POR_CONCEITO[conceito.toUpperCase()]) return POR_CONCEITO[conceito.toUpperCase()];
   return "NAO_MAPEADO";
 }
@@ -96,6 +116,8 @@ export function mapearCobranca(
     pedidoExternoId,
     anuncioExternoId,
     data: info.creation_date_time ? new Date(info.creation_date_time) : new Date(),
-    coberturaPedido: TIPOS_COBERTOS_PELO_PEDIDO.has(tipoNormalizado) && pedidoExternoId != null,
+    coberturaPedido:
+      TIPOS_COBERTOS_PELO_PEDIDO.has(tipoNormalizado) &&
+      (pedidoExternoId != null || (subTipo != null && SEMPRE_DA_VENDA.test(subTipo))),
   };
 }

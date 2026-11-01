@@ -43,6 +43,8 @@ export interface BlingProduct {
       imagensURL?: string[];
     };
   };
+  /** Produto pai (formato "V"): as variações vêm aqui, cada uma com id e código próprios. */
+  variacoes?: Array<{ id: number; codigo?: string; nome?: string }>;
   estrutura?: {
     componentes?: Array<{
       produto: BlingProductSupplierRef;
@@ -202,6 +204,36 @@ export class BlingApiError extends Error {
     this.name = "BlingApiError";
     this.status = status;
     this.endpoint = endpoint;
+  }
+}
+
+const ESCOPO_POR_RECURSO: Array<[RegExp, string]> = [
+  [/^\/(estoques|depositos)/, "Estoques e depósitos (leitura)"],
+  [/^\/produtos\/fornecedores/, "Produtos — fornecedores (leitura)"],
+  [/^\/produtos/, "Produtos (leitura)"],
+  [/^\/contatos/, "Contatos (leitura)"],
+  [/^\/(contas|categorias|formas-pagamentos)/, "Financeiro — contas a pagar/receber (leitura)"],
+  [/^\/pedidos/, "Pedidos de venda (leitura)"],
+  [/^\/empresas/, "Dados básicos da empresa"],
+];
+
+/**
+ * O token do Bling não tem o escopo para esse recurso. Só se resolve no Bling:
+ * marcar o escopo no app (Central de extensões → Área do integrador) e
+ * reconectar aqui — repetir a chamada não adianta.
+ */
+export class BlingEscopoError extends Error {
+  readonly code = "BLING_ESCOPO_INSUFICIENTE";
+  readonly escopo: string;
+
+  constructor(path: string) {
+    const recurso = path.split("?")[0];
+    const escopo = ESCOPO_POR_RECURSO.find(([padrao]) => padrao.test(recurso))?.[1] ?? recurso;
+    super(
+      `O Bling não deu permissão para "${escopo}". No Bling, abra Central de extensões → Área do integrador → app Leap Stock → Escopos, marque "${escopo}", salve e depois clique em Reconectar Bling em Integrações.`
+    );
+    this.name = "BlingEscopoError";
+    this.escopo = escopo;
   }
 }
 
@@ -491,6 +523,7 @@ export class BlingService {
 
     if (!response.ok) {
       const mensagem = await response.text();
+      if (mensagem.includes("insufficient_scope")) throw new BlingEscopoError(path);
       throw new BlingApiError(response.status, path, mensagem);
     }
 
@@ -585,6 +618,33 @@ export class BlingService {
       accountId
     );
     return data.data ?? [];
+  }
+
+  /**
+   * Busca para o cadastro rápido: SKU exato (codigos[]) e nome (nome=).
+   * A API v3 não filtra por GTIN/EAN — quem chama faz isso localmente.
+   */
+  static async buscarProdutos(accountId: string, termo: string, limite = 20): Promise<BlingProduct[]> {
+    const limpo = termo.trim();
+    if (!limpo) return [];
+    const base = { pagina: "1", limite: String(limite), criterio: "2", tipo: "T" };
+    const consultas: URLSearchParams[] = [];
+    if (!/\s/.test(limpo)) {
+      const porCodigo = new URLSearchParams(base);
+      porCodigo.append("codigos[]", limpo);
+      consultas.push(porCodigo);
+    }
+    consultas.push(new URLSearchParams({ ...base, nome: limpo }));
+
+    const vistos = new Map<number, BlingProduct>();
+    for (const params of consultas) {
+      const data = await this.requestJson<{ data?: BlingProduct[] }>(`/produtos?${params.toString()}`, accountId);
+      for (const produto of data.data ?? []) {
+        if (!vistos.has(produto.id)) vistos.set(produto.id, produto);
+      }
+      if (vistos.size >= limite) break;
+    }
+    return [...vistos.values()].slice(0, limite);
   }
 
   static async getProductById(

@@ -7,7 +7,14 @@ const STATUS_LABELS: Record<string, string> = {
   success: "Concluído",
   partial: "Parcial",
   error: "Falhou",
+  interrompida: "Interrompida (tempo esgotado)",
 };
+
+/** Sincronização "em andamento" há mais de 15 min morreu no meio (tempo da função esgotou); não está rodando. */
+const LIMITE_EM_ANDAMENTO_MS = 15 * 60 * 1000;
+function statusReal(status: string, inicio: Date): string {
+  return status === "processing" && Date.now() - inicio.getTime() > LIMITE_EM_ANDAMENTO_MS ? "interrompida" : status;
+}
 
 export async function GET(req: NextRequest) {
   try {
@@ -47,8 +54,8 @@ export async function GET(req: NextRequest) {
         origem: "Mercado Livre",
         escopo: h.syncType,
         registros: h.syncedItems,
-        resultado: STATUS_LABELS[h.status] || h.status,
-        status: h.status,
+        resultado: STATUS_LABELS[statusReal(h.status, h.startedAt)] || h.status,
+        status: statusReal(h.status, h.startedAt),
       })),
       ...blingHistory.map((h) => ({
         id: h.id,
@@ -56,8 +63,8 @@ export async function GET(req: NextRequest) {
         origem: "Bling",
         escopo: h.syncType,
         registros: h.syncedItems,
-        resultado: STATUS_LABELS[h.status] || h.status,
-        status: h.status,
+        resultado: STATUS_LABELS[statusReal(h.status, h.startedAt)] || h.status,
+        status: statusReal(h.status, h.startedAt),
       })),
     ]
       .sort((a, b) => new Date(b.quando).getTime() - new Date(a.quando).getTime())

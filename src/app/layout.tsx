@@ -1,5 +1,5 @@
 // app/layout.tsx
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "../../styles/global.css";
 import { Providers } from "./providers";
@@ -16,8 +16,20 @@ const ibmPlexMono = IBM_Plex_Mono({
   weight: ["400", "500", "600"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#F5F7F8" },
+    { media: "(prefers-color-scheme: dark)", color: "#0F1316" },
+  ],
+};
+
 export const metadata: Metadata = {
   title: "Leap Stock — Estoque e reposição para sellers",
+  applicationName: "Leap Stock",
+  appleWebApp: { capable: true, title: "Leap Stock", statusBarStyle: "black-translucent" },
   description:
     "Estoque e reposição para quem vende no Mercado Livre. Controle multi-armazém, kits, pedidos de compra e sincronização com o Mercado Livre.",
   openGraph: {
