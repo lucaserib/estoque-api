@@ -12,7 +12,7 @@ import { useMercadoLivreOptimized } from "@/hooks/useMercadoLivreOptimized";
 
 import MLProductsFilters from "@/app/components/MercadoLivre/MLProductsFilters";
 import MLProductsTable from "@/app/components/MercadoLivre/MLProductsTable";
-import MLProductLinkModal from "@/app/components/MercadoLivre/MLProductLinkModal";
+import { VincularAnuncioDialog } from "@/components/catalogo/VincularAnuncioDialog";
 
 interface MLProduct {
   id: string;
@@ -42,6 +42,15 @@ interface MLProduct {
     nome: string;
     sku: string;
   } | null;
+  mlSellerSku?: string | null;
+  composicao?: {
+    produtoBaseId: string;
+    produtoBaseNome: string;
+    produtoBaseSku: string;
+    unidadesPorVenda: number;
+    ehKitDeQuantidade: boolean;
+    ehKitMisto: boolean;
+  } | null;
   localStock?: number;
   stockStatus?: "ok" | "low" | "out" | "unlinked" | string;
   lastSync?: string;
@@ -59,14 +68,6 @@ interface MLProduct {
   } | null;
 }
 
-interface LocalProduct {
-  id: string;
-  nome: string;
-  sku: string;
-  custoMedio: number;
-  precoVenda: number;
-}
-
 interface MLAccount {
   id: string;
   nickname: string;
@@ -79,7 +80,6 @@ function MercadoLivreProdutosContent() {
   const searchParams = useSearchParams();
   const [products, setProducts] = useState<MLProduct[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<MLProduct[]>([]);
-  const [localProducts, setLocalProducts] = useState<LocalProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -96,8 +96,6 @@ function MercadoLivreProdutosContent() {
   const [selectedMLProduct, setSelectedMLProduct] = useState<MLProduct | null>(
     null
   );
-  const [selectedLocalProduct, setSelectedLocalProduct] = useState<string>("");
-  const [linking, setLinking] = useState(false);
 
   const [accounts, setAccounts] = useState<MLAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
@@ -112,7 +110,6 @@ function MercadoLivreProdutosContent() {
   useEffect(() => {
     if (selectedAccount) {
       loadProducts();
-      loadLocalProducts();
       loadStatusCounts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recarrega somente quando a conta selecionada muda
@@ -247,17 +244,7 @@ function MercadoLivreProdutosContent() {
     }
   };
 
-  const loadLocalProducts = async () => {
-    try {
-      const response = await fetch("/api/produtos");
-      if (!response.ok) throw new Error("Erro ao carregar produtos locais");
 
-      const data = await response.json();
-      setLocalProducts(data);
-    } catch (error) {
-      console.error("Erro:", error);
-    }
-  };
 
   const loadStatusCounts = async () => {
     if (!selectedAccount) return;
@@ -330,36 +317,7 @@ function MercadoLivreProdutosContent() {
     }
   };
 
-  const handleLinkProduct = async () => {
-    if (!selectedMLProduct || !selectedLocalProduct) return;
 
-    setLinking(true);
-    try {
-      const response = await fetch("/api/mercadolivre/produtos/link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include", // ✅ CORREÇÃO: Incluir cookies de autenticação
-        body: JSON.stringify({
-          accountId: selectedAccount,
-          mlItemId: selectedMLProduct.mlItemId,
-          localProductId: selectedLocalProduct,
-        }),
-      });
-
-      if (!response.ok) throw new Error("Erro ao vincular produto");
-
-      toast.success("Produto vinculado com sucesso!");
-      setLinkDialogOpen(false);
-      setSelectedMLProduct(null);
-      setSelectedLocalProduct("");
-      loadProducts(true); // ✅ Com toast após vinculação
-    } catch (error) {
-      console.error("Erro:", error);
-      toast.error("Erro ao vincular produto");
-    } finally {
-      setLinking(false);
-    }
-  };
 
   // ✅ Funções removidas - agora usamos componentes modulares
 
@@ -468,14 +426,17 @@ function MercadoLivreProdutosContent() {
         products={filteredProducts}
         loading={loading}
         onViewProduct={(product) => window.open(product.mlPermalink, "_blank")}
-        onEditProduct={(product) => console.log("Editar produto:", product)}
+        onEditProduct={(product) => {
+          if (product.localProduct) window.location.href = `/produtos/${product.localProduct.id}`;
+        }}
         onLinkProduct={(product) => {
           setSelectedMLProduct(product);
           setLinkDialogOpen(true);
         }}
-        onUnlinkProduct={(product) =>
-          console.log("Desvincular produto:", product)
-        }
+        onUnlinkProduct={(product) => {
+          setSelectedMLProduct(product);
+          setLinkDialogOpen(true);
+        }}
         onTogglePause={async (product) => {
           try {
             const res = await fetch(
@@ -502,14 +463,26 @@ function MercadoLivreProdutosContent() {
         }}
       />
 
-      {/* ✅ NOVO: Modal de Vinculação Componentizado */}
-      <MLProductLinkModal
-        isOpen={linkDialogOpen}
-        onClose={() => setLinkDialogOpen(false)}
-        selectedProduct={selectedMLProduct}
-        localProducts={localProducts}
-        onLinkProduct={handleLinkProduct}
-        loading={linking}
+      <VincularAnuncioDialog
+        aberto={linkDialogOpen}
+        onFechar={() => {
+          setLinkDialogOpen(false);
+          setSelectedMLProduct(null);
+        }}
+        anuncio={
+          selectedMLProduct
+            ? {
+                id: selectedMLProduct.id,
+                mlItemId: selectedMLProduct.mlItemId,
+                mlTitle: selectedMLProduct.mlTitle,
+                mlPrice: selectedMLProduct.mlPrice,
+                mlThumbnail: selectedMLProduct.mlThumbnail,
+                mlSellerSku: selectedMLProduct.mlSellerSku,
+              }
+            : null
+        }
+        vinculoAtual={selectedMLProduct?.composicao ?? null}
+        onSalvo={() => loadProducts()}
       />
     </div>
   );

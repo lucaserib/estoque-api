@@ -320,3 +320,35 @@ describe("calcularCapitalParado", () => {
     expect(resultado[0].valorParado).toBeNull();
   });
 });
+
+describe("calcularSugestaoReposicao — kits (Ciclo 12)", () => {
+  const base = {
+    produtoId: "p",
+    nome: "P",
+    sku: "P",
+    custoMedio: 1000,
+    vendas30Dias: 60,
+    vendasPeriodoAnteriorDias: 0,
+    estoqueLocal: 0,
+    estoqueFullDisponivel: 0,
+    estoqueFullEmTransito: 0,
+    estoqueFullIndisponivel: 0,
+    pedidosEmAbertoUnidades: 0,
+    temAnuncioFull: false,
+    fornecedorPrincipal: null,
+    config: { avgDeliveryDays: 7, fullReleaseDays: 3, safetyStock: 10, minCoverageDays: 30, analysisPeriodDays: 30 },
+  };
+
+  it("kit nunca gera sugestão de compra (é montado, não comprado)", () => {
+    const s = calcularSugestaoReposicao({ ...base, ehKit: true });
+    expect(s.quantidadeSugeridaCompraUnidades).toBe(0);
+    expect(s.ehKit).toBe(true);
+  });
+
+  it("unidades dentro de kits no Full contam como estoque do componente", () => {
+    const sem = calcularSugestaoReposicao({ ...base });
+    const com = calcularSugestaoReposicao({ ...base, estoqueEmKitsUnidades: 40 });
+    expect(com.estoqueDisponivel).toBe(sem.estoqueDisponivel + 40);
+    expect(com.quantidadeSugeridaCompraUnidades).toBeLessThan(sem.quantidadeSugeridaCompraUnidades);
+  });
+});

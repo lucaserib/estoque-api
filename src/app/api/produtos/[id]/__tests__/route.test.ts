@@ -72,4 +72,37 @@ describe("GET /api/produtos/[id]", () => {
     expect(body.produto.fornecedores[0].preco).toBe(900);
     expect(body.produto.pedidos[0].custo).toBe(200);
   });
+
+  it("Ciclo 12: produto sem custo continua sem custo (não vira R$ 0) e lista anúncios de kit", async () => {
+    verifyUserMock.mockResolvedValue({ contaId: "conta-1", role: "ADMIN" });
+    findFirstMock.mockResolvedValue({
+      ...produtoFake(),
+      custoMedio: null,
+      kitsComponentes: [
+        {
+          quantidade: 2,
+          kit: {
+            id: "kit-2",
+            nome: "Kit 2x Produto 1",
+            sku: "P1-KIT2",
+            ativo: true,
+            _count: { componentes: 1 },
+            ProdutoMercadoLivre: [{ id: "pml", mlItemId: "MLB2", mlTitle: "Kit 2", mlPrice: 5000 }],
+          },
+        },
+      ],
+    });
+
+    const response = await GET(criarRequest() as never, { params: Promise.resolve({ id: "p1" }) });
+    const body = await response.json();
+
+    expect(body.produto.custoMedio).toBeNull();
+    expect(body.produto.anunciosViaKit).toEqual([
+      expect.objectContaining({
+        mlItemId: "MLB2",
+        unidadesPorVenda: 2,
+        kit: expect.objectContaining({ id: "kit-2", kitDeQuantidade: true }),
+      }),
+    ]);
+  });
 });

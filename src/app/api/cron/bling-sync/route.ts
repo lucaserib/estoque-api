@@ -29,8 +29,11 @@ export async function GET(request: NextRequest) {
     select: { id: true },
   });
 
+  // maxDuration é 60s: para os webhooks em ~35s e deixa tempo para as contas.
+  const prazo = Date.now() + 35_000;
   let eventosReprocessados = 0;
   for (const evento of eventosPendentes) {
+    if (Date.now() > prazo) break;
     await processarEventoWebhookBling(evento.id);
     eventosReprocessados++;
   }

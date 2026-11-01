@@ -7,8 +7,11 @@ import {
   aplicarEstoqueProdutoBling,
   garantirArmazensParaDepositos,
   sincronizarProdutoUnico,
+  BlingProdutoIgnorado,
 } from "@/services/blingProductSync";
+import { BlingEscopoError } from "@/services/blingService";
 import { emParalelo } from "@/modules/financeiro/ingestao/paralelo";
+import { formatarDataHoraBrasilia } from "@/modules/financeiro/dominio/periodo";
 import {
   atualizarEstoqueFullDosAnuncios,
   listarIdsAnunciosMl,
@@ -34,6 +37,9 @@ interface ProgressoEtapa {
   total: number;
   erros: number;
   ultimoErro?: string;
+  /** Itens que não entram por cadastro (ex.: produto sem SKU no Bling), com o motivo. */
+  ignorados?: number;
+  avisos?: string[];
 }
 
 type Progresso = Partial<Record<EtapaCatalogo, ProgressoEtapa>>;
@@ -108,11 +114,9 @@ async function executarBlingProdutos(ctx: ContextoEtapa): Promise<boolean> {
 
   let ids = ctx.cursor.ids as number[] | undefined;
   if (!ids) {
+    // Hora de Brasília (o Bling não lê UTC) e 1h de folga para trás.
     const desde = conta.ultimaSincronizacaoProdutos
-      ? new Date(conta.ultimaSincronizacaoProdutos.getTime() - 60 * 60 * 1000)
-          .toISOString()
-          .slice(0, 19)
-          .replace("T", " ")
+      ? formatarDataHoraBrasilia(new Date(conta.ultimaSincronizacaoProdutos.getTime() - 60 * 60 * 1000))
       : undefined;
     const produtos = await BlingService.getAllProducts(conta.id, desde);
     ids = produtos.map((p) => p.id);
@@ -128,8 +132,15 @@ async function executarBlingProdutos(ctx: ContextoEtapa): Promise<boolean> {
     try {
       await sincronizarProdutoUnico(conta.id, ctx.userId, blingId);
     } catch (erro) {
-      progresso.erros++;
-      progresso.ultimoErro = mensagem(erro);
+      if (erro instanceof BlingProdutoIgnorado) {
+        progresso.ignorados = (progresso.ignorados ?? 0) + 1;
+        progresso.avisos = [...(progresso.avisos ?? []), mensagem(erro)].slice(-20);
+      } else {
+        progresso.erros++;
+        progresso.ultimoErro = mensagem(erro);
+        // Sem permissão no Bling: os próximos produtos vão falhar igual — para a etapa e avisa.
+        if (erro instanceof BlingEscopoError) throw erro;
+      }
     }
     ctx.cursor.indice++;
     progresso.feitos = ctx.cursor.indice;

@@ -34,8 +34,10 @@ import type { Produto } from "../types";
 import type { Pendencia } from "@/lib/pendencias";
 import { calcularMargemUnitaria } from "@/lib/margem";
 import { StatusPill } from "@/components/ui/status-pill";
+import { AnunciosDoProduto, type AnuncioViaKit } from "./AnunciosDoProduto";
 
-interface ProdutoFicha extends Produto {
+interface ProdutoFicha extends Omit<Produto, "componentes"> {
+  componentes?: Array<{ quantidade: number; produto: { id: string; nome: string; sku: string; custoMedio: number | null } }>;
   descricao?: string | null;
   marca?: string | null;
   categoria?: string | null;
@@ -43,7 +45,10 @@ interface ProdutoFicha extends Produto {
   alturaCm?: number | null;
   larguraCm?: number | null;
   comprimentoCm?: number | null;
+  anunciosViaKit?: AnuncioViaKit[];
   ProdutoMercadoLivre?: Array<{
+    id: string;
+    mlSellerSku?: string | null;
     mlItemId: string;
     mlTitle: string;
     mlAvailableQuantity: number;
@@ -249,6 +254,19 @@ export default function ProdutoFichaPage() {
               {!produto.ativo && <Badge variant="outline">Inativo</Badge>}
               {produto.isKit && <Badge variant="outline">Kit</Badge>}
             </div>
+            {produto.isKit && (produto.componentes?.length ?? 0) > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Composição:{" "}
+                {produto.componentes!.map((c, i) => (
+                  <span key={c.produto.id}>
+                    {i > 0 && " + "}
+                    <Link href={`/produtos/${c.produto.id}`} className="text-primary hover:underline">
+                      {c.quantidade}× {c.produto.nome}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            )}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
               <div>
                 <p className="text-muted-foreground">Estoque local</p>
@@ -257,19 +275,20 @@ export default function ProdutoFichaPage() {
               <div>
                 <p className="text-muted-foreground">Custo médio</p>
                 <p className="font-medium">
-                  {produto.custoMedio ? formatBRL(produto.custoMedio) : "Não definido"}
+                  {produto.custoMedio != null ? formatBRL(produto.custoMedio) : "Não definido"}
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Fornecedor principal</p>
                 <p className="font-medium">
-                  {produto.fornecedorPrincipal?.nome ?? "Não definido"}
+                  {(produto.fornecedores?.find((f) => f.principal) ?? produto.fornecedores?.[0])?.fornecedor.nome ??
+                    "Não definido"}
                 </p>
               </div>
               <div>
                 <p className="text-muted-foreground">Anúncios ML</p>
                 <p className="font-medium">
-                  {produto.ProdutoMercadoLivre?.length ?? 0}
+                  {(produto.ProdutoMercadoLivre?.length ?? 0) + (produto.anunciosViaKit?.length ?? 0)}
                 </p>
               </div>
             </div>
@@ -385,90 +404,7 @@ export default function ProdutoFichaPage() {
         </Card>
       )}
 
-      {(produto.ProdutoMercadoLivre?.length ?? 0) > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Margem por canal</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <DataTable>
-              <DataTableHeader>
-                <DataTableRow>
-                  <DataTableHead>Anúncio</DataTableHead>
-                  <DataTableHead>Preço</DataTableHead>
-                  <DataTableHead>Tarifa</DataTableHead>
-                  <DataTableHead>Frete</DataTableHead>
-                  <DataTableHead>Custo</DataTableHead>
-                  <DataTableHead>Imposto</DataTableHead>
-                  <DataTableHead>Margem</DataTableHead>
-                </DataTableRow>
-              </DataTableHeader>
-              <DataTableBody>
-                {(produto.ProdutoMercadoLivre || []).map((anuncio) => {
-                  const margem = calcularMargemUnitaria({
-                    precoVenda: anuncio.mlPrice,
-                    tarifa: anuncio.mlTarifaVenda ?? null,
-                    frete: anuncio.mlCustoFrete ?? null,
-                    custo: produto.custoMedio ?? null,
-                    aliquotaImposto,
-                  });
-                  return (
-                    <DataTableRow key={anuncio.mlItemId}>
-                      <DataTableCell className="max-w-[180px] truncate">
-                        {anuncio.mlTitle}
-                      </DataTableCell>
-                      <DataTableCell>
-                        {anuncio.mlPrice != null ? formatBRL(anuncio.mlPrice) : "—"}
-                      </DataTableCell>
-                      <DataTableCell>
-                        {anuncio.mlTarifaVenda != null
-                          ? formatBRL(anuncio.mlTarifaVenda)
-                          : "— (não sincronizada)"}
-                      </DataTableCell>
-                      <DataTableCell>
-                        {anuncio.mlCustoFrete != null
-                          ? formatBRL(anuncio.mlCustoFrete)
-                          : "— (não sincronizado)"}
-                      </DataTableCell>
-                      <DataTableCell>
-                        {produto.custoMedio != null
-                          ? formatBRL(produto.custoMedio)
-                          : "— (sem custo)"}
-                      </DataTableCell>
-                      <DataTableCell>
-                        {aliquotaImposto > 0
-                          ? `${(aliquotaImposto * 100).toFixed(2)}%`
-                          : "0%"}
-                      </DataTableCell>
-                      <DataTableCell>
-                        {margem.completo ? (
-                          <span
-                            className={
-                              margem.margemValor! < 0
-                                ? "text-destructive font-medium"
-                                : "text-success font-medium"
-                            }
-                          >
-                            {formatBRL(margem.margemValor!)} (
-                            {(margem.margemPercentual! * 100).toFixed(1)}%)
-                          </span>
-                        ) : (
-                          <span
-                            className="text-muted-foreground text-xs"
-                            title={`Faltando: ${margem.faltando.join(", ")}`}
-                          >
-                            — (faltando {margem.faltando.join(", ")})
-                          </span>
-                        )}
-                      </DataTableCell>
-                    </DataTableRow>
-                  );
-                })}
-              </DataTableBody>
-            </DataTable>
-          </CardContent>
-        </Card>
-      )}
+
 
       <Tabs defaultValue="dados">
         <TabsList>
@@ -613,55 +549,20 @@ export default function ProdutoFichaPage() {
         <TabsContent value="ml">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Anúncios vinculados</CardTitle>
+              <CardTitle className="text-base">Onde este produto é vendido</CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {!produto.ProdutoMercadoLivre ||
-              produto.ProdutoMercadoLivre.length === 0 ? (
-                <p className="p-6 text-center text-sm text-muted-foreground">
-                  Nenhum anúncio do Mercado Livre vinculado.
-                </p>
-              ) : (
-                <DataTable>
-                  <DataTableHeader>
-                    <DataTableRow>
-                      <DataTableHead>Anúncio</DataTableHead>
-                      <DataTableHead>Status</DataTableHead>
-                      <DataTableHead>Preço</DataTableHead>
-                      <DataTableHead>Estoque ML</DataTableHead>
-                      <DataTableHead />
-                    </DataTableRow>
-                  </DataTableHeader>
-                  <DataTableBody>
-                    {produto.ProdutoMercadoLivre.map((anuncio) => (
-                      <DataTableRow key={anuncio.mlItemId}>
-                        <DataTableCell className="max-w-xs truncate">
-                          {anuncio.mlTitle}
-                        </DataTableCell>
-                        <DataTableCell>
-                          <Badge variant="outline">{anuncio.mlStatus}</Badge>
-                        </DataTableCell>
-                        <DataTableCell>
-                          {anuncio.mlPrice ? formatBRL(anuncio.mlPrice) : "—"}
-                        </DataTableCell>
-                        <DataTableCell>{anuncio.mlAvailableQuantity}</DataTableCell>
-                        <DataTableCell>
-                          {anuncio.mlPermalink && (
-                            <a
-                              href={anuncio.mlPermalink}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-primary hover:underline inline-flex items-center gap-1 text-sm"
-                            >
-                              Ver <ExternalLink className="h-3 w-3" />
-                            </a>
-                          )}
-                        </DataTableCell>
-                      </DataTableRow>
-                    ))}
-                  </DataTableBody>
-                </DataTable>
-              )}
+              <AnunciosDoProduto
+                produto={produto}
+                anuncios={(produto.ProdutoMercadoLivre ?? []).map((a) => ({
+                  ...a,
+                  mlTarifaVenda: a.mlTarifaVenda ?? null,
+                  mlCustoFrete: a.mlCustoFrete ?? null,
+                }))}
+                anunciosViaKit={produto.anunciosViaKit ?? []}
+                aliquotaImposto={aliquotaImposto}
+                onAlterado={loadProduto}
+              />
             </CardContent>
           </Card>
         </TabsContent>

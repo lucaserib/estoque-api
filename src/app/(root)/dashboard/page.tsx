@@ -30,12 +30,9 @@ import {
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import EvolutionChart from "@/app/(root)/mercado-livre/vendas/components/EvolutionChart";
 import { formatBRL, formatNumberBR, formatRelativeTime } from "@/lib/format";
+import { OPCOES_PERIODO_RAPIDO } from "@/modules/financeiro/dominio/periodo";
 
-const PERIOD_OPTIONS = [
-  { value: "7", label: "7 dias" },
-  { value: "30", label: "30 dias" },
-  { value: "90", label: "90 dias" },
-];
+const PERIOD_OPTIONS = OPCOES_PERIODO_RAPIDO;
 
 const PENDENCIA_CARDS: Array<{
   codigo: string;
@@ -57,7 +54,7 @@ const PENDENCIA_CARDS: Array<{
 
 interface ResumoResponse {
   geradoEm: string;
-  periodo: { dias: number };
+  periodo: { chave: string; dias: number; rotulo: string; rotuloComparacao: string };
   metricas: {
     faturamentoLiquido: {
       valor: number;
@@ -158,7 +155,7 @@ interface ResumoResponse {
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
-  const [periodo, setPeriodo] = useState("30");
+  const [periodo, setPeriodo] = useState("mes-atual");
   const [resumo, setResumo] = useState<ResumoResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [atualizadoEm, setAtualizadoEm] = useState<Date | null>(null);
@@ -202,11 +199,15 @@ export default function DashboardPage() {
     podeVerCusto && resumo?.metricas.margemContribuicao
       ? {
           label: "Margem de contribuição",
-          value: `${formatBRL(resumo.metricas.margemContribuicao.valor)} (${resumo.metricas.margemContribuicao.percentual.toFixed(1)}%)`,
-          note:
+          value: formatBRL(resumo.metricas.margemContribuicao.valor),
+          note: [
+            `${resumo.metricas.margemContribuicao.percentual.toFixed(1).replace(".", ",")}% do faturamento`,
             resumo.metricas.margemContribuicao.produtosSemCustoNaVenda > 0
               ? `${resumo.metricas.margemContribuicao.produtosSemCustoNaVenda} venda(s) sem custo não entram`
-              : undefined,
+              : null,
+          ]
+            .filter(Boolean)
+            .join(" · "),
         }
       : null,
     {
@@ -251,7 +252,7 @@ export default function DashboardPage() {
           <div className="flex flex-wrap items-center justify-end gap-2">
             <SincronizacaoCatalogo compacto onConcluido={carregar} />
             <Select value={periodo} onValueChange={setPeriodo}>
-              <SelectTrigger className="w-28 h-9">
+              <SelectTrigger className="h-9 w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -286,10 +287,10 @@ export default function DashboardPage() {
 
           {/* Métricas principais */}
           <HeroMetric
-            label={`Faturamento líquido — ${periodo} dias`}
+            label={`Faturamento líquido — ${resumo.periodo.rotulo.toLowerCase()}`}
             value={formatBRL(resumo.metricas.faturamentoLiquido.valor)}
             delta={resumo.metricas.faturamentoLiquido.deltaPercentual}
-            deltaLabel={`vs ${periodo}d anteriores`}
+            deltaLabel={resumo.periodo.rotuloComparacao}
             context="Vendas pagas no Mercado Livre, menos tarifas de venda e frete pago pelo vendedor."
           />
 

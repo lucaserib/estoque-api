@@ -33,3 +33,16 @@ describe("extrairBlingProdutoId", () => {
     expect(extrairBlingProdutoId("stock.updated", { algoInesperado: true })).toBeNull();
   });
 });
+
+describe("erroPermanenteBling", () => {
+  it("404/400/422 do Bling e produto sem SKU fecham o evento; limite e rede não", async () => {
+    const { erroPermanenteBling } = await import("@/services/blingWebhookProcessor");
+    const { BlingApiError, BlingRateLimitError } = await import("@/services/blingService");
+    expect(erroPermanenteBling(new BlingApiError(404, "/produtos/1", "não encontrado"))).toBe(true);
+    expect(erroPermanenteBling(new BlingApiError(422, "/produtos/1", "inválido"))).toBe(true);
+    expect(erroPermanenteBling(new Error("Produto Bling 1 sem SKU, ignorado"))).toBe(true);
+    expect(erroPermanenteBling(new BlingApiError(500, "/produtos/1", "erro"))).toBe(false);
+    expect(erroPermanenteBling(new BlingRateLimitError())).toBe(false);
+    expect(erroPermanenteBling(new Error("fetch failed"))).toBe(false);
+  });
+});

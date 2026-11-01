@@ -9,6 +9,7 @@ import { gerarResumoPeriodo, gerarSerieDiaria } from "@/modules/financeiro/relat
 import { gerarLucroPorProduto } from "@/modules/financeiro/relatorios/lucroPorProduto";
 import { listarVendasComLucro } from "@/modules/financeiro/relatorios/lucroPorVenda";
 import { calcularSaldoTotalAtual } from "@/modules/financeiro/relatorios/saldoContas";
+import { resolverPeriodoRapido, type PeriodoComparado } from "@/modules/financeiro/dominio/periodo";
 
 type BlocoResultado<T> = { dados: T; parcial: boolean; erro?: string };
 
@@ -28,12 +29,10 @@ async function comFallback<T>(
   }
 }
 
-async function montarResumo(userId: string, periodoDias: number, verCusto: boolean) {
+async function montarResumo(userId: string, periodo: PeriodoComparado, verCusto: boolean) {
   const agora = new Date();
-  const inicioPeriodo = new Date(agora.getTime() - periodoDias * 24 * 60 * 60 * 1000);
-  const inicioPeriodoAnterior = new Date(
-    inicioPeriodo.getTime() - periodoDias * 24 * 60 * 60 * 1000
-  );
+  const inicioPeriodo = periodo.desde;
+  const fimPeriodo = periodo.ate;
 
   // Mesmos números do Financeiro: tudo vem do motor único
   // (modules/financeiro/relatorios/motor.ts).
@@ -41,11 +40,11 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
     async () => {
       const [periodoAtual, periodoAnterior, serieDiariaFinanceiro, lucroPorProduto, vendasIncompletas] =
         await Promise.all([
-          gerarResumoPeriodo(userId, inicioPeriodo, agora),
-          gerarResumoPeriodo(userId, inicioPeriodoAnterior, new Date(inicioPeriodo.getTime() - 1)),
-          gerarSerieDiaria(userId, inicioPeriodo, agora),
-          gerarLucroPorProduto(userId, { desde: inicioPeriodo, ate: agora }),
-          listarVendasComLucro(userId, { desde: inicioPeriodo, ate: agora, soIncompletas: true, porPagina: 1 }),
+          gerarResumoPeriodo(userId, inicioPeriodo, fimPeriodo),
+          gerarResumoPeriodo(userId, periodo.anteriorDesde, periodo.anteriorAte),
+          gerarSerieDiaria(userId, inicioPeriodo, fimPeriodo),
+          gerarLucroPorProduto(userId, { desde: inicioPeriodo, ate: fimPeriodo }),
+          listarVendasComLucro(userId, { desde: inicioPeriodo, ate: fimPeriodo, soIncompletas: true, porPagina: 1 }),
         ]);
 
       const atual = periodoAtual.indicadores;
@@ -247,7 +246,14 @@ async function montarResumo(userId: string, periodoDias: number, verCusto: boole
 
   return {
     geradoEm: agora.toISOString(),
-    periodo: { dias: periodoDias },
+    periodo: {
+      chave: periodo.chave,
+      dias: periodo.dias,
+      rotulo: periodo.rotulo,
+      rotuloComparacao: periodo.rotuloComparacao,
+      desde: periodo.desde.toISOString(),
+      ate: periodo.ate.toISOString(),
+    },
     metricas: {
       faturamentoLiquido: {
         valor: vendasBloco.dados.receitaLiquida,
@@ -319,15 +325,12 @@ export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const { searchParams } = new URL(request.url);
-    const periodoDias = Math.min(
-      90,
-      Math.max(7, Number(searchParams.get("periodo")) || 30)
-    );
+    const periodo = resolverPeriodoRapido(searchParams.get("periodo"));
     const verCusto = podeVer(user.role, "VER_CUSTO");
 
     const resumo = await withCache(
-      createCacheKey("dashboard-resumo", user.contaId, periodoDias, String(verCusto)),
-      () => montarResumo(user.contaId, periodoDias, verCusto),
+      createCacheKey("dashboard-resumo", user.contaId, periodo.chave, String(verCusto)),
+      () => montarResumo(user.contaId, periodo, verCusto),
       "analytics"
     );
 

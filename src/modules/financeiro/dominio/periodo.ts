@@ -134,3 +134,100 @@ export function somarMeses(data: Date, quantidadeDeMeses: number): Date {
   const ultimoDiaDoMesDestino = new Date(Date.UTC(ano, mes + quantidadeDeMeses + 1, 0)).getUTCDate();
   return new Date(Date.UTC(ano, mes + quantidadeDeMeses, Math.min(dia, ultimoDiaDoMesDestino)));
 }
+
+/**
+ * Períodos rápidos das telas de resumo (dashboard, vendas do ML). "Mês atual"
+ * é o padrão: é como o lojista fecha o resultado, e é o mesmo recorte que o
+ * Financeiro usa. A comparação do mês atual é contra o MESMO trecho do mês
+ * anterior (dia 1 até o mesmo dia/hora), nunca contra o mês anterior inteiro —
+ * senão todo dia 5 o painel mostraria queda de 80%.
+ */
+export type ChavePeriodoRapido = "mes-atual" | "mes-anterior" | "7" | "30" | "90";
+
+export const OPCOES_PERIODO_RAPIDO: Array<{ value: ChavePeriodoRapido; label: string }> = [
+  { value: "mes-atual", label: "Mês atual" },
+  { value: "mes-anterior", label: "Mês anterior" },
+  { value: "7", label: "Últimos 7 dias" },
+  { value: "30", label: "Últimos 30 dias" },
+  { value: "90", label: "Últimos 90 dias" },
+];
+
+export interface PeriodoComparado {
+  chave: string;
+  desde: Date;
+  ate: Date;
+  anteriorDesde: Date;
+  anteriorAte: Date;
+  dias: number;
+  rotulo: string;
+  rotuloComparacao: string;
+}
+
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+function inicioDoMesAnterior(data: Date): Date {
+  return inicioDoMes(new Date(inicioDoMes(data).getTime() - 1));
+}
+
+export function resolverPeriodoRapido(chaveBruta: string | null | undefined, agora: Date = new Date()): PeriodoComparado {
+  const chave = chaveBruta ?? "mes-atual";
+
+  if (chave === "mes-atual") {
+    const desde = inicioDoMes(agora);
+    const anteriorDesde = inicioDoMesAnterior(agora);
+    const decorrido = agora.getTime() - desde.getTime();
+    const anteriorAte = new Date(Math.min(anteriorDesde.getTime() + decorrido, desde.getTime() - 1));
+    return {
+      chave,
+      desde,
+      ate: agora,
+      anteriorDesde,
+      anteriorAte,
+      dias: Math.max(1, Math.ceil(decorrido / DIA_MS)),
+      rotulo: "Mês atual",
+      rotuloComparacao: "vs mesmo período do mês anterior",
+    };
+  }
+
+  if (chave === "mes-anterior") {
+    const desde = inicioDoMesAnterior(agora);
+    const ate = new Date(inicioDoMes(agora).getTime() - 1);
+    const anteriorDesde = inicioDoMesAnterior(desde);
+    return {
+      chave,
+      desde,
+      ate,
+      anteriorDesde,
+      anteriorAte: new Date(desde.getTime() - 1),
+      dias: Math.round((ate.getTime() + 1 - desde.getTime()) / DIA_MS),
+      rotulo: "Mês anterior",
+      rotuloComparacao: "vs mês retrasado",
+    };
+  }
+
+  const numero = Number(chave);
+  const dias = Number.isFinite(numero) && numero > 0 ? Math.min(90, Math.max(7, Math.round(numero))) : 30;
+  const desde = new Date(agora.getTime() - dias * DIA_MS);
+  return {
+    chave: String(dias),
+    desde,
+    ate: agora,
+    anteriorDesde: new Date(desde.getTime() - dias * DIA_MS),
+    anteriorAte: new Date(desde.getTime() - 1),
+    dias,
+    rotulo: `Últimos ${dias} dias`,
+    rotuloComparacao: `vs ${dias} dias anteriores`,
+  };
+}
+
+/**
+ * "AAAA-MM-DD HH:mm:ss" no horário de Brasília — formato que o Bling espera
+ * em filtros como `dataAlteracaoInicial`. O Bling lê esse texto como hora
+ * local; mandar o ISO em UTC (3h adiantado) fazia a sincronização
+ * incremental pular as alterações das últimas ~2 horas antes do corte.
+ */
+export function formatarDataHoraBrasilia(data: Date): string {
+  const p = partesNoFuso(data);
+  const dois = (n: number) => String(n).padStart(2, "0");
+  return `${p.ano}-${dois(p.mes)}-${dois(p.dia)} ${dois(p.hora)}:${dois(p.minuto)}:${dois(p.segundo)}`;
+}

@@ -3,6 +3,14 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { normalizeSku } from "@/lib/sku";
+import { mlCache, createCacheKey } from "@/lib/cache";
+import {
+  confirmarVinculoAnuncio,
+  definirVinculoAnuncio,
+  descreverComposicao,
+  INCLUDE_COMPOSICAO,
+  VinculoErro,
+} from "@/modules/catalogo/vinculos";
 
 type MotivoPendencia = "NAO_CONFIRMADO" | "SKU_DIVERGENTE";
 
@@ -23,7 +31,7 @@ export async function GET(request: NextRequest) {
         mlSellerSku: true,
         vinculoOrigem: true,
         vinculoConfirmado: true,
-        produto: { select: { id: true, nome: true, sku: true } },
+        produto: { select: { id: true, nome: true, sku: true, isKit: true, ...INCLUDE_COMPOSICAO } },
       },
       orderBy: { lastSyncAt: "desc" },
     });
@@ -32,7 +40,12 @@ export async function GET(request: NextRequest) {
       .map((v) => {
         const motivos: MotivoPendencia[] = [];
         if (!v.vinculoConfirmado) motivos.push("NAO_CONFIRMADO");
-        if (v.mlSellerSku && v.produto && normalizeSku(v.mlSellerSku) !== normalizeSku(v.produto.sku)) {
+        // Anúncio de "kit com N unidades" usa o SKU do produto unitário: compara com ele.
+        const composicao = v.produto ? descreverComposicao(v.produto) : null;
+        const skusAceitos = v.produto && composicao
+          ? [normalizeSku(v.produto.sku), normalizeSku(composicao.produtoBaseSku)]
+          : [];
+        if (v.mlSellerSku && v.produto && !skusAceitos.includes(normalizeSku(v.mlSellerSku))) {
           motivos.push("SKU_DIVERGENTE");
         }
         return { v, motivos };
@@ -46,7 +59,8 @@ export async function GET(request: NextRequest) {
         mlTitle: v.mlTitle,
         mlSellerSku: v.mlSellerSku,
         origem: v.vinculoOrigem,
-        produto: v.produto,
+        produto: v.produto ? { id: v.produto.id, nome: v.produto.nome, sku: v.produto.sku } : null,
+        composicao: v.produto ? descreverComposicao(v.produto) : null,
         motivos,
       })),
     });
@@ -63,6 +77,7 @@ interface RequestBody {
   id?: string;
   acao?: "confirmar" | "rejeitar" | "trocar";
   novoProdutoId?: string;
+  unidadesPorVenda?: number;
 }
 
 export async function PATCH(request: NextRequest) {
@@ -75,44 +90,30 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "id e acao são obrigatórios" }, { status: 400 });
     }
 
-    const vinculo = await prisma.produtoMercadoLivre.findFirst({
-      where: { id: body.id, mercadoLivreAccount: { userId: user.contaId } },
-    });
-    if (!vinculo) {
-      return NextResponse.json({ error: "Vínculo não encontrado" }, { status: 404 });
-    }
-
     if (body.acao === "confirmar") {
-      await prisma.produtoMercadoLivre.update({
-        where: { id: vinculo.id },
-        data: { vinculoConfirmado: true, syncStatus: "matched" },
-      });
+      await confirmarVinculoAnuncio(user.contaId, body.id);
     } else if (body.acao === "rejeitar") {
-      await prisma.produtoMercadoLivre.update({
-        where: { id: vinculo.id },
-        data: { produtoId: null, vinculoOrigem: null, vinculoConfirmado: true, syncStatus: "pending" },
-      });
+      await definirVinculoAnuncio({ contaId: user.contaId, anuncioId: body.id, produtoId: null });
     } else {
       if (!body.novoProdutoId) {
         return NextResponse.json({ error: "novoProdutoId é obrigatório para trocar o vínculo" }, { status: 400 });
       }
-      const novoProduto = await prisma.produto.findFirst({
-        where: { id: body.novoProdutoId, userId: user.contaId },
-        select: { id: true },
-      });
-      if (!novoProduto) {
-        return NextResponse.json({ error: "Produto novo não encontrado" }, { status: 404 });
-      }
-      await prisma.produtoMercadoLivre.update({
-        where: { id: vinculo.id },
-        data: { produtoId: novoProduto.id, vinculoOrigem: "MANUAL", vinculoConfirmado: true, syncStatus: "matched" },
+      await definirVinculoAnuncio({
+        contaId: user.contaId,
+        anuncioId: body.id,
+        produtoId: body.novoProdutoId,
+        unidadesPorVenda: body.unidadesPorVenda ?? 1,
       });
     }
+    await mlCache.delete(createCacheKey("pendencias", user.contaId));
 
     return NextResponse.json({ status: "OK" });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
     if (permissaoResponse) return permissaoResponse;
+    if (error instanceof VinculoErro) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
 
     console.error("Erro ao confirmar/rejeitar/trocar vínculo:", error);
     return NextResponse.json({ error: "Erro ao atualizar vínculo" }, { status: 500 });

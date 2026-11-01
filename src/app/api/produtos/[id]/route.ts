@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { normalizeImageUrl } from "@/lib/imageUrl";
 import { serializeWithEAN } from "@/utils/api";
 import { podeVer } from "@/lib/permissoes";
+import { calcularCustoKit } from "@/lib/custo";
 
 /**
  * GET /api/produtos/[id]
@@ -43,11 +44,14 @@ export async function GET(
         componentes: {
           select: {
             quantidade: true,
-            produto: { select: { id: true, nome: true, custoMedio: true } },
+            produto: { select: { id: true, nome: true, sku: true, custoMedio: true } },
           },
         },
         ProdutoMercadoLivre: {
           select: {
+            id: true,
+            mlSellerSku: true,
+            mercadoLivreAccountId: true,
             mlItemId: true,
             mlTitle: true,
             mlAvailableQuantity: true,
@@ -61,6 +65,41 @@ export async function GET(
             mlCustoFrete: true,
             mlCustosAtualizadosEm: true,
             mlFreeShipping: true,
+          },
+        },
+        // Anúncios que vendem este produto dentro de um kit (ex.: "Kit com 2").
+        kitsComponentes: {
+          select: {
+            quantidade: true,
+            kit: {
+              select: {
+                id: true,
+                nome: true,
+                sku: true,
+                ativo: true,
+                _count: { select: { componentes: true } },
+                ProdutoMercadoLivre: {
+                  select: {
+                    id: true,
+                    mlSellerSku: true,
+                    mercadoLivreAccountId: true,
+                    mlItemId: true,
+                    mlTitle: true,
+                    mlAvailableQuantity: true,
+                    mlSoldQuantity: true,
+                    mlSold90Days: true,
+                    mlStatus: true,
+                    mlPrice: true,
+                    mlPermalink: true,
+                    mlThumbnail: true,
+                    mlTarifaVenda: true,
+                    mlCustoFrete: true,
+                    mlCustosAtualizadosEm: true,
+                    mlFreeShipping: true,
+                  },
+                },
+              },
+            },
           },
         },
         fornecedores: {
@@ -118,11 +157,31 @@ export async function GET(
     }
 
     const verCusto = podeVer(user.role, "VER_CUSTO");
+    // Kit não tem custo próprio: é a soma dos componentes (null se faltar algum).
+    const custoMedio = produto.isKit ? (await calcularCustoKit(produto.id)).custoMedio : produto.custoMedio;
+    const { kitsComponentes, ...produtoBase } = produto;
+    const anunciosViaKit = (kitsComponentes ?? []).flatMap((vinculoKit) =>
+      vinculoKit.kit.ProdutoMercadoLivre.map((ml) => ({
+        ...ml,
+        mlPrice: ml.mlPrice ? Number(ml.mlPrice) : null,
+        kit: {
+          id: vinculoKit.kit.id,
+          nome: vinculoKit.kit.nome,
+          sku: vinculoKit.kit.sku,
+          ativo: vinculoKit.kit.ativo,
+          // Kit de um componente só = "anúncio vende N unidades deste produto".
+          kitDeQuantidade: vinculoKit.kit._count.componentes === 1,
+        },
+        unidadesPorVenda: vinculoKit.quantidade,
+      }))
+    );
 
     const produtoSerialized = {
-      ...produto,
+      ...produtoBase,
+      anunciosViaKit,
       imagemUrl: normalizeImageUrl(produto.imagemUrl),
-      custoMedio: verCusto ? Number(produto.custoMedio) : null,
+      // null continua null: "sem custo" não é custo zero (antes virava 0 e a margem parecia ótima).
+      custoMedio: verCusto && custoMedio != null ? Number(custoMedio) : null,
       estoques: produto.estoques.map((estoque) => ({
         ...estoque,
         quantidade: Number(estoque.quantidade),

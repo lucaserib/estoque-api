@@ -30,6 +30,9 @@ export async function calcularTodasPendencias(
         componentes: {
           select: { produto: { select: { custoMedio: true } } },
         },
+        kitsComponentes: {
+          select: { kit: { select: { ativo: true, _count: { select: { ProdutoMercadoLivre: true } } } } },
+        },
         fornecedores: {
           select: { principal: true, prazoEntregaDias: true },
         },
@@ -119,6 +122,9 @@ export async function calcularTodasPendencias(
       produtosMercadoLivre: produto.ProdutoMercadoLivre,
       estoqueDivergente,
       vendaIncompleta: produtosComVendaIncompleta.has(produto.id),
+      vendidoEmKit: (produto.kitsComponentes ?? []).some(
+        (k) => k.kit.ativo && k.kit._count.ProdutoMercadoLivre > 0
+      ),
     });
 
     return {

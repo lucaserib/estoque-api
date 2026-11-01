@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { StatusVendaCanal } from "@prisma/client";
+import { descreverComposicao, INCLUDE_COMPOSICAO } from "@/modules/catalogo/vinculos";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { inicioDoMes, fimDoMes } from "@/modules/financeiro/dominio/periodo";
@@ -72,11 +73,14 @@ export async function GET(request: NextRequest) {
         lastSyncAt: true,
         syncStatus: true,
         mlAutoStockPausado: true,
+        mlSellerSku: true,
         produto: {
           select: {
             id: true,
             nome: true,
             sku: true,
+            isKit: true,
+            ...INCLUDE_COMPOSICAO,
             estoques: {
               select: {
                 quantidade: true,
@@ -104,6 +108,9 @@ export async function GET(request: NextRequest) {
     const inicioEsteMs = inicioDoMes(hoje);
     const fimEsteMs = fimDoMes(hoje);
     const mesAnteriorRef = new Date(inicioEsteMs.getTime() - 1);
+    const DIA_MS = 24 * 60 * 60 * 1000;
+    const diasNoMes = Math.round((fimEsteMs.getTime() + 1 - inicioEsteMs.getTime()) / DIA_MS);
+    const diasDecorridosNoMes = Math.max(1, Math.ceil((hoje.getTime() - inicioEsteMs.getTime()) / DIA_MS));
     const inicioMsAnterior = inicioDoMes(mesAnteriorRef);
     const fimMsAnterior = fimDoMes(mesAnteriorRef);
 
@@ -199,6 +206,9 @@ export async function GET(request: NextRequest) {
                 sku: produtoML.produto.sku,
               }
             : null,
+        mlSellerSku: produtoML.mlSellerSku,
+        // Como o anúncio sai do estoque: produto unitário × N (kit de quantidade) ou kit misto.
+        composicao: produtoML.produto ? descreverComposicao(produtoML.produto) : null,
         localStock: totalLocalStock,
         stockStatus,
         lastSync: produtoML.lastSyncAt?.toISOString() || "",
@@ -207,8 +217,9 @@ export async function GET(request: NextRequest) {
           // Este mês
           quantityThisMonth: sales.quantity,
           revenueThisMonth: sales.revenue,
-          salesVelocity: sales.quantity / new Date().getDate(), // ✅ CORREÇÃO: Dias transcorridos (20), não total do mês (30)
-          daysInMonth: fimEsteMs.getDate(),
+          // Dias no fuso de SP (getDate() no servidor UTC dava 1 para "fim do mês").
+          salesVelocity: sales.quantity / diasDecorridosNoMes,
+          daysInMonth: diasNoMes,
 
           // Mês anterior
           quantityPreviousMonth: salesPreviousMonth.quantity,

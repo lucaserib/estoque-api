@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { VincularAnuncioDialog, type AnuncioParaVincular } from "@/components/catalogo/VincularAnuncioDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import {
@@ -26,6 +26,13 @@ interface VinculoPendente {
   mlSellerSku: string | null;
   origem: string | null;
   produto: { id: string; nome: string; sku: string } | null;
+  composicao: {
+    produtoBaseId: string;
+    produtoBaseNome: string;
+    produtoBaseSku: string;
+    unidadesPorVenda: number;
+    ehKitDeQuantidade: boolean;
+  } | null;
   motivos: Motivo[];
 }
 
@@ -38,7 +45,7 @@ export default function VinculosPendentesPage() {
   const [vinculos, setVinculos] = useState<VinculoPendente[]>([]);
   const [carregando, setCarregando] = useState(true);
   const [processando, setProcessando] = useState<string | null>(null);
-  const [skuTrocaPorId, setSkuTrocaPorId] = useState<Record<string, string>>({});
+  const [trocando, setTrocando] = useState<VinculoPendente | null>(null);
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -61,6 +68,7 @@ export default function VinculosPendentesPage() {
     try {
       const resposta = await fetch("/api/produtos/vinculos-pendentes", {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id, acao }),
       });
       if (!resposta.ok) throw new Error();
@@ -73,36 +81,7 @@ export default function VinculosPendentesPage() {
     }
   };
 
-  const trocarPorSku = async (id: string) => {
-    const sku = (skuTrocaPorId[id] ?? "").trim();
-    if (!sku) {
-      toast.error("Informe o SKU do produto certo.");
-      return;
-    }
-    setProcessando(id);
-    try {
-      const buscaResposta = await fetch(`/api/produtos?sku=${encodeURIComponent(sku)}`);
-      if (!buscaResposta.ok) throw new Error();
-      const produto = await buscaResposta.json();
-      const novoProdutoId = Array.isArray(produto) ? produto[0]?.id : produto?.id;
-      if (!novoProdutoId) {
-        toast.error(`Nenhum produto encontrado com o SKU "${sku}".`);
-        return;
-      }
 
-      const resposta = await fetch("/api/produtos/vinculos-pendentes", {
-        method: "PATCH",
-        body: JSON.stringify({ id, acao: "trocar", novoProdutoId }),
-      });
-      if (!resposta.ok) throw new Error();
-      toast.success("Vínculo trocado.");
-      setVinculos((atual) => atual.filter((v) => v.id !== id));
-    } catch {
-      toast.error("Erro ao trocar o vínculo.");
-    } finally {
-      setProcessando(null);
-    }
-  };
 
   return (
     <div className="container mx-auto max-w-[1300px] space-y-6 p-6">
@@ -139,7 +118,11 @@ export default function VinculosPendentesPage() {
                   </DataTableCell>
                   <DataTableCell>{v.mlSellerSku ?? "—"}</DataTableCell>
                   <DataTableCell>
-                    {v.produto ? `${v.produto.nome} (${v.produto.sku})` : "—"}
+                    {v.composicao?.ehKitDeQuantidade
+                      ? `${v.composicao.unidadesPorVenda}× ${v.composicao.produtoBaseNome} (${v.composicao.produtoBaseSku})`
+                      : v.produto
+                        ? `${v.produto.nome} (${v.produto.sku})`
+                        : "—"}
                   </DataTableCell>
                   <DataTableCell>
                     <div className="flex flex-wrap gap-1">
@@ -150,19 +133,13 @@ export default function VinculosPendentesPage() {
                   </DataTableCell>
                   <DataTableCell className="text-right">
                     <div className="flex flex-wrap justify-end items-center gap-2">
-                      <Input
-                        className="h-8 w-32"
-                        placeholder="SKU certo"
-                        value={skuTrocaPorId[v.id] ?? ""}
-                        onChange={(e) => setSkuTrocaPorId((atual) => ({ ...atual, [v.id]: e.target.value }))}
-                      />
                       <Button
                         size="sm"
                         variant="outline"
                         disabled={processando === v.id}
-                        onClick={() => trocarPorSku(v.id)}
+                        onClick={() => setTrocando(v)}
                       >
-                        Trocar
+                        Trocar…
                       </Button>
                       <Button
                         size="sm"
@@ -187,6 +164,26 @@ export default function VinculosPendentesPage() {
           </DataTable>
         )}
       </SectionCard>
+
+      <VincularAnuncioDialog
+        aberto={trocando !== null}
+        onFechar={() => setTrocando(null)}
+        anuncio={
+          trocando
+            ? ({
+                id: trocando.id,
+                mlItemId: trocando.mlItemId,
+                mlTitle: trocando.mlTitle,
+                mlSellerSku: trocando.mlSellerSku,
+              } satisfies AnuncioParaVincular)
+            : null
+        }
+        vinculoAtual={trocando?.composicao ?? null}
+        onSalvo={() => {
+          const id = trocando?.id;
+          setVinculos((atual) => atual.filter((v) => v.id !== id));
+        }}
+      />
     </div>
   );
 }

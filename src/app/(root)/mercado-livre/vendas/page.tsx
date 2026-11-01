@@ -122,11 +122,13 @@ interface SalesAnalyticsData {
 type ViewMode = "overview" | "products" | "reports";
 
 const PERIOD_OPTIONS = [
-  { value: "7", label: "7 dias" },
-  { value: "15", label: "15 dias" },
-  { value: "30", label: "30 dias" },
-  { value: "60", label: "60 dias" },
-  { value: "90", label: "90 dias" },
+  { value: "mes-atual", label: "Mês atual" },
+  { value: "mes-anterior", label: "Mês anterior" },
+  { value: "7", label: "Últimos 7 dias" },
+  { value: "15", label: "Últimos 15 dias" },
+  { value: "30", label: "Últimos 30 dias" },
+  { value: "60", label: "Últimos 60 dias" },
+  { value: "90", label: "Últimos 90 dias" },
 ];
 
 const calcularProjecaoDoMes = (
@@ -166,7 +168,7 @@ export default function MercadoLivreVendasPage() {
   const [accounts, setAccounts] = useState<MLAccount[]>([]);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [salesData, setSalesData] = useState<SalesAnalyticsData | null>(null);
-  const [selectedPeriod, setSelectedPeriod] = useState("30");
+  const [selectedPeriod, setSelectedPeriod] = useState("mes-atual");
   const [customDateRange, setCustomDateRange] = useState<{
     from?: Date;
     to?: Date;
@@ -288,7 +290,7 @@ export default function MercadoLivreVendasPage() {
     const url = window.URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `vendas-ml-${selectedPeriod}dias-${
+    anchor.download = `vendas-ml-${selectedPeriod}-${
       new Date().toISOString().split("T")[0]
     }.csv`;
     anchor.click();
@@ -339,7 +341,11 @@ export default function MercadoLivreVendasPage() {
   const growth = salesData?.comparison?.growth;
   const periodLabel = customDateRange.from
     ? "período anterior equivalente"
-    : `${selectedPeriod}d anteriores`;
+    : selectedPeriod === "mes-atual"
+      ? "mesmo período do mês anterior"
+      : selectedPeriod === "mes-anterior"
+        ? "mês retrasado"
+        : `${selectedPeriod} dias anteriores`;
 
   const primaryStatItems: StatStripItem[] = salesData
     ? [
@@ -406,7 +412,7 @@ export default function MercadoLivreVendasPage() {
                 setCustomDateRange({});
               }}
             >
-              <SelectTrigger className="w-28 h-9">
+              <SelectTrigger className="h-9 w-40">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

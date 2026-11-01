@@ -255,3 +255,23 @@ describe("calcularPendencias", () => {
     }
   });
 });
+
+describe("calcularPendencias — kits e anúncios de kit (Ciclo 12)", () => {
+  it("kit não cobra fornecedor, prazo nem EAN (são dos componentes)", () => {
+    const codigos = codigosDe(
+      produtoBase({
+        isKit: true,
+        ean: null,
+        fornecedores: [],
+        componentes: [{ produto: { custoMedio: 1000 } }],
+      })
+    );
+    expect(codigos).not.toContain("SEM_FORNECEDOR");
+    expect(codigos).not.toContain("SEM_EAN");
+  });
+
+  it("produto vendido só dentro de um kit com anúncio não fica 'sem anúncio'", () => {
+    expect(codigosDe(produtoBase({ produtosMercadoLivre: [], vendidoEmKit: true }))).not.toContain("SEM_VINCULO_ML");
+    expect(codigosDe(produtoBase({ produtosMercadoLivre: [] }))).toContain("SEM_VINCULO_ML");
+  });
+});

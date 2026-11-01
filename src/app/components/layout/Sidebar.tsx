@@ -1,15 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Layout,
   Package,
   Clipboard,
   Truck,
   Warehouse,
-  Menu,
+  X,
   ChevronDown,
-  ChevronUp,
   ClipboardPaste,
   Settings,
   ArrowLeftRight,
@@ -21,6 +20,8 @@ import {
   FileBarChart,
   CreditCard,
   ClipboardCheck,
+  PanelLeftClose,
+  PanelLeftOpen,
   HeartPulse,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
@@ -31,127 +32,133 @@ import { useLayout } from "../../context/LayoutContext";
 import { Logo } from "@/components/brand/Logo";
 import { podeVer } from "@/lib/permissoes";
 
-interface SidebarLinkProps {
+type Icone = React.ComponentType<{ className?: string }>;
+
+interface ItemMenu {
   href: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: Icone;
   label: string;
-  isCollapsed: boolean;
+  visivel?: boolean;
 }
 
+/** Rota ativa: igual, ou um sub-caminho (ex.: /produtos/123 acende Produtos). */
+function rotaAtiva(pathname: string, href: string, exata = false): boolean {
+  if (href === "/") return pathname === "/" || pathname === "/dashboard";
+  if (pathname === href) return true;
+  return !exata && pathname.startsWith(`${href}/`);
+}
+
+const classeItem = (ativo: boolean, recolhida: boolean) =>
+  `mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg transition-colors ${
+    recolhida ? "justify-center py-2.5" : "px-2.5 py-2"
+  } ${
+    ativo
+      ? "bg-primary/10 font-medium text-primary"
+      : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
+  }`;
+
 const SidebarLink = ({
-  href,
-  icon: Icon,
-  label,
-  isCollapsed,
-}: SidebarLinkProps) => {
+  item,
+  recolhida,
+  onNavegar,
+}: {
+  item: ItemMenu;
+  recolhida: boolean;
+  onNavegar: () => void;
+}) => {
   const pathname = usePathname();
-  const isActive =
-    pathname === href || (pathname === "/" && href === "/dashboard");
+  const ativo = rotaAtiva(pathname, item.href);
+  const Icon = item.icon;
 
   return (
-    <Link href={href}>
-      <div
-        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg transition-colors ${
-          isCollapsed ? "justify-center py-2.5" : "px-2.5 py-2"
-        } ${
-          isActive
-            ? "bg-primary/10 font-medium text-primary"
-            : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
-        }`}
-      >
+    <Link href={item.href} onClick={onNavegar} title={recolhida ? item.label : undefined}>
+      <div className={classeItem(ativo, recolhida)}>
         <Icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
-        <span className={`${isCollapsed ? "hidden" : "block"} text-[13.5px]`}>
-          {label}
-        </span>
+        {!recolhida && <span className="truncate text-[13.5px]">{item.label}</span>}
       </div>
     </Link>
   );
 };
 
-const SidebarDropdown = ({
-  href,
+const SidebarGrupo = ({
   icon: Icon,
   label,
-  isCollapsed,
-  children,
+  itens,
+  recolhida,
+  onNavegar,
 }: {
-  href?: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: Icone;
   label: string;
-  isCollapsed: boolean;
-  children: React.ReactNode;
+  itens: ItemMenu[];
+  recolhida: boolean;
+  onNavegar: () => void;
 }) => {
   const pathname = usePathname();
-  const isActive =
-    pathname === href || (pathname === "/" && href === "/dashboard");
+  const visiveis = itens.filter((i) => i.visivel !== false);
+  // Cada sub-item compara com rota exata para "/financeiro" não acender junto com "/financeiro/dre".
+  const algumFilhoAtivo = visiveis.some((i) => rotaAtiva(pathname, i.href));
+  const [aberto, setAberto] = useState(algumFilhoAtivo);
 
-  const [isOpen, setIsOpen] = useState(false);
+  // Abre sozinho quando o usuário chega numa rota do grupo por outro caminho (link, busca, notificação).
+  useEffect(() => {
+    if (algumFilhoAtivo) setAberto(true);
+  }, [algumFilhoAtivo]);
+
+  if (visiveis.length === 0) return null;
+
+  // Recolhida (desktop): não há espaço para submenu — o ícone leva direto à primeira tela do grupo.
+  if (recolhida) {
+    return (
+      <Link href={visiveis[0].href} onClick={onNavegar} title={label}>
+        <div className={classeItem(algumFilhoAtivo, true)}>
+          <Icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
+        </div>
+      </Link>
+    );
+  }
 
   return (
     <div>
-      <div
-        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg transition-colors ${
-          isCollapsed ? "justify-center py-2.5" : "px-2.5 py-2"
-        } ${
-          isActive
-            ? "bg-primary/10 font-medium text-primary"
-            : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
-        }`}
-        onClick={() => setIsOpen(!isOpen)}
+      <button
+        type="button"
+        aria-expanded={aberto}
+        className={`${classeItem(algumFilhoAtivo && !aberto, false)} w-[calc(100%-1rem)] text-left`}
+        onClick={() => setAberto((v) => !v)}
       >
         <Icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
-        {!isCollapsed && (
-          <>
-            <span className="text-[13.5px]">{label}</span>
-            {isOpen ? (
-              <ChevronUp className="ml-auto h-4 w-4 opacity-60" />
-            ) : (
-              <ChevronDown className="ml-auto h-4 w-4 opacity-60" />
-            )}
-          </>
-        )}
-      </div>
-      {isOpen && !isCollapsed && <div className="mt-0.5 space-y-0.5">{children}</div>}
+        <span className="truncate text-[13.5px]">{label}</span>
+        <ChevronDown
+          className={`ml-auto h-4 w-4 shrink-0 opacity-60 transition-transform ${aberto ? "rotate-180" : ""}`}
+        />
+      </button>
+      {aberto && (
+        <div className="mt-0.5 space-y-0.5">
+          {visiveis.map((item) => {
+            const ativo = rotaAtiva(pathname, item.href, true);
+            const SubIcon = item.icon;
+            return (
+              <Link key={item.href} href={item.href} onClick={onNavegar}>
+                <div
+                  className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg py-1.5 pl-8 pr-2.5 transition-colors ${
+                    ativo
+                      ? "bg-primary/10 font-medium text-primary"
+                      : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <SubIcon className="h-4 w-4 shrink-0 opacity-90" />
+                  <span className="truncate text-[13px]">{item.label}</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
 
-const SidebarSubLink = ({
-  href,
-  icon: Icon,
-  label,
-}: {
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-}) => {
-  const pathname = usePathname();
-  const isActive = pathname === href;
-
-  return (
-    <Link href={href}>
-      <div
-        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg py-2 pl-8 pr-2.5 transition-colors ${
-          isActive
-            ? "bg-primary/10 font-medium text-primary"
-            : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
-        }`}
-      >
-        <Icon className="h-4 w-4 shrink-0 opacity-90" />
-        <span className="text-[13px]">{label}</span>
-      </div>
-    </Link>
-  );
-};
-
-const SectionLabel = ({
-  children,
-  isCollapsed,
-}: {
-  children: React.ReactNode;
-  isCollapsed: boolean;
-}) => {
-  if (isCollapsed) return null;
+const SectionLabel = ({ children, recolhida }: { children: React.ReactNode; recolhida: boolean }) => {
+  if (recolhida) return <div className="mx-4 my-3 h-px bg-border" />;
   return (
     <p className="px-4 pb-1.5 pt-5 text-[11px] font-medium uppercase tracking-[0.08em] text-faint">
       {children}
@@ -160,182 +167,131 @@ const SectionLabel = ({
 };
 
 const Sidebar = () => {
-  const { isSidebarCollapsed, toggleSidebar } = useLayout();
+  const { isSidebarCollapsed: recolhida, toggleSidebar, closeSidebarOnMobile } = useLayout();
   const { data: session } = useSession();
-  const isAdmin = session?.user?.role === "ADMIN";
   const papel = session?.user?.role;
+  const isAdmin = papel === "ADMIN";
   const podeVerFinanceiro = papel ? podeVer(papel, "FINANCEIRO_VER") : false;
-  const sidebarClassNames = `fixed flex flex-col ${
-    isSidebarCollapsed ? "w-0 md:w-16" : "w-72 md:w-64"
-  } bg-card border-r border-border transition-all duration-300 overflow-hidden h-full z-40`;
 
   return (
-    <div className={sidebarClassNames}>
-      {/* TOP LOGO */}
-      <div
-        className={`flex gap-3 justify-between md:justify-normal items-center pt-6 pb-2 ${
-          isSidebarCollapsed ? "px-4" : "px-6"
+    <>
+      {/* Fundo escurecido só no celular, quando a sidebar está aberta por cima do conteúdo */}
+      {!recolhida && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          aria-hidden="true"
+          onClick={toggleSidebar}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex h-dvh flex-col border-r border-border bg-card transition-[width,transform] duration-300 ${
+          recolhida
+            ? "w-72 -translate-x-full md:w-16 md:translate-x-0"
+            : "w-72 translate-x-0 md:w-64"
         }`}
       >
-        <Link href="/dashboard" aria-label="Leap Stock — início">
-          <Logo size="md" variant={isSidebarCollapsed ? "mark" : "full"} />
-        </Link>
-        <button
-          className="md:hidden px-3 py-3 bg-muted rounded-full hover:bg-accent"
-          onClick={toggleSidebar}
+        {/* Topo fixo */}
+        <div
+          className={`flex shrink-0 items-center justify-between gap-3 pb-2 pt-6 ${
+            recolhida ? "px-4 md:justify-center" : "px-5"
+          }`}
         >
-          <Menu className="w-4 h-4" />
-        </button>
-      </div>
-
-      {/* Links */}
-      <div className="flex-grow mt-4">
-        <SectionLabel isCollapsed={isSidebarCollapsed}>Operação</SectionLabel>
-        <SidebarLink
-          href="/"
-          icon={Layout}
-          label="Visão geral"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          icon={Package}
-          label="Produtos"
-          isCollapsed={isSidebarCollapsed}
-          href="/produtos"
-        />
-        <SidebarLink
-          icon={TrendingDown}
-          label="Reposição"
-          isCollapsed={isSidebarCollapsed}
-          href="/reposicao"
-        />
-        <SidebarLink
-          icon={ClipboardPaste}
-          label="Saídas"
-          isCollapsed={isSidebarCollapsed}
-          href="/saidas"
-        />
-        <SidebarLink
-          href="/gestao-pedidos"
-          isCollapsed={isSidebarCollapsed}
-          label="Pedidos de compra"
-          icon={Clipboard}
-        />
-        <SidebarLink
-          href="/fornecedores"
-          isCollapsed={isSidebarCollapsed}
-          label="Fornecedores"
-          icon={Truck}
-        />
-        <SidebarDropdown
-          icon={Warehouse}
-          label="Estoque"
-          isCollapsed={isSidebarCollapsed}
-        >
-          <SidebarSubLink
-            href="/estoque/armazens"
-            icon={Warehouse}
-            label="Gestão de Armazéns"
-          />
-          <SidebarSubLink
-            href="/estoque/transferencias"
-            icon={ArrowLeftRight}
-            label="Transferências"
-          />
-        </SidebarDropdown>
-
-        <SectionLabel isCollapsed={isSidebarCollapsed}>Canais</SectionLabel>
-        <SidebarDropdown
-          icon={MercadoLivreIcon}
-          label="Mercado Livre"
-          isCollapsed={isSidebarCollapsed}
-        >
-          <SidebarSubLink
-            href="/mercado-livre"
-            icon={Layout}
-            label="Painel"
-          />
-          <SidebarSubLink
-            href="/mercado-livre/vendas"
-            icon={BarChart3}
-            label="Vendas"
-          />
-          <SidebarSubLink
-            href="/mercado-livre/produtos"
-            icon={Package}
-            label="Anúncios e vínculos"
-          />
-          <SidebarSubLink
-            href="/mercado-livre/configuracoes"
-            icon={Settings}
-            label="Configurações"
-          />
-        </SidebarDropdown>
-
-        {podeVerFinanceiro && (
-          <>
-            <SectionLabel isCollapsed={isSidebarCollapsed}>
-              Financeiro
-            </SectionLabel>
-            <SidebarDropdown
-              href="/financeiro"
-              icon={Wallet}
-              label="Financeiro"
-              isCollapsed={isSidebarCollapsed}
-            >
-              <SidebarSubLink href="/financeiro" icon={Layout} label="Visão geral" />
-              {isAdmin && (
-                <SidebarSubLink href="/financeiro/conferencia" icon={ClipboardCheck} label="Conferência" />
-              )}
-              <SidebarSubLink href="/financeiro/dre" icon={FileBarChart} label="DRE" />
-              <SidebarSubLink href="/financeiro/vendas" icon={BarChart3} label="Lucro por venda" />
-              <SidebarSubLink href="/financeiro/produtos" icon={Package} label="Lucro por produto" />
-              <SidebarSubLink href="/financeiro/lancamentos" icon={ClipboardPaste} label="Lançamentos" />
-              <SidebarSubLink href="/financeiro/fluxo-de-caixa" icon={ArrowLeftRight} label="Fluxo de caixa" />
-              <SidebarSubLink href="/financeiro/cartoes" icon={CreditCard} label="Cartões" />
-              <SidebarSubLink href="/financeiro/configuracoes" icon={Settings} label="Configurações" />
-            </SidebarDropdown>
-          </>
-        )}
-
-        <SectionLabel isCollapsed={isSidebarCollapsed}>Sistema</SectionLabel>
-        <SidebarLink
-          href="/integracoes"
-          icon={Zap}
-          label="Integrações"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/saude-dados"
-          icon={HeartPulse}
-          label="Saúde dos dados"
-          isCollapsed={isSidebarCollapsed}
-        />
-        <SidebarLink
-          href="/configuracoes"
-          icon={Settings}
-          label="Configurações"
-          isCollapsed={isSidebarCollapsed}
-        />
-        {isAdmin && (
-          <SidebarLink
-            href="/usuarios"
-            icon={Users}
-            label="Usuários"
-            isCollapsed={isSidebarCollapsed}
-          />
-        )}
-      </div>
-
-      {/* Footer */}
-      {!isSidebarCollapsed && (
-        <div className="mb-8 px-6">
-          <p className="text-xs text-faint text-center">
-            &copy; {new Date().getFullYear()} Leap Stock
-          </p>
+          <Link href="/dashboard" aria-label="Leap Stock — início" onClick={closeSidebarOnMobile}>
+            <Logo size="md" variant={recolhida ? "mark" : "full"} />
+          </Link>
+          <button
+            className="rounded-full bg-muted p-2 hover:bg-accent md:hidden"
+            onClick={toggleSidebar}
+            aria-label="Fechar menu"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
-      )}
-    </div>
+
+        {/* Lista rola sozinha: com grupos abertos em tela baixa nada some */}
+        <nav className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
+          <SectionLabel recolhida={recolhida}>Operação</SectionLabel>
+          <SidebarLink item={{ href: "/", icon: Layout, label: "Visão geral" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/produtos", icon: Package, label: "Produtos" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/reposicao", icon: TrendingDown, label: "Reposição" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/saidas", icon: ClipboardPaste, label: "Saídas" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/gestao-pedidos", icon: Clipboard, label: "Pedidos de compra" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/fornecedores", icon: Truck, label: "Fornecedores" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarGrupo
+            icon={Warehouse}
+            label="Estoque"
+            recolhida={recolhida}
+            onNavegar={closeSidebarOnMobile}
+            itens={[
+              { href: "/estoque/armazens", icon: Warehouse, label: "Armazéns" },
+              { href: "/estoque/transferencias", icon: ArrowLeftRight, label: "Transferências" },
+            ]}
+          />
+
+          <SectionLabel recolhida={recolhida}>Canais</SectionLabel>
+          <SidebarGrupo
+            icon={MercadoLivreIcon}
+            label="Mercado Livre"
+            recolhida={recolhida}
+            onNavegar={closeSidebarOnMobile}
+            itens={[
+              { href: "/mercado-livre", icon: Layout, label: "Painel" },
+              { href: "/mercado-livre/vendas", icon: BarChart3, label: "Vendas" },
+              { href: "/mercado-livre/produtos", icon: Package, label: "Anúncios e vínculos" },
+              { href: "/mercado-livre/configuracoes", icon: Settings, label: "Configurações" },
+            ]}
+          />
+
+          {podeVerFinanceiro && (
+            <>
+              <SectionLabel recolhida={recolhida}>Financeiro</SectionLabel>
+              <SidebarGrupo
+                icon={Wallet}
+                label="Financeiro"
+                recolhida={recolhida}
+                onNavegar={closeSidebarOnMobile}
+                itens={[
+                  { href: "/financeiro", icon: Layout, label: "Visão geral" },
+                  { href: "/financeiro/vendas", icon: BarChart3, label: "Lucro por venda" },
+                  { href: "/financeiro/produtos", icon: Package, label: "Lucro por produto" },
+                  { href: "/financeiro/dre", icon: FileBarChart, label: "DRE" },
+                  { href: "/financeiro/fluxo-de-caixa", icon: ArrowLeftRight, label: "Fluxo de caixa" },
+                  { href: "/financeiro/lancamentos", icon: ClipboardPaste, label: "Lançamentos" },
+                  { href: "/financeiro/cartoes", icon: CreditCard, label: "Cartões" },
+                  { href: "/financeiro/conferencia", icon: ClipboardCheck, label: "Conferência", visivel: isAdmin },
+                  { href: "/financeiro/configuracoes", icon: Settings, label: "Configurações" },
+                ]}
+              />
+            </>
+          )}
+
+          <SectionLabel recolhida={recolhida}>Sistema</SectionLabel>
+          <SidebarLink item={{ href: "/integracoes", icon: Zap, label: "Integrações" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/saude-dados", icon: HeartPulse, label: "Saúde dos dados" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/configuracoes", icon: Settings, label: "Configurações" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          {isAdmin && (
+            <SidebarLink item={{ href: "/usuarios", icon: Users, label: "Usuários" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          )}
+        </nav>
+
+        {/* Rodapé fixo: recolher/expandir no desktop */}
+        <div className="hidden shrink-0 border-t border-border p-2 md:block">
+          <button
+            type="button"
+            onClick={toggleSidebar}
+            className={`flex w-full items-center gap-2.5 rounded-lg py-2 text-fg2 hover:bg-muted hover:text-foreground ${
+              recolhida ? "justify-center" : "px-2.5"
+            }`}
+            aria-label={recolhida ? "Expandir menu" : "Recolher menu"}
+            title={recolhida ? "Expandir menu" : "Recolher menu"}
+          >
+            {recolhida ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            {!recolhida && <span className="text-[13px]">Recolher menu</span>}
+          </button>
+        </div>
+      </aside>
+    </>
   );
 };
 

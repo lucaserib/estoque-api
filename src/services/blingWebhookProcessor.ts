@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/prisma";
+import { BlingApiError, BlingEscopoError } from "@/services/blingService";
 import {
   inativarProdutoPorBlingId,
   sincronizarEstoqueUnico,
   sincronizarFornecedorUnico,
   sincronizarProdutoUnico,
+  BlingProdutoIgnorado,
 } from "@/services/blingProductSync";
 
 export interface BlingWebhookEnvelope {
@@ -84,9 +86,24 @@ export async function processarEventoWebhookBling(eventoId: string): Promise<voi
       data: { processado: true, processadoEm: new Date(), erro: null },
     });
   } catch (error) {
+    const mensagem = error instanceof Error ? error.message : "Erro desconhecido";
+    // Erro que nunca vai passar (produto apagado no Bling, sem SKU, SKU
+    // duplicado) fecha o evento; senão ele era reprocessado todo dia para
+    // sempre e ocupava a vez dos eventos novos no cron (limite de 200).
+    const permanente = erroPermanenteBling(error);
     await prisma.blingWebhookEvent.update({
       where: { id: eventoId },
-      data: { erro: error instanceof Error ? error.message : "Erro desconhecido" },
+      data: permanente
+        ? { processado: true, processadoEm: new Date(), erro: `Descartado: ${mensagem}`.slice(0, 1000) }
+        : { erro: mensagem.slice(0, 1000) },
     });
   }
+}
+
+export function erroPermanenteBling(error: unknown): boolean {
+  if (error instanceof BlingEscopoError) return false;
+  if (error instanceof BlingProdutoIgnorado) return true;
+  if (error instanceof BlingApiError) return [400, 404, 410, 422].includes(error.status);
+  if (!(error instanceof Error)) return false;
+  return /sem SKU|já pertence ao produto/i.test(error.message);
 }

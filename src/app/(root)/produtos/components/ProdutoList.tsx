@@ -1,7 +1,10 @@
 "use client";
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { Produto } from "../types";
+
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Loader2, Search, Truck, X } from "lucide-react";
+import type { Produto } from "../types";
 import type { Pendencia } from "@/lib/pendencias";
 import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
 import {
@@ -14,433 +17,298 @@ import {
 } from "@/components/ui/data-table";
 import { SectionCard } from "@/components/ui/section-card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { AlertTriangle, Search, Truck, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StatusPill } from "@/components/ui/status-pill";
+import { ProductImage } from "@/components/ui/product-image";
+import { formatBRL } from "@/lib/format";
 import { ProdutoEstoqueDialog } from "./dialogs/ProdutoEstoqueDialog";
-import { ProdutoPagination } from "./ProdutoPagination";
 import { ProdutoEditarDialog } from "./dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "./dialogs/ProdutoFornecedorDialog";
 import { BulkAssignDialog } from "./dialogs/BulkAssignDialog";
 import { ReposicaoModal } from "./ReposicaoModal";
 import { ProdutoTableRow } from "./ProdutoTableRow";
-import { Button } from "@/components/ui/button";
+
+export type AbaProdutos = "produtos" | "kits" | "inativos";
+
+interface ItemLista {
+  id: string;
+  nome: string;
+  sku: string;
+  codigoEAN: string | null;
+  isKit: boolean;
+  ativo: boolean;
+  imagemUrl: string | null;
+  custoMedio: number | null;
+  fornecedorPrincipal: { id: string; nome: string; prazoEntregaDias: number | null } | null;
+  estoqueLocal: number;
+  estoqueSeguranca: number;
+  estoqueFull: number;
+  vendas90d: number;
+  anuncios: number;
+  componentes: Array<{ produtoId: string; nome: string; sku: string; quantidade: number }>;
+  kitsMontaveis: number | null;
+  pendencias: Pendencia[];
+}
+
+interface RespostaLista {
+  itens: ItemLista[];
+  total: number;
+  temMais: boolean;
+  contagens: { produtos: number; kits: number; inativos: number };
+  fornecedores: Array<{ id: string; nome: string }>;
+  pendenciasPorCodigo: Record<string, number>;
+}
 
 interface ProdutoListProps {
-  produtos: Produto[];
-  onDelete: (id: string) => void;
-  onEdit: (produto: Produto) => void;
-  refreshTrigger?: number;
-  onRefreshReplenishment?: () => void;
-  onBulkApplied?: () => void;
+  aba: AbaProdutos;
+  /** Muda quando algo fora da lista (cadastro, exclusão, sincronização) exige recarregar. */
+  versao: number;
+  onDelete: (produto: { id: string; nome: string }) => void;
+  onContagens?: (contagens: RespostaLista["contagens"]) => void;
 }
 
-interface StockItem {
-  produtoId: string;
-  armazemId: string;
-  quantidade: number;
-  estoqueSeguranca?: number;
-  armazem?: { id: string; nome: string };
-}
-
-type WindowWithReplenishment = Window & {
-  __refreshReplenishment?: () => void;
+// Rótulos curtos para os atalhos de pendência no topo da lista.
+const ROTULO_PENDENCIA: Record<string, string> = {
+  SEM_CUSTO: "Sem custo",
+  SEM_FORNECEDOR: "Sem fornecedor",
+  SEM_FORNECEDOR_PRINCIPAL: "Sem fornecedor principal",
+  SEM_PRECO: "Sem preço",
+  MARGEM_NEGATIVA: "Margem negativa",
+  SEM_FRETE: "Sem frete",
+  SEM_TARIFA: "Sem tarifa",
+  ESTOQUE_DIVERGENTE: "Estoque divergente",
+  SEM_VINCULO_ML: "Sem anúncio",
+  SEM_EAN: "Sem EAN",
+  SEM_PRAZO_FORNECEDOR: "Sem prazo",
+  VENDA_INCOMPLETA: "Venda incompleta",
 };
+const PENDENCIAS_PRIORITARIAS = ["SEM_CUSTO", "MARGEM_NEGATIVA", "SEM_FORNECEDOR", "SEM_PRECO", "ESTOQUE_DIVERGENTE"];
 
-const ProdutoList = ({
-  produtos,
-  onDelete,
-  onEdit,
-  refreshTrigger = 0,
-  onRefreshReplenishment,
-  onBulkApplied,
-}: ProdutoListProps) => {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [showBulkAssignModal, setShowBulkAssignModal] = useState(false);
-  const [filterOptions, setFilterOptions] = useState({
-    searchTerm: "",
-    stockFilter: "all" as "all" | "low" | "none" | "available",
-    fornecedorId: "all",
-    mlFilter: "all" as "all" | "linked" | "unlinked",
-    semCusto: false,
-  });
-  const [selectedProduto, setSelectedProduto] = useState<Produto | null>(null);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showFornecedorModal, setShowFornecedorModal] = useState(false);
-  const [showStockModal, setShowStockModal] = useState(false);
-  const [showReposicaoModal, setShowReposicaoModal] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [isLoadingStock, setIsLoadingStock] = useState(false);
-  const [stockDetails, setStockDetails] = useState<StockItem[]>([]);
-  const [stockData, setStockData] = useState<{ [key: string]: number }>({});
-  const [estoqueSegurancaData, setEstoqueSegurancaData] = useState<{
-    [key: string]: number;
-  }>({});
-  const [replenishmentStatus, setReplenishmentStatus] = useState<{
-    [key: string]: "ok" | "atencao" | "critico";
-  }>({});
-  const [lastReplenishmentFetch, setLastReplenishmentFetch] = useState<number>(0);
-  const [isLoadingReplenishment, setIsLoadingReplenishment] = useState(false);
-  const [armazens, setArmazens] = useState<{ id: string; nome: string }[]>([]);
-  const [pendenciasPorProduto, setPendenciasPorProduto] = useState<
-    Record<string, Pendencia[]>
-  >({});
+const POR_PAGINA = 30;
+
+function paraProduto(item: ItemLista): Produto {
+  return {
+    ...item,
+    codigoEAN: item.codigoEAN ?? undefined,
+    _estoqueLocalTotal: item.estoqueLocal,
+    _mlEstoqueFull: item.estoqueFull,
+    _mlTotalVendas: item.vendas90d,
+    _vinculadoML: item.anuncios > 0,
+  };
+}
+
+function useDebounce<T>(valor: T, ms: number): T {
+  const [atrasado, setAtrasado] = useState(valor);
+  useEffect(() => {
+    const t = setTimeout(() => setAtrasado(valor), ms);
+    return () => clearTimeout(t);
+  }, [valor, ms]);
+  return atrasado;
+}
+
+export default function ProdutoList({ aba, versao, onDelete, onContagens }: ProdutoListProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-  const pendenciaFiltroURL = searchParams.get("pendencia");
-  const itemsPerPage = 10;
-  const REPLENISHMENT_CACHE_TTL = 5 * 60 * 1000; // 5 minutos em milissegundos
+  const pendencia = searchParams.get("pendencia") ?? "";
 
-  const fetchStockTotals = useCallback(async () => {
-    if (produtos.length === 0) return;
+  const [busca, setBusca] = useState("");
+  const buscaAtrasada = useDebounce(busca, 300);
+  const [estoque, setEstoque] = useState("all");
+  const [fornecedorId, setFornecedorId] = useState("all");
+  const [ml, setMl] = useState("all");
+  const [ordem, setOrdem] = useState("relevancia");
 
-    try {
-      const ids = produtos.map((p) => p.id).join(",");
-      const response = await fetch(`/api/estoque/produtos-batch?ids=${ids}`);
-      if (!response.ok) throw new Error("Erro ao buscar estoque");
+  const [itens, setItens] = useState<ItemLista[]>([]);
+  const [total, setTotal] = useState(0);
+  const [temMais, setTemMais] = useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [carregando, setCarregando] = useState(true);
+  const [carregandoMais, setCarregandoMais] = useState(false);
+  const [fornecedores, setFornecedores] = useState<RespostaLista["fornecedores"]>([]);
+  const [pendenciasPorCodigo, setPendenciasPorCodigo] = useState<Record<string, number>>({});
+  const [erro, setErro] = useState<string | null>(null);
 
-      const batch: Record<
-        string,
-        { totalQuantity: number; estoqueSeguranca: number }
-      > = await response.json();
+  const [selecionados, setSelecionados] = useState<Set<string>>(new Set());
+  const [bulkAberto, setBulkAberto] = useState(false);
+  const [armazens, setArmazens] = useState<{ id: string; nome: string }[]>([]);
 
-      const stockMap: { [key: string]: number } = {};
-      const estoqueSegurancaMap: { [key: string]: number } = {};
-      for (const [produtoId, info] of Object.entries(batch)) {
-        stockMap[produtoId] = info.totalQuantity;
-        estoqueSegurancaMap[produtoId] = info.estoqueSeguranca;
-      }
+  const [produtoAtivo, setProdutoAtivo] = useState<Produto | null>(null);
+  const [dialogo, setDialogo] = useState<"editar" | "fornecedor" | "estoque" | "reposicao" | null>(null);
+  const [estoqueDetalhes, setEstoqueDetalhes] = useState<
+    Array<{ produtoId: string; armazemId: string; quantidade: number; estoqueSeguranca?: number; armazem?: { id: string; nome: string } }>
+  >([]);
+  const [carregandoEstoque, setCarregandoEstoque] = useState(false);
 
-      setStockData(stockMap);
-      setEstoqueSegurancaData(estoqueSegurancaMap);
-    } catch (error) {
-      console.error("Erro ao buscar estoque:", error);
-    }
-  }, [produtos]);
+  const requisicao = useRef(0);
+  const sentinela = useRef<HTMLDivElement | null>(null);
+  const onContagensRef = useRef(onContagens);
+  onContagensRef.current = onContagens;
 
-  useEffect(() => {
-    fetchStockTotals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [produtos.length, refreshTrigger]);
+  const parametros = useMemo(() => {
+    const p = new URLSearchParams({
+      porPagina: String(POR_PAGINA),
+      ordem,
+      tipo: aba === "kits" ? "kits" : aba === "inativos" ? "todos" : "produtos",
+      status: aba === "inativos" ? "inativos" : "ativos",
+    });
+    if (buscaAtrasada.trim()) p.set("q", buscaAtrasada.trim());
+    if (estoque !== "all") p.set("estoque", estoque);
+    if (fornecedorId !== "all") p.set("fornecedorId", fornecedorId);
+    if (ml !== "all") p.set("ml", ml);
+    if (pendencia) p.set("pendencia", pendencia);
+    return p;
+  }, [aba, buscaAtrasada, estoque, fornecedorId, ml, ordem, pendencia]);
 
-  const fetchPendencias = useCallback(async () => {
-    try {
-      const response = await fetch(
-        "/api/produtos/pendencias?pageSize=2000"
-      );
-      if (!response.ok) return;
-      const data: { itens: { produtoId: string; pendencias: Pendencia[] }[] } =
-        await response.json();
-      const mapa: Record<string, Pendencia[]> = {};
-      for (const item of data.itens) {
-        mapa[item.produtoId] = item.pendencias;
-      }
-      setPendenciasPorProduto(mapa);
-    } catch (error) {
-      console.error("Erro ao buscar pendências:", error);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchPendencias();
-  }, [fetchPendencias, refreshTrigger]);
-
-  useEffect(() => {
-    const fetchArmazens = async () => {
+  const buscarPagina = useCallback(
+    async (numero: number) => {
+      const id = ++requisicao.current;
+      const p = new URLSearchParams(parametros);
+      p.set("pagina", String(numero));
+      if (numero === 1) setCarregando(true);
+      else setCarregandoMais(true);
       try {
-        const response = await fetch("/api/estoque/armazens");
-        if (response.ok) {
-          const todos: { id: string; nome: string }[] = await response.json();
-          setArmazens(todos.filter((a) => a.nome !== FULL_ARMAZEM_NOME));
+        const res = await fetch(`/api/produtos/lista?${p}`);
+        if (!res.ok) throw new Error("Não foi possível carregar os produtos.");
+        const body: RespostaLista = await res.json();
+        if (id !== requisicao.current) return;
+        setItens((atual) => (numero === 1 ? body.itens : [...atual, ...body.itens]));
+        setTotal(body.total);
+        setTemMais(body.temMais);
+        setPagina(numero);
+        setFornecedores(body.fornecedores);
+        setPendenciasPorCodigo(body.pendenciasPorCodigo);
+        setErro(null);
+        onContagensRef.current?.(body.contagens);
+      } catch (e) {
+        if (id === requisicao.current) setErro(e instanceof Error ? e.message : "Erro ao carregar produtos.");
+      } finally {
+        if (id === requisicao.current) {
+          setCarregando(false);
+          setCarregandoMais(false);
         }
-      } catch (error) {
-        console.error("Erro ao buscar armazéns:", error);
       }
-    };
+    },
+    [parametros]
+  );
 
-    fetchArmazens();
-  }, []);
-
-  const fetchReplenishmentStatus = async (forceRefresh = false) => {
-    const now = Date.now();
-    const cacheValid = now - lastReplenishmentFetch < REPLENISHMENT_CACHE_TTL;
-
-    if (cacheValid && !forceRefresh) {
-      return;
-    }
-
-    setIsLoadingReplenishment(true);
-    try {
-      const statusPromises = produtos.map(async (produto) => {
-        try {
-          const response = await fetch(`/api/replenishment/suggestions/${produto.id}`);
-          if (!response.ok) return { produtoId: produto.id, status: "ok" as const };
-          const data = await response.json();
-          return { produtoId: produto.id, status: data.suggestion?.status || "ok" };
-        } catch {
-          return { produtoId: produto.id, status: "ok" as const };
-        }
-      });
-
-      const statusResults = await Promise.all(statusPromises);
-      const statusMap = statusResults.reduce(
-        (acc, { produtoId, status }) => {
-          acc[produtoId] = status;
-          return acc;
-        },
-        {} as { [key: string]: "ok" | "atencao" | "critico" }
-      );
-
-      setReplenishmentStatus(statusMap);
-      setLastReplenishmentFetch(Date.now());
-    } catch (error) {
-      console.error("Erro ao buscar status de reposição:", error);
-    } finally {
-      setIsLoadingReplenishment(false);
-    }
-  };
-
-  // Status de reposição não é buscado automaticamente: seriam 40+ chamadas de API por carregamento. Carrega só quando o usuário abre o modal.
+  // Filtro mudou (ou algo externo pediu recarga): volta para a primeira página.
   useEffect(() => {
-    (window as WindowWithReplenishment).__refreshReplenishment = () =>
-      fetchReplenishmentStatus(true);
+    setSelecionados(new Set());
+    buscarPagina(1);
+  }, [buscarPagina, versao]);
 
-    return () => {
-      delete (window as WindowWithReplenishment).__refreshReplenishment;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Rolagem infinita: carrega a próxima página quando o fim da lista aparece.
+  useEffect(() => {
+    const alvo = sentinela.current;
+    if (!alvo || !temMais) return;
+    const observer = new IntersectionObserver(
+      (entradas) => {
+        if (entradas[0]?.isIntersecting && !carregando && !carregandoMais) buscarPagina(pagina + 1);
+      },
+      { rootMargin: "400px" }
+    );
+    observer.observe(alvo);
+    return () => observer.disconnect();
+  }, [temMais, carregando, carregandoMais, pagina, buscarPagina]);
+
+  useEffect(() => {
+    fetch("/api/estoque/armazens")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((todos: { id: string; nome: string }[]) => setArmazens(todos.filter((a) => a.nome !== FULL_ARMAZEM_NOME)))
+      .catch(() => setArmazens([]));
   }, []);
 
-  const fetchStockDetails = useCallback(async (produto: Produto) => {
-    try {
-      setSelectedProduto(produto);
-      setIsLoadingStock(true);
-      setShowStockModal(true);
-
-      const response = await fetch(`/api/estoque/produto/${produto.id}`);
-      if (!response.ok) throw new Error("Erro ao buscar detalhes do estoque");
-
-      const stockItems: StockItem[] = await response.json();
-      setStockDetails(stockItems);
-    } catch (error) {
-      console.error("Erro ao buscar detalhes do estoque:", error);
-    } finally {
-      setIsLoadingStock(false);
-    }
-  }, []);
-
-  const handleEdit = useCallback((produto: Produto) => {
-    setSelectedProduto(produto);
-    setShowEditModal(true);
-  }, []);
-
-  const handleViewSuppliers = useCallback((produto: Produto) => {
-    setSelectedProduto(produto);
-    setShowFornecedorModal(true);
-  }, []);
-
-  const handleViewReplenishment = useCallback((produto: Produto) => {
-    setSelectedProduto(produto);
-    setShowReposicaoModal(true);
-  }, []);
-
-  const toggleSelected = useCallback((id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleBulkApplied = useCallback(() => {
-    setSelectedIds(new Set());
-    onBulkApplied?.();
-  }, [onBulkApplied]);
-
-  const fornecedoresDisponiveis = useMemo(() => {
-    const mapa = new Map<string, string>();
-    produtos.forEach((produto) => {
-      if (produto.fornecedorPrincipal) {
-        mapa.set(
-          produto.fornecedorPrincipal.id,
-          produto.fornecedorPrincipal.nome
-        );
-      }
-    });
-    return Array.from(mapa.entries()).map(([id, nome]) => ({ id, nome }));
-  }, [produtos]);
-
-  const produtosSemCustoOuFornecedor = useMemo(
-    () =>
-      produtos.filter(
-        (produto) => !produto.custoMedio || !produto.fornecedorPrincipal
-      ),
-    [produtos]
-  );
-
-  const filteredProdutos = produtos.filter((produto) => {
-    const matchesSearch =
-      produto.nome
-        .toLowerCase()
-        .includes(filterOptions.searchTerm.toLowerCase()) ||
-      produto.sku
-        .toLowerCase()
-        .includes(filterOptions.searchTerm.toLowerCase()) ||
-      (produto.codigoEAN &&
-        produto.codigoEAN
-          .toLowerCase()
-          .includes(filterOptions.searchTerm.toLowerCase()));
-
-    if (!matchesSearch) return false;
-
-    if (filterOptions.stockFilter !== "all") {
-      const estoque = stockData[produto.id] || 0;
-      const estoqueMinimo = estoqueSegurancaData[produto.id] || 0;
-
-      const matchesStock = (() => {
-        switch (filterOptions.stockFilter) {
-          case "low":
-            return estoque <= estoqueMinimo && estoque > 0;
-          case "none":
-            return estoque === 0;
-          case "available":
-            return estoque > 0;
-          default:
-            return true;
-        }
-      })();
-
-      if (!matchesStock) return false;
-    }
-
-    if (
-      filterOptions.fornecedorId !== "all" &&
-      produto.fornecedorPrincipal?.id !== filterOptions.fornecedorId
-    ) {
-      return false;
-    }
-
-    if (filterOptions.mlFilter !== "all") {
-      const vinculado = produto._vinculadoML ?? false;
-      if (filterOptions.mlFilter === "linked" && !vinculado) return false;
-      if (filterOptions.mlFilter === "unlinked" && vinculado) return false;
-    }
-
-    if (filterOptions.semCusto && produto.custoMedio) {
-      return false;
-    }
-
-    if (pendenciaFiltroURL) {
-      const pendenciasDoProduto = pendenciasPorProduto[produto.id] || [];
-      if (!pendenciasDoProduto.some((p) => p.codigo === pendenciaFiltroURL)) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredProdutos.slice(
-    indexOfFirstItem,
-    indexOfLastItem
-  );
-  const totalPages = Math.ceil(filteredProdutos.length / itemsPerPage);
-
-  const handlePageChange = (pageNumber: number) => {
-    setCurrentPage(pageNumber);
+  const definirPendencia = (codigo: string | null) => {
+    const p = new URLSearchParams(searchParams.toString());
+    if (codigo) p.set("pendencia", codigo);
+    else p.delete("pendencia");
+    router.replace(p.toString() ? `${pathname}?${p}` : pathname);
   };
+
+  const abrir = useCallback((tipo: NonNullable<typeof dialogo>, produto: Produto) => {
+    setProdutoAtivo(produto);
+    setDialogo(tipo);
+  }, []);
+
+  const abrirEstoque = useCallback(async (produto: Produto) => {
+    setProdutoAtivo(produto);
+    setDialogo("estoque");
+    setCarregandoEstoque(true);
+    try {
+      const res = await fetch(`/api/estoque/produto/${produto.id}`);
+      setEstoqueDetalhes(res.ok ? await res.json() : []);
+    } finally {
+      setCarregandoEstoque(false);
+    }
+  }, []);
+
+  const atualizarItem = useCallback((produto: Produto) => {
+    setItens((atual) =>
+      atual.map((i) =>
+        i.id === produto.id
+          ? { ...i, nome: produto.nome, sku: produto.sku, codigoEAN: produto.codigoEAN ?? null, imagemUrl: produto.imagemUrl ?? i.imagemUrl }
+          : i
+      )
+    );
+  }, []);
+
+  const alternarSelecao = useCallback((id: string) => {
+    setSelecionados((atual) => {
+      const proximo = new Set(atual);
+      if (proximo.has(id)) proximo.delete(id);
+      else proximo.add(id);
+      return proximo;
+    });
+  }, []);
+
+  const atalhosPendencia = PENDENCIAS_PRIORITARIAS.filter((c) => (pendenciasPorCodigo[c] ?? 0) > 0);
+  const filtrosAtivos = busca || estoque !== "all" || fornecedorId !== "all" || ml !== "all" || pendencia;
+  const ehKits = aba === "kits";
 
   return (
     <div className="space-y-4">
-      {pendenciaFiltroURL && (
-        <Alert variant="warning">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
-            <span>
-              Mostrando apenas produtos com a pendência{" "}
-              <strong>{pendenciaFiltroURL}</strong>.
-            </span>
+      {/* Atalhos de pendência: um clique filtra; substitui o alerta genérico que repetia a coluna Pendências */}
+      {(atalhosPendencia.length > 0 || pendencia) && aba !== "inativos" && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Precisa de atenção:</span>
+          {atalhosPendencia.map((codigo) => (
             <button
+              key={codigo}
               type="button"
-              className="text-sm font-medium underline underline-offset-2"
-              onClick={() => router.replace(pathname)}
+              onClick={() => definirPendencia(pendencia === codigo ? null : codigo)}
+              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                pendencia === codigo
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border hover:border-primary/50 hover:bg-accent/40"
+              }`}
             >
-              Limpar filtro
+              {ROTULO_PENDENCIA[codigo] ?? codigo} · {pendenciasPorCodigo[codigo]}
             </button>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {produtosSemCustoOuFornecedor.length > 0 && (
-        <Alert variant="warning">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="flex flex-wrap items-center justify-between gap-2">
-            <span>
-              {produtosSemCustoOuFornecedor.length} produto(s) sem custo médio
-              ou sem fornecedor cadastrado. Isso impede o cálculo correto da
-              Reposição.
+          ))}
+          {pendencia && !atalhosPendencia.includes(pendencia) && (
+            <span className="rounded-full border border-primary bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+              {ROTULO_PENDENCIA[pendencia] ?? pendencia}
             </span>
-            <button
-              type="button"
-              className="text-sm font-medium underline underline-offset-2"
-              onClick={() =>
-                setFilterOptions((prev) => ({
-                  ...prev,
-                  semCusto: true,
-                  fornecedorId: "all",
-                  mlFilter: "all",
-                  stockFilter: "all",
-                  searchTerm: "",
-                }))
-              }
-            >
-              Ver produtos sem custo
-            </button>
-          </AlertDescription>
-        </Alert>
+          )}
+        </div>
       )}
 
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
+        <div className="relative min-w-[200px] flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Buscar por nome, SKU ou EAN"
-            className="pl-8 h-9"
-            value={filterOptions.searchTerm}
-            onChange={(e) =>
-              setFilterOptions((prev) => ({
-                ...prev,
-                searchTerm: e.target.value,
-              }))
-            }
+            className="h-9 pl-8"
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
           />
         </div>
-
-        <Select
-          value={filterOptions.stockFilter}
-          onValueChange={(value) =>
-            setFilterOptions((prev) => ({
-              ...prev,
-              stockFilter: value as typeof prev.stockFilter,
-            }))
-          }
-        >
-          <SelectTrigger className="w-40 h-9">
-            <SelectValue placeholder="Estoque" />
+        <Select value={estoque} onValueChange={setEstoque}>
+          <SelectTrigger className="h-9 w-[150px]">
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todo estoque</SelectItem>
@@ -449,80 +317,71 @@ const ProdutoList = ({
             <SelectItem value="none">Sem estoque</SelectItem>
           </SelectContent>
         </Select>
-
-        <Select
-          value={filterOptions.fornecedorId}
-          onValueChange={(value) =>
-            setFilterOptions((prev) => ({ ...prev, fornecedorId: value }))
-          }
-        >
-          <SelectTrigger className="w-44 h-9">
-            <SelectValue placeholder="Fornecedor" />
+        {!ehKits && (
+          <Select value={fornecedorId} onValueChange={setFornecedorId}>
+            <SelectTrigger className="h-9 w-[170px]">
+              <SelectValue placeholder="Fornecedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os fornecedores</SelectItem>
+              {fornecedores.map((f) => (
+                <SelectItem key={f.id} value={f.id}>
+                  {f.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <Select value={ml} onValueChange={setMl}>
+          <SelectTrigger className="h-9 w-[150px]">
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">Todos os fornecedores</SelectItem>
-            {fornecedoresDisponiveis.map((fornecedor) => (
-              <SelectItem key={fornecedor.id} value={fornecedor.id}>
-                {fornecedor.nome}
-              </SelectItem>
-            ))}
+            <SelectItem value="all">Anúncios: todos</SelectItem>
+            <SelectItem value="linked">Com anúncio</SelectItem>
+            <SelectItem value="unlinked">Sem anúncio</SelectItem>
           </SelectContent>
         </Select>
-
-        <Select
-          value={filterOptions.mlFilter}
-          onValueChange={(value) =>
-            setFilterOptions((prev) => ({
-              ...prev,
-              mlFilter: value as typeof prev.mlFilter,
-            }))
-          }
-        >
-          <SelectTrigger className="w-44 h-9">
-            <SelectValue placeholder="Mercado Livre" />
+        <Select value={ordem} onValueChange={setOrdem}>
+          <SelectTrigger className="h-9 w-[170px]">
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">ML: todos</SelectItem>
-            <SelectItem value="linked">Vinculado ao ML</SelectItem>
-            <SelectItem value="unlinked">Não vinculado</SelectItem>
+            <SelectItem value="relevancia">Mais relevantes</SelectItem>
+            <SelectItem value="vendas">Mais vendidos</SelectItem>
+            <SelectItem value="estoque">Maior estoque</SelectItem>
+            <SelectItem value="nome">Nome (A–Z)</SelectItem>
           </SelectContent>
         </Select>
-
-        <Select
-          value={filterOptions.semCusto ? "sem-custo" : "todos"}
-          onValueChange={(value) =>
-            setFilterOptions((prev) => ({
-              ...prev,
-              semCusto: value === "sem-custo",
-            }))
-          }
-        >
-          <SelectTrigger className="w-40 h-9">
-            <SelectValue placeholder="Custo médio" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="todos">Custo: todos</SelectItem>
-            <SelectItem value="sem-custo">Sem custo definido</SelectItem>
-          </SelectContent>
-        </Select>
+        {filtrosAtivos && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 gap-1"
+            onClick={() => {
+              setBusca("");
+              setEstoque("all");
+              setFornecedorId("all");
+              setMl("all");
+              definirPendencia(null);
+            }}
+          >
+            <X className="h-4 w-4" />
+            Limpar
+          </Button>
+        )}
       </div>
 
-      {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
-          <span className="text-sm font-medium">
-            {selectedIds.size} produto(s) selecionado(s)
-          </span>
+      {selecionados.size > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
+          <span className="text-sm font-medium">{selecionados.size} selecionado(s)</span>
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setSelectedIds(new Set())}
-            >
-              <X className="h-4 w-4 mr-1" />
+            <Button size="sm" variant="outline" onClick={() => setSelecionados(new Set())}>
+              <X className="mr-1 h-4 w-4" />
               Limpar seleção
             </Button>
-            <Button size="sm" onClick={() => setShowBulkAssignModal(true)}>
-              <Truck className="h-4 w-4 mr-1" />
+            <Button size="sm" onClick={() => setBulkAberto(true)}>
+              <Truck className="mr-1 h-4 w-4" />
               Atribuir custo/fornecedor
             </Button>
           </div>
@@ -533,125 +392,191 @@ const ProdutoList = ({
         <DataTable>
           <DataTableHeader>
             <DataTableRow className="hover:bg-transparent">
-              <DataTableHead className="pl-4">
-                <Checkbox
-                  checked={
-                    currentItems.length > 0 &&
-                    currentItems.every((p) => selectedIds.has(p.id))
-                  }
-                  onCheckedChange={(checked) => {
-                    setSelectedIds((prev) => {
-                      const next = new Set(prev);
-                      currentItems.forEach((p) =>
-                        checked ? next.add(p.id) : next.delete(p.id)
-                      );
-                      return next;
-                    });
-                  }}
-                  aria-label="Selecionar todos os produtos visíveis"
-                />
-              </DataTableHead>
-              <DataTableHead>Imagem</DataTableHead>
-              <DataTableHead sticky>Produto</DataTableHead>
-              <DataTableHead>Fornecedor</DataTableHead>
-              <DataTableHead>Estoque Local</DataTableHead>
+              {!ehKits && (
+                <DataTableHead className="pl-4">
+                  <Checkbox
+                    checked={itens.length > 0 && itens.every((p) => selecionados.has(p.id))}
+                    onCheckedChange={(marcado) =>
+                      setSelecionados(marcado ? new Set(itens.map((p) => p.id)) : new Set())
+                    }
+                    aria-label="Selecionar todos os carregados"
+                  />
+                </DataTableHead>
+              )}
+              <DataTableHead className={ehKits ? "pl-4" : undefined}>Imagem</DataTableHead>
+              <DataTableHead sticky>{ehKits ? "Kit" : "Produto"}</DataTableHead>
+              {ehKits ? <DataTableHead>Composição</DataTableHead> : <DataTableHead>Fornecedor</DataTableHead>}
+              <DataTableHead>{ehKits ? "Dá para montar" : "Estoque local"}</DataTableHead>
               <DataTableHead className="text-right">Full</DataTableHead>
-              <DataTableHead className="text-right">Vendas ML</DataTableHead>
-              <DataTableHead>Custo Médio</DataTableHead>
+              <DataTableHead className="text-right">Vendas 90d</DataTableHead>
+              <DataTableHead>{ehKits ? "Custo do kit" : "Custo médio"}</DataTableHead>
               <DataTableHead>Pendências</DataTableHead>
               <DataTableHead className="pr-4 text-right">Ações</DataTableHead>
             </DataTableRow>
           </DataTableHeader>
           <DataTableBody>
-            {currentItems.length > 0 ? (
-              currentItems.map((produto) => (
-                <ProdutoTableRow
-                  key={produto.id}
-                  produto={produto}
-                  stockQuantity={stockData[produto.id]}
-                  stockMinimum={estoqueSegurancaData[produto.id]}
-                  isLoadingStock={stockData[produto.id] === undefined}
-                  replenishmentStatus={replenishmentStatus[produto.id]}
-                  armazens={armazens}
-                  selected={selectedIds.has(produto.id)}
-                  pendencias={pendenciasPorProduto[produto.id] || []}
-                  onToggleSelected={toggleSelected}
-                  onDelete={onDelete}
-                  onEdit={handleEdit}
-                  onViewSuppliers={handleViewSuppliers}
-                  onViewStock={fetchStockDetails}
-                  onViewReplenishment={handleViewReplenishment}
-                  onStockAdjusted={fetchStockTotals}
-                />
-              ))
-            ) : (
+            {carregando && itens.length === 0 ? (
               <DataTableRow className="hover:bg-transparent">
-                <DataTableCell
-                  colSpan={10}
-                  className="text-center py-8 text-muted-foreground"
-                >
-                  {filterOptions.searchTerm
-                    ? "Nenhum produto encontrado com os critérios de busca."
-                    : "Nenhum produto cadastrado. Adicione seu primeiro produto usando o botão 'Novo Produto'."}
+                <DataTableCell colSpan={10} className="py-10 text-center text-muted-foreground">
+                  <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                 </DataTableCell>
               </DataTableRow>
+            ) : erro ? (
+              <DataTableRow className="hover:bg-transparent">
+                <DataTableCell colSpan={10} className="py-8 text-center">
+                  <p className="text-sm text-destructive">{erro}</p>
+                  <Button variant="outline" size="sm" className="mt-3" onClick={() => buscarPagina(1)}>
+                    Tentar novamente
+                  </Button>
+                </DataTableCell>
+              </DataTableRow>
+            ) : itens.length === 0 ? (
+              <DataTableRow className="hover:bg-transparent">
+                <DataTableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                  {filtrosAtivos
+                    ? "Nenhum produto com esses filtros."
+                    : aba === "kits"
+                      ? "Nenhum kit. Kits do Bling chegam pela sincronização; kits de quantidade (\"kit com 2\") são criados ao vincular o anúncio."
+                      : aba === "inativos"
+                        ? "Nenhum produto inativo."
+                        : "Nenhum produto ainda. Use \"Novo produto\" para buscar no Bling ou cadastrar."}
+                </DataTableCell>
+              </DataTableRow>
+            ) : ehKits ? (
+              itens.map((kit) => (
+                <DataTableRow key={kit.id} className="group">
+                  <DataTableCell className="pl-4">
+                    <ProductImage src={kit.imagemUrl} alt={kit.nome} size={40} />
+                  </DataTableCell>
+                  <DataTableCell emphasis sticky>
+                    <Link href={`/produtos/${kit.id}`} className="block min-w-0 hover:underline">
+                      <p className="truncate">{kit.nome}</p>
+                      <p className="text-xs font-normal text-muted-foreground">{kit.sku}</p>
+                    </Link>
+                  </DataTableCell>
+                  <DataTableCell className="text-sm text-muted-foreground">
+                    {kit.componentes.length === 0
+                      ? "Sem componentes"
+                      : kit.componentes.map((c) => `${c.quantidade}× ${c.nome}`).join(" + ")}
+                  </DataTableCell>
+                  <DataTableCell>
+                    <StatusPill tone={(kit.kitsMontaveis ?? 0) > 0 ? "success" : "critical"}>
+                      {kit.kitsMontaveis ?? 0}
+                    </StatusPill>
+                  </DataTableCell>
+                  <DataTableCell numeric>{kit.estoqueFull || "-"}</DataTableCell>
+                  <DataTableCell numeric>{kit.vendas90d || "-"}</DataTableCell>
+                  <DataTableCell className="text-muted-foreground">
+                    {kit.custoMedio != null ? formatBRL(kit.custoMedio) : "Falta custo de componente"}
+                  </DataTableCell>
+                  <DataTableCell>
+                    {kit.pendencias.length === 0 ? (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1" title={kit.pendencias.map((p) => p.mensagem).join("\n")}>
+                        {kit.pendencias.slice(0, 2).map((p) => (
+                          <StatusPill key={p.codigo} tone="warning">
+                            {ROTULO_PENDENCIA[p.codigo] ?? p.codigo}
+                          </StatusPill>
+                        ))}
+                      </div>
+                    )}
+                  </DataTableCell>
+                  <DataTableCell className="pr-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button asChild variant="ghost" size="sm" className="h-8 px-2">
+                        <Link href={`/produtos/${kit.id}`}>Abrir</Link>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                        onClick={() => onDelete({ id: kit.id, nome: kit.nome })}
+                      >
+                        Excluir
+                      </Button>
+                    </div>
+                  </DataTableCell>
+                </DataTableRow>
+              ))
+            ) : (
+              itens.map((item) => {
+                const produto = paraProduto(item);
+                return (
+                  <ProdutoTableRow
+                    key={item.id}
+                    produto={produto}
+                    stockQuantity={item.estoqueLocal}
+                    stockMinimum={item.estoqueSeguranca}
+                    isLoadingStock={false}
+                    armazens={armazens}
+                    selected={selecionados.has(item.id)}
+                    pendencias={item.pendencias}
+                    onToggleSelected={alternarSelecao}
+                    onDelete={(id) => onDelete({ id, nome: item.nome })}
+                    onEdit={(p) => abrir("editar", p)}
+                    onViewSuppliers={(p) => abrir("fornecedor", p)}
+                    onViewStock={abrirEstoque}
+                    onViewReplenishment={(p) => abrir("reposicao", p)}
+                    onStockAdjusted={() => buscarPagina(1)}
+                  />
+                );
+              })
             )}
           </DataTableBody>
         </DataTable>
       </SectionCard>
 
-      {filteredProdutos.length > itemsPerPage && (
-        <ProdutoPagination
-          currentPage={currentPage}
-          totalPages={totalPages}
-          onPageChange={handlePageChange}
-          totalItems={filteredProdutos.length}
-          currentFirstItem={indexOfFirstItem + 1}
-          currentLastItem={Math.min(indexOfLastItem, filteredProdutos.length)}
-        />
-      )}
+      <div ref={sentinela} className="flex flex-col items-center gap-2 py-2 text-sm text-muted-foreground">
+        {itens.length > 0 && (
+          <span>
+            {itens.length} de {total}
+          </span>
+        )}
+        {temMais && (
+          <Button variant="outline" size="sm" disabled={carregandoMais} onClick={() => buscarPagina(pagina + 1)}>
+            {carregandoMais ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Carregar mais
+          </Button>
+        )}
+      </div>
 
-      {selectedProduto && (
+      {produtoAtivo && (
         <>
           <ProdutoEditarDialog
-            isOpen={showEditModal}
-            onClose={() => setShowEditModal(false)}
-            produto={selectedProduto}
-            onSave={onEdit}
+            isOpen={dialogo === "editar"}
+            onClose={() => setDialogo(null)}
+            produto={produtoAtivo}
+            onSave={atualizarItem}
           />
-
           <ProdutoFornecedorDialog
-            isOpen={showFornecedorModal}
-            onClose={() => setShowFornecedorModal(false)}
-            produto={selectedProduto}
+            isOpen={dialogo === "fornecedor"}
+            onClose={() => {
+              setDialogo(null);
+              buscarPagina(1);
+            }}
+            produto={produtoAtivo}
           />
-
           <ProdutoEstoqueDialog
-            isOpen={showStockModal}
-            onClose={() => setShowStockModal(false)}
-            produto={selectedProduto}
-            stockDetails={stockDetails}
-            isLoading={isLoadingStock}
+            isOpen={dialogo === "estoque"}
+            onClose={() => setDialogo(null)}
+            produto={produtoAtivo}
+            stockDetails={estoqueDetalhes}
+            isLoading={carregandoEstoque}
           />
-
-          {selectedProduto && (
-            <ReposicaoModal
-              isOpen={showReposicaoModal}
-              onClose={() => setShowReposicaoModal(false)}
-              produto={selectedProduto}
-            />
-          )}
+          <ReposicaoModal isOpen={dialogo === "reposicao"} onClose={() => setDialogo(null)} produto={produtoAtivo} />
         </>
       )}
 
       <BulkAssignDialog
-        isOpen={showBulkAssignModal}
-        onClose={() => setShowBulkAssignModal(false)}
-        produtoIds={Array.from(selectedIds)}
-        onApplied={handleBulkApplied}
+        isOpen={bulkAberto}
+        onClose={() => setBulkAberto(false)}
+        produtoIds={Array.from(selecionados)}
+        onApplied={() => {
+          setSelecionados(new Set());
+          buscarPagina(1);
+        }}
       />
     </div>
   );
-};
-
-export default ProdutoList;
+}

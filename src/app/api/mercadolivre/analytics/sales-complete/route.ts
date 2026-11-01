@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { resolverPeriodoRapido, inicioDoDia, fimDoDia } from "@/modules/financeiro/dominio/periodo";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
@@ -114,7 +115,14 @@ export async function GET(request: NextRequest) {
     const user = await verifyUser(request);
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
-    const period = parseInt(searchParams.get("period") || "30");
+    const periodParam = searchParams.get("period") || "mes-atual";
+    // "mes-atual"/"mes-anterior" vêm resolvidos no fuso de SP, com comparação
+    // contra o mesmo trecho do mês anterior (mesma regra do dashboard).
+    const periodoMensal =
+      periodParam === "mes-atual" || periodParam === "mes-anterior"
+        ? resolverPeriodoRapido(periodParam)
+        : null;
+    const period = periodoMensal ? periodoMensal.dias : parseInt(periodParam) || 30;
     const includeComparison = searchParams.get("comparison") === "true";
     const customStartDate = searchParams.get("startDate");
     const customEndDate = searchParams.get("endDate");
@@ -149,13 +157,16 @@ export async function GET(request: NextRequest) {
       let actualPeriod: number;
 
       if (customStartDate && customEndDate) {
-        startDate = new Date(customStartDate);
-        endDate = new Date(customEndDate);
-        
-        startDate.setHours(0, 0, 0, 0);
-        endDate.setHours(23, 59, 59, 999);
-        
+        // Limites do dia no fuso de SP (o servidor roda em UTC: setHours
+        // aqui puxava 3h do dia anterior para dentro do período).
+        startDate = inicioDoDia(new Date(customStartDate));
+        endDate = fimDoDia(new Date(customEndDate));
+
         actualPeriod = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      } else if (periodoMensal) {
+        startDate = periodoMensal.desde;
+        endDate = periodoMensal.ate;
+        actualPeriod = periodoMensal.dias;
       } else {
         endDate = new Date();
         startDate = new Date(endDate.getTime() - period * 24 * 60 * 60 * 1000);
@@ -164,7 +175,9 @@ export async function GET(request: NextRequest) {
 
       const cacheKeySuffix = customStartDate && customEndDate 
         ? `${customStartDate}-${customEndDate}`
-        : actualPeriod.toString();
+        : periodoMensal
+          ? `${periodoMensal.chave}-${startDate.toISOString().slice(0, 10)}-${Math.floor(endDate.getTime() / 600000)}`
+          : actualPeriod.toString();
       
       const cacheKey = createCacheKey(
         "sales-complete-v2",
@@ -521,10 +534,12 @@ export async function GET(request: NextRequest) {
       );
 
       if (includeComparison) {
-        const prevStartDate = new Date(
-          startDate.getTime() - actualPeriod * 24 * 60 * 60 * 1000
-        );
-        const prevEndDate = startDate;
+        const prevStartDate = periodoMensal && !(customStartDate && customEndDate)
+          ? periodoMensal.anteriorDesde
+          : new Date(startDate.getTime() - actualPeriod * 24 * 60 * 60 * 1000);
+        const prevEndDate = periodoMensal && !(customStartDate && customEndDate)
+          ? periodoMensal.anteriorAte
+          : startDate;
 
         const prevCacheKey = createCacheKey(
           "sales-complete-prev",

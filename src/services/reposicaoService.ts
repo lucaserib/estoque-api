@@ -32,6 +32,10 @@ export interface DadosProdutoReposicao {
   temAnuncioFull: boolean;
   fornecedorPrincipal: FornecedorPrincipalInfo | null;
   config: ConfigReposicao;
+  /** Unidades deste produto que já estão dentro de kits no Full (kit × quantidade do componente). */
+  estoqueEmKitsUnidades?: number;
+  /** Kit não se compra do fornecedor: só monta (do estoque dos componentes) e envia. */
+  ehKit?: boolean;
 }
 
 export interface SugestaoReposicao {
@@ -44,7 +48,9 @@ export interface SugestaoReposicao {
   estoqueFullEmTransito: number;
   estoqueFullIndisponivel: number;
   pedidosEmAbertoUnidades: number;
+  estoqueEmKitsUnidades: number;
   temAnuncioFull: boolean;
+  ehKit: boolean;
   demandaDiaria: number;
   leadTimeDias: number;
   estoqueDisponivel: number;
@@ -77,11 +83,13 @@ export function calcularSugestaoReposicao(
   const leadTimeDias =
     leadTimeBase + (dados.temAnuncioFull ? dados.config.fullReleaseDays : 0);
 
+  const estoqueEmKitsUnidades = dados.estoqueEmKitsUnidades ?? 0;
   const estoqueDisponivel =
     dados.estoqueLocal +
     dados.estoqueFullDisponivel +
     dados.estoqueFullEmTransito +
-    dados.pedidosEmAbertoUnidades;
+    dados.pedidosEmAbertoUnidades +
+    estoqueEmKitsUnidades;
 
   const pontoPedido = demandaDiaria * leadTimeDias + dados.config.safetyStock;
   const coberturaAlvo =
@@ -102,7 +110,7 @@ export function calcularSugestaoReposicao(
       : null;
 
   let quantidadeSugeridaCompraUnidades = 0;
-  if (estoqueDisponivel <= pontoPedido) {
+  if (!dados.ehKit && estoqueDisponivel <= pontoPedido) {
     quantidadeSugeridaCompraUnidades = Math.max(
       0,
       Math.ceil(coberturaAlvo - estoqueDisponivel)
@@ -169,7 +177,9 @@ export function calcularSugestaoReposicao(
     estoqueFullEmTransito: dados.estoqueFullEmTransito,
     estoqueFullIndisponivel: dados.estoqueFullIndisponivel,
     pedidosEmAbertoUnidades: dados.pedidosEmAbertoUnidades,
+    estoqueEmKitsUnidades,
     temAnuncioFull: dados.temAnuncioFull,
+    ehKit: dados.ehKit ?? false,
     demandaDiaria,
     leadTimeDias,
     estoqueDisponivel,
@@ -361,17 +371,56 @@ export async function calcularReposicaoConta(
     componentesPorKit
   );
 
+  // Full de TODOS os anúncios Full ativos do produto (antes só o primeiro
+  // encontrado entrava — produto com dois anúncios Full perdia metade).
+  const fullPorProduto = new Map<string, { disponivel: number; emTransito: number; indisponivel: number }>();
+  for (const produto of produtos) {
+    const anunciosFull = produto.ProdutoMercadoLivre.filter(
+      (p) => p.mlLogisticType === "fulfillment" && p.mlStatus === "active"
+    );
+    if (anunciosFull.length === 0) continue;
+    fullPorProduto.set(produto.id, {
+      disponivel: anunciosFull.reduce((s, a) => s + (a.mlFullDisponivel ?? 0), 0),
+      emTransito: anunciosFull.reduce((s, a) => s + (a.mlFullEmTransito ?? 0), 0),
+      indisponivel: anunciosFull.reduce((s, a) => s + (a.mlFullIndisponivel ?? 0), 0),
+    });
+  }
+
+  const estoqueLocalPorProduto = new Map(
+    produtos.map((p) => [p.id, p.estoques.reduce((sum, e) => sum + e.quantidade, 0)])
+  );
+
+  // Kit parado no Full já é estoque do componente: 10 kits de 2 adaptadores
+  // no Full = 20 adaptadores que não precisam ser comprados.
+  const unidadesEmKitsPorComponente = new Map<string, number>();
+  for (const [kitId, componentes] of componentesPorKit) {
+    const full = fullPorProduto.get(kitId);
+    if (!full) continue;
+    const kitsNoFull = full.disponivel + full.emTransito;
+    if (kitsNoFull <= 0) continue;
+    for (const componente of componentes) {
+      unidadesEmKitsPorComponente.set(
+        componente.produtoId,
+        (unidadesEmKitsPorComponente.get(componente.produtoId) ?? 0) + kitsNoFull * componente.quantidade
+      );
+    }
+  }
+
   const sugestoes = produtos.map((produto) => {
     const vendas = demandaExplodida.get(produto.id) ?? { v30: 0, v90: 0 };
     const config = configPorProduto.get(produto.id);
     const analysisPeriodDays = config?.analysisPeriodDays ?? 90;
-    const estoqueLocal = produto.estoques.reduce(
-      (sum, e) => sum + e.quantidade,
-      0
-    );
-    const anuncioFull = produto.ProdutoMercadoLivre.find(
-      (p) => p.mlLogisticType === "fulfillment" && p.mlStatus === "active"
-    );
+    const componentesKit = produto.isKit ? componentesPorKit.get(produto.id) ?? [] : [];
+    // Kit montado na hora: o "estoque local" do kit é quantos dá para montar com os componentes.
+    const estoqueLocal =
+      produto.isKit && componentesKit.length > 0
+        ? Math.min(
+            ...componentesKit.map((c) =>
+              c.quantidade > 0 ? Math.floor((estoqueLocalPorProduto.get(c.produtoId) ?? 0) / c.quantidade) : 0
+            )
+          )
+        : estoqueLocalPorProduto.get(produto.id) ?? 0;
+    const full = fullPorProduto.get(produto.id);
     const fornecedorPrincipal = produto.fornecedores[0];
 
     return calcularSugestaoReposicao({
@@ -382,11 +431,13 @@ export async function calcularReposicaoConta(
       vendas30Dias: vendas.v30,
       vendasPeriodoAnteriorDias: vendasNoPeriodoAnterior(vendas.v90, analysisPeriodDays),
       estoqueLocal,
-      estoqueFullDisponivel: anuncioFull?.mlFullDisponivel ?? 0,
-      estoqueFullEmTransito: anuncioFull?.mlFullEmTransito ?? 0,
-      estoqueFullIndisponivel: anuncioFull?.mlFullIndisponivel ?? 0,
+      estoqueFullDisponivel: full?.disponivel ?? 0,
+      estoqueFullEmTransito: full?.emTransito ?? 0,
+      estoqueFullIndisponivel: full?.indisponivel ?? 0,
       pedidosEmAbertoUnidades: pedidosAbertosPorProduto.get(produto.id) ?? 0,
-      temAnuncioFull: !!anuncioFull,
+      estoqueEmKitsUnidades: unidadesEmKitsPorComponente.get(produto.id) ?? 0,
+      ehKit: produto.isKit,
+      temAnuncioFull: !!full,
       fornecedorPrincipal: fornecedorPrincipal
         ? {
             fornecedorId: fornecedorPrincipal.fornecedorId,

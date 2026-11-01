@@ -30,6 +30,8 @@ export interface ProdutoParaPendencias {
   estoqueDivergente: boolean;
   /** Pré-computado pelo chamador (módulo financeiro — venda sem custo, frete ou vínculo nos últimos 30 dias). */
   vendaIncompleta: boolean;
+  /** Produto vendido dentro de um kit que tem anúncio (ex.: "Kit com 2") — já está à venda. */
+  vendidoEmKit?: boolean;
 }
 
 const SETE_DIAS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -54,7 +56,10 @@ export function calcularPendencias(
     });
   }
 
-  if (produto.fornecedores.length === 0) {
+  // Kit não é comprado: fornecedor, prazo e EAN são dos componentes.
+  if (produto.isKit) {
+    // nada de fornecedor para cobrar
+  } else if (produto.fornecedores.length === 0) {
     pendencias.push({
       codigo: "SEM_FORNECEDOR",
       severidade: "critica",
@@ -115,7 +120,7 @@ export function calcularPendencias(
   }
 
   const fornecedorPrincipal = produto.fornecedores.find((f) => f.principal);
-  if (fornecedorPrincipal && fornecedorPrincipal.prazoEntregaDias == null) {
+  if (!produto.isKit && fornecedorPrincipal && fornecedorPrincipal.prazoEntregaDias == null) {
     pendencias.push({
       codigo: "SEM_PRAZO_FORNECEDOR",
       severidade: "atencao",
@@ -168,7 +173,7 @@ export function calcularPendencias(
     });
   }
 
-  if (produto.ean == null) {
+  if (produto.ean == null && !produto.isKit) {
     pendencias.push({
       codigo: "SEM_EAN",
       severidade: "informativa",
@@ -177,7 +182,7 @@ export function calcularPendencias(
     });
   }
 
-  if (produto.produtosMercadoLivre.length === 0) {
+  if (produto.produtosMercadoLivre.length === 0 && !produto.vendidoEmKit) {
     pendencias.push({
       codigo: "SEM_VINCULO_ML",
       severidade: "informativa",

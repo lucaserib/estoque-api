@@ -467,7 +467,14 @@ async function prepararItens(
   userId: string,
   accountId: string,
   normalizado: VendaCanalNormalizada,
-  vendaExistente: { itens: Array<{ anuncioExternoId: string; variacaoExternaId: string | null; custoUnitario: number | null }> } | null
+  vendaExistente: {
+    itens: Array<{
+      anuncioExternoId: string;
+      variacaoExternaId: string | null;
+      produtoId: string | null;
+      custoUnitario: number | null;
+    }>;
+  } | null
 ): Promise<ItensPreparados> {
   const vinculos: Array<string | null> = [];
   const zerar = statusZeraQuantidade(normalizado.status);
@@ -485,7 +492,12 @@ async function prepararItens(
         i.anuncioExternoId === item.anuncioExternoId &&
         i.variacaoExternaId === item.variacaoExternaId
     );
-    const custoCongelado = itemExistente?.custoUnitario ?? null;
+    // O custo fica congelado na venda (custo médio muda depois, a venda não),
+    // mas só enquanto o item continuar apontando para o MESMO produto: se o
+    // anúncio foi revinculado (ex.: virou "kit com 2 unidades"), o custo
+    // antigo era de outro produto e precisa ser refeito.
+    const custoCongelado =
+      itemExistente && itemExistente.produtoId === produtoId ? itemExistente.custoUnitario : null;
     const infoProduto = produtoId ? await resolverCustoAtualDoProduto(produtoId) : null;
     const custoUnitario = custoCongelado ?? infoProduto?.custoUnitario ?? null;
     custosFreteManualPorItem.push(infoProduto?.custoFreteManual ?? null);
@@ -889,3 +901,102 @@ export async function reprocessarErrosPendentes(accountId: string): Promise<{ pr
   return { processados };
 }
 
+
+
+/**
+ * Refaz o vínculo e o custo de todas as vendas já gravadas de um anúncio
+ * depois que o usuário troca o produto dele (ou define que o anúncio vende
+ * N unidades). Usa só o que já está no banco — nenhuma chamada ao canal.
+ * Tarifa, frete, ads e desconto ficam como estavam; mudam produto, custo,
+ * CMV, margem e as pendências de vínculo/custo.
+ */
+export async function revincularVendasDoAnuncio(params: {
+  userId: string;
+  contaCanalId: string;
+  anuncioExternoId: string;
+  produtoId: string | null;
+}): Promise<number> {
+  const { userId, contaCanalId, anuncioExternoId, produtoId } = params;
+
+  const vendas = await prisma.vendaCanal.findMany({
+    where: {
+      userId,
+      contaCanalId,
+      itens: { some: { anuncioExternoId } },
+    },
+    include: { itens: true },
+  });
+  if (vendas.length === 0) return 0;
+
+  const config = await obterConfigIngestao(userId);
+  const custoNovo = produtoId ? (await resolverCustoAtualDoProduto(produtoId)).custoUnitario : null;
+  const PENDENCIAS_CALCULADAS = new Set([
+    "SEM_CUSTO",
+    "SEM_TARIFA",
+    "SEM_FRETE",
+    PENDENCIA_SEM_VINCULO,
+    PENDENCIA_VINCULO_NAO_CONFIRMADO,
+  ]);
+
+  for (const venda of vendas) {
+    const zerar = statusZeraQuantidade(venda.status);
+    const itens = venda.itens.map((item) =>
+      item.anuncioExternoId === anuncioExternoId
+        ? {
+            ...item,
+            produtoId,
+            // Mesmo produto com custo já gravado: mantém o custo histórico.
+            custoUnitario:
+              item.produtoId === produtoId && item.custoUnitario != null ? item.custoUnitario : custoNovo,
+          }
+        : item
+    );
+
+    const resultado = calcularResultadoVenda(
+      { freteTotal: venda.freteVendedor, adsAtribuido: venda.adsAtribuido },
+      itens.map((item) => ({
+        produtoId: item.produtoId,
+        quantidade: zerar ? 0 : item.quantidade,
+        precoUnitario: item.precoUnitario,
+        tarifaTotal: item.tarifaVenda,
+        descontoVendedorTotal: item.descontoRateado,
+        custoUnitario: item.custoUnitario,
+      })),
+      { aliquotaImposto: config.aliquotaImposto }
+    );
+    const semVinculo = itens.some((item) => item.produtoId === null);
+    const faltando = [
+      ...new Set([
+        ...venda.faltando.filter((f) => !PENDENCIAS_CALCULADAS.has(f)),
+        ...resultado.faltando,
+        ...(semVinculo ? [PENDENCIA_SEM_VINCULO] : []),
+      ]),
+    ];
+
+    await prisma.$transaction(async (tx) => {
+      for (let i = 0; i < itens.length; i++) {
+        if (itens[i].anuncioExternoId !== anuncioExternoId) continue;
+        await tx.vendaCanalItem.update({
+          where: { id: itens[i].id },
+          data: {
+            produtoId: itens[i].produtoId,
+            custoUnitario: itens[i].custoUnitario,
+            margemContribuicao: resultado.itens[i].margemContribuicao,
+          },
+        });
+      }
+      await tx.vendaCanal.update({
+        where: { id: venda.id },
+        data: {
+          cmv: resultado.cmv,
+          margemContribuicao: resultado.margemContribuicao,
+          completo: resultado.completo && !semVinculo,
+          faltando,
+        },
+      });
+    });
+  }
+
+  await invalidarCacheFinanceiro(userId);
+  return vendas.length;
+}

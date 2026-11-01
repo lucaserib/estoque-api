@@ -38,6 +38,15 @@ interface Product {
     nome: string;
     sku: string;
   } | null;
+  mlSellerSku?: string | null;
+  composicao?: {
+    produtoBaseId: string;
+    produtoBaseNome: string;
+    produtoBaseSku: string;
+    unidadesPorVenda: number;
+    ehKitDeQuantidade: boolean;
+    ehKitMisto: boolean;
+  } | null;
   localStock?: number;
   stockStatus?: "ok" | "low" | "out" | "unlinked" | string;
   lastSync?: string;

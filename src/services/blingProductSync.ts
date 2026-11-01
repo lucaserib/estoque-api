@@ -6,10 +6,36 @@ import { stringToBigIntEAN } from "@/utils/ean";
 import { rehostTemporaryImage } from "@/lib/blingImageHost";
 import { normalizeSku } from "@/lib/sku";
 
+/** Produto que não entra no estoque por um motivo de cadastro (não é falha da sincronização). */
+export class BlingProdutoIgnorado extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "BlingProdutoIgnorado";
+  }
+}
+
 export interface FornecedorResolvido {
   fornecedorId: string | null;
   precoCusto: number | null;
   codigo: string | undefined;
+}
+
+/**
+ * Contato do fornecedor muda pouco e se repete em centenas de produtos: guarda
+ * por alguns minutos para não gastar 1 de cada 3 chamadas da sincronização
+ * (limite do Bling: 3 req/s) buscando o mesmo fornecedor de novo.
+ */
+const CONTATO_TTL_MS = 10 * 60 * 1000;
+const cacheContatos = new Map<string, { expiraEm: number; contato: Awaited<ReturnType<typeof BlingService.getContact>> }>();
+
+async function obterContatoBling(accountId: string, contatoId: number) {
+  const chave = `${accountId}:${contatoId}`;
+  const cache = cacheContatos.get(chave);
+  if (cache && cache.expiraEm > Date.now()) return cache.contato;
+  const contato = await BlingService.getContact(accountId, contatoId);
+  cacheContatos.set(chave, { contato, expiraEm: Date.now() + CONTATO_TTL_MS });
+  if (cacheContatos.size > 2000) cacheContatos.clear();
+  return contato;
 }
 
 export async function resolverFornecedorPrincipalBling(
@@ -26,10 +52,7 @@ export async function resolverFornecedorPrincipalBling(
     return { fornecedorId: null, precoCusto: null, codigo: undefined };
   }
 
-  const contato = await BlingService.getContact(
-    accountId,
-    padrao.fornecedor.id
-  );
+  const contato = await obterContatoBling(accountId, padrao.fornecedor.id);
 
   const fornecedor = await prisma.fornecedor.upsert({
     where: {
@@ -162,57 +185,115 @@ export async function aplicarDetalheProdutoBling(params: {
   return { produtoId: produto.id, criado: !existenteId };
 }
 
+export interface ResultadoComponentesKit {
+  /** Componentes do Bling que não existem localmente (kit fica sem custo até chegarem). */
+  faltando: string[];
+}
+
 export async function sincronizarComponentesKitBling(
   kitProdutoId: string,
   detalhe: BlingProduct,
   resolverComponenteLocal: (blingIdComponente: string) => Promise<string | null>
-): Promise<void> {
-  if (!detalhe.estrutura?.componentes) return;
+): Promise<ResultadoComponentesKit> {
+  if (!detalhe.estrutura?.componentes) return { faltando: [] };
+
+  const faltando: string[] = [];
+  const presentes = new Set<string>();
 
   for (const componenteBling of detalhe.estrutura.componentes) {
     const componenteLocalId = await resolverComponenteLocal(
       String(componenteBling.produto.id)
     );
-    if (!componenteLocalId) continue;
-
-    const vinculoExistente = await prisma.componente.findFirst({
-      where: { kitId: kitProdutoId, produtoId: componenteLocalId },
-    });
-
-    if (vinculoExistente) {
-      await prisma.componente.update({
-        where: { id: vinculoExistente.id },
-        data: { quantidade: componenteBling.quantidade },
-      });
-    } else {
-      await prisma.componente.create({
-        data: {
-          kitId: kitProdutoId,
-          produtoId: componenteLocalId,
-          quantidade: componenteBling.quantidade,
-        },
-      });
+    if (!componenteLocalId) {
+      faltando.push(String(componenteBling.produto.id));
+      continue;
     }
+    presentes.add(componenteLocalId);
+
+    await prisma.componente.upsert({
+      where: { kitId_produtoId: { kitId: kitProdutoId, produtoId: componenteLocalId } },
+      update: { quantidade: componenteBling.quantidade },
+      create: {
+        kitId: kitProdutoId,
+        produtoId: componenteLocalId,
+        quantidade: componenteBling.quantidade,
+      },
+    });
   }
+
+  // Componente que saiu da estrutura no Bling sai aqui também — antes ficava
+  // para sempre e inflava o custo do kit e a demanda da reposição. Só remove
+  // quando a estrutura veio completa (nenhum componente faltando localmente),
+  // para não apagar nada por causa de um componente ainda não importado.
+  if (faltando.length === 0) {
+    await prisma.componente.deleteMany({
+      where: { kitId: kitProdutoId, produtoId: { notIn: [...presentes] } },
+    });
+  }
+
+  return { faltando };
 }
 
 export async function sincronizarProdutoUnico(
   accountId: string,
   userId: string,
-  blingProdutoId: number
+  blingProdutoId: number,
+  profundidade = 0
 ): Promise<AplicarDetalheResultado> {
   const blingIdStr = String(blingProdutoId);
   const detalhe = await BlingService.getProductById(accountId, blingProdutoId);
   const skuBruto = BlingService.extractSKU(detalhe);
   if (!skuBruto) {
-    throw new Error(`Produto Bling ${blingProdutoId} sem SKU, ignorado`);
+    // Pai de variações costuma vir sem código: o que se vende e se estoca são
+    // as variações (cada uma com SKU). Importa as variações e ignora o pai.
+    const variacoes = detalhe.variacoes ?? [];
+    if (variacoes.length > 0 && profundidade === 0) {
+      let importadas = 0;
+      for (const variacao of variacoes) {
+        try {
+          await sincronizarProdutoUnico(accountId, userId, variacao.id, profundidade + 1);
+          importadas++;
+        } catch (erro) {
+          if (!(erro instanceof BlingProdutoIgnorado)) throw erro;
+        }
+      }
+      throw new BlingProdutoIgnorado(
+        `"${detalhe.nome}" é pai de variações no Bling — ${importadas} variação(ões) importada(s) com o próprio SKU.`
+      );
+    }
+    throw new BlingProdutoIgnorado(
+      `"${detalhe.nome}" (id ${blingProdutoId}) está sem código (SKU) no Bling — preencha o código no Bling para ele entrar no estoque.`
+    );
   }
   const sku = normalizeSku(skuBruto);
 
-  const existente = await prisma.produto.findFirst({
-    where: { userId, OR: [{ blingId: blingIdStr }, { sku }] },
-    select: { id: true },
-  });
+  // blingId manda; SKU só vale para produto ainda sem blingId (cadastrado à
+  // mão ou por planilha). Antes o OR podia pegar outro produto com o mesmo SKU
+  // e tentar gravar um blingId que já era de outro (erro de unicidade).
+  let existente: { id: string } | null =
+    (await prisma.produto.findUnique({
+      where: { userId_blingId: { userId, blingId: blingIdStr } },
+      select: { id: true },
+    })) ??
+    (await prisma.produto.findFirst({
+      where: { userId, sku, blingId: null },
+      select: { id: true },
+    }));
+  if (!existente) {
+    const skuOcupado = await prisma.produto.findFirst({
+      where: { userId, sku, blingId: { not: null } },
+      select: { id: true, blingId: true, ativo: true },
+    });
+    if (skuOcupado && !skuOcupado.ativo) {
+      // Produto excluído e recriado no Bling com o mesmo SKU: o cadastro
+      // local (inativo) passa a apontar para o novo id do Bling.
+      existente = { id: skuOcupado.id };
+    } else if (skuOcupado) {
+      throw new Error(
+        `SKU ${sku} já pertence ao produto ${skuOcupado.blingId} do Bling — há dois cadastros ativos no Bling com o mesmo SKU.`
+      );
+    }
+  }
 
   const { fornecedorId, precoCusto: precoCustoFornecedor, codigo } =
     await resolverFornecedorPrincipalBling(accountId, blingProdutoId, userId);
@@ -244,7 +325,16 @@ export async function sincronizarProdutoUnico(
           where: { userId_blingId: { userId, blingId: blingIdComponente } },
           select: { id: true },
         });
-        return componente?.id ?? null;
+        if (componente) return componente.id;
+        // Componente ainda não importado (a sincronização incremental pode
+        // trazer o kit antes dele): importa agora, um nível só.
+        if (profundidade > 0) return null;
+        try {
+          const importado = await sincronizarProdutoUnico(accountId, userId, Number(blingIdComponente), profundidade + 1);
+          return importado.produtoId;
+        } catch {
+          return null;
+        }
       }
     );
   }
@@ -259,9 +349,11 @@ export async function sincronizarEstoqueUnico(
 ): Promise<void> {
   const produtoLocal = await prisma.produto.findFirst({
     where: { userId, blingId: String(blingProdutoId) },
-    select: { id: true, estoques: { select: { armazemId: true, quantidade: true } } },
+    select: { id: true, isKit: true, estoques: { select: { armazemId: true, quantidade: true } } },
   });
-  if (!produtoLocal) return;
+  // Saldo de kit no Bling é virtual (calculado dos componentes): gravar aqui
+  // contaria o mesmo estoque duas vezes. A sincronização em lote já pulava kits.
+  if (!produtoLocal || produtoLocal.isKit) return;
 
   const armazemPorDeposito = await garantirArmazensParaDepositos(accountId, userId);
   const { data: stockItems } = await BlingService.getProductsStock(accountId, [

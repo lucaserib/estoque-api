@@ -37,6 +37,15 @@ interface Product {
     nome: string;
     sku: string;
   } | null;
+  mlSellerSku?: string | null;
+  composicao?: {
+    produtoBaseId: string;
+    produtoBaseNome: string;
+    produtoBaseSku: string;
+    unidadesPorVenda: number;
+    ehKitDeQuantidade: boolean;
+    ehKitMisto: boolean;
+  } | null;
   localStock?: number;
   stockStatus?: "ok" | "low" | "out" | "unlinked" | string;
   lastSync?: string;
@@ -249,16 +258,31 @@ export default function MLProductRow({
 
       <DataTableCell>
         {product.localProduct ? (
-          <div>
+          <button
+            type="button"
+            className="text-left hover:underline"
+            onClick={() => onLinkProduct(product)}
+            title="Editar vínculo"
+          >
             <div className="font-medium text-sm">
-              {product.localProduct.nome}
+              {product.composicao?.ehKitDeQuantidade
+                ? `${product.composicao.unidadesPorVenda}× ${product.composicao.produtoBaseNome}`
+                : product.localProduct.nome}
             </div>
             <div className="text-xs text-muted-foreground">
-              SKU: {product.localProduct.sku}
+              SKU: {product.composicao?.ehKitDeQuantidade ? product.composicao.produtoBaseSku : product.localProduct.sku}
+              {product.composicao?.ehKitDeQuantidade && " · kit de quantidade"}
+              {product.composicao?.ehKitMisto && " · kit"}
             </div>
-          </div>
+          </button>
         ) : (
-          <div className="text-sm text-muted-foreground">Não vinculado</div>
+          <button
+            type="button"
+            className="text-sm font-medium text-primary hover:underline"
+            onClick={() => onLinkProduct(product)}
+          >
+            Vincular ao estoque
+          </button>
         )}
       </DataTableCell>
 
@@ -286,30 +310,24 @@ export default function MLProductRow({
           >
             <Eye className="h-4 w-4" />
           </Button>
+          {product.localProduct && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onEditProduct(product)}
+              title="Abrir ficha do produto"
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onEditProduct(product)}
+            onClick={() => (product.localProduct ? onUnlinkProduct(product) : onLinkProduct(product))}
+            title={product.localProduct ? "Editar ou desfazer vínculo" : "Vincular ao estoque"}
           >
-            <Edit className="h-4 w-4" />
+            {product.localProduct ? <Unlink className="h-4 w-4" /> : <Link className="h-4 w-4" />}
           </Button>
-          {product.localProduct ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onUnlinkProduct(product)}
-            >
-              <Unlink className="h-4 w-4" />
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onLinkProduct(product)}
-            >
-              <Link className="h-4 w-4" />
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"

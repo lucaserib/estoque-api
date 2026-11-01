@@ -5,7 +5,7 @@ export interface Produto {
   nome: string;
   sku: string;
   codigoEAN?: string;
-  custoMedio?: number;
+  custoMedio?: number | null;
   isKit?: boolean;
   imagemUrl?: string | null;
   imagemThumbUrl?: string | null;
