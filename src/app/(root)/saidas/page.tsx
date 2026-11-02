@@ -37,7 +37,7 @@ import { SaidaList } from "./components/SaidaList";
 import { NovaSaidaDialog } from "./components/NovaSaidaDialog";
 import { VendasMLList } from "./components/VendasMLList";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 
 // Main component for the Saidas page
@@ -177,7 +177,7 @@ const SaidasPage = () => {
   );
   const totalRevenueML = vendasMLData?.totalRevenue || 0;
 
-  const statItems: StatStripItem[] =
+  const statItems: StatCardItem[] =
     activeTab === "manual"
       ? [
           { label: "Saídas manuais", value: loading ? "—" : String(totalSaidas) },
@@ -218,7 +218,7 @@ const SaidasPage = () => {
         }
       />
 
-      <StatStrip items={statItems} />
+      <StatCardGrid items={statItems} />
 
       {/* Filters */}
       <Card className="border border-border shadow-card">

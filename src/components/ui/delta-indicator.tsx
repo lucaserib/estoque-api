@@ -12,8 +12,8 @@ export function DeltaIndicator({ delta, label, className }: DeltaIndicatorProps)
   const toneClass = isEmpty
     ? "bg-secondary text-muted-foreground"
     : delta > 0
-    ? "bg-success/10 text-success"
-    : "bg-destructive/10 text-destructive";
+    ? "bg-success/10 text-success-text"
+    : "bg-destructive/10 text-destructive-text";
 
   return (
     <span

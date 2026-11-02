@@ -64,13 +64,13 @@ export function DemonstrativoResultado({ indicadores }: { indicadores: Indicador
               <td className={cn("py-2 pr-3", linha.tipo === "deducao" && "text-muted-foreground")}>{linha.rotulo}</td>
               <td
                 className={cn(
-                  "py-2 text-right font-mono tabular-nums",
-                  linha.tipo === "total" && (linha.valor >= 0 ? "text-success" : "text-destructive")
+                  "py-2 text-right tabular-nums",
+                  linha.tipo === "total" && (linha.valor >= 0 ? "text-success-text" : "text-destructive-text")
                 )}
               >
                 {moeda(linha.valor)}
               </td>
-              <td className="w-16 py-2 pl-3 text-right font-mono text-xs tabular-nums text-faint">
+              <td className="w-16 py-2 pl-3 text-right text-xs tabular-nums text-faint">
                 {sobreFaturamento(linha.valor, base)}
               </td>
             </tr>

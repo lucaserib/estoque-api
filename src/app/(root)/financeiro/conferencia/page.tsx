@@ -202,7 +202,7 @@ export default function ConferenciaPage() {
         <>
           <SectionCard>
             {resultado.confere ? (
-              <div className="flex items-center gap-2 text-success">
+              <div className="flex items-center gap-2 text-success-text">
                 <CheckCircle2 className="h-5 w-5" />
                 <span className="font-medium">
                   O mês bate com o Mercado Livre: {resultado.totalMl.pedidosValidos} pedidos e {moeda(resultado.totalMl.faturamento)}.
@@ -210,7 +210,7 @@ export default function ConferenciaPage() {
               </div>
             ) : (
               <div className="space-y-1 text-sm">
-                <p className="font-medium text-warning">
+                <p className="font-medium text-warning-text">
                   Cobertura de {resultado.coberturaPercentual.toLocaleString("pt-BR")}%: faltam {resultado.faltando.length} pedido(s)
                   e há {resultado.divergentes.length} diferença(s).
                 </p>
@@ -233,7 +233,7 @@ export default function ConferenciaPage() {
                 <DataTableRow>
                   <DataTableHead>Indicador</DataTableHead>
                   <DataTableHead className="text-right">Mercado Livre</DataTableHead>
-                  <DataTableHead className="text-right">Leap Stock</DataTableHead>
+                  <DataTableHead className="text-right">Skubo</DataTableHead>
                   <DataTableHead className="text-right">Situação</DataTableHead>
                 </DataTableRow>
               </DataTableHeader>

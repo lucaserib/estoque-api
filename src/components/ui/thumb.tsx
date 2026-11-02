@@ -8,9 +8,9 @@ const thumbVariants = cva(
     variants: {
       tone: {
         primary: "bg-primary/10 text-primary",
-        success: "bg-success/10 text-success",
-        warning: "bg-warning/10 text-warning",
-        destructive: "bg-destructive/10 text-destructive",
+        success: "bg-success/10 text-success-text",
+        warning: "bg-warning/10 text-warning-text",
+        destructive: "bg-destructive/10 text-destructive-text",
         info: "bg-info/10 text-info",
         neutral: "bg-muted text-muted-foreground",
       },

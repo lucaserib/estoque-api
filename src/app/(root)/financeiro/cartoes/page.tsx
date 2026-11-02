@@ -469,7 +469,7 @@ export default function CartoesPage() {
                   </SelectContent>
                 </Select>
                 {contasBancarias.length === 0 && (
-                  <p className="mt-1 text-xs text-warning">Cadastre uma conta bancária ou caixa antes de pagar uma fatura.</p>
+                  <p className="mt-1 text-xs text-warning-text">Cadastre uma conta bancária ou caixa antes de pagar uma fatura.</p>
                 )}
               </div>
               <div>

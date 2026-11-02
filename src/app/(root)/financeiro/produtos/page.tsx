@@ -162,12 +162,12 @@ export default function LucroPorProdutoPage() {
       {(produtosComMargemNegativa.length > 0 || produtosSemCusto.length > 0) && (
         <SectionCard contentClassName="space-y-1 text-sm">
           {produtosComMargemNegativa.length > 0 && (
-            <div className="text-destructive">
+            <div className="text-destructive-text">
               {produtosComMargemNegativa.length} produto(s) com margem de contribuição negativa no período.
             </div>
           )}
           {produtosSemCusto.length > 0 && (
-            <div className="text-warning">
+            <div className="text-warning-text">
               {produtosSemCusto.length} produto(s) vendidos sem custo cadastrado: a margem deles aparece acima da real.
             </div>
           )}
@@ -220,7 +220,7 @@ export default function LucroPorProdutoPage() {
                   </DataTableCell>
                   <DataTableCell numeric>{formatNumberBR(produto.unidades)}</DataTableCell>
                   <DataTableCell numeric>{formatBRL(produto.faturamentoBruto)}</DataTableCell>
-                  <DataTableCell numeric className={produto.margemContribuicao < 0 ? "text-destructive" : undefined}>
+                  <DataTableCell numeric className={produto.margemContribuicao < 0 ? "text-destructive-text" : undefined}>
                     {formatBRL(produto.margemContribuicao)}
                     {produto.margemContribuicaoPercentual != null && (
                       <span className="ml-1 text-xs text-muted-foreground">

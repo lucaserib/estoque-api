@@ -775,7 +775,7 @@ export default function BarcodeScannerSelecaoProdutos({
                         variant="ghost"
                         size="sm"
                         onClick={() => onRemoverProduto(item.sku)}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -791,19 +791,19 @@ export default function BarcodeScannerSelecaoProdutos({
       {/* Produtos não encontrados */}
       {produtosDesconhecidos.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-warning mb-2 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-warning-text mb-2 flex items-center gap-2">
             <AlertCircle className="h-5 w-5" />
             Códigos não reconhecidos
           </h3>
           <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg">
             <div className="flex flex-wrap gap-2">
               {produtosDesconhecidos.map((codigo) => (
-                <Badge key={codigo} variant="outline" className="bg-warning/10 text-warning">
+                <Badge key={codigo} variant="outline" className="bg-warning/10 text-warning-text">
                   {codigo}
                 </Badge>
               ))}
             </div>
-            <p className="text-sm text-warning mt-2">
+            <p className="text-sm text-warning-text mt-2">
               Estes códigos não correspondem a nenhum produto no sistema.
             </p>
           </div>
@@ -837,9 +837,9 @@ export default function BarcodeScannerSelecaoProdutos({
                 >
                   <div className="flex items-center gap-2">
                     {validarCodigoBarras(scan.codigo) ? (
-                      <CheckCircle className="h-4 w-4 text-success" />
+                      <CheckCircle className="h-4 w-4 text-success-text" />
                     ) : (
-                      <AlertCircle className="h-4 w-4 text-warning" />
+                      <AlertCircle className="h-4 w-4 text-warning-text" />
                     )}
                     <div>
                       <div className="font-medium">

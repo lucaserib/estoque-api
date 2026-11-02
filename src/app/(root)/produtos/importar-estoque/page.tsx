@@ -348,9 +348,9 @@ export default function ImportarEstoquePage() {
                       )}
                       <DataTableCell className="pr-4">
                         {linha.valida ? (
-                          <span className="text-success text-xs">OK</span>
+                          <span className="text-success-text text-xs">OK</span>
                         ) : (
-                          <span className="text-destructive text-xs">
+                          <span className="text-destructive-text text-xs">
                             {linha.motivoInvalida}
                           </span>
                         )}

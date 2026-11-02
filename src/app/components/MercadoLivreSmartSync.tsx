@@ -245,15 +245,15 @@ export default function MercadoLivreSmartSync({ accountId }: SmartSyncProps) {
                 <div className="text-sm text-muted-foreground">Total ML</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-success">{summary.potential_matches || 0}</div>
+                <div className="text-2xl font-bold text-success-text">{summary.potential_matches || 0}</div>
                 <div className="text-sm text-muted-foreground">Match Potencial</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-warning">{summary.similar_found || 0}</div>
+                <div className="text-2xl font-bold text-warning-text">{summary.similar_found || 0}</div>
                 <div className="text-sm text-muted-foreground">Similares</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-destructive">{summary.unmatched || 0}</div>
+                <div className="text-2xl font-bold text-destructive-text">{summary.unmatched || 0}</div>
                 <div className="text-sm text-muted-foreground">Não Vinculados</div>
               </div>
               <div className="text-center">

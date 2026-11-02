@@ -1,19 +1,25 @@
 // app/layout.tsx
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Sora, Inter, JetBrains_Mono } from "next/font/google";
 import "../../styles/global.css";
 import { Providers } from "./providers";
 
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-ibm-plex-sans",
+const sora = Sora({
+  variable: "--font-sora",
+  subsets: ["latin"],
+  weight: ["600", "700"],
+});
+
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600"],
 });
 
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
+const jetbrainsMono = JetBrains_Mono({
+  variable: "--font-jetbrains-mono",
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
+  weight: ["500"],
 });
 
 export const viewport: Viewport = {
@@ -21,21 +27,21 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#F5F7F8" },
-    { media: "(prefers-color-scheme: dark)", color: "#0F1316" },
+    { media: "(prefers-color-scheme: light)", color: "#F7F6FB" },
+    { media: "(prefers-color-scheme: dark)", color: "#0E0C1A" },
   ],
 };
 
 export const metadata: Metadata = {
-  title: "Leap Stock — Estoque e reposição para sellers",
-  applicationName: "Leap Stock",
-  appleWebApp: { capable: true, title: "Leap Stock", statusBarStyle: "black-translucent" },
+  title: "Skubo — estoque, reposição e lucro para quem vende no Mercado Livre",
+  applicationName: "Skubo",
+  appleWebApp: { capable: true, title: "Skubo", statusBarStyle: "black-translucent" },
   description:
     "Estoque e reposição para quem vende no Mercado Livre. Controle multi-armazém, kits, pedidos de compra e sincronização com o Mercado Livre.",
   openGraph: {
-    title: "Leap Stock — Estoque e reposição para sellers",
+    title: "Skubo — estoque, reposição e lucro para quem vende no Mercado Livre",
     description:
-      "Estoque e reposição para quem vende no Mercado Livre.",
+      "O estoque e o lucro da sua loja, num cubo só.",
     locale: "pt_BR",
     type: "website",
   },
@@ -49,7 +55,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <body
-        className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} font-sans antialiased`}
+        className={`${sora.variable} ${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>

@@ -15,8 +15,7 @@ import {
 import { ArrowRight, RefreshCw } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
-import { HeroMetric } from "@/components/ui/hero-metric";
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import {
@@ -195,7 +194,7 @@ export default function DashboardPage() {
     );
   }
 
-  const statItems: StatStripItem[] = [
+  const statItems: StatCardItem[] = [
     podeVerCusto && resumo?.metricas.margemContribuicao
       ? {
           label: "Margem de contribuição",
@@ -234,7 +233,7 @@ export default function DashboardPage() {
           value: formatBRL(resumo.caixa.saldoTotal),
         }
       : null,
-  ].filter((item): item is StatStripItem => item !== null);
+  ].filter((item): item is StatCardItem => item !== null);
 
   return (
     <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
@@ -286,15 +285,17 @@ export default function DashboardPage() {
           )}
 
           {/* Métricas principais */}
-          <HeroMetric
+          <StatCard
+            size="lg"
+            highlight
             label={`Faturamento líquido — ${resumo.periodo.rotulo.toLowerCase()}`}
             value={formatBRL(resumo.metricas.faturamentoLiquido.valor)}
             delta={resumo.metricas.faturamentoLiquido.deltaPercentual}
             deltaLabel={resumo.periodo.rotuloComparacao}
-            context="Vendas pagas no Mercado Livre, menos tarifas de venda e frete pago pelo vendedor."
+            note="Vendas pagas no Mercado Livre, menos tarifas de venda e frete pago pelo vendedor."
           />
 
-          <StatStrip items={statItems} />
+          <StatCardGrid items={statItems} />
 
           {/* Pendências que afetam seus números */}
           {podeVerCusto && (
@@ -528,7 +529,7 @@ export default function DashboardPage() {
 
           {/* Compras */}
           <SectionCard title="Compras">
-            <StatStrip
+            <StatCardGrid
               items={[
                 {
                   label: "Pedidos em aberto",
@@ -581,7 +582,7 @@ export default function DashboardPage() {
                     <p>
                       Webhooks (24h): {resumo.integracoes.bling.webhooks24h.total}
                       {resumo.integracoes.bling.webhooks24h.comErro > 0 && (
-                        <span className="text-destructive">
+                        <span className="text-destructive-text">
                           {" "}
                           ({resumo.integracoes.bling.webhooks24h.comErro} com erro)
                         </span>

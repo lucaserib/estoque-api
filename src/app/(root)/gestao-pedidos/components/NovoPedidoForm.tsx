@@ -714,7 +714,7 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
                                   onClick={() => removeProduct(index)}
                                   disabled={isSubmitting}
                                 >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                  <Trash2 className="h-4 w-4 text-destructive-text" />
                                 </Button>
                               </TableCell>
                             </TableRow>

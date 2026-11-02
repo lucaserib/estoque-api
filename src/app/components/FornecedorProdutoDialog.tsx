@@ -503,7 +503,7 @@ export function FornecedorProdutoDialog({
                                     size="sm"
                                     onClick={() => handleSaveEdit(vinculo.id)}
                                     disabled={isSubmitting}
-                                    className="h-8 w-8 p-0 text-success hover:bg-success/10"
+                                    className="h-8 w-8 p-0 text-success-text hover:bg-success/10"
                                   >
                                     <Check className="h-4 w-4" />
                                   </Button>
@@ -531,7 +531,7 @@ export function FornecedorProdutoDialog({
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDelete(vinculo.id)}
-                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                                   >
                                     <Trash className="h-4 w-4" />
                                   </Button>

@@ -117,7 +117,7 @@ export function UsuarioConviteDialog({
                 className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-accent"
               >
                 {copied ? (
-                  <Check className="h-4 w-4 text-success" />
+                  <Check className="h-4 w-4 text-success-text" />
                 ) : (
                   <Copy className="h-4 w-4" />
                 )}

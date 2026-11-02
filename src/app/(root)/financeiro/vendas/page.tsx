@@ -460,7 +460,7 @@ function VendasPageContent() {
                         <DataTableCell numeric>{c.semFrete ? "—" : moeda(c.receitaFrete < 0 ? -c.receitaFrete : c.frete)}</DataTableCell>
                         <DataTableCell numeric>{c.semCusto ? "—" : moeda(c.cmv)}</DataTableCell>
                         <DataTableCell numeric emphasis>
-                          <span className={c.margemContribuicao < 0 ? "text-destructive" : undefined}>{moeda(c.margemContribuicao)}</span>
+                          <span className={c.margemContribuicao < 0 ? "text-destructive-text" : undefined}>{moeda(c.margemContribuicao)}</span>
                           <div className="text-[11px] text-faint">{percentual(c.margemContribuicaoPercentual)}</div>
                         </DataTableCell>
                       </DataTableRow>
@@ -511,12 +511,12 @@ function VendasPageContent() {
                   ].map((linha) => (
                     <tr key={linha.rotulo} className="border-b border-divider">
                       <td className="py-1.5 text-muted-foreground">{linha.rotulo}</td>
-                      <td className="py-1.5 text-right font-mono tabular-nums">{moeda(linha.valor)}</td>
+                      <td className="py-1.5 text-right tabular-nums">{moeda(linha.valor)}</td>
                     </tr>
                   ))}
                   <tr className="font-semibold">
                     <td className="py-2">Margem de contribuição</td>
-                    <td className={`py-2 text-right font-mono tabular-nums ${detalhe.calculo.margemContribuicao < 0 ? "text-destructive" : "text-success"}`}>
+                    <td className={`py-2 text-right tabular-nums ${detalhe.calculo.margemContribuicao < 0 ? "text-destructive-text" : "text-success-text"}`}>
                       {moeda(detalhe.calculo.margemContribuicao)} · {percentual(detalhe.calculo.margemContribuicaoPercentual)}
                     </td>
                   </tr>
@@ -526,7 +526,7 @@ function VendasPageContent() {
               <div className="grid gap-2 rounded-md border border-divider p-3 sm:grid-cols-2">
                 <div>
                   <p className="text-xs text-faint">Líquido repassado pelo ML</p>
-                  <p className="font-mono">{moeda(detalhe.valorLiquidoReceber)}</p>
+                  <p className="tabular-nums">{moeda(detalhe.valorLiquidoReceber)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-faint">Liberação do dinheiro</p>
@@ -550,7 +550,7 @@ function VendasPageContent() {
                       {detalhe.cobrancasPagamento.map((c) => (
                         <tr key={c.id} className="border-b border-divider last:border-0">
                           <td className="py-1">{nomeCobranca(c.nome)}</td>
-                          <td className="py-1 text-right font-mono">
+                          <td className="py-1 text-right tabular-nums">
                             {moeda(c.valor - c.estornado)}
                             {c.estornado > 0 && <span className="text-faint"> (estornado {moeda(c.estornado)})</span>}
                           </td>

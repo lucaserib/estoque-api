@@ -15,7 +15,7 @@ import { Plus, Download, Search, CheckCircle2, Clock } from "lucide-react";
 import NovoPedidoForm from "./components/NovoPedidoForm";
 import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 
 interface PedidoFilter {
@@ -72,7 +72,7 @@ const GestaoPedidos = () => {
     console.log("Exportando dados...");
   };
 
-  const statItems: StatStripItem[] = [
+  const statItems: StatCardItem[] = [
     { label: "Pedidos pendentes", value: isLoadingStats ? "—" : String(stats.pendentes) },
     { label: "Pedidos concluídos", value: isLoadingStats ? "—" : String(stats.concluidos) },
     {
@@ -117,7 +117,7 @@ const GestaoPedidos = () => {
         </Card>
       ) : (
         <>
-          <StatStrip items={statItems} />
+          <StatCardGrid items={statItems} />
 
           {/* Filtros */}
           <Card className="border border-border shadow-card">

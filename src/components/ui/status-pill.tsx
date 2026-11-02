@@ -7,9 +7,9 @@ const statusPillVariants = cva(
   {
     variants: {
       tone: {
-        critical: "bg-destructive/[0.12] text-destructive",
-        warning: "bg-warning/[0.12] text-warning",
-        success: "bg-success/[0.12] text-success",
+        critical: "bg-destructive/[0.12] text-destructive-text",
+        warning: "bg-warning/[0.12] text-warning-text",
+        success: "bg-success/[0.12] text-success-text",
         info: "bg-info/[0.12] text-info",
         primary: "bg-primary/[0.12] text-primary",
         neutral: "bg-muted-foreground/[0.12] text-muted-foreground",

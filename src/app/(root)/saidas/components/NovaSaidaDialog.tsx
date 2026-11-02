@@ -434,7 +434,7 @@ export function NovaSaidaDialog({
                 </SelectContent>
               </Select>
               {!armazemId && (
-                <p className="mt-1 text-sm text-warning">
+                <p className="mt-1 text-sm text-warning-text">
                   Selecione um armazém para continuar
                 </p>
               )}
@@ -590,7 +590,7 @@ export function NovaSaidaDialog({
                                 Kit
                               </Badge>
                             ) : (
-                              <Badge variant="outline" className="bg-success/10 text-success">
+                              <Badge variant="outline" className="bg-success/10 text-success-text">
                                 Produto
                               </Badge>
                             )}
@@ -605,7 +605,7 @@ export function NovaSaidaDialog({
                               variant="ghost"
                               size="sm"
                               onClick={() => handleRemoverProduto(item.sku)}
-                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                               disabled={isSubmitting}
                             >
                               <Trash2 className="h-4 w-4" />

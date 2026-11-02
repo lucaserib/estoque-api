@@ -65,17 +65,17 @@ export default function MercadoLivreProductInfo({
       active: {
         label: "Ativo",
         variant: "default" as const,
-        color: "text-success",
+        color: "text-success-text",
       },
       paused: {
         label: "Pausado",
         variant: "secondary" as const,
-        color: "text-warning",
+        color: "text-warning-text",
       },
       closed: {
         label: "Finalizado",
         variant: "destructive" as const,
-        color: "text-destructive",
+        color: "text-destructive-text",
       },
       under_review: {
         label: "Em Revisão",
@@ -126,7 +126,7 @@ export default function MercadoLivreProductInfo({
     return (
       <Card className={className}>
         <CardContent className="flex flex-col items-center justify-center py-8 text-center">
-          <AlertCircle className="h-8 w-8 text-destructive mb-2" />
+          <AlertCircle className="h-8 w-8 text-destructive-text mb-2" />
           <p className="text-sm text-muted-foreground mb-4">{error}</p>
           <Button variant="outline" size="sm" onClick={loadMlProducts}>
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -142,7 +142,7 @@ export default function MercadoLivreProductInfo({
       <Card className={className}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Store className="h-4 w-4 text-warning" />
+            <Store className="h-4 w-4 text-warning-text" />
             Mercado Livre
           </CardTitle>
         </CardHeader>
@@ -165,7 +165,7 @@ export default function MercadoLivreProductInfo({
     <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Store className="h-4 w-4 text-warning" />
+          <Store className="h-4 w-4 text-warning-text" />
           Mercado Livre
           <Badge variant="outline" className="ml-auto">
             {mlProducts.length}{" "}
@@ -215,7 +215,7 @@ export default function MercadoLivreProductInfo({
 
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-success" />
+                  <DollarSign className="h-4 w-4 text-success-text" />
                   <div>
                     <p className="text-xs text-muted-foreground">Preço</p>
                     <p className="font-medium">

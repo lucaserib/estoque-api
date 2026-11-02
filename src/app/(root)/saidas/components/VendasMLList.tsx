@@ -31,15 +31,15 @@ interface VendasMLListProps {
 const statusConfig = {
   paid: {
     label: "Pago",
-    color: "bg-success/10 text-success",
+    color: "bg-success/10 text-success-text",
   },
   delivered: {
     label: "Entregue",
-    color: "bg-success/10 text-success",
+    color: "bg-success/10 text-success-text",
   },
   ready_to_ship: {
     label: "Pronto para Envio",
-    color: "bg-warning/10 text-warning",
+    color: "bg-warning/10 text-warning-text",
   },
   shipped: {
     label: "Enviado",
@@ -47,7 +47,7 @@ const statusConfig = {
   },
   handling: {
     label: "Em Preparação",
-    color: "bg-warning/10 text-warning",
+    color: "bg-warning/10 text-warning-text",
   },
   confirmed: {
     label: "Confirmado",
@@ -55,7 +55,7 @@ const statusConfig = {
   },
   cancelled: {
     label: "Cancelado",
-    color: "bg-destructive/10 text-destructive",
+    color: "bg-destructive/10 text-destructive-text",
   },
 };
 
@@ -189,8 +189,8 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
 
                   <DataTableCell numeric>
                     <div className="flex items-center justify-end gap-1">
-                      <DollarSign className="h-4 w-4 text-success" />
-                      <span className="font-semibold text-success">
+                      <DollarSign className="h-4 w-4 text-success-text" />
+                      <span className="font-semibold text-success-text">
                         {formatCurrency(venda.total_amount, venda.currency_id)}
                       </span>
                     </div>

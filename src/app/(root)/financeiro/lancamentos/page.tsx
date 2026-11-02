@@ -680,7 +680,7 @@ export default function LancamentosPage() {
               {lancamentos.map((lancamento) => {
                 const { tone, rotulo } = tonePorStatus(lancamento);
                 const sinal = lancamento.tipo === "RECEITA" ? "+" : lancamento.tipo === "DESPESA" ? "−" : "";
-                const cor = lancamento.tipo === "RECEITA" ? "text-success" : lancamento.tipo === "DESPESA" ? "text-destructive" : "text-muted-foreground";
+                const cor = lancamento.tipo === "RECEITA" ? "text-success-text" : lancamento.tipo === "DESPESA" ? "text-destructive-text" : "text-muted-foreground";
                 return (
                   <DataTableRow key={lancamento.id} className="cursor-pointer" onClick={() => abrirEdicao(lancamento)}>
                     {podeEditarFinanceiro && (

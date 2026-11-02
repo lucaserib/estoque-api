@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 import {
   Layout,
   Package,
@@ -23,6 +24,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   HeartPulse,
+  Megaphone,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -39,6 +41,23 @@ interface ItemMenu {
   icon: Icone;
   label: string;
   visivel?: boolean;
+}
+
+/** Agrupa itens relacionados dentro de um SidebarGrupo já aberto (ex.: Financeiro → "Caixa"). */
+interface ClusterMenu {
+  cluster: string;
+  itens: ItemMenu[];
+  visivel?: boolean;
+}
+
+type EntradaMenu = ItemMenu | ClusterMenu;
+
+function isCluster(entrada: EntradaMenu): entrada is ClusterMenu {
+  return "cluster" in entrada;
+}
+
+function achatarItens(entradas: EntradaMenu[]): ItemMenu[] {
+  return entradas.flatMap((entrada) => (isCluster(entrada) ? entrada.itens : [entrada]));
 }
 
 /** Rota ativa: igual, ou um sub-caminho (ex.: /produtos/123 acende Produtos). */
@@ -80,6 +99,25 @@ const SidebarLink = ({
   );
 };
 
+const SubItemLink = ({ item, pathname }: { item: ItemMenu; pathname: string }) => {
+  const ativo = rotaAtiva(pathname, item.href, true);
+  const SubIcon = item.icon;
+  return (
+    <Link href={item.href}>
+      <div
+        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg py-1.5 pl-8 pr-2.5 transition-colors ${
+          ativo
+            ? "bg-primary/10 font-medium text-primary"
+            : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
+        }`}
+      >
+        <SubIcon className="h-4 w-4 shrink-0 opacity-90" />
+        <span className="truncate text-[13px]">{item.label}</span>
+      </div>
+    </Link>
+  );
+};
+
 const SidebarGrupo = ({
   icon: Icon,
   label,
@@ -89,14 +127,14 @@ const SidebarGrupo = ({
 }: {
   icon: Icone;
   label: string;
-  itens: ItemMenu[];
+  itens: EntradaMenu[];
   recolhida: boolean;
   onNavegar: () => void;
 }) => {
   const pathname = usePathname();
   const visiveis = itens.filter((i) => i.visivel !== false);
-  // Cada sub-item compara com rota exata para "/financeiro" não acender junto com "/financeiro/dre".
-  const algumFilhoAtivo = visiveis.some((i) => rotaAtiva(pathname, i.href));
+  const folhas = achatarItens(visiveis);
+  const algumFilhoAtivo = folhas.some((i) => rotaAtiva(pathname, i.href));
   const [aberto, setAberto] = useState(algumFilhoAtivo);
 
   // Abre sozinho quando o usuário chega numa rota do grupo por outro caminho (link, busca, notificação).
@@ -104,12 +142,12 @@ const SidebarGrupo = ({
     if (algumFilhoAtivo) setAberto(true);
   }, [algumFilhoAtivo]);
 
-  if (visiveis.length === 0) return null;
+  if (visiveis.length === 0 || folhas.length === 0) return null;
 
   // Recolhida (desktop): não há espaço para submenu — o ícone leva direto à primeira tela do grupo.
   if (recolhida) {
     return (
-      <Link href={visiveis[0].href} onClick={onNavegar} title={label}>
+      <Link href={folhas[0].href} onClick={onNavegar} title={label}>
         <div className={classeItem(algumFilhoAtivo, true)}>
           <Icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
         </div>
@@ -132,25 +170,25 @@ const SidebarGrupo = ({
         />
       </button>
       {aberto && (
-        <div className="mt-0.5 space-y-0.5">
-          {visiveis.map((item) => {
-            const ativo = rotaAtiva(pathname, item.href, true);
-            const SubIcon = item.icon;
-            return (
-              <Link key={item.href} href={item.href} onClick={onNavegar}>
-                <div
-                  className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg py-1.5 pl-8 pr-2.5 transition-colors ${
-                    ativo
-                      ? "bg-primary/10 font-medium text-primary"
-                      : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
-                  }`}
-                >
-                  <SubIcon className="h-4 w-4 shrink-0 opacity-90" />
-                  <span className="truncate text-[13px]">{item.label}</span>
+        <div className="mt-0.5 space-y-2">
+          {visiveis.map((entrada) =>
+            isCluster(entrada) ? (
+              <div key={entrada.cluster}>
+                <p className="mx-2 px-6 pb-0.5 text-[11px] font-medium uppercase tracking-[0.06em] text-faint">
+                  {entrada.cluster}
+                </p>
+                <div className="space-y-0.5">
+                  {entrada.itens
+                    .filter((i) => i.visivel !== false)
+                    .map((item) => (
+                      <SubItemLink key={item.href} item={item} pathname={pathname} />
+                    ))}
                 </div>
-              </Link>
-            );
-          })}
+              </div>
+            ) : (
+              <SubItemLink key={entrada.href} item={entrada} pathname={pathname} />
+            )
+          )}
         </div>
       )}
     </div>
@@ -167,7 +205,8 @@ const SectionLabel = ({ children, recolhida }: { children: React.ReactNode; reco
 };
 
 const Sidebar = () => {
-  const { isSidebarCollapsed: recolhida, toggleSidebar, closeSidebarOnMobile } = useLayout();
+  const { isSidebarCollapsed: recolhida, toggleSidebar, closeSidebarOnMobile, nomeLoja, logoUrl } =
+    useLayout();
   const { data: session } = useSession();
   const papel = session?.user?.role;
   const isAdmin = papel === "ADMIN";
@@ -197,8 +236,28 @@ const Sidebar = () => {
             recolhida ? "px-4 md:justify-center" : "px-5"
           }`}
         >
-          <Link href="/dashboard" aria-label="Leap Stock — início" onClick={closeSidebarOnMobile}>
-            <Logo size="md" variant={recolhida ? "mark" : "full"} />
+          <Link href="/dashboard" aria-label="Skubo — início" onClick={closeSidebarOnMobile}>
+            <div className="flex items-center gap-2">
+              <Logo size="md" variant={recolhida ? "mark" : "full"} />
+              {!recolhida && logoUrl && (
+                <>
+                  <div className="h-5 w-px bg-border" />
+                  <Image
+                    src={logoUrl}
+                    alt={nomeLoja ?? "Logo da loja"}
+                    width={28}
+                    height={28}
+                    unoptimized
+                    className="h-6 w-6 rounded object-contain"
+                  />
+                </>
+              )}
+              {!recolhida && nomeLoja && (
+                <span className="max-w-[90px] truncate text-[13px] font-medium text-muted-foreground">
+                  {nomeLoja}
+                </span>
+              )}
+            </div>
           </Link>
           <button
             className="rounded-full bg-muted p-2 hover:bg-accent md:hidden"
@@ -211,8 +270,56 @@ const Sidebar = () => {
 
         {/* Lista rola sozinha: com grupos abertos em tela baixa nada some */}
         <nav className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
-          <SectionLabel recolhida={recolhida}>Operação</SectionLabel>
+          <SectionLabel recolhida={recolhida}>Início</SectionLabel>
           <SidebarLink item={{ href: "/", icon: Layout, label: "Visão geral" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+
+          <SectionLabel recolhida={recolhida}>Vendas e lucro</SectionLabel>
+          <SidebarGrupo
+            icon={MercadoLivreIcon}
+            label="Mercado Livre"
+            recolhida={recolhida}
+            onNavegar={closeSidebarOnMobile}
+            itens={[
+              { href: "/mercado-livre", icon: Layout, label: "Painel" },
+              { href: "/mercado-livre/vendas", icon: BarChart3, label: "Vendas" },
+            ]}
+          />
+          {podeVerFinanceiro && (
+            <SidebarGrupo
+              icon={Wallet}
+              label="Financeiro"
+              recolhida={recolhida}
+              onNavegar={closeSidebarOnMobile}
+              itens={[
+                {
+                  cluster: "Resultado/DRE",
+                  itens: [
+                    { href: "/financeiro", icon: Layout, label: "Visão geral" },
+                    { href: "/financeiro/dre", icon: FileBarChart, label: "DRE" },
+                  ],
+                },
+                {
+                  cluster: "Vendas",
+                  itens: [
+                    { href: "/financeiro/vendas", icon: BarChart3, label: "Lucro por venda" },
+                    { href: "/financeiro/produtos", icon: Package, label: "Lucro por produto" },
+                  ],
+                },
+                {
+                  cluster: "Caixa",
+                  itens: [
+                    { href: "/financeiro/fluxo-de-caixa", icon: ArrowLeftRight, label: "Fluxo de caixa" },
+                    { href: "/financeiro/lancamentos", icon: ClipboardPaste, label: "Lançamentos" },
+                    { href: "/financeiro/cartoes", icon: CreditCard, label: "Cartões" },
+                  ],
+                },
+                { href: "/financeiro/conferencia", icon: ClipboardCheck, label: "Conferência", visivel: isAdmin },
+                { href: "/financeiro/configuracoes", icon: Settings, label: "Ajustes do financeiro" },
+              ]}
+            />
+          )}
+
+          <SectionLabel recolhida={recolhida}>Estoque e compras</SectionLabel>
           <SidebarLink item={{ href: "/produtos", icon: Package, label: "Produtos" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/reposicao", icon: TrendingDown, label: "Reposição" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/saidas", icon: ClipboardPaste, label: "Saídas" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
@@ -229,47 +336,14 @@ const Sidebar = () => {
             ]}
           />
 
-          <SectionLabel recolhida={recolhida}>Canais</SectionLabel>
-          <SidebarGrupo
-            icon={MercadoLivreIcon}
-            label="Mercado Livre"
-            recolhida={recolhida}
-            onNavegar={closeSidebarOnMobile}
-            itens={[
-              { href: "/mercado-livre", icon: Layout, label: "Painel" },
-              { href: "/mercado-livre/vendas", icon: BarChart3, label: "Vendas" },
-              { href: "/mercado-livre/produtos", icon: Package, label: "Anúncios e vínculos" },
-              { href: "/mercado-livre/configuracoes", icon: Settings, label: "Configurações" },
-            ]}
-          />
+          <SectionLabel recolhida={recolhida}>Anúncios</SectionLabel>
+          <SidebarLink item={{ href: "/mercado-livre/produtos", icon: Megaphone, label: "Anúncios e vínculos" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/mercado-livre/configuracoes", icon: Settings, label: "Configurações do ML" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
 
-          {podeVerFinanceiro && (
-            <>
-              <SectionLabel recolhida={recolhida}>Financeiro</SectionLabel>
-              <SidebarGrupo
-                icon={Wallet}
-                label="Financeiro"
-                recolhida={recolhida}
-                onNavegar={closeSidebarOnMobile}
-                itens={[
-                  { href: "/financeiro", icon: Layout, label: "Visão geral" },
-                  { href: "/financeiro/vendas", icon: BarChart3, label: "Lucro por venda" },
-                  { href: "/financeiro/produtos", icon: Package, label: "Lucro por produto" },
-                  { href: "/financeiro/dre", icon: FileBarChart, label: "DRE" },
-                  { href: "/financeiro/fluxo-de-caixa", icon: ArrowLeftRight, label: "Fluxo de caixa" },
-                  { href: "/financeiro/lancamentos", icon: ClipboardPaste, label: "Lançamentos" },
-                  { href: "/financeiro/cartoes", icon: CreditCard, label: "Cartões" },
-                  { href: "/financeiro/conferencia", icon: ClipboardCheck, label: "Conferência", visivel: isAdmin },
-                  { href: "/financeiro/configuracoes", icon: Settings, label: "Configurações" },
-                ]}
-              />
-            </>
-          )}
-
-          <SectionLabel recolhida={recolhida}>Sistema</SectionLabel>
+          <SectionLabel recolhida={recolhida}>Ajustes</SectionLabel>
           <SidebarLink item={{ href: "/integracoes", icon: Zap, label: "Integrações" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/saude-dados", icon: HeartPulse, label: "Saúde dos dados" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
-          <SidebarLink item={{ href: "/configuracoes", icon: Settings, label: "Configurações" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/configuracoes-gerais", icon: Settings, label: "Configurações" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           {isAdmin && (
             <SidebarLink item={{ href: "/usuarios", icon: Users, label: "Usuários" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           )}

@@ -138,7 +138,7 @@ export function AnunciosDoProduto({ produto, anuncios, anunciosViaKit, aliquotaI
                   {kit && !kit.kitDeQuantidade ? (
                     <span className="text-xs text-muted-foreground">ver no kit</span>
                   ) : margem.completo ? (
-                    <span className={margem.margemValor! < 0 ? "font-medium text-destructive" : "font-medium text-success"}>
+                    <span className={margem.margemValor! < 0 ? "font-medium text-destructive-text" : "font-medium text-success-text"}>
                       {formatBRL(margem.margemValor!)} ({(margem.margemPercentual! * 100).toFixed(1)}%)
                     </span>
                   ) : (

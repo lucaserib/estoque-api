@@ -230,7 +230,7 @@ export class BlingEscopoError extends Error {
     const recurso = path.split("?")[0];
     const escopo = ESCOPO_POR_RECURSO.find(([padrao]) => padrao.test(recurso))?.[1] ?? recurso;
     super(
-      `O Bling não deu permissão para "${escopo}". No Bling, abra Central de extensões → Área do integrador → app Leap Stock → Escopos, marque "${escopo}", salve e depois clique em Reconectar Bling em Integrações.`
+      `O Bling não deu permissão para "${escopo}". No Bling, abra Central de extensões → Área do integrador → app Skubo → Escopos, marque "${escopo}", salve e depois clique em Reconectar Bling em Integrações.`
     );
     this.name = "BlingEscopoError";
     this.escopo = escopo;
@@ -785,7 +785,7 @@ export class BlingService {
         deposito: { id: depositoId },
         operacao: "B",
         quantidade,
-        observacoes: "Ajuste Leap Stock",
+        observacoes: "Ajuste Skubo",
       }),
     });
   }

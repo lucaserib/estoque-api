@@ -251,7 +251,7 @@ const BarcodeScannerConferencia = ({
             <h3 className="font-medium text-primary">
               Modo de Conferência por Código de Barras
             </h3>
-            <Badge className="bg-success/10 text-success ml-2">
+            <Badge className="bg-success/10 text-success-text ml-2">
               {calcularTotalContado()} itens contados
             </Badge>
           </div>
@@ -260,7 +260,7 @@ const BarcodeScannerConferencia = ({
               variant="outline"
               size="sm"
               onClick={confirmarReiniciar}
-              className="flex items-center gap-1.5 border-warning/40 text-warning hover:bg-warning/10"
+              className="flex items-center gap-1.5 border-warning/40 text-warning-text hover:bg-warning/10"
               disabled={calcularTotalContado() === 0}
             >
               <RefreshCw className="h-4 w-4" />
@@ -293,7 +293,7 @@ const BarcodeScannerConferencia = ({
 
       {mostrarConfirmacao && (
         <div className="absolute z-10 top-full mt-2 right-0 bg-card rounded-lg shadow-lg border border-destructive/30 p-3 w-64">
-          <p className="text-sm text-destructive mb-2">
+          <p className="text-sm text-destructive-text mb-2">
             Tem certeza? Você perderá todos os {calcularTotalContado()} itens
             contados.
           </p>
@@ -436,7 +436,7 @@ const BarcodeScannerConferencia = ({
                           <span className="text-xs text-muted-foreground">
                             {ultimoScan.timestamp.toLocaleTimeString()}
                           </span>
-                          <CheckCircle2 className="h-4 w-4 text-success" />
+                          <CheckCircle2 className="h-4 w-4 text-success-text" />
                         </div>
                       ) : temEAN ? (
                         <span className="text-xs text-muted-foreground italic">
@@ -457,15 +457,15 @@ const BarcodeScannerConferencia = ({
       {produtosDesconhecidos.length > 0 && (
         <div className="border border-warning/30 rounded-lg overflow-hidden bg-warning/10">
           <div className="bg-warning/20 px-4 py-3 border-b border-warning/30 flex justify-between items-center">
-            <h3 className="font-medium flex items-center gap-2 text-warning">
-              <AlertCircle className="h-4 w-4 text-warning" />
+            <h3 className="font-medium flex items-center gap-2 text-warning-text">
+              <AlertCircle className="h-4 w-4 text-warning-text" />
               Produtos Não Encontrados no Pedido
             </h3>
             <Button
               variant="outline"
               size="sm"
               onClick={limparProdutosDesconhecidos}
-              className="h-8 text-xs border-warning/40 text-warning"
+              className="h-8 text-xs border-warning/40 text-warning-text"
             >
               <RefreshCw className="h-3 w-3 mr-1" />
               Limpar
@@ -473,7 +473,7 @@ const BarcodeScannerConferencia = ({
           </div>
 
           <div className="max-h-48 overflow-y-auto p-4">
-            <p className="text-sm text-warning mb-2">
+            <p className="text-sm text-warning-text mb-2">
               Estes códigos de barras foram escaneados, mas não correspondem a
               nenhum produto neste pedido.
             </p>
@@ -484,10 +484,10 @@ const BarcodeScannerConferencia = ({
                   className="flex justify-between items-center py-2 px-3 bg-warning/10 rounded text-sm border border-warning/30"
                 >
                   <div className="flex items-center gap-2">
-                    <Barcode className="h-4 w-4 text-warning" />
+                    <Barcode className="h-4 w-4 text-warning-text" />
                     <span className="font-mono">{item.codigoEAN}</span>
                   </div>
-                  <span className="text-xs text-warning">
+                  <span className="text-xs text-warning-text">
                     {item.timestamp.toLocaleTimeString()}
                   </span>
                 </div>

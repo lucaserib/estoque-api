@@ -343,7 +343,7 @@ export default function ProdutoFichaPage() {
               </div>
             </div>
             {resultadoFinanceiro.vendasIncompletas > 0 && (
-              <p className="mt-3 text-sm text-warning">
+              <p className="mt-3 text-sm text-warning-text">
                 {resultadoFinanceiro.vendasIncompletas} venda(s) incompleta(s) no período — os números acima podem estar subestimados.
               </p>
             )}
@@ -483,7 +483,7 @@ export default function ProdutoFichaPage() {
                       <DataTableRow key={vinculo.id}>
                         <DataTableCell className="flex items-center gap-2">
                           {vinculo.principal && (
-                            <Star className="h-3.5 w-3.5 fill-warning text-warning" />
+                            <Star className="h-3.5 w-3.5 fill-warning text-warning-text" />
                           )}
                           {vinculo.fornecedor.nome}
                         </DataTableCell>

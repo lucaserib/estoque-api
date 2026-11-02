@@ -5,8 +5,7 @@ import Link from "next/link";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, ArrowRight, Info } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { HeroMetric } from "@/components/ui/hero-metric";
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
 import {
@@ -248,7 +247,7 @@ export default function FinanceiroPage() {
           ? "Atingido"
           : moeda(pe.faltaVender);
 
-  const indicadoresPeriodo: StatStripItem[] = ind
+  const indicadoresPeriodo: StatCardItem[] = ind
     ? [
         {
           label: "Pedidos",
@@ -300,7 +299,7 @@ export default function FinanceiroPage() {
       {alertas.length > 0 && (
         <SectionCard title="Pontos de atenção" contentClassName="space-y-2">
           {alertas.map((alerta) => (
-            <div key={alerta.texto} className="flex items-start gap-2 text-sm text-warning">
+            <div key={alerta.texto} className="flex items-start gap-2 text-sm text-warning-text">
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>
                 {alerta.texto}{" "}
@@ -319,18 +318,20 @@ export default function FinanceiroPage() {
         <Skeleton className="h-[124px] rounded-md" />
       ) : ind ? (
         <>
-          <HeroMetric
+          <StatCard
+            size="lg"
+            highlight
             label="Faturamento do período"
             value={moeda(ind.receitaTotal)}
             delta={variacao(resumoPeriodo?.comparacaoPeriodoAnterior.faturamento)}
             deltaLabel="vs. período anterior"
-            context={`${DESCRICAO_MODO_FATURAMENTO[ind.config.modoFaturamento].titulo}. ${
+            note={`${DESCRICAO_MODO_FATURAMENTO[ind.config.modoFaturamento].titulo}. ${
               ind.qualidade.vendasAguardandoDetalhes > 0
                 ? `${ind.qualidade.vendasAguardandoDetalhes} venda(s) ainda recebendo tarifa e frete reais do Mercado Pago.`
                 : "Tarifas e fretes confirmados pelo pagamento de cada venda."
             }`}
           />
-          <StatStrip items={indicadoresPeriodo} />
+          <StatCardGrid items={indicadoresPeriodo} />
         </>
       ) : (
         <SectionCard>
@@ -346,7 +347,7 @@ export default function FinanceiroPage() {
         <div className="space-y-6">
           <SectionCard title="Hoje" description="Comparado com ontem">
             {hoje ? (
-              <StatStrip
+              <StatCardGrid
                 size="sm"
                 items={[
                   {
@@ -365,7 +366,7 @@ export default function FinanceiroPage() {
           </SectionCard>
 
           <SectionCard title="Fechamento do mês">
-            <StatStrip
+            <StatCardGrid
               size="sm"
               items={[
                 {
@@ -414,7 +415,7 @@ export default function FinanceiroPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <SectionCard title="Caixa" description="Saldo da carteira do Mercado Pago, liberações e contas">
-          <StatStrip
+          <StatCardGrid
             size="sm"
             items={[
               {

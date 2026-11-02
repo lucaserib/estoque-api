@@ -274,9 +274,9 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Saudáveis</p>
-                <p className="text-2xl font-bold text-success">{stats.healthy}</p>
+                <p className="text-2xl font-bold text-success-text">{stats.healthy}</p>
               </div>
-              <CheckCircle className="h-8 w-8 text-success" />
+              <CheckCircle className="h-8 w-8 text-success-text" />
             </div>
           </CardContent>
         </Card>
@@ -286,9 +286,9 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Com Erro</p>
-                <p className="text-2xl font-bold text-destructive">{stats.error}</p>
+                <p className="text-2xl font-bold text-destructive-text">{stats.error}</p>
               </div>
-              <AlertCircle className="h-8 w-8 text-destructive" />
+              <AlertCircle className="h-8 w-8 text-destructive-text" />
             </div>
           </CardContent>
         </Card>
@@ -298,9 +298,9 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Precisam Sincronizar</p>
-                <p className="text-2xl font-bold text-warning">{stats.needsSync}</p>
+                <p className="text-2xl font-bold text-warning-text">{stats.needsSync}</p>
               </div>
-              <Clock className="h-8 w-8 text-warning" />
+              <Clock className="h-8 w-8 text-warning-text" />
             </div>
           </CardContent>
         </Card>
@@ -357,7 +357,7 @@ export default function MercadoLivreAutoSync({ accountId }: AutoSyncProps) {
           )}
 
           {isEnabled && (
-            <div className="flex items-center gap-2 text-sm text-success">
+            <div className="flex items-center gap-2 text-sm text-success-text">
               <Zap className="h-4 w-4" />
               <span>
                 Sincronização automática ativa neste navegador - intervalo: {syncInterval} minutos

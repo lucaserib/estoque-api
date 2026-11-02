@@ -151,8 +151,8 @@ export function PedidoDetalhesDialog({
               <Badge
                 className={`px-3 py-1 ${
                   pedido.status === "confirmado"
-                    ? "bg-success/10 text-success"
-                    : "bg-warning/10 text-warning"
+                    ? "bg-success/10 text-success-text"
+                    : "bg-warning/10 text-warning-text"
                 }`}
               >
                 {pedido.status === "confirmado" ? (
@@ -193,7 +193,7 @@ export function PedidoDetalhesDialog({
 
                 {pedido.dataConclusao && (
                   <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-4 w-4 text-success" />
+                    <CheckCircle2 className="h-4 w-4 text-success-text" />
                     <span className="font-medium text-foreground">
                       Data de conclusão:
                     </span>
@@ -222,7 +222,7 @@ export function PedidoDetalhesDialog({
                   <span className="font-medium text-foreground">
                     Valor total:
                   </span>
-                  <span className="text-success font-medium">
+                  <span className="text-success-text font-medium">
                     {formatBRL(valorTotal)}
                   </span>
                 </div>
@@ -290,7 +290,7 @@ export function PedidoDetalhesDialog({
                           <DataTableCell numeric className="text-muted-foreground">
                             {multiplicador}x
                           </DataTableCell>
-                          <DataTableCell numeric className="pr-4 font-medium text-success">
+                          <DataTableCell numeric className="pr-4 font-medium text-success-text">
                             {formatBRL(subtotal)}
                           </DataTableCell>
                         </DataTableRow>
@@ -302,7 +302,7 @@ export function PedidoDetalhesDialog({
                       <DataTableCell colSpan={4} className="pl-4 text-right text-foreground">
                         Total do Pedido:
                       </DataTableCell>
-                      <DataTableCell numeric className="pr-4 font-bold text-success">
+                      <DataTableCell numeric className="pr-4 font-bold text-success-text">
                         {formatBRL(valorTotal)}
                       </DataTableCell>
                     </DataTableRow>

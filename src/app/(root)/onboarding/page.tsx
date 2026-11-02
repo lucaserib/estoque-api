@@ -124,7 +124,7 @@ export default function OnboardingPage() {
     <div className="container mx-auto max-w-3xl p-6 space-y-6">
       <Header
         title="Comece por aqui"
-        subtitle="3 passos para deixar o Leap Stock pronto para uso"
+        subtitle="3 passos para deixar o Skubo pronto para uso"
       />
 
       <div className="space-y-4">
@@ -143,7 +143,7 @@ export default function OnboardingPage() {
                   className={cn(
                     "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border",
                     step.completed
-                      ? "border-success bg-success/10 text-success"
+                      ? "border-success bg-success/10 text-success-text"
                       : "border-border bg-muted text-muted-foreground"
                   )}
                 >

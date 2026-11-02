@@ -69,7 +69,7 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
                 </div>
                 
                 <div className="text-right ml-4">
-                  <p className="font-semibold text-success text-lg">
+                  <p className="font-semibold text-success-text text-lg">
                     {formatBRLReais(product.revenue)}
                   </p>
                   <p className="text-xs text-muted-foreground">receita</p>
@@ -88,7 +88,7 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
                 <p className="text-xs text-muted-foreground">Total vendas</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-success">
+                <p className="text-2xl font-bold text-success-text">
                   {formatBRLReais(salesData.summary.totalRevenue)}
                 </p>
                 <p className="text-xs text-muted-foreground">Receita total</p>
@@ -101,7 +101,7 @@ export default function MLTopSellingProducts({ salesData }: MLTopSellingProducts
               </div>
               {salesData.summary.totalOrders && (
                 <div>
-                  <p className="text-2xl font-bold text-warning">
+                  <p className="text-2xl font-bold text-warning-text">
                     {salesData.summary.totalOrders}
                   </p>
                   <p className="text-xs text-muted-foreground">Pedidos</p>

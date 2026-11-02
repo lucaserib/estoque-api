@@ -105,7 +105,7 @@ const CriarArmazem = () => {
         {message && (
           <p
             className={`text-center mt-4 ${
-              messageType === "success" ? "text-success" : "text-destructive"
+              messageType === "success" ? "text-success-text" : "text-destructive-text"
             }`}
           >
             {message}

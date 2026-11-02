@@ -15,7 +15,7 @@ import {
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import {
   Select,
   SelectContent,
@@ -157,7 +157,7 @@ export default function FluxoDeCaixaPage() {
     );
   }
 
-  const itensSaldo: StatStripItem[] = saldo
+  const itensSaldo: StatCardItem[] = saldo
     ? [
         { label: "Saldo atual das contas", value: formatBRL(saldo.saldoAtual) },
         { label: "Liberações futuras (ML)", value: formatBRL(saldo.liberacoesFuturas) },
@@ -211,7 +211,7 @@ export default function FluxoDeCaixaPage() {
             </SelectContent>
           </Select>
         </div>
-        {carregandoSaldo ? <Skeleton className="h-[100px] rounded-md" /> : <StatStrip items={itensSaldo} />}
+        {carregandoSaldo ? <Skeleton className="h-[100px] rounded-md" /> : <StatCardGrid items={itensSaldo} />}
         <p className="mt-3 text-xs text-muted-foreground">
           Saldo atual: carteira do Mercado Pago = último saldo informado + líquido das vendas liberadas desde então +
           lançamentos pagos na conta; demais contas = saldo inicial + lançamentos pagos. Cartão de crédito não entra
@@ -243,15 +243,15 @@ export default function FluxoDeCaixaPage() {
                 <DataTableRow key={conta.id}>
                   <DataTableCell>
                     {conta.nome}
-                    {conta.precisaAjuste && <div className="text-xs text-warning">Informe o saldo atual</div>}
+                    {conta.precisaAjuste && <div className="text-xs text-warning-text">Informe o saldo atual</div>}
                   </DataTableCell>
                   <DataTableCell className="text-xs text-muted-foreground">
                     {conta.origemSaldo === "LIBERACOES_E_LANCAMENTOS"
                       ? `${formatBRL(conta.saldoInicial)} em ${formatDateBR(conta.dataSaldoInicial)} + ${formatBRL(conta.liberadoDesdeAjuste ?? 0)} liberados${conta.movimentadoDesdeAjuste !== 0 ? ` ${conta.movimentadoDesdeAjuste > 0 ? "+" : "−"} ${formatBRL(Math.abs(conta.movimentadoDesdeAjuste))} em lançamentos` : ""}`
                       : `${formatBRL(conta.saldoInicial)} em ${formatDateBR(conta.dataSaldoInicial)} + lançamentos pagos`}
                   </DataTableCell>
-                  <DataTableCell className="text-right font-mono">{formatBRL(conta.saldoAtual)}</DataTableCell>
-                  <DataTableCell className="text-right font-mono">
+                  <DataTableCell className="text-right tabular-nums">{formatBRL(conta.saldoAtual)}</DataTableCell>
+                  <DataTableCell className="text-right tabular-nums">
                     {conta.saldoALiberar != null ? formatBRL(conta.saldoALiberar) : "—"}
                   </DataTableCell>
                   <DataTableCell className="text-right">

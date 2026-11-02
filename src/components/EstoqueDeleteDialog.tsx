@@ -44,7 +44,7 @@ export function EstoqueDeleteDialog({
     <AlertDialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <AlertDialogContent className="max-w-md">
         <AlertDialogHeader>
-          <div className="flex items-center gap-2 text-destructive">
+          <div className="flex items-center gap-2 text-destructive-text">
             <AlertTriangle className="h-5 w-5" />
             <AlertDialogTitle>Excluir Estoque</AlertDialogTitle>
           </div>
@@ -53,7 +53,7 @@ export function EstoqueDeleteDialog({
             <span className="font-medium text-foreground">{produtoNome}</span>{" "}
             no armazém{" "}
             <span className="font-medium text-foreground">{armazemNome}</span>?
-            <div className="mt-4 p-3 bg-destructive/10 text-destructive text-sm rounded-md border border-destructive/20">
+            <div className="mt-4 p-3 bg-destructive/10 text-destructive-text text-sm rounded-md border border-destructive/20">
               <p>Esta ação não pode ser desfeita.</p>
             </div>
           </AlertDialogDescription>

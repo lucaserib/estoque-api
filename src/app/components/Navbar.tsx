@@ -5,7 +5,6 @@ import {
   Moon,
   Sun,
   Settings,
-  Search,
   LogOut,
   ChevronDown,
   User,
@@ -17,6 +16,7 @@ import { useRef, useState } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import NotificationsBell from "./NotificationsBell";
 import { UserAvatar } from "@/components/ui/user-avatar";
+import { CommandPalette } from "@/components/command-palette";
 
 const Navbar = () => {
   const { isDarkMode, toggleSidebar, toggleDarkMode } = useLayout();
@@ -36,17 +36,7 @@ const Navbar = () => {
         <Menu className="h-4 w-4" />
       </button>
 
-      <div className="hidden min-w-0 max-w-[420px] flex-1 items-center gap-2.5 rounded-full border border-border bg-accent px-3.5 py-2 sm:flex">
-        <Search className="h-[15px] w-[15px] shrink-0 text-faint" />
-        <input
-          type="search"
-          placeholder="Buscar SKU, produto, pedido ou anúncio"
-          className="min-w-0 flex-1 border-0 bg-transparent text-[13px] text-foreground outline-none placeholder:text-faint"
-        />
-        <span className="hidden shrink-0 rounded border border-border px-1.5 py-0.5 font-mono text-[11px] text-faint sm:inline-block">
-          ⌘K
-        </span>
-      </div>
+      <CommandPalette />
 
       <div className="ml-auto flex items-center gap-2">
         <NotificationsBell />

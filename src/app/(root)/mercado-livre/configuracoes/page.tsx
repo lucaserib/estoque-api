@@ -172,7 +172,7 @@ export default function MercadoLivreConfiguracoesPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 bg-warning/10 rounded-full flex items-center justify-center">
-                      <Store className="h-6 w-6 text-warning" />
+                      <Store className="h-6 w-6 text-warning-text" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">

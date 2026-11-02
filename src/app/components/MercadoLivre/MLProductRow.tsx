@@ -93,17 +93,17 @@ export default function MLProductRow({
     > = {
       active: {
         variant: "default",
-        color: "bg-success/10 text-success",
+        color: "bg-success/10 text-success-text",
         text: "Ativo",
       },
       paused: {
         variant: "secondary",
-        color: "bg-warning/10 text-warning",
+        color: "bg-warning/10 text-warning-text",
         text: "Pausado",
       },
       closed: {
         variant: "destructive",
-        color: "bg-destructive/10 text-destructive",
+        color: "bg-destructive/10 text-destructive-text",
         text: "Fechado",
       },
       under_review: {
@@ -133,17 +133,17 @@ export default function MLProductRow({
     > = {
       ok: {
         variant: "default",
-        color: "bg-success/10 text-success",
+        color: "bg-success/10 text-success-text",
         icon: <CheckCircle className="h-3 w-3" />,
       },
       low: {
         variant: "secondary",
-        color: "bg-warning/10 text-warning",
+        color: "bg-warning/10 text-warning-text",
         icon: <AlertTriangle className="h-3 w-3" />,
       },
       out: {
         variant: "destructive",
-        color: "bg-destructive/10 text-destructive",
+        color: "bg-destructive/10 text-destructive-text",
         icon: <AlertTriangle className="h-3 w-3" />,
       },
       unlinked: {
@@ -186,7 +186,7 @@ export default function MLProductRow({
         <div className="space-y-1">
           {product.mlHasPromotion && product.mlOriginalPrice ? (
             <div>
-              <div className="font-bold text-success">
+              <div className="font-bold text-success-text">
                 {exibirValorEmReais(product.mlPrice)}
               </div>
               <div className="text-xs text-muted-foreground line-through">
@@ -195,7 +195,7 @@ export default function MLProductRow({
               {product.mlPromotionDiscount && (
                 <Badge
                   variant="secondary"
-                  className="text-xs bg-warning/10 text-warning"
+                  className="text-xs bg-warning/10 text-warning-text"
                 >
                   -{product.mlPromotionDiscount}%
                 </Badge>
@@ -220,7 +220,7 @@ export default function MLProductRow({
       <DataTableCell>
         <div>
           <div className="font-medium text-sm">
-            <span className="text-success font-bold">
+            <span className="text-success-text font-bold">
               {product.salesData?.quantityThisMonth || 0}
             </span>{" "}
             unid. (este mês)
@@ -243,8 +243,8 @@ export default function MLProductRow({
                     <span
                       className={`ml-1 font-medium ${
                         product.salesData.quantityGrowth > 0
-                          ? "text-success"
-                          : "text-destructive"
+                          ? "text-success-text"
+                          : "text-destructive-text"
                       }`}
                     >
                       ({product.salesData.quantityGrowth > 0 ? "+" : ""}
@@ -351,7 +351,7 @@ export default function MLProductRow({
             onClick={() => onTogglePause(product)}
           >
             {product.mlAutoStockPausado ? (
-              <Play className="h-4 w-4 text-warning" />
+              <Play className="h-4 w-4 text-warning-text" />
             ) : (
               <Pause className="h-4 w-4" />
             )}

@@ -412,7 +412,7 @@ export function ReposicaoModal({
                   <p className="text-sm font-medium text-muted-foreground mb-2">
                     Vendas ({config.analysisPeriodDays} dias)
                   </p>
-                  <p className="text-3xl font-bold text-success">
+                  <p className="text-3xl font-bold text-success-text">
                     {sugestao.mediaVendas90d}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -486,7 +486,7 @@ export function ReposicaoModal({
                             {sugestao.reposicaoFull?.acaoRecomendada ===
                               "aguardar_compra" && (
                               <div className="mt-2 p-2 bg-warning/10 border border-warning/30 rounded">
-                                <p className="text-xs text-warning flex items-center gap-1">
+                                <p className="text-xs text-warning-text flex items-center gap-1">
                                   <AlertTriangle className="h-3 w-3" />
                                   <strong>Atenção:</strong> Será necessário
                                   comprar produtos do fornecedor antes de
@@ -521,7 +521,7 @@ export function ReposicaoModal({
                       </div>
                     ) : (
                       <div className="bg-card p-3 rounded-lg">
-                        <p className="text-sm text-success flex items-center gap-2">
+                        <p className="text-sm text-success-text flex items-center gap-2">
                           <CheckCircle className="h-4 w-4" />
                           {sugestao.reposicaoFull.mensagem}
                         </p>
@@ -547,28 +547,28 @@ export function ReposicaoModal({
                 <div className="bg-warning/10 p-4 space-y-3">
                   <div className="grid grid-cols-3 gap-3">
                     <div>
-                      <p className="text-xs text-warning mb-1">
+                      <p className="text-xs text-warning-text mb-1">
                         Dias Restantes
                       </p>
-                      <p className="text-xl font-bold text-warning">
+                      <p className="text-xl font-bold text-warning-text">
                         {sugestao.reposicaoLocal.diasRestantes > 999
                           ? "∞"
                           : sugestao.reposicaoLocal.diasRestantes}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-warning mb-1">
+                      <p className="text-xs text-warning-text mb-1">
                         Ponto de Reposição
                       </p>
-                      <p className="text-xl font-bold text-warning">
+                      <p className="text-xl font-bold text-warning-text">
                         {sugestao.reposicaoLocal.pontoReposicao}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-warning mb-1">
+                      <p className="text-xs text-warning-text mb-1">
                         Sugerido
                       </p>
-                      <p className="text-xl font-bold text-warning">
+                      <p className="text-xl font-bold text-warning-text">
                         {sugestao.reposicaoLocal.quantidadeSugerida}
                       </p>
                     </div>
@@ -620,7 +620,7 @@ export function ReposicaoModal({
                     </div>
                   ) : (
                     <div className="bg-card p-3 rounded-lg">
-                      <p className="text-sm text-success flex items-center gap-2">
+                      <p className="text-sm text-success-text flex items-center gap-2">
                         <CheckCircle className="h-4 w-4" />
                         {sugestao.reposicaoLocal.mensagem}
                       </p>

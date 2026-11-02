@@ -81,7 +81,7 @@ export function SaidaDetalhesDialog({
                     variant="outline"
                     size="sm"
                     onClick={onExport}
-                    className="h-8 flex items-center gap-1.5 text-success hover:bg-success/10"
+                    className="h-8 flex items-center gap-1.5 text-success-text hover:bg-success/10"
                   >
                     <FileDown className="h-4 w-4" />
                     Exportar Excel
@@ -193,7 +193,7 @@ export function SaidaDetalhesDialog({
                               Kit
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="bg-success/10 text-success">
+                            <Badge variant="outline" className="bg-success/10 text-success-text">
                               Produto
                             </Badge>
                           )}

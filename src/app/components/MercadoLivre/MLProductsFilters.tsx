@@ -143,9 +143,9 @@ export default function MLProductsFilters({
         <button
           type="button"
           onClick={() => setStatusFilter("active")}
-          className="hover:text-success transition-colors"
+          className="hover:text-success-text transition-colors"
         >
-          <span className="font-medium text-success">
+          <span className="font-medium text-success-text">
             {statusCounts.active || 0}
           </span>{" "}
           ativos
@@ -153,9 +153,9 @@ export default function MLProductsFilters({
         <button
           type="button"
           onClick={() => setStatusFilter("paused")}
-          className="hover:text-warning transition-colors"
+          className="hover:text-warning-text transition-colors"
         >
-          <span className="font-medium text-warning">
+          <span className="font-medium text-warning-text">
             {statusCounts.paused || 0}
           </span>{" "}
           pausados
@@ -163,9 +163,9 @@ export default function MLProductsFilters({
         <button
           type="button"
           onClick={() => setStatusFilter("closed")}
-          className="hover:text-destructive transition-colors"
+          className="hover:text-destructive-text transition-colors"
         >
-          <span className="font-medium text-destructive">
+          <span className="font-medium text-destructive-text">
             {statusCounts.closed || 0}
           </span>{" "}
           encerrados

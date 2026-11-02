@@ -116,8 +116,8 @@ export default function SaudeDadosPage() {
                 </div>
                 <div className="flex flex-wrap gap-4 text-muted-foreground">
                   <span>Vendas aguardando detalhe: <strong className="text-foreground">{financeiro.vendasAguardandoDetalhes}</strong></span>
-                  <span>Vendas com falha de detalhe: <strong className={financeiro.vendasComFalhaDeDetalhe > 0 ? "text-destructive" : "text-foreground"}>{financeiro.vendasComFalhaDeDetalhe}</strong></span>
-                  <span>Erros pendentes: <strong className={financeiro.errosPendentes > 0 ? "text-destructive" : "text-foreground"}>{financeiro.errosPendentes}</strong></span>
+                  <span>Vendas com falha de detalhe: <strong className={financeiro.vendasComFalhaDeDetalhe > 0 ? "text-destructive-text" : "text-foreground"}>{financeiro.vendasComFalhaDeDetalhe}</strong></span>
+                  <span>Erros pendentes: <strong className={financeiro.errosPendentes > 0 ? "text-destructive-text" : "text-foreground"}>{financeiro.errosPendentes}</strong></span>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {Object.entries(financeiro.ultimoWebhookPorTopico).map(([topico, data]) => (
@@ -127,7 +127,7 @@ export default function SaudeDadosPage() {
                   ))}
                 </div>
                 {financeiro.alertaWebhooksAusentes && (
-                  <p className="text-warning">Nenhum webhook recebido recentemente — confirme a configuração no app do Mercado Livre.</p>
+                  <p className="text-warning-text">Nenhum webhook recebido recentemente — confirme a configuração no app do Mercado Livre.</p>
                 )}
               </div>
             )}
@@ -151,7 +151,7 @@ export default function SaudeDadosPage() {
                   <span className="text-muted-foreground">última vez {formatRelativeTime(catalogo.concluidoEm)}</span>
                 )}
               </div>
-              {catalogo?.erro && <p className="text-destructive">{catalogo.erro}</p>}
+              {catalogo?.erro && <p className="text-destructive-text">{catalogo.erro}</p>}
               <div className="flex flex-wrap gap-4 text-muted-foreground">
                 {catalogo?.bling && (
                   <>
@@ -162,7 +162,7 @@ export default function SaudeDadosPage() {
                 {catalogo?.mercadoLivre && (
                   <span>
                     Anúncios com erro:{" "}
-                    <strong className={catalogo.mercadoLivre.anunciosComErro > 0 ? "text-destructive" : "text-foreground"}>
+                    <strong className={catalogo.mercadoLivre.anunciosComErro > 0 ? "text-destructive-text" : "text-foreground"}>
                       {catalogo.mercadoLivre.anunciosComErro} de {catalogo.mercadoLivre.anuncios}
                     </strong>
                   </span>

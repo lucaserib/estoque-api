@@ -35,9 +35,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
           closeButton:
             "!border-border !bg-card !text-muted-foreground hover:!text-foreground",
           icon: "mt-0.5",
-          success: "!border-l-success [&_[data-icon]]:text-success",
-          error: "!border-l-destructive [&_[data-icon]]:text-destructive",
-          warning: "!border-l-warning [&_[data-icon]]:text-warning",
+          success: "!border-l-success [&_[data-icon]]:text-success-text",
+          error: "!border-l-destructive [&_[data-icon]]:text-destructive-text",
+          warning: "!border-l-warning [&_[data-icon]]:text-warning-text",
           info: "!border-l-info [&_[data-icon]]:text-info",
         },
       }}

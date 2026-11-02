@@ -85,7 +85,7 @@ const BarcodeReaderButton = ({
           <div className="p-4">
             {lastScannedCode ? (
               <div className="flex flex-col items-center justify-center py-8 space-y-4">
-                <CheckCircle2 className="h-16 w-16 text-success animate-pulse" />
+                <CheckCircle2 className="h-16 w-16 text-success-text animate-pulse" />
                 <div className="text-center">
                   <p className="text-lg font-medium text-foreground">
                     Código lido com sucesso!

@@ -19,7 +19,13 @@ test("login leva à Visão geral sem elementos sobrepostos e sem rolagem horizon
     const totalTextos = await textos.count();
     const caixas: Array<{ x: number; y: number; width: number; height: number }> = [];
     for (let j = 0; j < totalTextos; j++) {
-      const caixa = await textos.nth(j).boundingBox();
+      const elemento = textos.nth(j);
+      // Só elementos-folha (sem filho elemento): um <span> com outro <span> aninhado
+      // dentro (ex.: badge de variação com rótulo) sempre "contém" o próprio filho
+      // geometricamente, o que não é o tipo de sobreposição visual que este teste quer pegar.
+      const ehFolha = await elemento.evaluate((el) => el.children.length === 0);
+      if (!ehFolha) continue;
+      const caixa = await elemento.boundingBox();
       if (caixa && caixa.width > 0 && caixa.height > 0) caixas.push(caixa);
     }
     for (let a = 0; a < caixas.length; a++) {

@@ -498,7 +498,7 @@ const EstoquePage = () => {
                           e.stopPropagation();
                           handleDeleteWarehouse(armazem.id);
                         }}
-                        className="ml-2 inline-flex h-6 w-6 items-center justify-center p-0 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive cursor-pointer"
+                        className="ml-2 inline-flex h-6 w-6 items-center justify-center p-0 rounded-sm opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive-text cursor-pointer"
                       >
                         <AlertCircle className="h-3.5 w-3.5" />
                       </div>
@@ -652,7 +652,7 @@ const EstoquePage = () => {
                                                 armazemNome: armazem.nome,
                                               })
                                             }
-                                            className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                            className="opacity-0 group-hover:opacity-100 h-8 w-8 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                                           >
                                             <Trash2 className="h-4 w-4" />
                                           </Button>
@@ -715,7 +715,7 @@ const EstoquePage = () => {
                   min={0}
                   disabled={true}
                 />
-                <p className="text-xs text-warning">
+                <p className="text-xs text-warning-text">
                   A edição direta de quantidade no estoque está temporariamente
                   desabilitada.
                 </p>

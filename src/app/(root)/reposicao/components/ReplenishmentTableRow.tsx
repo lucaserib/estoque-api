@@ -166,9 +166,9 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
             <span
               className={
                 diasRestantesMenor < 3
-                  ? "font-bold text-destructive"
+                  ? "font-bold text-destructive-text"
                   : diasRestantesMenor < 7
-                  ? "font-bold text-warning"
+                  ? "font-bold text-warning-text"
                   : "font-bold text-foreground"
               }
             >
@@ -213,8 +213,8 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
           {item.reposicaoLocal.necessaria ? (
             <div className="flex flex-col items-end gap-1">
               <div className="flex items-center gap-1">
-                <ShoppingCart className="h-3 w-3 text-warning" />
-                <span className="font-medium text-warning">
+                <ShoppingCart className="h-3 w-3 text-warning-text" />
+                <span className="font-medium text-warning-text">
                   {item.reposicaoLocal.quantidadeSugerida}
                 </span>
               </div>
@@ -231,7 +231,7 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
           {item.custoIndefinido ? (
             <Link
               href={`/produtos/${item.produtoId}`}
-              className="text-sm text-warning underline underline-offset-2"
+              className="text-sm text-warning-text underline underline-offset-2"
             >
               Custo não definido
             </Link>

@@ -53,15 +53,15 @@ interface VendaMLDetalhesDialogProps {
 const statusConfig = {
   paid: {
     label: "Pago",
-    color: "bg-success/10 text-success",
+    color: "bg-success/10 text-success-text",
   },
   delivered: {
     label: "Entregue",
-    color: "bg-success/10 text-success",
+    color: "bg-success/10 text-success-text",
   },
   ready_to_ship: {
     label: "Pronto para Envio",
-    color: "bg-warning/10 text-warning",
+    color: "bg-warning/10 text-warning-text",
   },
   shipped: {
     label: "Enviado",
@@ -69,7 +69,7 @@ const statusConfig = {
   },
   handling: {
     label: "Em Preparação",
-    color: "bg-warning/10 text-warning",
+    color: "bg-warning/10 text-warning-text",
   },
   confirmed: {
     label: "Confirmado",
@@ -77,7 +77,7 @@ const statusConfig = {
   },
   cancelled: {
     label: "Cancelado",
-    color: "bg-destructive/10 text-destructive",
+    color: "bg-destructive/10 text-destructive-text",
   },
 };
 
@@ -175,7 +175,7 @@ export function VendaMLDetalhesDialog({
                     <DollarSign className="h-4 w-4" />
                     Valor Total
                   </div>
-                  <div className="font-bold text-xl text-success">
+                  <div className="font-bold text-xl text-success-text">
                     {formatCurrency(venda.total_amount, venda.currency_id)}
                   </div>
                 </div>
@@ -269,8 +269,8 @@ export function VendaMLDetalhesDialog({
                       <Badge
                         className={
                           payment.status === "approved"
-                            ? "bg-success/10 text-success"
-                            : "bg-warning/10 text-warning"
+                            ? "bg-success/10 text-success-text"
+                            : "bg-warning/10 text-warning-text"
                         }
                       >
                         {(payment.status && STATUS_PAGAMENTO_LABEL[payment.status]) ?? payment.status ?? "—"}
@@ -351,7 +351,7 @@ export function VendaMLDetalhesDialog({
                 <div className="text-muted-foreground font-medium">
                   Valor Total da Venda
                 </div>
-                <div className="text-2xl font-bold text-success">
+                <div className="text-2xl font-bold text-success-text">
                   {formatCurrency(venda.total_amount, venda.currency_id)}
                 </div>
               </div>
@@ -360,7 +360,7 @@ export function VendaMLDetalhesDialog({
                   <div className="text-sm text-muted-foreground">
                     Valor Pago
                   </div>
-                  <div className="text-lg font-semibold text-success">
+                  <div className="text-lg font-semibold text-success-text">
                     {formatCurrency(venda.paid_amount, venda.currency_id)}
                   </div>
                 </div>

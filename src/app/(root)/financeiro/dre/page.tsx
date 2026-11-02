@@ -265,7 +265,7 @@ export default function DrePage() {
       />
 
       {pendencias && (pendencias.semCusto > 0 || pendencias.aguardando > 0 || pendencias.semDespesas) && (
-        <SectionCard contentClassName="space-y-1 text-sm text-warning">
+        <SectionCard contentClassName="space-y-1 text-sm text-warning-text">
           {pendencias.semCusto > 0 && (
             <p>
               {pendencias.semCusto} venda(s) sem custo do produto ({formatBRL(pendencias.faturamentoSemCusto)} de faturamento):

@@ -89,6 +89,112 @@ const DataTableCell = React.forwardRef<HTMLTableCellElement, DataTableCellProps>
 );
 DataTableCell.displayName = "DataTableCell";
 
+export interface ColunaResponsiva<T> {
+  chave: string;
+  cabecalho: string;
+  renderizar: (linha: T) => React.ReactNode;
+  numeric?: boolean;
+  /** Papel da coluna na visão em cartão (abaixo de 768px). Uma só coluna é "titulo". */
+  papelMobile?: "titulo" | "subtitulo" | "valor" | "oculto";
+}
+
+interface DataTableResponsiveProps<T> {
+  colunas: ColunaResponsiva<T>[];
+  linhas: T[];
+  chaveLinha: (linha: T) => string;
+  onRowClick?: (linha: T) => void;
+  className?: string;
+}
+
+/**
+ * Tabela que vira lista de cartões abaixo de 768px — cada coluna diz, via
+ * `papelMobile`, se vira título, subtítulo ou valor do cartão (ou some).
+ */
+function DataTableResponsive<T>({
+  colunas,
+  linhas,
+  chaveLinha,
+  onRowClick,
+  className,
+}: DataTableResponsiveProps<T>) {
+  const colunasCartao = colunas.filter((c) => c.papelMobile !== "oculto");
+  const colunaTitulo = colunasCartao.find((c) => c.papelMobile === "titulo");
+  const colunaSubtitulo = colunasCartao.find((c) => c.papelMobile === "subtitulo");
+  const colunasValor = colunasCartao.filter((c) => c.papelMobile === "valor");
+
+  return (
+    <>
+      {/* Tabela: 768px e acima */}
+      <div className={cn("hidden md:block", className)}>
+        <DataTable>
+          <DataTableHeader>
+            <DataTableRow>
+              {colunas.map((c) => (
+                <DataTableHead key={c.chave} className={c.numeric ? "text-right" : undefined}>
+                  {c.cabecalho}
+                </DataTableHead>
+              ))}
+            </DataTableRow>
+          </DataTableHeader>
+          <DataTableBody>
+            {linhas.map((linha) => (
+              <DataTableRow
+                key={chaveLinha(linha)}
+                onClick={onRowClick ? () => onRowClick(linha) : undefined}
+                className={onRowClick ? "cursor-pointer" : undefined}
+              >
+                {colunas.map((c) => (
+                  <DataTableCell key={c.chave} numeric={c.numeric}>
+                    {c.renderizar(linha)}
+                  </DataTableCell>
+                ))}
+              </DataTableRow>
+            ))}
+          </DataTableBody>
+        </DataTable>
+      </div>
+
+      {/* Lista de cartões: abaixo de 768px */}
+      <div className="space-y-2 md:hidden">
+        {linhas.map((linha) => (
+          <div
+            key={chaveLinha(linha)}
+            onClick={onRowClick ? () => onRowClick(linha) : undefined}
+            className={cn(
+              "rounded-card border border-border bg-card p-4 shadow-card",
+              onRowClick && "cursor-pointer"
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                {colunaTitulo && (
+                  <p className="truncate font-medium text-foreground">
+                    {colunaTitulo.renderizar(linha)}
+                  </p>
+                )}
+                {colunaSubtitulo && (
+                  <p className="truncate text-sm text-muted-foreground">
+                    {colunaSubtitulo.renderizar(linha)}
+                  </p>
+                )}
+              </div>
+              {colunasValor.length > 0 && (
+                <div className="shrink-0 text-right">
+                  {colunasValor.map((c) => (
+                    <p key={c.chave} className="tabular-nums text-foreground">
+                      {c.renderizar(linha)}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 export {
   DataTable,
   DataTableHeader,
@@ -96,4 +202,5 @@ export {
   DataTableRow,
   DataTableHead,
   DataTableCell,
+  DataTableResponsive,
 };

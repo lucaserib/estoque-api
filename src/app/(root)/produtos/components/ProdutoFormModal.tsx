@@ -471,7 +471,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                                             kitProduto.produtoId
                                           )
                                         }
-                                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                                       >
                                         <FaTimes className="w-3 h-3" />
                                       </Button>

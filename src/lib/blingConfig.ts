@@ -106,7 +106,7 @@ export function diagnosticarConfiguracaoBling(origemRequisicao: string): Diagnos
     mensagem: callbackOk
       ? `O "Link de redirecionamento" do aplicativo no Bling deve ser exatamente ${callbackEsperado}`
       : colouLinkDeConvite
-      ? `BLING_REDIRECT_URI contém o "Link de convite" do Bling (endereço do bling.com.br). Troque o valor por ${callbackEsperado} ou apague a variável. O link de convite não deve ser usado para conectar: use o botão Conectar do Leap Stock.`
+      ? `BLING_REDIRECT_URI contém o "Link de convite" do Bling (endereço do bling.com.br). Troque o valor por ${callbackEsperado} ou apague a variável. O link de convite não deve ser usado para conectar: use o botão Conectar do Skubo.`
       : `BLING_REDIRECT_URI está como ${callbackConfigurado}, mas o callback deste domínio é ${callbackEsperado}. O Bling devolve o usuário para o link cadastrado no aplicativo; se ele for de outro domínio, a sessão e o state não chegam e a conexão falha.`,
   });
 

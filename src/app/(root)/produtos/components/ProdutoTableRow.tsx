@@ -106,10 +106,10 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
         <DataTableCell emphasis sticky>
           <div className="flex items-center gap-2">
             {isCritical && (
-              <AlertTriangle className="h-4 w-4 text-destructive flex-shrink-0" />
+              <AlertTriangle className="h-4 w-4 text-destructive-text flex-shrink-0" />
             )}
             {isAttention && !isCritical && (
-              <AlertTriangle className="h-4 w-4 text-warning flex-shrink-0" />
+              <AlertTriangle className="h-4 w-4 text-warning-text flex-shrink-0" />
             )}
             <div className="min-w-0">
               <p className="truncate">{produto.nome}</p>
@@ -146,7 +146,7 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
                 stockQuantity <= stockMinimum &&
                 stockQuantity > 0 && (
                   <span title="Estoque abaixo do nível mínimo">
-                    <AlertTriangle className="h-4 w-4 text-warning" />
+                    <AlertTriangle className="h-4 w-4 text-warning-text" />
                   </span>
                 )}
               <InlineStockAdjust
@@ -258,7 +258,7 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
               variant="ghost"
               size="sm"
               onClick={() => onDelete(produto.id)}
-              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
               title="Excluir produto"
             >
               <FaTrash className="w-4 h-4" />

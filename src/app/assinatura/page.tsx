@@ -95,7 +95,7 @@ export default function AssinaturaPage() {
           <div>
             <h1 className="text-2xl font-semibold">Assinatura</h1>
             <p className="text-muted-foreground">
-              Escolha um plano para continuar usando o Leap Stock.
+              Escolha um plano para continuar usando o Skubo.
             </p>
           </div>
           <Button variant="ghost" onClick={() => signOut()}>
@@ -212,7 +212,7 @@ export default function AssinaturaPage() {
                     /ano
                   </span>
                 </p>
-                <p className="text-sm text-success flex items-center gap-1">
+                <p className="text-sm text-success-text flex items-center gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5" />
                   Economize vs. plano mensal
                 </p>

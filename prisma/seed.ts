@@ -515,7 +515,7 @@ async function seedE2E() {
       accessToken: "e2e-fake-access-token",
       refreshToken: "e2e-fake-refresh-token",
       expiresAt: seiHorasDepois,
-      nickname: "LEAPSTORE_E2E",
+      nickname: "SKUBO_E2E",
       siteId: "MLB",
       isActive: true,
     },

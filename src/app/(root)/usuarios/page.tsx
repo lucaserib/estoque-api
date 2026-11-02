@@ -272,7 +272,7 @@ export default function UsuariosPage() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRevokeInvite(convite.id)}
-                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                       >
                         <X className="h-3.5 w-3.5" />
                       </Button>

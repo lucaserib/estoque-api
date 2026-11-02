@@ -14,8 +14,7 @@ import {
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
-import { HeroMetric } from "@/components/ui/hero-metric";
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import {
   DataTable,
@@ -177,7 +176,7 @@ const ReposicaoPage = () => {
       currency: "BRL",
     }).format(value);
 
-  const statItems: StatStripItem[] = analysisData
+  const statItems: StatCardItem[] = analysisData
     ? [
         { label: "Produtos em alerta", value: String(analysisData.summary.total) },
         { label: "Críticos", value: String(analysisData.summary.critico) },
@@ -261,10 +260,11 @@ const ReposicaoPage = () => {
 
       {analysisData && !loading && analysisData.summary && (
         <>
-          <HeroMetric
+          <StatCard
+            size="lg"
             label="Custo total para reposição completa"
             value={formatCurrency(analysisData.summary.custoTotalGeral)}
-            context={
+            note={
               analysisData.results.some((r) => r.custoIndefinido)
                 ? `Investimento estimado. ${
                     analysisData.results.filter((r) => r.custoIndefinido).length
@@ -273,7 +273,7 @@ const ReposicaoPage = () => {
             }
           />
 
-          <StatStrip items={statItems} />
+          <StatCardGrid items={statItems} />
 
           <SectionCard
             title="Produtos"
@@ -284,7 +284,7 @@ const ReposicaoPage = () => {
             {(analysisData?.results?.length || 0) === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 px-4">
                 <div className="h-16 w-16 bg-success/10 rounded-full flex items-center justify-center mb-4">
-                  <Package className="h-8 w-8 text-success" />
+                  <Package className="h-8 w-8 text-success-text" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">
                   Nenhum produto precisa de reposição

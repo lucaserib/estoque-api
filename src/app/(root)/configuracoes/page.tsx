@@ -949,17 +949,17 @@ export default function MercadoLivreConfigPage() {
       active: {
         label: "Ativo",
         variant: "default" as const,
-        color: "bg-success/10 text-success",
+        color: "bg-success/10 text-success-text",
       },
       paused: {
         label: "Pausado",
         variant: "secondary" as const,
-        color: "bg-warning/10 text-warning",
+        color: "bg-warning/10 text-warning-text",
       },
       closed: {
         label: "Finalizado",
         variant: "destructive" as const,
-        color: "bg-destructive/10 text-destructive",
+        color: "bg-destructive/10 text-destructive-text",
       },
       under_review: {
         label: "Em Revisão",
@@ -990,12 +990,12 @@ export default function MercadoLivreConfigPage() {
     const statusMap = {
       success: {
         label: "Sucesso",
-        color: "bg-success/10 text-success",
+        color: "bg-success/10 text-success-text",
         icon: CheckCircle,
       },
       error: {
         label: "Erro",
-        color: "bg-destructive/10 text-destructive",
+        color: "bg-destructive/10 text-destructive-text",
         icon: AlertCircle,
       },
       running: {
@@ -1005,7 +1005,7 @@ export default function MercadoLivreConfigPage() {
       },
       partial: {
         label: "Parcial",
-        color: "bg-warning/10 text-warning",
+        color: "bg-warning/10 text-warning-text",
         icon: AlertCircle,
       },
     };
@@ -1137,10 +1137,10 @@ export default function MercadoLivreConfigPage() {
                 <CheckCircle className="h-6 w-6 text-success-foreground" />
               </div>
               <div className="flex-1">
-                <h3 className="font-semibold text-success">
+                <h3 className="font-semibold text-success-text">
                   Mercado Livre conectado com sucesso!
                 </h3>
-                <p className="text-sm text-success">
+                <p className="text-sm text-success-text">
                   Você possui {accounts.length} conta
                   {accounts.length > 1 ? "s" : ""} conectada
                   {accounts.length > 1 ? "s" : ""}. Agora você pode gerenciar
@@ -1151,7 +1151,7 @@ export default function MercadoLivreConfigPage() {
               <div className="text-right">
                 <Badge
                   variant="outline"
-                  className="text-success border-success"
+                  className="text-success-text border-success"
                 >
                   Ativo
                 </Badge>
@@ -1166,8 +1166,8 @@ export default function MercadoLivreConfigPage() {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-warning" />
-              <span className="text-warning">Informações de Debug</span>
+              <Settings className="h-5 w-5 text-warning-text" />
+              <span className="text-warning-text">Informações de Debug</span>
             </div>
             <Button
               variant="outline"
@@ -1239,7 +1239,7 @@ export default function MercadoLivreConfigPage() {
                   {debugInfo.error && (
                     <div>
                       <strong>Último erro:</strong>
-                      <div className="bg-destructive/10 p-2 rounded mt-1 text-destructive">
+                      <div className="bg-destructive/10 p-2 rounded mt-1 text-destructive-text">
                         {debugInfo.error}
                       </div>
                     </div>
@@ -1482,7 +1482,7 @@ export default function MercadoLivreConfigPage() {
                           {analyticsData.stock && (
                             <div>
                               <p className="text-muted-foreground">Estoque Baixo</p>
-                              <p className="font-medium text-warning">
+                              <p className="font-medium text-warning-text">
                                 {analyticsData.stock.lowStockProducts.length}
                               </p>
                             </div>
@@ -1552,7 +1552,7 @@ export default function MercadoLivreConfigPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <CheckCircle className="h-8 w-8 text-success" />
+                <CheckCircle className="h-8 w-8 text-success-text" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">Ativos</p>
                   <p className="text-2xl font-bold">{stats.active}</p>
@@ -1564,7 +1564,7 @@ export default function MercadoLivreConfigPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <AlertCircle className="h-8 w-8 text-warning" />
+                <AlertCircle className="h-8 w-8 text-warning-text" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">Pausados</p>
                   <p className="text-2xl font-bold">{stats.paused}</p>
@@ -1576,7 +1576,7 @@ export default function MercadoLivreConfigPage() {
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center">
-                <DollarSign className="h-8 w-8 text-success" />
+                <DollarSign className="h-8 w-8 text-success-text" />
                 <div className="ml-4">
                   <p className="text-sm font-medium text-muted-foreground">
                     Valor Total
@@ -1851,7 +1851,7 @@ export default function MercadoLivreConfigPage() {
                           <div className="text-sm text-muted-foreground">Total ML</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-success">
+                          <div className="text-2xl font-bold text-success-text">
                             {importData.summary.new}
                           </div>
                           <div className="text-sm text-muted-foreground">Novos</div>
@@ -1869,7 +1869,7 @@ export default function MercadoLivreConfigPage() {
                           <div className="text-sm text-muted-foreground">Full</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-warning">
+                          <div className="text-2xl font-bold text-warning-text">
                             {importData.summary.flexProducts}
                           </div>
                           <div className="text-sm text-muted-foreground">Flex</div>
@@ -1949,7 +1949,7 @@ export default function MercadoLivreConfigPage() {
                                     className={
                                       product.isFull
                                         ? "bg-info/10 text-info"
-                                        : "bg-warning/10 text-warning"
+                                        : "bg-warning/10 text-warning-text"
                                     }
                                   >
                                     {product.isFull ? "Full" : "Flex"}
@@ -1966,7 +1966,7 @@ export default function MercadoLivreConfigPage() {
                 ) : importData?.newProducts && importData.newProducts.length === 0 ? (
                   <Card>
                     <CardContent className="p-8 text-center">
-                      <CheckCircle className="h-12 w-12 text-success mx-auto mb-4" />
+                      <CheckCircle className="h-12 w-12 text-success-text mx-auto mb-4" />
                       <h3 className="text-lg font-medium text-foreground mb-2">
                         Todos os produtos já foram importados!
                       </h3>
@@ -1994,16 +1994,16 @@ export default function MercadoLivreConfigPage() {
                   <Card className="border-success/30 bg-success/10">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <CheckCircle className="h-5 w-5 text-success mt-0.5" />
+                        <CheckCircle className="h-5 w-5 text-success-text mt-0.5" />
                         <div>
-                          <h4 className="font-medium text-success">
+                          <h4 className="font-medium text-success-text">
                             Importação Concluída!
                           </h4>
-                          <p className="text-sm text-success">
+                          <p className="text-sm text-success-text">
                             {importResult.imported} produtos importados com sucesso
                             {importResult.errors > 0 && ` (${importResult.errors} erros)`}
                           </p>
-                          <p className="text-xs text-success mt-1">
+                          <p className="text-xs text-success-text mt-1">
                             Agora você pode configurar custos e impostos na aba "Produtos" ou na página de produtos.
                           </p>
                         </div>
@@ -2048,13 +2048,13 @@ export default function MercadoLivreConfigPage() {
                           <div className="text-sm text-muted-foreground">Total</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-destructive">
+                          <div className="text-2xl font-bold text-destructive-text">
                             {importedProductsStats.pending}
                           </div>
                           <div className="text-sm text-muted-foreground">Pendentes</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-success">
+                          <div className="text-2xl font-bold text-success-text">
                             {importedProductsStats.configured}
                           </div>
                           <div className="text-sm text-muted-foreground">Configurados</div>
@@ -2066,7 +2066,7 @@ export default function MercadoLivreConfigPage() {
                           <div className="text-sm text-muted-foreground">Full</div>
                         </div>
                         <div>
-                          <div className="text-2xl font-bold text-warning">
+                          <div className="text-2xl font-bold text-warning-text">
                             {importedProductsStats.flexProducts}
                           </div>
                           <div className="text-sm text-muted-foreground">Flex</div>
@@ -2137,7 +2137,7 @@ export default function MercadoLivreConfigPage() {
                                             className={
                                               product.mlData.isFull
                                                 ? "bg-info/10 text-info"
-                                                : "bg-warning/10 text-warning"
+                                                : "bg-warning/10 text-warning-text"
                                             }
                                           >
                                             {product.mlData.isFull ? "Full" : "Flex"}
@@ -2153,7 +2153,7 @@ export default function MercadoLivreConfigPage() {
                                         Pendente
                                       </Badge>
                                     ) : (
-                                      <Badge variant="default" className="bg-success/10 text-success">
+                                      <Badge variant="default" className="bg-success/10 text-success-text">
                                         Configurado
                                       </Badge>
                                     )}
@@ -2340,7 +2340,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Anúncios Ativos:
                             </span>
-                            <span className="font-semibold text-success">
+                            <span className="font-semibold text-success-text">
                               {analyticsData.metrics.activeListings}
                             </span>
                           </div>
@@ -2348,7 +2348,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Anúncios Pausados:
                             </span>
-                            <span className="font-semibold text-warning">
+                            <span className="font-semibold text-warning-text">
                               {analyticsData.metrics.pausedListings}
                             </span>
                           </div>
@@ -2373,7 +2373,7 @@ export default function MercadoLivreConfigPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Package className="h-5 w-5 text-warning" />
+                        <Package className="h-5 w-5 text-warning-text" />
                         Controle de Estoque
                       </CardTitle>
                     </CardHeader>
@@ -2396,7 +2396,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Estoque Baixo:
                             </span>
-                            <span className="font-semibold text-warning">
+                            <span className="font-semibold text-warning-text">
                               {analyticsData.stock.lowStockProducts.length}
                             </span>
                           </div>
@@ -2404,7 +2404,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Sem Estoque:
                             </span>
-                            <span className="font-semibold text-destructive">
+                            <span className="font-semibold text-destructive-text">
                               {analyticsData.stock.outOfStockProducts.length}
                             </span>
                           </div>
@@ -2439,8 +2439,8 @@ export default function MercadoLivreConfigPage() {
                             <span
                               className={`font-semibold ${
                                 analyticsData.shipping.mercadoEnviosEnabled
-                                  ? "text-success"
-                                  : "text-destructive"
+                                  ? "text-success-text"
+                                  : "text-destructive-text"
                               }`}
                             >
                               {analyticsData.shipping.mercadoEnviosEnabled
@@ -2455,8 +2455,8 @@ export default function MercadoLivreConfigPage() {
                             <span
                               className={`font-semibold ${
                                 analyticsData.shipping.freeShippingEnabled
-                                  ? "text-success"
-                                  : "text-destructive"
+                                  ? "text-success-text"
+                                  : "text-destructive-text"
                               }`}
                             >
                               {analyticsData.shipping.freeShippingEnabled
@@ -2485,7 +2485,7 @@ export default function MercadoLivreConfigPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <DollarSign className="h-5 w-5 text-success" />
+                        <DollarSign className="h-5 w-5 text-success-text" />
                         Informações Financeiras
                       </CardTitle>
                     </CardHeader>
@@ -2500,7 +2500,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Saldo Disponível:
                             </span>
-                            <span className="font-semibold text-success">
+                            <span className="font-semibold text-success-text">
                               {exibirValorEmReais(
                                 analyticsData.financial.availableBalance
                               )}
@@ -2510,7 +2510,7 @@ export default function MercadoLivreConfigPage() {
                             <span className="text-sm text-muted-foreground">
                               Saldo Pendente:
                             </span>
-                            <span className="font-semibold text-warning">
+                            <span className="font-semibold text-warning-text">
                               {exibirValorEmReais(
                                 analyticsData.financial.pendingBalance
                               )}
@@ -2577,7 +2577,7 @@ export default function MercadoLivreConfigPage() {
                         <div className="border border-border rounded-lg p-4">
                           <div className="grid grid-cols-3 gap-4 mb-4">
                             <div className="text-center">
-                              <div className="text-2xl font-bold text-success">
+                              <div className="text-2xl font-bold text-success-text">
                                 {skuSyncResult.matched}
                               </div>
                               <div className="text-sm text-muted-foreground">
@@ -2585,7 +2585,7 @@ export default function MercadoLivreConfigPage() {
                               </div>
                             </div>
                             <div className="text-center">
-                              <div className="text-2xl font-bold text-warning">
+                              <div className="text-2xl font-bold text-warning-text">
                                 {skuSyncResult.unmatched}
                               </div>
                               <div className="text-sm text-muted-foreground">
@@ -2635,7 +2635,7 @@ export default function MercadoLivreConfigPage() {
                                               }
                                               className={
                                                 result.status === "matched"
-                                                  ? "bg-success/10 text-success"
+                                                  ? "bg-success/10 text-success-text"
                                                   : ""
                                               }
                                             >
@@ -2667,7 +2667,7 @@ export default function MercadoLivreConfigPage() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <AlertCircle className="h-5 w-5 text-warning" />
+                      <AlertCircle className="h-5 w-5 text-warning-text" />
                       Alertas de Estoque
                     </CardTitle>
                   </CardHeader>
@@ -2681,7 +2681,7 @@ export default function MercadoLivreConfigPage() {
                         {/* Produtos com estoque baixo */}
                         {analyticsData.stock.lowStockProducts.length > 0 && (
                           <div>
-                            <h4 className="font-medium text-sm mb-2 text-warning">
+                            <h4 className="font-medium text-sm mb-2 text-warning-text">
                               Produtos com Estoque Baixo (≤ 5 unidades)
                             </h4>
                             <div className="max-h-40 overflow-y-auto">
@@ -2703,7 +2703,7 @@ export default function MercadoLivreConfigPage() {
                                       </div>
                                       <Badge
                                         variant="outline"
-                                        className="text-warning border-warning"
+                                        className="text-warning-text border-warning"
                                       >
                                         {product.availableQuantity} un.
                                       </Badge>
@@ -2726,7 +2726,7 @@ export default function MercadoLivreConfigPage() {
                         {/* Produtos sem estoque */}
                         {analyticsData.stock.outOfStockProducts.length > 0 && (
                           <div>
-                            <h4 className="font-medium text-sm mb-2 text-destructive">
+                            <h4 className="font-medium text-sm mb-2 text-destructive-text">
                               Produtos Sem Estoque
                             </h4>
                             <div className="max-h-40 overflow-y-auto">
@@ -2768,7 +2768,7 @@ export default function MercadoLivreConfigPage() {
                         {analyticsData.stock.lowStockProducts.length === 0 &&
                           analyticsData.stock.outOfStockProducts.length ===
                             0 && (
-                            <div className="text-center text-success p-6">
+                            <div className="text-center text-success-text p-6">
                               <CheckCircle className="h-8 w-8 mx-auto mb-2" />
                               <p className="font-medium">Estoque em dia!</p>
                               <p className="text-sm">
@@ -2837,11 +2837,11 @@ export default function MercadoLivreConfigPage() {
                             <DataTableCell>
                               <div className="text-sm">
                                 <div>Total: {history.totalItems}</div>
-                                <div className="text-success">
+                                <div className="text-success-text">
                                   ✓ {history.syncedItems}
                                 </div>
                                 {history.errorItems > 0 && (
-                                  <div className="text-destructive">
+                                  <div className="text-destructive-text">
                                     ✗ {history.errorItems}
                                   </div>
                                 )}
@@ -2865,7 +2865,7 @@ export default function MercadoLivreConfigPage() {
                                   </div>
                                 )}
                                 {history.updatedItems > 0 && (
-                                  <div className="text-warning">
+                                  <div className="text-warning-text">
                                     ↻ {history.updatedItems} atualizados
                                   </div>
                                 )}
@@ -2913,9 +2913,9 @@ export default function MercadoLivreConfigPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   {syncResult.success ? (
-                    <CheckCircle className="h-5 w-5 text-success" />
+                    <CheckCircle className="h-5 w-5 text-success-text" />
                   ) : (
-                    <AlertCircle className="h-5 w-5 text-destructive" />
+                    <AlertCircle className="h-5 w-5 text-destructive-text" />
                   )}
                   <h3 className="font-medium">
                     {syncResult.success
@@ -2935,7 +2935,7 @@ export default function MercadoLivreConfigPage() {
                   </div>
                   <div>
                     <p className="text-muted-foreground">Novos:</p>
-                    <p className="font-medium text-success">
+                    <p className="font-medium text-success-text">
                       {syncResult.newItems}
                     </p>
                   </div>

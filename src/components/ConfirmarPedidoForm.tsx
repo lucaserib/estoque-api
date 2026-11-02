@@ -214,11 +214,11 @@ const ConfirmarPedidoForm = ({
             variant="destructive"
             className="bg-destructive/10 border-destructive/30"
           >
-            <AlertCircle className="h-4 w-4 text-destructive" />
-            <AlertTitle className="text-destructive">
+            <AlertCircle className="h-4 w-4 text-destructive-text" />
+            <AlertTitle className="text-destructive-text">
               Erro
             </AlertTitle>
-            <AlertDescription className="text-destructive">
+            <AlertDescription className="text-destructive-text">
               {error}
             </AlertDescription>
           </Alert>
@@ -233,7 +233,7 @@ const ConfirmarPedidoForm = ({
               <FormItem>
                 <FormLabel className="flex items-center gap-2 text-base font-medium text-foreground">
                   <Warehouse className="h-4 w-4 text-primary" />
-                  Armazém de Destino <span className="text-destructive">*</span>
+                  Armazém de Destino <span className="text-destructive-text">*</span>
                 </FormLabel>
                 <Select
                   onValueChange={field.onChange}
@@ -259,7 +259,7 @@ const ConfirmarPedidoForm = ({
                     )}
                   </SelectContent>
                 </Select>
-                <FormMessage className="text-destructive" />
+                <FormMessage className="text-destructive-text" />
               </FormItem>
             )}
           />
@@ -281,7 +281,7 @@ const ConfirmarPedidoForm = ({
                     className="resize-none h-10 bg-card border-input"
                   />
                 </FormControl>
-                <FormMessage className="text-destructive" />
+                <FormMessage className="text-destructive-text" />
               </FormItem>
             )}
           />
@@ -297,7 +297,7 @@ const ConfirmarPedidoForm = ({
                   Pedido #{pedido.id}
                 </h3>
               </div>
-              <Badge className="bg-warning/10 text-warning">
+              <Badge className="bg-warning/10 text-warning-text">
                 Confirmando Recebimento
               </Badge>
             </div>

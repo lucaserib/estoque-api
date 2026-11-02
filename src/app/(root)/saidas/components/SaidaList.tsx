@@ -499,7 +499,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleExportSaidaDetails(saida)}
-                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-success hover:bg-success/10"
+                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 text-muted-foreground hover:text-success-text hover:bg-success/10"
                       title="Exportar para Excel"
                     >
                       <FileDown className="h-4 w-4" />

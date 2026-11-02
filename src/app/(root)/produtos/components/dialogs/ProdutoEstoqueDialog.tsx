@@ -184,8 +184,8 @@ export function ProdutoEstoqueDialog({
                                 variant={isCritical ? "destructive" : "outline"}
                                 className={
                                   isCritical
-                                    ? "bg-destructive/10 text-destructive"
-                                    : "bg-success/10 text-success"
+                                    ? "bg-destructive/10 text-destructive-text"
+                                    : "bg-success/10 text-success-text"
                                 }
                               >
                                 {item.quantidade} un.
@@ -211,8 +211,8 @@ export function ProdutoEstoqueDialog({
                                 />
                                 {isCritical && (
                                   <div className="mt-1 flex items-center">
-                                    <AlertCircle className="h-3 w-3 text-destructive mr-1" />
-                                    <span className="text-xs text-destructive">
+                                    <AlertCircle className="h-3 w-3 text-destructive-text mr-1" />
+                                    <span className="text-xs text-destructive-text">
                                       {(item.estoqueSeguranca || 0) -
                                         item.quantidade}{" "}
                                       un. abaixo do mínimo

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
 import {
@@ -27,7 +28,14 @@ import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useLayout } from "@/app/context/LayoutContext";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useLayout, type TemaPreferencia } from "@/app/context/LayoutContext";
 import { formatRelativeTime } from "@/lib/format";
 
 interface MLAccountInfo {
@@ -70,10 +78,10 @@ const IntegrationRow = ({
           <div className="flex items-center gap-2">
             <p className="font-medium">{name}</p>
             {status === "ativo" && (
-              <Badge className="bg-success/15 text-success">Ativo</Badge>
+              <Badge className="bg-success/15 text-success-text">Ativo</Badge>
             )}
             {status === "expirado" && (
-              <Badge className="bg-warning/15 text-warning">Expirado</Badge>
+              <Badge className="bg-warning/15 text-warning-text">Expirado</Badge>
             )}
             {status === "desconectado" && (
               <Badge variant="outline">Desconectado</Badge>
@@ -93,13 +101,23 @@ const IntegrationRow = ({
 
 export default function ConfiguracoesGeraisPage() {
   const { data: session } = useSession();
-  const { isDarkMode, toggleDarkMode } = useLayout();
+  const {
+    isDarkMode,
+    tema,
+    setTema,
+    nomeLoja: nomeLojaConta,
+    logoUrl: logoUrlConta,
+    atualizarBranding,
+  } = useLayout();
 
   const [loading, setLoading] = useState(true);
   const [mlAccounts, setMlAccounts] = useState<MLAccountInfo[]>([]);
   const [blingAccounts, setBlingAccounts] = useState<BlingAccountInfo[]>([]);
   const [aliquotaImposto, setAliquotaImposto] = useState(0);
   const [salvandoAliquota, setSalvandoAliquota] = useState(false);
+  const [nomeLoja, setNomeLoja] = useState("");
+  const [salvandoNomeLoja, setSalvandoNomeLoja] = useState(false);
+  const [enviandoLogo, setEnviandoLogo] = useState(false);
 
   const podeVerCusto =
     session?.user?.role === "ADMIN" || session?.user?.role === "COMPRAS";
@@ -111,6 +129,48 @@ export default function ConfiguracoesGeraisPage() {
       .then((data) => setAliquotaImposto((data.aliquotaImposto ?? 0) * 100))
       .catch(() => toast.error("Erro ao carregar configurações financeiras"));
   }, [podeVerCusto]);
+
+  useEffect(() => {
+    setNomeLoja(nomeLojaConta ?? "");
+  }, [nomeLojaConta]);
+
+  const salvarNomeLoja = useCallback(async () => {
+    setSalvandoNomeLoja(true);
+    try {
+      const res = await fetch("/api/configuracoes-gerais", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nomeLoja: nomeLoja.trim() || null }),
+      });
+      if (!res.ok) throw new Error();
+      atualizarBranding({ nomeLoja: nomeLoja.trim() || null });
+      toast.success("Nome da loja atualizado");
+    } catch {
+      toast.error("Erro ao salvar nome da loja");
+    } finally {
+      setSalvandoNomeLoja(false);
+    }
+  }, [nomeLoja, atualizarBranding]);
+
+  const enviarLogo = useCallback(async (file: File) => {
+    setEnviandoLogo(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/configuracoes-gerais/logo", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erro ao enviar logo");
+      atualizarBranding({ logoUrl: data.logoUrl });
+      toast.success("Logo da loja atualizada");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao enviar logo");
+    } finally {
+      setEnviandoLogo(false);
+    }
+  }, [atualizarBranding]);
 
   const salvarAliquota = useCallback(async () => {
     setSalvandoAliquota(true);
@@ -183,7 +243,7 @@ export default function ConfiguracoesGeraisPage() {
             <User className="h-5 w-5" />
             Conta
           </CardTitle>
-          <CardDescription>Dados do seu acesso ao Leap Stock</CardDescription>
+          <CardDescription>Dados do seu acesso ao Skubo</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
@@ -218,29 +278,88 @@ export default function ConfiguracoesGeraisPage() {
             )}
             Aparência
           </CardTitle>
-          <CardDescription>Tema da interface</CardDescription>
+          <CardDescription>Tema da interface — vale para sua conta, não só este aparelho</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-medium">Modo escuro</p>
+              <p className="font-medium">Tema</p>
               <p className="text-sm text-muted-foreground">
-                {isDarkMode ? "Ativado" : "Desativado"}
+                {tema === "SISTEMA"
+                  ? "Segue o sistema do aparelho"
+                  : isDarkMode
+                  ? "Escuro"
+                  : "Claro"}
               </p>
             </div>
-            <Button variant="outline" onClick={toggleDarkMode}>
-              {isDarkMode ? (
-                <>
-                  <Sun className="h-4 w-4 mr-2" />
-                  Usar tema claro
-                </>
-              ) : (
-                <>
-                  <Moon className="h-4 w-4 mr-2" />
-                  Usar tema escuro
-                </>
-              )}
+            <Select value={tema} onValueChange={(valor) => setTema(valor as TemaPreferencia)}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CLARO">Claro</SelectItem>
+                <SelectItem value="ESCURO">Escuro</SelectItem>
+                <SelectItem value="SISTEMA">Seguir o sistema</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Store className="h-5 w-5" />
+            Marca da loja
+          </CardTitle>
+          <CardDescription>
+            Nome e logo aparecem no menu lateral e no cabeçalho dos PDFs — a marca do app continua
+            sendo Skubo
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-end gap-3">
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="nome-loja">Nome da loja</Label>
+              <Input
+                id="nome-loja"
+                value={nomeLoja}
+                onChange={(e) => setNomeLoja(e.target.value)}
+                maxLength={80}
+                placeholder="Ex.: Minha Loja"
+              />
+            </div>
+            <Button onClick={salvarNomeLoja} disabled={salvandoNomeLoja}>
+              {salvandoNomeLoja ? "Salvando..." : "Salvar"}
             </Button>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="logo-loja">Logo da loja</Label>
+            <div className="flex items-center gap-3">
+              {logoUrlConta && (
+                <Image
+                  src={logoUrlConta}
+                  alt="Logo atual da loja"
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="h-10 w-10 rounded border border-border object-contain"
+                />
+              )}
+              <Input
+                id="logo-loja"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={enviandoLogo}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) enviarLogo(file);
+                  e.target.value = "";
+                }}
+                className="max-w-xs"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">JPG, PNG ou WEBP, até 2 MB.</p>
           </div>
         </CardContent>
       </Card>

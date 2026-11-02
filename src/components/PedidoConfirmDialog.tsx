@@ -224,7 +224,7 @@ export function PedidoConfirmDialog({
           <DialogHeader className="p-6 pb-3">
             <div className="flex items-center justify-between">
               <DialogTitle className="text-xl font-bold flex items-center gap-2 text-foreground">
-                <CheckCircle2 className="h-5 w-5 text-success" />
+                <CheckCircle2 className="h-5 w-5 text-success-text" />
                 Confirmar Recebimento - Pedido #{pedido.id}
               </DialogTitle>
 
@@ -289,9 +289,9 @@ export function PedidoConfirmDialog({
 
             {/* Erro */}
             {error && (
-              <div className="bg-destructive/10 rounded-lg border border-destructive/30 p-3 text-sm text-destructive">
+              <div className="bg-destructive/10 rounded-lg border border-destructive/30 p-3 text-sm text-destructive-text">
                 <div className="flex gap-2">
-                  <AlertTriangle className="h-5 w-5 text-destructive flex-shrink-0" />
+                  <AlertTriangle className="h-5 w-5 text-destructive-text flex-shrink-0" />
                   <div>
                     <p className="font-medium">Erro</p>
                     <p>{error}</p>
@@ -305,7 +305,7 @@ export function PedidoConfirmDialog({
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-foreground  items-center gap-1">
                   <Warehouse className="h-4 w-4 text-muted-foreground" />
-                  Armazém de Destino <span className="text-destructive">*</span>
+                  Armazém de Destino <span className="text-destructive-text">*</span>
                 </label>
                 <Select onValueChange={setArmazemId} value={armazemId}>
                   <SelectTrigger className="w-full">
@@ -323,7 +323,7 @@ export function PedidoConfirmDialog({
                   </SelectContent>
                 </Select>
                 {!armazemId && (
-                  <p className="text-xs text-warning mt-1">
+                  <p className="text-xs text-warning-text mt-1">
                     Selecione um armazém para confirmar o pedido
                   </p>
                 )}
@@ -354,7 +354,7 @@ export function PedidoConfirmDialog({
                   </h3>
 
                   {hasMenorQuantidade() && (
-                    <div className="flex items-center gap-1 text-xs bg-warning/10 text-warning py-1 px-2 rounded-full border border-warning/30">
+                    <div className="flex items-center gap-1 text-xs bg-warning/10 text-warning-text py-1 px-2 rounded-full border border-warning/30">
                       <AlertTriangle className="h-3 w-3" />
                       <span>
                         Itens faltantes serão adicionados a um novo pedido
@@ -416,7 +416,7 @@ export function PedidoConfirmDialog({
                                     {getCodigoEAN(produto.produto)}
                                   </span>
                                 ) : (
-                                  <span className="text-warning text-xs italic">
+                                  <span className="text-warning-text text-xs italic">
                                     Sem código de barras
                                   </span>
                                 )}
@@ -476,7 +476,7 @@ export function PedidoConfirmDialog({
                                   )}
                               </div>
                               {isLessQuantity && (
-                                <div className="flex items-center justify-center gap-1 text-xs text-warning mt-1">
+                                <div className="flex items-center justify-center gap-1 text-xs text-warning-text mt-1">
                                   <MinusCircle className="h-3 w-3" />
                                   {originalProduto.quantidade -
                                     produto.quantidade}{" "}
@@ -503,7 +503,7 @@ export function PedidoConfirmDialog({
                             <DataTableCell numeric className="text-muted-foreground font-medium">
                               {produto.multiplicador}x
                             </DataTableCell>
-                            <DataTableCell numeric className="pr-4 font-medium text-success">
+                            <DataTableCell numeric className="pr-4 font-medium text-success-text">
                               {formatBRL(subtotal)}
                             </DataTableCell>
                           </DataTableRow>
@@ -517,7 +517,7 @@ export function PedidoConfirmDialog({
                         >
                           Total do Pedido:
                         </DataTableCell>
-                        <DataTableCell numeric className="pr-4 font-bold text-success">
+                        <DataTableCell numeric className="pr-4 font-bold text-success-text">
                           {formatBRL(calcularValorTotal())}
                         </DataTableCell>
                       </DataTableRow>

@@ -224,7 +224,7 @@ function ProdutosPageContent() {
         <Card className="border-warning bg-warning/10">
           <CardContent className="flex flex-col items-start justify-between gap-4 pt-6 sm:flex-row sm:items-center">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5 text-warning" />
+              <AlertTriangle className="mt-0.5 h-5 w-5 text-warning-text" />
               <div>
                 <p className="font-semibold">Conexão com o Bling expirou</p>
                 <p className="text-sm text-muted-foreground">

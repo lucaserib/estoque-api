@@ -148,7 +148,7 @@ export function PedidoRow({
       </TableCell>
 
       <TableCell className="font-medium">
-        <span className="text-success">
+        <span className="text-success-text">
           {formatBRL(valorTotal)}
         </span>
       </TableCell>
@@ -187,7 +187,7 @@ export function PedidoRow({
                       variant="ghost"
                       size="sm"
                       onClick={onConfirm}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-success hover:bg-success/10"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-success-text hover:bg-success/10"
                     >
                       <Check className="h-4 w-4" />
                     </Button>
@@ -203,7 +203,7 @@ export function PedidoRow({
                       variant="ghost"
                       size="sm"
                       onClick={onDelete}
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>

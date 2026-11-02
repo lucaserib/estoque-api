@@ -30,8 +30,7 @@ import {
 import { toast } from "sonner";
 import { formatBRL, formatBRLReais, formatNumberBR } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
-import { HeroMetric } from "@/components/ui/hero-metric";
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import MercadoLivreAutoSync from "@/app/components/MercadoLivreAutoSync";
 import MLTopSellingProducts from "@/app/components/MercadoLivre/MLTopSellingProducts";
 import MLRestockSuggestions from "@/app/components/MercadoLivre/MLRestockSuggestions";
@@ -443,7 +442,7 @@ export default function MercadoLivrePage() {
 
   const currentAccount = accounts.find((acc) => acc.id === selectedAccount);
 
-  const statStripItems: StatStripItem[] = metrics
+  const statStripItems: StatCardItem[] = metrics
     ? [
         { label: "Vendas hoje", value: formatNumberBR(metrics.todaySales) },
         {
@@ -529,14 +528,15 @@ export default function MercadoLivrePage() {
 
       {metrics && (
         <>
-          <HeroMetric
+          <StatCard
+            size="lg"
             label="Receita semanal"
             value={formatBRLReais(metrics.totalRevenue)}
-            context={`Ticket médio: ${formatBRL(metrics.averageTicket)} · ${
+            note={`Ticket médio: ${formatBRL(metrics.averageTicket)} · ${
               metrics.weekSales
             } itens vendidos na semana`}
           />
-          <StatStrip items={statStripItems} />
+          <StatCardGrid items={statStripItems} />
         </>
       )}
 

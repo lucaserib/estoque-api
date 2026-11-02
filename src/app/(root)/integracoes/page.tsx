@@ -70,7 +70,7 @@ const MENSAGENS_ERRO_BLING: Record<string, string> = {
   acesso_negado: "A autorização foi cancelada na tela do Bling.",
   bling_recusou: "O Bling recusou a autorização. Confira se o aplicativo está ativo no portal de desenvolvedores do Bling.",
   parametros_ausentes: "O Bling voltou sem o código de autorização. Tente conectar novamente.",
-  sessao_invalida: "Sua sessão não chegou no retorno do Bling. Entre no Leap Stock pelo mesmo endereço do link de redirecionamento cadastrado no Bling e tente de novo.",
+  sessao_invalida: "Sua sessão não chegou no retorno do Bling. Entre no Skubo pelo mesmo endereço do link de redirecionamento cadastrado no Bling e tente de novo.",
   state_expirado: "A tentativa de conexão expirou (mais de 10 minutos) ou foi iniciada em outro navegador/domínio. Clique em Conectar novamente.",
   state_invalido: "A tentativa de conexão não confere com a sua sessão. Clique em Conectar novamente.",
   credenciais_invalidas: "O Bling recusou o Client ID/Client Secret configurados no servidor. Confira BLING_CLIENT_ID e BLING_CLIENT_SECRET na Vercel.",
@@ -402,7 +402,7 @@ export default function IntegracoesPage() {
                   size="sm"
                   variant="ghost"
                   onClick={() => handleDisconnect("mercadolivre", mlAccount.id)}
-                  className="ml-auto gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  className="ml-auto gap-2 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                 >
                   <Unplug className="h-4 w-4" />
                   Desconectar
@@ -476,7 +476,7 @@ export default function IntegracoesPage() {
                 <span className="flex items-center gap-2 font-medium text-foreground">
                   {blingAccount.webhooksRecebidos24h} recebido(s)
                   {blingAccount.webhooksComErro24h > 0 && (
-                    <span className="text-destructive">
+                    <span className="text-destructive-text">
                       · {blingAccount.webhooksComErro24h} com erro
                     </span>
                   )}
@@ -568,7 +568,7 @@ export default function IntegracoesPage() {
                   size="sm"
                   variant="ghost"
                   onClick={() => handleDisconnect("bling", blingAccount.id)}
-                  className="ml-auto gap-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                  className="ml-auto gap-2 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                 >
                   <Unplug className="h-4 w-4" />
                   Desconectar
@@ -588,7 +588,7 @@ export default function IntegracoesPage() {
           </div>
           {(erroBling || diagnosticoBling) && (
             <div className="border-t border-divider px-5 py-4 text-sm" role="status">
-              {erroBling && <p className="font-medium text-destructive">{erroBling}</p>}
+              {erroBling && <p className="font-medium text-destructive-text">{erroBling}</p>}
               {diagnosticoBling && (
                 <div className="mt-3 space-y-2">
                   <p className="text-muted-foreground">

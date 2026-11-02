@@ -115,7 +115,7 @@ export function InlineStockAdjust({
         {saving ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
         ) : (
-          <Check className="h-3.5 w-3.5 text-success" />
+          <Check className="h-3.5 w-3.5 text-success-text" />
         )}
       </Button>
       <Button

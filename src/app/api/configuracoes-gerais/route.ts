@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
+import { TemaPreferencia } from "@prisma/client";
+
+const TEMAS_VALIDOS = Object.values(TemaPreferencia);
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +16,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       aliquotaImposto: config?.aliquotaImposto ?? 0,
+      nomeLoja: config?.nomeLoja ?? null,
+      logoUrl: config?.logoUrl ?? null,
+      tema: config?.tema ?? "SISTEMA",
     });
   } catch (error) {
     console.error("Erro ao buscar configurações gerais:", error);
@@ -26,29 +32,74 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const user = await verifyUser(request);
-    exigirPermissao(user.role, "VER_CUSTO");
+    const body = await request.json();
+    const { aliquotaImposto, nomeLoja, logoUrl, tema } = body;
 
-    const { aliquotaImposto } = await request.json();
+    const dadosParaUpdate: {
+      aliquotaImposto?: number;
+      nomeLoja?: string | null;
+      logoUrl?: string | null;
+      tema?: TemaPreferencia;
+    } = {};
 
-    if (
-      typeof aliquotaImposto !== "number" ||
-      Number.isNaN(aliquotaImposto) ||
-      aliquotaImposto < 0 ||
-      aliquotaImposto > 1
-    ) {
-      return NextResponse.json(
-        { error: "aliquotaImposto deve ser um número entre 0 e 1" },
-        { status: 400 }
-      );
+    // aliquotaImposto afeta margem/custo exibidos no app inteiro — exige VER_CUSTO.
+    // nome/logo da loja e tema são personalização visual, qualquer usuário da conta pode ajustar.
+    if (aliquotaImposto !== undefined) {
+      exigirPermissao(user.role, "VER_CUSTO");
+
+      if (
+        typeof aliquotaImposto !== "number" ||
+        Number.isNaN(aliquotaImposto) ||
+        aliquotaImposto < 0 ||
+        aliquotaImposto > 1
+      ) {
+        return NextResponse.json(
+          { error: "aliquotaImposto deve ser um número entre 0 e 1" },
+          { status: 400 }
+        );
+      }
+      dadosParaUpdate.aliquotaImposto = aliquotaImposto;
+    }
+
+    if (nomeLoja !== undefined) {
+      if (nomeLoja !== null && (typeof nomeLoja !== "string" || nomeLoja.length > 80)) {
+        return NextResponse.json(
+          { error: "nomeLoja deve ser um texto de até 80 caracteres" },
+          { status: 400 }
+        );
+      }
+      dadosParaUpdate.nomeLoja = nomeLoja === null ? null : nomeLoja.trim() || null;
+    }
+
+    if (logoUrl !== undefined) {
+      if (logoUrl !== null && typeof logoUrl !== "string") {
+        return NextResponse.json({ error: "logoUrl inválido" }, { status: 400 });
+      }
+      dadosParaUpdate.logoUrl = logoUrl;
+    }
+
+    if (tema !== undefined) {
+      if (!TEMAS_VALIDOS.includes(tema)) {
+        return NextResponse.json(
+          { error: `tema deve ser um de: ${TEMAS_VALIDOS.join(", ")}` },
+          { status: 400 }
+        );
+      }
+      dadosParaUpdate.tema = tema;
     }
 
     const config = await prisma.configuracaoGeral.upsert({
       where: { userId: user.contaId },
-      update: { aliquotaImposto },
-      create: { userId: user.contaId, aliquotaImposto },
+      update: dadosParaUpdate,
+      create: { userId: user.contaId, ...dadosParaUpdate },
     });
 
-    return NextResponse.json({ aliquotaImposto: config.aliquotaImposto });
+    return NextResponse.json({
+      aliquotaImposto: config.aliquotaImposto,
+      nomeLoja: config.nomeLoja,
+      logoUrl: config.logoUrl,
+      tema: config.tema,
+    });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
     if (permissaoResponse) return permissaoResponse;

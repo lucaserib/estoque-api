@@ -65,7 +65,7 @@ function RegisterForm() {
       </h1>
       <p className="mb-7 mt-2 text-sm text-muted-foreground">
         {inviteToken
-          ? "Você foi convidado para o Leap Stock. Defina sua senha para concluir o cadastro."
+          ? "Você foi convidado para o Skubo. Defina sua senha para concluir o cadastro."
           : "Comece a controlar seu estoque em minutos."}
       </p>
 
@@ -91,7 +91,7 @@ function RegisterForm() {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm mb-6">
+        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-text text-sm mb-6">
           {error}
         </div>
       )}

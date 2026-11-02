@@ -91,7 +91,7 @@ export default function ImportarProdutosPage() {
       title: "Sincronizar ML",
       description: "Buscar anúncios do Mercado Livre",
       status: "pending",
-      icon: <Store className="h-5 w-5 text-warning" />,
+      icon: <Store className="h-5 w-5 text-warning-text" />,
     },
     {
       id: "match",
@@ -332,7 +332,7 @@ export default function ImportarProdutosPage() {
         <Card className="border-warning bg-warning/10">
           <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-6">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-warning mt-0.5" />
+              <AlertTriangle className="h-5 w-5 text-warning-text mt-0.5" />
               <div>
                 <p className="font-semibold">Conexão com o Bling expirou</p>
                 <p className="text-sm text-muted-foreground">
@@ -381,11 +381,11 @@ export default function ImportarProdutosPage() {
                   <div
                     className={`p-2 rounded-lg ${
                       step.status === "completed"
-                        ? "bg-success/15 text-success"
+                        ? "bg-success/15 text-success-text"
                         : step.status === "in_progress"
                         ? "bg-info/15 text-info"
                         : step.status === "error"
-                        ? "bg-destructive/15 text-destructive"
+                        ? "bg-destructive/15 text-destructive-text"
                         : "bg-muted text-muted-foreground"
                     }`}
                   >
@@ -398,7 +398,7 @@ export default function ImportarProdutosPage() {
                 </div>
                 <div>
                   {step.status === "completed" && (
-                    <Badge className="bg-success/15 text-success">
+                    <Badge className="bg-success/15 text-success-text">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       Concluído
                     </Badge>
@@ -410,7 +410,7 @@ export default function ImportarProdutosPage() {
                     </Badge>
                   )}
                   {step.status === "error" && (
-                    <Badge className="bg-destructive/15 text-destructive">
+                    <Badge className="bg-destructive/15 text-destructive-text">
                       <AlertCircle className="h-3 w-3 mr-1" />
                       {step.id === "bling" ? "Expirado" : "Erro"}
                     </Badge>
@@ -450,7 +450,7 @@ export default function ImportarProdutosPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-success">
+                <div className="text-3xl font-bold text-success-text">
                   {importResumo.criados}
                 </div>
                 <div className="text-sm text-muted-foreground">Criados</div>
@@ -472,7 +472,7 @@ export default function ImportarProdutosPage() {
             </div>
             {importResumo.erros.length > 0 && (
               <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3">
-                <p className="text-sm font-medium text-destructive mb-1">
+                <p className="text-sm font-medium text-destructive-text mb-1">
                   {importResumo.erros.length} erros na importação
                 </p>
                 <ul className="text-xs text-muted-foreground space-y-0.5 max-h-32 overflow-y-auto">
@@ -494,7 +494,7 @@ export default function ImportarProdutosPage() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-success">
+                <div className="text-3xl font-bold text-success-text">
                   {matchingResults.summary.byType.ean}
                 </div>
                 <div className="text-sm text-muted-foreground">Por EAN</div>
@@ -506,7 +506,7 @@ export default function ImportarProdutosPage() {
                 <div className="text-sm text-muted-foreground">Por SKU</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-warning">
+                <div className="text-3xl font-bold text-warning-text">
                   {matchingResults.summary.byType.fuzzy}
                 </div>
                 <div className="text-sm text-muted-foreground">

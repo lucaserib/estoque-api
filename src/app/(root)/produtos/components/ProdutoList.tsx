@@ -424,7 +424,7 @@ export default function ProdutoList({ aba, versao, onDelete, onContagens }: Prod
             ) : erro ? (
               <DataTableRow className="hover:bg-transparent">
                 <DataTableCell colSpan={10} className="py-8 text-center">
-                  <p className="text-sm text-destructive">{erro}</p>
+                  <p className="text-sm text-destructive-text">{erro}</p>
                   <Button variant="outline" size="sm" className="mt-3" onClick={() => buscarPagina(1)}>
                     Tentar novamente
                   </Button>
@@ -490,7 +490,7 @@ export default function ProdutoList({ aba, versao, onDelete, onContagens }: Prod
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-2 text-muted-foreground hover:text-destructive"
+                        className="h-8 px-2 text-muted-foreground hover:text-destructive-text"
                         onClick={() => onDelete({ id: kit.id, nome: kit.nome })}
                       >
                         Excluir

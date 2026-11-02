@@ -188,7 +188,7 @@ export const KitList = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleDeleteClick(kit.id)}
-                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive-text hover:bg-destructive/10"
                         title="Excluir kit"
                       >
                         <FaTrash className="w-4 h-4" />

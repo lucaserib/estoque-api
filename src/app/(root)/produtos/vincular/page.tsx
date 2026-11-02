@@ -222,7 +222,7 @@ function VincularProdutosContent() {
       {produtosPendentes.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-success" />
+            <CheckCircle2 className="h-16 w-16 mx-auto mb-4 text-success-text" />
             <h3 className="text-lg font-semibold mb-2">
               Todos os produtos estão vinculados!
             </h3>

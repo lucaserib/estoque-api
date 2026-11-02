@@ -23,7 +23,7 @@ const PageHeader = React.forwardRef<HTMLDivElement, PageHeaderProps>(
             <span className="text-muted-foreground">{title}</span>
           </div>
         )}
-        <h1 className="text-[27px] font-semibold leading-tight tracking-[-0.015em] text-foreground">
+        <h1 className="font-display text-[28px] font-semibold leading-tight tracking-[-0.02em] text-foreground">
           {title}
         </h1>
         {subtitle && (

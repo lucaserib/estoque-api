@@ -299,7 +299,7 @@ const FornecedoresPage = () => {
           </div>
         ) : error ? (
           <div className="bg-destructive/10 p-4 rounded-lg">
-            <p className="text-destructive">{error}</p>
+            <p className="text-destructive-text">{error}</p>
           </div>
         ) : fornecedores?.length === 0 ? (
           <div className="bg-background rounded-lg shadow-sm p-8 text-center">
@@ -434,7 +434,7 @@ const FornecedoresPage = () => {
                         onClick={() =>
                           handleDeleteFornecedor(fornecedor.id.toString())
                         }
-                        className="flex items-center gap-1 text-muted-foreground hover:text-destructive transition-colors"
+                        className="flex items-center gap-1 text-muted-foreground hover:text-destructive-text transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                         <span>Excluir</span>
@@ -533,8 +533,8 @@ const FornecedoresPage = () => {
                     <div
                       className={`py-2 px-3 rounded-md ${
                         formMessageType === "success"
-                          ? "bg-success/10 text-success"
-                          : "bg-destructive/10 text-destructive"
+                          ? "bg-success/10 text-success-text"
+                          : "bg-destructive/10 text-destructive-text"
                       }`}
                     >
                       {formMessage}

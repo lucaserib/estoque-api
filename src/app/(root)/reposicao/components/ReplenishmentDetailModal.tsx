@@ -507,7 +507,7 @@ export function ReplenishmentDetailModal({
                       <CardHeader className="bg-warning/10">
                         <CardTitle className="flex items-center justify-between text-sm">
                           <span className="flex items-center gap-2">
-                            <ShoppingCart className="h-4 w-4 text-warning" />
+                            <ShoppingCart className="h-4 w-4 text-warning-text" />
                             Reposição Local
                           </span>
                           {getStatusBadge(sugestao.reposicaoLocal.status)}
@@ -517,13 +517,13 @@ export function ReplenishmentDetailModal({
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div>
                             <p className="text-muted-foreground">Ponto Reposição:</p>
-                            <p className="font-bold text-warning">
+                            <p className="font-bold text-warning-text">
                               {sugestao.reposicaoLocal.pontoReposicao} un
                             </p>
                           </div>
                           <div>
                             <p className="text-muted-foreground">Sugerido:</p>
-                            <p className="font-bold text-warning">
+                            <p className="font-bold text-warning-text">
                               {sugestao.reposicaoLocal.quantidadeSugerida} un
                             </p>
                           </div>
@@ -704,7 +704,7 @@ export function ReplenishmentDetailModal({
                         </div>
                         <div>
                           <p className="text-muted-foreground">Custo Médio:</p>
-                          <p className="font-semibold text-success">
+                          <p className="font-semibold text-success-text">
                             {formatCurrency(produto.custoMedio)}
                           </p>
                         </div>

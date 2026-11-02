@@ -75,7 +75,7 @@ const LoginPage = () => {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm mb-6">
+        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-text text-sm mb-6">
           {error}
         </div>
       )}

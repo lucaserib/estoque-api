@@ -555,14 +555,14 @@ const BarcodeReader = ({
 
             {/* Success indicator */}
             {successScan && (
-              <Badge className="ml-2 bg-success/10 text-success">
+              <Badge className="ml-2 bg-success/10 text-success-text">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Scan bem-sucedido
               </Badge>
             )}
 
             {validationInProgress && (
-              <Badge className="ml-2 bg-warning/10 text-warning">
+              <Badge className="ml-2 bg-warning/10 text-warning-text">
                 <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                 Validando...
               </Badge>
@@ -670,7 +670,7 @@ const BarcodeReader = ({
       </form>
 
       {isBarcodeDetectionSupported === false && (
-        <p className="text-sm text-warning">
+        <p className="text-sm text-warning-text">
           Seu navegador não suporta o scanner do código de barras, por favor
           insira manualmente ou conecte um aparelho de conferência.
         </p>

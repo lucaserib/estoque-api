@@ -103,7 +103,7 @@ const MercadoLivreConfigHelp = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-sm text-success bg-success/10 p-3 rounded-md">
+            <div className="flex items-center gap-2 text-sm text-success-text bg-success/10 p-3 rounded-md">
               <CheckCircle className="h-4 w-4" />
               <span>
                 Após a configuração, clique em &quot;Conectar Conta&quot; para

@@ -208,7 +208,7 @@ export default function MLProductsTable({
               <div className="flex gap-4">
                 <div>
                   Ativos:{" "}
-                  <span className="font-medium text-success">
+                  <span className="font-medium text-success-text">
                     {products.filter((p) => p.mlStatus === "active").length}
                   </span>
                 </div>

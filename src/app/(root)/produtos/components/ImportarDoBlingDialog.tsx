@@ -162,7 +162,7 @@ export function ImportarDoBlingDialog({ aberto, onFechar, onImportado, onCadastr
           </div>
         )}
 
-        {erro && <p className="text-sm text-destructive">{erro}</p>}
+        {erro && <p className="text-sm text-destructive-text">{erro}</p>}
 
         <div className="max-h-[50dvh] space-y-1 overflow-y-auto">
           {resultados.length === 0 && !buscando && termo.trim().length >= 2 && !erro && (

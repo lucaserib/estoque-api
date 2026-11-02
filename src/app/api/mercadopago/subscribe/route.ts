@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const origin = request.nextUrl.origin;
 
     const preapproval = await MercadoPagoService.createPreapproval({
-      reason: `Leap Stock — Plano ${plan === "ANNUAL" ? "Anual" : "Mensal"}`,
+      reason: `Skubo — Plano ${plan === "ANNUAL" ? "Anual" : "Mensal"}`,
       payerEmail: user.email,
       transactionAmount: recurring.transactionAmount,
       frequency: recurring.frequency,

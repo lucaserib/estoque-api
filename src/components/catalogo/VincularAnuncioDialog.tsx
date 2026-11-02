@@ -289,7 +289,7 @@ export function VincularAnuncioDialog({ aberto, onFechar, anuncio, vinculoAtual,
 
         <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
           {vinculoAtual ? (
-            <Button variant="ghost" className="gap-2 text-destructive" disabled={salvando} onClick={() => salvar(true)}>
+            <Button variant="ghost" className="gap-2 text-destructive-text" disabled={salvando} onClick={() => salvar(true)}>
               <Unlink className="h-4 w-4" />
               Desvincular
             </Button>

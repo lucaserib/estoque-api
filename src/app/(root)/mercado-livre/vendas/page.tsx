@@ -39,8 +39,7 @@ import {
   Calendar as CalendarIcon,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
-import { HeroMetric } from "@/components/ui/hero-metric";
-import { StatStrip, type StatStripItem } from "@/components/ui/stat-strip";
+import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { CubeMark } from "@/components/brand/Logo";
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
@@ -347,7 +346,7 @@ export default function MercadoLivreVendasPage() {
         ? "mês retrasado"
         : `${selectedPeriod} dias anteriores`;
 
-  const primaryStatItems: StatStripItem[] = salesData
+  const primaryStatItems: StatCardItem[] = salesData
     ? [
         {
           label: "Receita Líquida",
@@ -371,7 +370,7 @@ export default function MercadoLivreVendasPage() {
       ]
     : [];
 
-  const secondaryStatItems: StatStripItem[] = salesData
+  const secondaryStatItems: StatCardItem[] = salesData
     ? [
         {
           label: "Projeção do Mês",
@@ -514,17 +513,18 @@ export default function MercadoLivreVendasPage() {
 
       {salesData && (
         <>
-          <HeroMetric
+          <StatCard
+            size="lg"
             label="Receita Total"
             value={formatBRLReais(salesData.summary.totalRevenue)}
             delta={growth?.revenueGrowth}
             deltaLabel={`vs ${periodLabel}`}
-            context="Soma de produtos e frete dos pedidos pagos no período."
+            note="Soma de produtos e frete dos pedidos pagos no período."
           />
 
-          <StatStrip items={primaryStatItems} />
+          <StatCardGrid items={primaryStatItems} />
 
-          <StatStrip items={secondaryStatItems} size="sm" />
+          <StatCardGrid items={secondaryStatItems} size="sm" />
 
           {viewMode === "overview" && (
             <>
@@ -651,8 +651,8 @@ export default function MercadoLivreVendasPage() {
                                 <span
                                   className={
                                     product.estimatedProfit >= 0
-                                      ? "text-success font-medium"
-                                      : "text-destructive font-medium"
+                                      ? "text-success-text font-medium"
+                                      : "text-destructive-text font-medium"
                                   }
                                 >
                                   {formatBRLReais(product.estimatedProfit)}

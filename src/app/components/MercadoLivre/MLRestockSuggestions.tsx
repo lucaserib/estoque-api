@@ -20,7 +20,7 @@ export default function MLRestockSuggestions({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-success" />
+            <AlertCircle className="h-5 w-5 text-success-text" />
             Estoque Saudável
           </CardTitle>
         </CardHeader>
@@ -39,7 +39,7 @@ export default function MLRestockSuggestions({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-warning" />
+          <AlertTriangle className="h-5 w-5 text-warning-text" />
           Sugestões de Reposição
           <Badge variant="destructive" className="ml-2">
             {restockData.summary.needsAttention}
@@ -132,7 +132,7 @@ export default function MLRestockSuggestions({
                       Velocidade: {suggestion.salesVelocity.toFixed(1)}/dia
                     </p>
                     {suggestion.daysUntilStockout < 30 && (
-                      <p className="text-xs text-destructive font-medium">
+                      <p className="text-xs text-destructive-text font-medium">
                         Esgota em {suggestion.daysUntilStockout} dias
                       </p>
                     )}
@@ -147,19 +147,19 @@ export default function MLRestockSuggestions({
           <div className="mt-4 pt-4 border-t bg-muted/30 rounded-lg p-3">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
               <div>
-                <p className="text-lg font-bold text-destructive">
+                <p className="text-lg font-bold text-destructive-text">
                   {restockData.summary.critical || 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Críticos</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-warning">
+                <p className="text-lg font-bold text-warning-text">
                   {restockData.summary.high || 0}
                 </p>
                 <p className="text-xs text-muted-foreground">Alta prioridade</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-warning">
+                <p className="text-lg font-bold text-warning-text">
                   {restockData.summary.medium || 0}
                 </p>
                 <p className="text-xs text-muted-foreground">
