@@ -183,3 +183,26 @@ A tela Fluxo de caixa já cobre a maior parte do pedido (saldo das contas, a lib
 ## Passos manuais do Lucas (Fase 3)
 - [ ] Nenhuma migração nesta fase.
 - [ ] Se quiser o calendário de liberações e o destaque de retenção também na tela de Caixa (não só na Visão geral do Financeiro), me avisar — não entrou nesta fase por tempo, não por dificuldade técnica.
+
+## FASE 4 — Anúncios e vínculos em escala
+
+Sem migração nesta fase.
+
+- **Sugestão por anúncio** (`src/modules/catalogo/sugestoes.ts`, novo, `GET /api/catalogo/vinculos/sugestoes`): pra cada anúncio ativo sem vínculo, sugere o produto mais provável — SKU do anúncio igual ao SKU do produto (confiança alta) ou nome do produto aparece dentro do título do anúncio (confiança baixa, nunca vem pré-marcada). A sugestão de "kit N" reaproveita `sugerirUnidadesPeloTitulo`, que já existia (Ciclo 12). **EAN não entra na sugestão**: o Mercado Livre não envia o GTIN do anúncio pra `ProdutoMercadoLivre` na sincronização atual (só título, preço, estoque) — comparar por EAN exigiria sincronizar um campo novo, fora do escopo desta fase.
+- **Ações em lote** (`POST /api/catalogo/vinculos/lote`, novo, até 200 itens): mesma `definirVinculoAnuncio` de sempre, chamada por item — um item com erro não derruba os outros, o resultado vem item por item. "Aplicar sugestões selecionadas" em `src/components/catalogo/SugestoesVinculoCard.tsx` (novo) usa esse endpoint; testado de ponta a ponta com o anúncio "Kit 2 ..." semeado desde a Fase 0 (o mesmo cenário que a suíte e2e já cobre) — sugestão correta (SKU + kit de 2), aplicada em 2 cliques, cartão de sugestões some sozinho quando não sobra nada pra sugerir.
+- **`/produtos/vincular` apagada e redirecionada** (`next.config.mjs → redirects()`) para `/mercado-livre/produtos` — conferido por grep que não tinha mais nenhum link apontando pra ela antes de apagar. **`/produtos/vinculos-pendentes` não foi tocada**: ela não é a mesma coisa que a tela de vínculo manual — é uma fila de revisão só dos vínculos automáticos (por SKU/título) ainda não confirmados por um humano, com suas próprias ações (confirmar/trocar/desfazer), já reaproveitando o `VincularAnuncioDialog` único e ainda linkada de verdade em `/produtos` ("Confirmar vínculos"). Fundir as duas telas em uma só com filtro "A confirmar", como o prompt sugere, é uma mudança de estrutura maior do que cabia no fim desta fase com a mesma qualidade do resto — documentando aqui pra decidir com calma, não cortando por pressa.
+- **Ficha do produto → "Vincular anúncio" no sentido inverso**: o botão da pendência "Produto ativo sem anúncio vinculado" levava pra `/produtos/vincular` (a página que acabei de apagar). Troquei para `/mercado-livre/produtos?stock=unlinked&q=<SKU>` — isso antes não existia, a tela não lia `stock`/`q` da URL (só `status`), então cadastrei a leitura desses dois parâmetros (consistente com o que `status` já fazia) em vez de inventar uma tela nova só pra isso.
+- **Não fiz nesta fase: variações do Mercado Livre** (`mlVariationId`, vínculo por variação com venda/envio de estoque na variação certa). O campo já existe no schema (preparado num ciclo anterior) mas a lógica de vínculo, venda e envio de estoque de hoje trabalha toda em cima do anúncio inteiro, não da variação — fazer isso direito toca sincronização, atribuição de venda e envio de estoque ao mesmo tempo, sem nenhum dado de variação no seed pra testar contra cenário real. É o item de maior risco da fase 4 e o que mais se beneficiaria de ser feito com calma, numa fase própria, não espremido no fim desta.
+
+### Verificação da Fase 4
+
+- `npx tsc --noEmit`, `npx next lint`, `npm test` limpos — 747 testes (5 novos, cobrindo SKU exato, nome no título, kit pelo título, SKU desconhecido e isolamento entre contas).
+- Sem migração — só conferido que `prisma migrate deploy` + seed continuam limpos num banco novo.
+- `next build` completo (o redirect novo em `next.config.mjs` não quebrou nada).
+- Revisão visual real no navegador: o anúncio "Kit 2 ..." semeado desde a Fase 0 apareceu sozinho em "Sugestões de vínculo" com a razão certa (SKU igual + kit de 2), "Aplicar selecionadas" vinculou de verdade e o cartão sumiu; `/produtos/vincular` redireciona pra `/mercado-livre/produtos` de verdade (conferido a URL final no navegador, não só o código).
+- Suíte `e2e/*.spec.ts` da Fase 0 rodada de novo de ponta a ponta — resultado registrado abaixo.
+
+## Passos manuais do Lucas (Fase 4)
+- [ ] Nenhuma migração nesta fase.
+- [ ] Se quiser que eu junte `/produtos/vinculos-pendentes` dentro de `/mercado-livre/produtos` como um filtro (em vez de duas telas), topo fazer numa próxima fase — não é difícil, só não cabia com segurança no fim desta.
+- [ ] Vínculo por variação do Mercado Livre não entrou — avisar se isso for prioridade pra abrir como fase própria.

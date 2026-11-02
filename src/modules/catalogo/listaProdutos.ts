@@ -117,7 +117,7 @@ const SELECT_LISTA = {
 
 type LinhaProduto = Prisma.ProdutoGetPayload<{ select: typeof SELECT_LISTA }>;
 
-function normalizarTexto(valor: string): string {
+export function normalizarTexto(valor: string): string {
   return valor
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")

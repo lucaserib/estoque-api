@@ -13,6 +13,7 @@ import { useMercadoLivreOptimized } from "@/hooks/useMercadoLivreOptimized";
 import MLProductsFilters from "@/app/components/MercadoLivre/MLProductsFilters";
 import MLProductsTable from "@/app/components/MercadoLivre/MLProductsTable";
 import { VincularAnuncioDialog } from "@/components/catalogo/VincularAnuncioDialog";
+import { SugestoesVinculoCard } from "@/components/catalogo/SugestoesVinculoCard";
 
 interface MLProduct {
   id: string;
@@ -82,12 +83,12 @@ function MercadoLivreProdutosContent() {
   const [filteredProducts, setFilteredProducts] = useState<MLProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(searchParams.get("q") || "");
   const [statusFilter, setStatusFilter] = useState<string>(
     searchParams.get("status") || "all"
   );
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
-  const [stockFilter, setStockFilter] = useState<string>("all");
+  const [stockFilter, setStockFilter] = useState<string>(searchParams.get("stock") || "all");
   const [sortBy, setSortBy] = useState<string>("sales"); // ✅ PADRÃO: Mais vendidos
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -381,6 +382,8 @@ function MercadoLivreProdutosContent() {
           </Button>
         }
       />
+
+      <SugestoesVinculoCard recarregarGatilho={lastUpdate} onAplicado={() => { loadProducts(); loadStatusCounts(); }} />
 
       {/* Controles e Filtros */}
       <Card>

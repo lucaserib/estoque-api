@@ -388,7 +388,7 @@ export default function ProdutoFichaPage() {
                       setShowStockModal(true);
                       loadStockDetails();
                     } else if (p.codigo === "SEM_VINCULO_ML") {
-                      router.push("/produtos/vincular");
+                      router.push(`/mercado-livre/produtos?stock=unlinked&q=${encodeURIComponent(produto.sku)}`);
                     } else if (p.codigo === "VENDA_INCOMPLETA") {
                       router.push(`/financeiro/vendas?produtoId=${params.id}&soIncompletas=true`);
                     } else {

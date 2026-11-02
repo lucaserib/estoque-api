@@ -2,6 +2,13 @@ import { withSentryConfig } from "@sentry/nextjs";
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async redirects() {
+    return [
+      // "Anúncios e vínculos" (/mercado-livre/produtos) é a única tela de vínculo manual —
+      // esta não tinha mais nenhum link apontando para ela (conferido com grep).
+      { source: "/produtos/vincular", destination: "/mercado-livre/produtos", permanent: false },
+    ];
+  },
   images: {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
