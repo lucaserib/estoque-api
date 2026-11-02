@@ -334,7 +334,9 @@ export async function GET(request: NextRequest) {
       "analytics"
     );
 
-    return NextResponse.json(resumo);
+    return NextResponse.json(resumo, {
+      headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" },
+    });
   } catch (error) {
     console.error("[DASHBOARD_RESUMO] Erro:", error);
     return NextResponse.json(

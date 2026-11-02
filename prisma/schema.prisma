@@ -826,7 +826,7 @@ model VendaCanal {
 
   @@unique([userId, canal, pedidoExternoId])
   @@index([userId, dataVenda])
-  @@index([userId, dataLiberacao])
+  @@index([userId, dataLiberacao, status])
   @@index([contaCanalId, enriquecidoEm])
   @@map("vendas_canal")
 }
@@ -1051,6 +1051,7 @@ model CobrancaCanal {
 
   @@unique([userId, canal, detalheExternoId])
   @@index([userId, mesReferencia])
+  @@index([userId, data, coberturaPedido])
   @@map("cobrancas_canal")
 }
 

@@ -29,7 +29,13 @@ import {
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import { ProximoPassoCard } from "@/components/onboarding/ProximoPassoCard";
 import { HojeCard } from "@/components/dashboard/HojeCard";
-import EvolutionChart from "@/app/(root)/mercado-livre/vendas/components/EvolutionChart";
+import dynamic from "next/dynamic";
+
+// Recharts só entra no bundle quando o gráfico realmente renderiza.
+const EvolutionChart = dynamic(
+  () => import("@/app/(root)/mercado-livre/vendas/components/EvolutionChart"),
+  { ssr: false, loading: () => <Skeleton className="h-[280px] rounded-md" /> }
+);
 import { formatBRL, formatNumberBR, formatRelativeTime } from "@/lib/format";
 import { OPCOES_PERIODO_RAPIDO } from "@/modules/financeiro/dominio/periodo";
 

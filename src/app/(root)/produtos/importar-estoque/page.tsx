@@ -2,7 +2,6 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import * as XLSX from "xlsx";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
@@ -148,6 +147,7 @@ export default function ImportarEstoquePage() {
 
     try {
       const buffer = await file.arrayBuffer();
+      const XLSX = await import("xlsx");
       const workbook = XLSX.read(buffer, { type: "array" });
       const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(

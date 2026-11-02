@@ -4,8 +4,8 @@
  * que eles estejam disponíveis para uso.
  */
 
-// Importação para tipagem
-import { jsPDF } from "jspdf";
+// Importação só de tipo — não traz o jsPDF pro bundle de quem importa este módulo.
+import type { jsPDF } from "jspdf";
 
 /**
  * Verifica se estamos em um ambiente onde o jsPDF pode ser carregado

@@ -1,23 +1,17 @@
 // src/utils/excelExport.ts
-import * as XLSX from "xlsx";
 
-// Função genérica para exportar dados para Excel
-export const exportToExcel = <T extends Record<string, unknown>>(
+// xlsx só carrega quando alguém exporta de verdade — evita engordar o bundle
+// de toda tela que importa este módulo.
+export const exportToExcel = async <T extends Record<string, unknown>>(
   data: T[],
   fileName: string,
   sheetName: string = "Sheet1"
-): void => {
+): Promise<void> => {
   try {
-    // Criar uma planilha
+    const XLSX = await import("xlsx");
     const worksheet = XLSX.utils.json_to_sheet(data);
-
-    // Criar um livro
     const workbook = XLSX.utils.book_new();
-
-    // Adicionar a planilha ao livro
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-
-    // Gerar o arquivo e iniciar o download
     XLSX.writeFile(workbook, `${fileName}.xlsx`);
   } catch (error) {
     console.error("Erro ao exportar para Excel:", error);

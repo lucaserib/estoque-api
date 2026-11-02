@@ -36,7 +36,13 @@ import { exportToExcel } from "@/utils/excelExport";
 import { loadPDF, addTableToPDF, canUsePDF } from "@/utils/pdfHelper";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
 import { podeEditar } from "@/lib/permissoes";
-import { CascataResultado } from "../components/CascataResultado";
+import dynamic from "next/dynamic";
+
+// Recharts só entra no bundle quando a cascata realmente renderiza.
+const CascataResultado = dynamic(
+  () => import("../components/CascataResultado").then((mod) => mod.CascataResultado),
+  { ssr: false, loading: () => <Skeleton className="h-[280px] rounded-md" /> }
+);
 import { BotaoAtualizarFinanceiro } from "../components/BotaoAtualizarFinanceiro";
 
 interface ItemDespesaOperacional {

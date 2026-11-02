@@ -444,6 +444,14 @@ async function seedE2E() {
     ? await prisma.user.update({ where: { email }, data: { password: hashed } })
     : await prisma.user.create({ data: { email, name: "E2E Skubo", password: hashed } });
 
+  // Conta "pronta pra testar", não "primeiro acesso": sem isso o tour em slides
+  // abre sozinho a cada login e corre contra as ações do teste (race condition).
+  await prisma.onboardingProgresso.upsert({
+    where: { userId: usuario.id },
+    update: { tourVisto: true },
+    create: { userId: usuario.id, tourVisto: true },
+  });
+
   await prisma.vendaCanal.deleteMany({ where: { userId: usuario.id } });
   await prisma.cobrancaCanal.deleteMany({ where: { userId: usuario.id } });
   await prisma.produtoMercadoLivre.deleteMany({
