@@ -23,6 +23,7 @@ interface MLAccount {
   id: string;
   isActive: boolean;
   expiresAt: string;
+  ultimoWebhookRecebidoEm?: string | null;
   userInfo?: {
     nickname?: string;
     email?: string;
@@ -41,6 +42,7 @@ interface BlingAccount {
   ultimaSincronizacaoEstoque: string | null;
   webhooksRecebidos24h: number;
   webhooksComErro24h: number;
+  ultimoWebhookRecebidoEm: string | null;
 }
 
 interface HistoricoItem {
@@ -331,6 +333,16 @@ export default function IntegracoesPage() {
     );
   }
 
+  const origem = typeof window !== "undefined" ? window.location.origin : "";
+  const copiarUrl = async (url: string, rotulo: string) => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(`URL de ${rotulo} copiada`);
+    } catch {
+      toast.error("Não foi possível copiar — selecione e copie manualmente.");
+    }
+  };
+
   return (
     <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
       <PageHeader
@@ -338,6 +350,28 @@ export default function IntegracoesPage() {
         title="Integrações"
         subtitle="Conexões ativas, validade dos tokens e histórico das últimas sincronizações."
       />
+
+      <SectionCard
+        title="URLs de notificação"
+        description="Cadastre estas URLs no painel de cada plataforma para receber avisos de venda e estoque na hora, sem esperar a próxima sincronização."
+      >
+        <div className="space-y-3">
+          {[
+            { rotulo: "Mercado Livre", url: `${origem}/api/mercadolivre/webhook` },
+            { rotulo: "Bling", url: `${origem}/api/bling/webhook` },
+          ].map((item) => (
+            <div key={item.rotulo} className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border p-3">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground">{item.rotulo}</p>
+                <p className="truncate font-mono text-xs text-muted-foreground">{item.url}</p>
+              </div>
+              <Button size="sm" variant="outline" onClick={() => copiarUrl(item.url, item.rotulo)}>
+                Copiar
+              </Button>
+            </div>
+          ))}
+        </div>
+      </SectionCard>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
         {/* Mercado Livre */}
@@ -373,10 +407,25 @@ export default function IntegracoesPage() {
                   {new Date(mlAccount.expiresAt).toLocaleDateString("pt-BR")}
                 </span>
               </div>
-              <div className="flex justify-between gap-4 py-2.5 text-sm">
+              <div className="flex justify-between gap-4 border-b border-divider py-2.5 text-sm">
                 <span className="text-muted-foreground">Última sincronização</span>
                 <span className="font-medium text-foreground">
                   {lastMLSync ? new Date(lastMLSync.quando).toLocaleString("pt-BR") : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Último webhook recebido</span>
+                <span
+                  className={`font-medium ${
+                    !mlAccount.ultimoWebhookRecebidoEm ||
+                    Date.now() - new Date(mlAccount.ultimoWebhookRecebidoEm).getTime() > 24 * 60 * 60 * 1000
+                      ? "text-warning-text"
+                      : "text-foreground"
+                  }`}
+                >
+                  {mlAccount.ultimoWebhookRecebidoEm
+                    ? new Date(mlAccount.ultimoWebhookRecebidoEm).toLocaleString("pt-BR")
+                    : "Nunca"}
                 </span>
               </div>
             </div>
@@ -491,6 +540,21 @@ export default function IntegracoesPage() {
                       {reprocessandoWebhooks ? "Reprocessando…" : "Reprocessar"}
                     </Button>
                   )}
+                </span>
+              </div>
+              <div className="flex justify-between gap-4 py-2.5 text-sm">
+                <span className="text-muted-foreground">Último webhook recebido</span>
+                <span
+                  className={`font-medium ${
+                    !blingAccount.ultimoWebhookRecebidoEm ||
+                    Date.now() - new Date(blingAccount.ultimoWebhookRecebidoEm).getTime() > 24 * 60 * 60 * 1000
+                      ? "text-warning-text"
+                      : "text-foreground"
+                  }`}
+                >
+                  {blingAccount.ultimoWebhookRecebidoEm
+                    ? new Date(blingAccount.ultimoWebhookRecebidoEm).toLocaleString("pt-BR")
+                    : "Nunca"}
                 </span>
               </div>
             </div>

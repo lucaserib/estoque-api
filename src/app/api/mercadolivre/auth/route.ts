@@ -51,6 +51,13 @@ export async function GET(request: NextRequest) {
         accounts.map(async (account) => {
           const { accessToken, refreshToken, ...accountSemTokens } = account;
 
+          const ultimoWebhook = await prisma.mercadoLivreWebhook.findFirst({
+            where: { mercadoLivreAccountId: account.id },
+            orderBy: { receivedAt: "desc" },
+            select: { receivedAt: true },
+          });
+          const ultimoWebhookRecebidoEm = ultimoWebhook?.receivedAt.toISOString() ?? null;
+
           try {
             const userInfo = await MercadoLivreService.getUserInfo(
               accessToken
@@ -58,6 +65,7 @@ export async function GET(request: NextRequest) {
 
             return {
               ...accountSemTokens,
+              ultimoWebhookRecebidoEm,
               userInfo: {
                 id: userInfo.id,
                 nickname: userInfo.nickname,
@@ -85,7 +93,7 @@ export async function GET(request: NextRequest) {
               `[ML_AUTH] Erro ao buscar detalhes da conta ${account.id}:`,
               error
             );
-            return accountSemTokens;
+            return { ...accountSemTokens, ultimoWebhookRecebidoEm };
           }
         })
       );

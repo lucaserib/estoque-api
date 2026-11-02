@@ -18,6 +18,7 @@ export interface BlingAccountSummary {
   ultimaSincronizacaoEstoque: string | null;
   webhooksRecebidos24h: number;
   webhooksComErro24h: number;
+  ultimoWebhookRecebidoEm: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -53,12 +54,19 @@ export async function GET(request: NextRequest) {
 
       const summaries: BlingAccountSummary[] = await Promise.all(
         accounts.map(async ({ syncHistories, accessToken, blingCompanyId, ...account }) => {
-          const webhooks = blingCompanyId
-            ? await prisma.blingWebhookEvent.findMany({
-                where: { companyId: blingCompanyId, recebidoEm: { gte: desde24h } },
-                select: { erro: true },
-              })
-            : [];
+          const [webhooks, ultimoWebhook] = blingCompanyId
+            ? await Promise.all([
+                prisma.blingWebhookEvent.findMany({
+                  where: { companyId: blingCompanyId, recebidoEm: { gte: desde24h } },
+                  select: { erro: true },
+                }),
+                prisma.blingWebhookEvent.findFirst({
+                  where: { companyId: blingCompanyId },
+                  orderBy: { recebidoEm: "desc" },
+                  select: { recebidoEm: true },
+                }),
+              ])
+            : [[], null];
 
           return {
             ...account,
@@ -75,6 +83,7 @@ export async function GET(request: NextRequest) {
             tokenFormato: BlingService.detectTokenFormat(accessToken),
             webhooksRecebidos24h: webhooks.length,
             webhooksComErro24h: webhooks.filter((w) => w.erro).length,
+            ultimoWebhookRecebidoEm: ultimoWebhook?.recebidoEm.toISOString() ?? null,
           };
         })
       );
