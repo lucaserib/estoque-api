@@ -9,6 +9,7 @@ import {
   ChevronDown,
   User,
   HelpCircle,
+  Smartphone,
 } from "lucide-react";
 import { useLayout } from "../context/LayoutContext";
 import Link from "next/link";
@@ -117,6 +118,14 @@ const Navbar = () => {
                   <HelpCircle className="h-4 w-4" />
                   Ajuda — Ver tour
                 </button>
+                <Link
+                  href="/ajuda/celular"
+                  className="flex items-center gap-2 px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  <Smartphone className="h-4 w-4" />
+                  Instalar no celular
+                </Link>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   className="flex w-full items-center gap-2 rounded-b-lg px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"

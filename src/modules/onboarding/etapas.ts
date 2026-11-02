@@ -303,7 +303,7 @@ async function etapaInstalarCelular(contaId: string): Promise<EtapaOnboarding> {
     titulo: "Instalar no celular",
     porque: "Com o Skubo instalado, dá pra ver o resultado do dia sem abrir o navegador.",
     status: confirmado ? "feito" : "pendente",
-    acao: { rotulo: "Ver como instalar", href: "/configuracoes-gerais?instalar=1" },
+    acao: { rotulo: "Ver como instalar", href: "/ajuda/celular" },
     minutosEstimados: 1,
     pulavel: true,
   };

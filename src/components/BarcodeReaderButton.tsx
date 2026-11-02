@@ -57,6 +57,7 @@ const BarcodeReaderButton = ({
         variant={buttonVariant}
         size={size}
         onClick={() => setIsOpen(true)}
+        aria-label={buttonLabel || dialogTitle}
         className={`flex items-center gap-2 ${className}`}
       >
         <Barcode className="h-4 w-4" />

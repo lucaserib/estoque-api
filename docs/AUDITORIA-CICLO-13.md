@@ -298,3 +298,46 @@ A página legada `/configuracoes` (a mesma "Integração Mercado Livre" apontada
 - [ ] O tour em slides abre pra **qualquer conta nova de verdade** toda vez que `OnboardingProgresso` não existe — isso é o comportamento certo e pretendido pra onboarding real; só a conta e2e precisava deixar de ver como "primeiro acesso", e já está ajustada no seed. Nada a corrigir em produção.
 - [ ] TanStack Query e a migração de `useEffect`/fetch manual pro app inteiro ficaram de fora — avisar se isso virar prioridade pra abrir como fase própria, com tempo pra migrar e testar tela por tela.
 - [ ] `MercadoLivreAutoSync` + `MercadoLivreSmartSync` rodando juntos em `/configuracoes` — vale conferir se os dois fazem sentido juntos ou se um deles é sobra; vou olhar com calma na Fase 8.
+
+## FASE 7 — Celular de verdade
+
+### Área segura (notch / home indicator)
+
+`BottomNav` ganhou `padding-bottom: env(safe-area-inset-bottom)` e o `<main>` do `DashboardWrapper` trocou `pb-24` fixo por `pb-[calc(6rem+env(safe-area-inset-bottom))]` (sintaxe de valor arbitrário do Tailwind, não `style` inline — um `style` inline aplicaria o padding em **todos** os breakpoints, inclusive desktop, e quebraria o `md:pb-7` que já existia). Em telas sem notch `env(...)` resolve pra `0px`, então não muda nada fora do iPhone com home indicator.
+
+### Instalar no celular (PWA)
+
+- `/ajuda/celular` (nova): guia de instalação com detecção de plataforma (iPhone/Safari vs Android/Chrome), passo a passo próprio pra cada um, e um botão "Já instalei" que marca a etapa 12 do onboarding (`marcador: "12_instalado"`) via `/api/onboarding/pular` antes de voltar pro fluxo de `/comecar`.
+- `src/modules/onboarding/etapas.ts`: a etapa 12 agora aponta pra `/ajuda/celular` em vez de `/configuracoes-gerais?instalar=1` (essa rota nunca teve essa UI).
+- `InstalarCelularBanner` (novo): convite discreto, fixo, só em `window.innerWidth <= 767`, só se `display-mode: standalone`/`navigator.standalone` disserem que ainda não foi instalado, e só na primeira vez (guardado em `localStorage`; falha de storage — modo privado — não quebra a tela, só não mostra o banner). Montado uma vez em `DashboardWrapper`, então cobre o app inteiro.
+- Navbar: item "Instalar no celular" no menu do usuário, linkando pra `/ajuda/celular` — acesso permanente, não só o banner da primeira visita.
+
+**Achado durante a verificação visual (não estava no plano, corrigido nesta fase)**: `InstalarCelularBanner` e o novo `FloatingActionButton` (abaixo) ocupavam exatamente a mesma faixa (`bottom-20`, `z-20`) — numa tela com os dois (ex.: `/produtos` no primeiro acesso mobile), o banner cobria o botão "+" por cima. Peguei isso só numa captura de tela real, não no `tsc`/lint — subi o banner pra `bottom-36`, ficando acima do botão flutuante em vez de em cima dele. Também notei que o banner continuava aparecendo em cima da própria página `/ajuda/celular` (redundante — a página inteira já é o convite); `InstalarCelularBanner` agora lê `usePathname()` e não se mostra nessa rota.
+
+### Botão de ação flutuante (FAB)
+
+`FloatingActionButton` (novo, `src/components/ui/floating-action-button.tsx`): botão "+" fixo, `md:hidden` (só mobile), com o mesmo `env(safe-area-inset-bottom)` aplicado via `marginBottom`. Ligado às duas telas de maior uso num botão só e sem menu pra abrir a ação principal: "Novo produto" em `/produtos`, "Novo pedido" em `/gestao-pedidos` (escondido enquanto o formulário de novo pedido já está aberto, pra não sobrepor o próprio formulário).
+
+### Teclado numérico (inputMode)
+
+`src/components/ui/input.tsx`: `inputMode` agora tem um padrão inteligente — `"decimal"` quando `type="number"` e nada foi passado explicitamente, preservando qualquer `inputMode` que a tela já definisse na mão. Como é o componente `Input` compartilhado, isso cobre todos os campos numéricos do app (preço, custo, quantidade, etc.) sem precisar tocar tela por tela — no celular, o teclado que abre já é o numérico com vírgula/ponto, em vez do teclado de texto completo.
+
+### Scanner de código de barras acessível pelo topo
+
+O scanner (`BarcodeReaderButton` + `BarCodeReader`) já existia, mas só dentro de dois diálogos específicos (`NovaSaidaDialog`, `PedidoConfirmDialog`) — sem nenhuma entrada no topo do app, como o prompt pedia. Adicionei um ícone de scanner em `CommandPalette` (ao lado da busca, na Navbar, visível em qualquer tela incluindo mobile — a busca de texto em si só aparece a partir de `sm:`). Ao escanear, o código cai direto no campo de busca existente (`setBusca(codigo)`) e abre o diálogo de resultados (`setOpen(true)`) — reaproveita a busca por SKU/EAN que `/api/busca` já faz, sem rota nova.
+
+**Achado durante a verificação visual**: o botão ficou sem nome acessível (`buttonLabel=""` pro ícone não ter texto ao lado, mas `BarcodeReaderButton` não tinha `aria-label` nenhum no botão interno). Adicionei `aria-label={buttonLabel || dialogTitle}` no componente — corrige esse uso novo e não muda nada nos dois usos antigos (que já tinham texto visível).
+
+### Verificação da Fase 7
+
+- `npx tsc --noEmit`, `npx next lint`, `npm test` (747 testes) limpos.
+- Banco novo do zero: `prisma migrate deploy` sem migração nova (fase só mexeu em UI) — `prisma migrate diff` confirmou vazio, como esperado.
+- `next build` completo, sem erros.
+- Verificação visual real via Playwright (script avulso, não um teste do repo) logado como usuário e2e, capturando telas mobile (390×844) e desktop (1440×900): confirmei o padding de área segura no `BottomNav`, o banner de instalação e o FAB coexistindo sem sobreposição em `/produtos` e `/gestao-pedidos`, a página `/ajuda/celular` renderizando os dois guias (iPhone/Android) sem o banner redundante por cima, o ícone de scanner visível e funcional na Navbar (desktop e mobile), e o FAB corretamente ausente em telas `md:` (desktop).
+- Suíte `e2e/*.spec.ts` da Fase 0 rodada de novo de ponta a ponta: **12 passaram, 3 pulados, 0 falharam** (~23s) — mesmo padrão da Fase 6, sem regressão.
+
+## Passos manuais do Lucas (Fase 7)
+- [ ] Sem migração nesta fase — nada de banco pra rodar além do deploy normal.
+- [ ] O convite de instalação (banner) só aparece pra quem acessa pelo navegador do celular e ainda não instalou; quem já usa como PWA instalado nunca vê. Se quiser forçar reaparecer pra testar, é só limpar `localStorage` (chave `skubo-convite-instalar-visto`) no celular.
+- [ ] O item "Instalar no celular" no menu do usuário (desktop) leva pro mesmo guia — é só uma forma de redescobrir sem depender do banner da primeira visita.
+- [ ] Retrofit de tabelas em card para mobile (item citado no plano mestre) não entrou como trabalho novo nesta fase — as tabelas existentes já rolam horizontalmente dentro de um contêiner (`overflow-auto`) e os testes e2e que conferem "sem rolagem horizontal da página" continuam passando; considerei isso adequado por ora. Se alguma tela específica incomodar no uso real, melhor vir como ajuste pontual dessa tela do que um retrofit genérico.

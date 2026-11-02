@@ -17,6 +17,7 @@ import { DatePickerWithRange } from "@/components/ui/DatePickerWithRange";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
+import { FloatingActionButton } from "@/components/ui/floating-action-button";
 
 interface PedidoFilter {
   dateRange: DateRange | undefined;
@@ -93,6 +94,10 @@ const GestaoPedidos = () => {
           </Button>
         }
       />
+
+      {!isFormOpen && (
+        <FloatingActionButton label="Novo pedido" onClick={() => setIsFormOpen(true)} />
+      )}
 
       {isFormOpen ? (
         <Card className="border border-primary/30 shadow-card overflow-hidden">

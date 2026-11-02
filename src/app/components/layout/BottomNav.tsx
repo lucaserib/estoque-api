@@ -27,7 +27,10 @@ const BottomNav = () => {
   ];
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-stretch border-t border-border bg-card md:hidden">
+    <nav
+      className="fixed inset-x-0 bottom-0 z-30 flex h-16 items-stretch border-t border-border bg-card md:hidden"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       {itens.map((item) => {
         const ativo = rotaAtiva(pathname, item.href);
         const Icon = item.icon;

@@ -26,6 +26,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
+import { FloatingActionButton } from "@/components/ui/floating-action-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -130,6 +131,7 @@ function ProdutosPageContent() {
 
   return (
     <div className="container mx-auto max-w-[1400px] space-y-6 p-4 sm:p-6">
+      <FloatingActionButton label="Novo produto" onClick={() => setCadastroManual(true)} />
       <PageHeader
         title="Produtos"
         subtitle={`${contagens.produtos} produtos · ${contagens.kits} kits ativos`}

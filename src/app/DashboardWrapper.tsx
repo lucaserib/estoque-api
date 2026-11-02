@@ -8,6 +8,7 @@ import { useLayout } from "./context/LayoutContext";
 import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { TourSlides } from "@/components/onboarding/TourSlides";
+import { InstalarCelularBanner } from "@/components/InstalarCelularBanner";
 import { EVENTO_ABRIR_TOUR } from "@/lib/eventosCliente";
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
@@ -56,7 +57,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       <Sidebar />
 
       <main
-        className={`flex min-w-0 flex-col w-full h-full py-7 px-4 pb-24 md:px-6 md:pb-7 bg-background transition-[padding] duration-300 ${
+        className={`flex min-w-0 flex-col w-full h-full py-7 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-6 md:pb-7 bg-background transition-[padding] duration-300 ${
           isSidebarCollapsed ? "md:pl-24" : "md:pl-72"
         }`}
       >
@@ -65,6 +66,7 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       </main>
 
       <BottomNav />
+      <InstalarCelularBanner />
 
       <TourSlides open={tourAberto} onOpenChange={setTourAberto} onConcluido={marcarTourVisto} />
     </div>

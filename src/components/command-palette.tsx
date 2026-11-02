@@ -18,6 +18,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import BarcodeReaderButton from "@/components/BarcodeReaderButton";
 
 interface ResultadoBusca {
   tipo: "produto" | "pedido" | "anuncio";
@@ -105,6 +106,18 @@ export function CommandPalette() {
 
   return (
     <>
+      <BarcodeReaderButton
+        buttonLabel=""
+        buttonVariant="ghost"
+        size="icon"
+        dialogTitle="Ler código de barras"
+        className="h-9 w-9 shrink-0 rounded-full border border-border bg-card p-0 text-fg2 hover:bg-muted sm:h-[34px] sm:w-[34px]"
+        onScan={(codigo) => {
+          setBusca(codigo);
+          setOpen(true);
+        }}
+      />
+
       <button
         type="button"
         data-tour="busca"
