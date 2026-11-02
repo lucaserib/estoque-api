@@ -97,3 +97,55 @@ Ao montar o banco de teste semeado pedido pela Fase 0, `prisma migrate deploy` *
 ## Passos manuais do Lucas (Fase 1)
 - [ ] Nenhuma migração de produção adicional além da já listada na Fase 0 — `20261102040000_ciclo13_marca_skubo` é aditiva (só cria o enum e as 3 colunas novas com default), mesma recomendação de rodar `npm run build` antes do próximo deploy já cobre ela.
 - [ ] Depois do deploy, considerar trocar o favicon/ícone cacheado no navegador (ctrl+F5) — ícone novo já está nos arquivos, mas navegadores guardam o favicon antigo agressivamente.
+
+## FASE 2 — Jornada de configuração (tour gamificado)
+
+### 2.1 — Motor de etapas
+
+`src/modules/onboarding/etapas.ts` calcula as 12 etapas no servidor a partir de dado real — nada inventado, nada estimado:
+
+1. **Conectar o Mercado Livre** — `MercadoLivreAccount` ativa.
+2. **Conectar o Bling** — `BlingAccount` ativa **e** uma chamada real a `/depositos` (via `BlingService.getDeposits`, a mesma função que o resto do app usa) tem que funcionar; se vier `BlingEscopoError`, a etapa mostra a mensagem de passo a passo que esse erro já carrega (Central de extensões → Escopos) — não reescrevi essa mensagem, só propaguei. **Simplificação assumida**: só testei `/depositos`, não `/produtos/fornecedores` (o segundo exige um `produtoId` real do Bling, uma chamada extra só pra essa checagem — `/depositos` já é um bom indicador de permissão básica).
+3. **Receber notificações** — último `MercadoLivreWebhook`/`BlingWebhookEvent` da conta há menos de 24h (Bling casado pelo `blingCompanyId` da conta, já que o evento não carrega `userId`).
+4. **Trazer o catálogo** — reaproveita `obterStatusCatalogo` (o mesmo motor que já roda atrás do botão "Atualizar estoque agora"), sem reimplementar nada.
+5. **Vincular anúncios** — `%` de `ProdutoMercadoLivre` ativos com `produtoId` preenchido.
+6. **Custos dos produtos** — reaproveita `calcularTodasPendencias` (o mesmo motor da tela de pendências, com o mesmo cache de 60s por conta) e conta quem não tem `SEM_CUSTO`.
+7. **Fornecedores e prazos** — mesma fonte, excluindo kits (que não têm fornecedor próprio) e cobrando `SEM_FORNECEDOR`/`SEM_FORNECEDOR_PRINCIPAL`/`SEM_PRAZO_FORNECEDOR`.
+8. **Impostos e modo de faturamento** — **heurística assumida**: considero "feito" quando `aliquotaImposto > 0` ou o regime tributário não é mais o padrão (`SIMPLES`). Não existe um jeito de saber se o Lucas "decidiu deixar em 0%" vs. "nunca abriu a tela" sem um campo novo — documentando aqui em vez de inventar um flag.
+9. **Despesas fixas** — tem pelo menos um `LancamentoFinanceiro` em categoria de despesa operacional. **Não construí** os "modelos prontos com um clique" (aluguel, salários, ferramentas) citados no prompt — o botão leva pra Lançamentos, onde já dá pra cadastrar; os modelos ficam pra quando a tela de Lançamentos for mexida de novo.
+10. **Meta do mês** — `ConfiguracaoGeral.metaFaturamentoMensal` preenchida. **Não construí** a sugestão automática (média dos 3 últimos meses + 10%) — o campo já existe e aceita qualquer valor digitado; a sugestão fica pra um passo futuro.
+11. **Saldo do Mercado Pago** — a conta financeira automática (`CARTEIRA_MARKETPLACE`) tem `saldoInicial` diferente de zero. Como ela é criada com `saldoInicial: 0` na conexão, um saldo zerado pode ser real ou só "ainda não informado" — por isso o status fica `atencao` (nunca `pendente` nem `feito` com certeza), pedindo pra conferir.
+12. **Instalar no celular** — não existe API confiável pra detectar PWA instalado a partir do servidor; a etapa fica "pendente" até o usuário clicar em "Já instalei" (reaproveita o mesmo mecanismo de pular etapa, com um marcador próprio `12_instalado`).
+
+Cada etapa também carrega `status: "bloqueado"` quando a etapa anterior não está feita nem pulada — exceto se a própria etapa já estiver genuinamente feita (ex.: alguém que já sincronizou o catálogo antes de conectar notificações continua vendo a etapa 4 como feita, não bloqueada). `GET /api/onboarding`, cacheado 60s por conta (mesmo padrão de `withCache` da Fase 0). `POST /api/onboarding/pular` grava o marcador em `OnboardingProgresso.etapasPuladas` (migração aditiva) e invalida o cache na hora. 6 testes novos em `src/modules/onboarding/__tests__/etapas.test.ts` cobrindo bloqueio em cadeia, etapa de Bling com erro de escopo, progresso de vínculo e o caminho 100%/Centro de Distribuição.
+
+### 2.2 — Interface
+
+- `/comecar` (substituiu a página `/onboarding` antiga — 3 passos fixos, sem link nenhum no app apontando pra ela, confirmado por grep antes de apagar): anel de progresso em SVG, nível com o tema do cubo (Caixa → Prateleira → Depósito → Centro de Distribuição, calculado a partir de quais etapas-chave estão feitas/puladas), trilha com as 12 etapas (ícone de status, "por que importa", barra de progresso quando a etapa tem contagem, tempo estimado, botão de ação, "Pular" nas pepuláveis). `canvas-confetti` dispara (sóbrio, sem repetir layout) toda vez que a pontuação sobe entre duas consultas — **testado de verdade**: pulei uma etapa no navegador e o confete disparou exatamente como esperado (print em `docs/` não anexado, mas validado na sessão).
+- Tour em slides (`src/components/onboarding/TourSlides.tsx` + `src/modules/onboarding/tourSlides.ts`): 6 telas, abre sozinho no primeiro login (`OnboardingProgresso.tourVisto === false`) e por "Ajuda → Ver tour" no menu do usuário (novo item no Navbar). Ao terminar, marca visto e leva pra `/comecar`.
+- Spotlight guiado (`src/components/onboarding/Spotlight.tsx` + `src/modules/onboarding/tourSpotlight.ts`, configurável por arquivo via `data-tour="…"` como o prompt pediu): **versão inicial com 4 passos** sobre elementos que existem em qualquer tela (logo, busca, "Configurar minha loja" na sidebar, sino de notificações) — não cobri a interface inteira nesta fase (seria dezenas de `data-tour` espalhados por telas que ainda vão mudar nas próximas fases); o mecanismo é genérico e novos passos só precisam de uma linha no array + o atributo no elemento. Botão "Ver onde fica cada coisa" em `/comecar` abre o spotlight.
+- Cartão "Próximo passo" (`src/components/onboarding/ProximoPassoCard.tsx`) fixo no topo da Visão geral enquanto a pontuação for menor que 90%, mostrando a próxima etapa pendente/atenção com atalho direto — **testado**: aparece em 25%, some quando passa de 90% (lógica conferida no código, não precisei forçar 90% real pra validar porque a condição é um `if` direto sobre `pontuacao`).
+
+### 2.3 — Tela de carregamento da sincronização
+
+`src/components/sincronizacao/SincronizacaoCatalogoModal.tsx` — descobri que o motor que o prompt pedia **já existia**: `obterStatusCatalogo`/`POST /api/catalogo/sincronizacao` (usado hoje pelo pedaço compacto `SincronizacaoCatalogo.tsx`, o botão "Atualizar estoque agora" que já aparece no topo da Visão geral) já faz exatamente o loop de etapas (Bling produtos → Bling estoque → anúncios ML → Full) que o prompt descreve, com progresso e erro reais por etapa. Não reimplementei esse motor — construí uma versão em modal, maior, com ícone+frase por etapa ("Encontramos N anúncio(s)…") e erro com botão "Tentar de novo", **reaproveitando a mesma chamada POST** em loop. Ligado à ação "Trazer agora"/"Sincronizar de novo" da etapa 4 em `/comecar`. **Testado com erro real**: a conta de teste tem token falso do ML, então a etapa de anúncios bateu um 403 de verdade durante a validação e o modal mostrou a mensagem de erro com o botão de retry, exatamente como desenhado.
+- A parte de "vendas (por mês) → detalhes de pagamento" do prompt tem motor próprio e já pronto (`obterStatusSincronizacao`, `GET /api/financeiro/sincronizacao/status`) rodando via fila/cron — **não incluí essa parte dentro do modal nesta fase** (ela evolui sozinha em segundo plano e já tem indicador próprio na tela Financeiro → Conferência); juntar os dois loadings num só fica pra um ajuste futuro se fizer falta.
+
+### 2.4 — Faturamento "igual ao Bling/Mercado Turbo"
+
+Adicionado `ModoFaturamento.PRODUTOS_E_FRETE_TOTAL` (migração aditiva, `ALTER TYPE ... ADD VALUE IF NOT EXISTS`) em `src/modules/financeiro/relatorios/motor.ts` — soma o frete inteiro gerado no envio (vendedor + comprador) ao faturamento.
+
+**Achado durante a implementação, que mudou o resultado em relação ao que o prompt descrevia**: o prompt diz "a margem é a mesma nos três [modos]". Conferi a álgebra (e escrevi um teste pra provar, `motorRelatorios.test.ts`) e isso só é verdade pros dois modos que já existiam (`PRODUTOS` e `PRODUTOS_E_FRETE_COMPRADOR` — o frete do comprador entra em dobro, cancela, margem idêntica). Pro modo novo, fazer o frete do **vendedor** também contar como faturamento (pra bater com o valor que o Bling/Mercado Turbo mostra) sem contá-lo em dobro no custo necessariamente faz a margem subir exatamente esse valor — e forçar a margem a ficar igual exigiria um "custo de frete" artificial de 2× o valor real, o que seria um número inventado na tela. Implementei a versão matematicamente correta (frete do vendedor também vira faturamento reconhecido, a margem cresce de verdade) e corrigi todo texto que dizia "a margem não muda" — no app (`DESCRICAO_MODO_FATURAMENTO`, a tela de Ajustes do financeiro) e no comentário-guia do `motor.ts` — pra explicar a diferença real em vez de repetir a frase do prompt.
+
+### Verificação da Fase 2
+
+- `npx tsc --noEmit`, `npx next lint` e `npm test` limpos a cada bloco — 742 testes no total (7 novos: 1 do modo de faturamento, 6 do motor de etapas).
+- Banco novo do zero: `prisma migrate deploy` aplicou as duas migrações da fase (`20261102050000_ciclo13_onboarding_fase2` + o `ADD VALUE` do enum) sem erro, `prisma migrate diff` voltou vazio, seed rodou limpo.
+- `next build` completo.
+- Revisão visual de verdade no navegador (Playwright contra o build de produção): `/comecar` com a trilha, anel de progresso e nível corretos batendo com os dados reais da conta de teste (25% → 33% depois de pular uma etapa, com confete); spotlight guiado funcionando (recorte + balão posicionado); modal de sincronização mostrando progresso e um erro real (403 do ML com a conta de teste) com retry; cartão "Próximo passo" na Visão geral; tela de Ajustes do financeiro com as 4 opções de faturamento e o texto novo.
+- Suíte `e2e/*.spec.ts` da Fase 0 rodada de novo de ponta a ponta (resultado registrado abaixo — nenhuma mudança nela foi necessária nesta fase).
+
+## Passos manuais do Lucas (Fase 2)
+- [ ] Migração desta fase é aditiva (novo valor de enum + tabela nova) — mesma recomendação de rodar `npm run build` antes do deploy.
+- [ ] Rever a heurística da etapa 8 (impostos): hoje "feito" = alíquota > 0 ou regime ≠ Simples. Se isso não refletir a realidade de alguma conta, me avisar pra ajustar o critério.
+- [ ] Os "modelos prontos" de despesa fixa (etapa 9) e a sugestão automática de meta (etapa 10) citados no prompt não foram construídos nesta fase — ficaram como próximo passo natural quando as telas de Lançamentos/Configurações do financeiro forem revisitadas.

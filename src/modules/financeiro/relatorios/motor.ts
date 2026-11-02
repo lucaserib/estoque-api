@@ -23,8 +23,12 @@ import { prisma } from "@/lib/prisma";
  *   foi estornado em devoluções parciais. É o número que bate com o ML.
  * - Frete no faturamento depende do modo da conta (Configurações): igual ao
  *   ML (frete só como custo), somando o frete pago pelo comprador (que também
- *   entra como custo) ou já descontando o frete pago por você do faturamento
- *   (aí ele não aparece de novo como custo). A margem é a mesma nos três.
+ *   entra como custo), já descontando o frete pago por você do faturamento
+ *   (aí ele não aparece de novo como custo) ou somando o frete total gerado
+ *   no envio — vendedor + comprador (igual ao Bling/Mercado Turbo). Nos três
+ *   primeiros a margem é sempre a mesma; no último, o frete do vendedor passa
+ *   a contar como faturamento gerado (não só como custo), então a margem fica
+ *   maior nesse valor.
  * - Desconto de campanha é informativo: o preço do pedido já vem com ele.
  * - Imposto = alíquota atual × faturamento (recalculado sempre, nunca
  *   congelado), a menos que a conta use os lançamentos de imposto.
@@ -139,6 +143,10 @@ export function calcularVenda(venda: VendaParaCalculo, config: ConfigRelatorio):
   } else if (valida && config.modoFaturamento === ModoFaturamento.PRODUTOS_MENOS_FRETE) {
     receitaFrete = -freteVendedor;
     frete = 0;
+  } else if (valida && config.modoFaturamento === ModoFaturamento.PRODUTOS_E_FRETE_TOTAL) {
+    // freteVendedor passa a contar como faturamento (não só custo) — a margem sobe esse valor.
+    receitaFrete = freteVendedor + freteComprador;
+    frete += freteComprador;
   }
 
   const tarifa = valida ? venda.tarifaVenda : detalhada ? venda.tarifaVenda : 0;

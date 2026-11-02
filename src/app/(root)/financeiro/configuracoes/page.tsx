@@ -635,9 +635,12 @@ export default function ConfiguracoesFinanceiroPage() {
                   </label>
                 ))}
                 <p className="text-xs text-muted-foreground">
-                  Exemplo: venda de R$ 34,70 em que o ML cobrou R$ 6,85 de frete. Igual ao ML: faturamento R$ 34,70 e frete de
-                  R$ 6,85 como custo. Líquido de frete: faturamento R$ 27,85 e nenhum frete separado. A margem é igual nos três
-                  modos. O frete de cada venda vem do pagamento no Mercado Pago; quando não vier (Flex, envio próprio), usa as
+                  Exemplo: venda de R$ 34,70 em que o ML cobrou R$ 6,85 de frete do vendedor. Igual ao ML: faturamento R$ 34,70
+                  e frete de R$ 6,85 como custo. Líquido de frete: faturamento R$ 27,85 e nenhum frete separado. Nesses três
+                  modos a margem é sempre a mesma — muda só onde (e se) o frete aparece. Já em &ldquo;Produtos + frete
+                  total&rdquo; o frete do vendedor passa a contar como faturamento gerado (não só como custo), então a margem
+                  fica maior nesse valor — é a visão mais &ldquo;bruta&rdquo; do negócio, igual à que o Bling/Mercado Turbo
+                  mostra. O frete de cada venda vem do pagamento no Mercado Pago; quando não vier (Flex, envio próprio), usa as
                   regras de &ldquo;Frete por logística&rdquo; abaixo ou o frete cadastrado no produto, e pode ser ajustado à mão em
                   Vendas. Clique em &ldquo;Salvar configurações&rdquo; para aplicar.
                 </p>

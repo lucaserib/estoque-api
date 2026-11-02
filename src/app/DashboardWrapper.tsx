@@ -1,15 +1,20 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Navbar from "./components/Navbar";
 import Sidebar from "./components/layout/Sidebar";
 import BottomNav from "./components/layout/BottomNav";
 import { useLayout } from "./context/LayoutContext";
 import { useTheme } from "next-themes";
+import { useSession } from "next-auth/react";
+import { TourSlides } from "@/components/onboarding/TourSlides";
+import { EVENTO_ABRIR_TOUR } from "@/lib/eventosCliente";
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarCollapsed, isDarkMode } = useLayout();
   const { setTheme } = useTheme();
+  const { status } = useSession();
+  const [tourAberto, setTourAberto] = useState(false);
 
   useEffect(() => {
     // Sincronizar o estado do isDarkMode do LayoutContext com o tema do next-themes
@@ -21,6 +26,26 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     html.classList.toggle("dark", isDarkMode);
     html.classList.toggle("light", !isDarkMode);
   }, [isDarkMode, setTheme]);
+
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/onboarding/tour-visto")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((dados) => {
+        if (dados && !dados.tourVisto) setTourAberto(true);
+      })
+      .catch(() => {});
+  }, [status]);
+
+  useEffect(() => {
+    const abrir = () => setTourAberto(true);
+    window.addEventListener(EVENTO_ABRIR_TOUR, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_TOUR, abrir);
+  }, []);
+
+  const marcarTourVisto = useCallback(() => {
+    fetch("/api/onboarding/tour-visto", { method: "POST" }).catch(() => {});
+  }, []);
 
   return (
     <div
@@ -40,6 +65,8 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
       </main>
 
       <BottomNav />
+
+      <TourSlides open={tourAberto} onOpenChange={setTourAberto} onConcluido={marcarTourVisto} />
     </div>
   );
 };

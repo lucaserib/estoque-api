@@ -27,6 +27,7 @@ import {
   DataTableRow,
 } from "@/components/ui/data-table";
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
+import { ProximoPassoCard } from "@/components/onboarding/ProximoPassoCard";
 import EvolutionChart from "@/app/(root)/mercado-livre/vendas/components/EvolutionChart";
 import { formatBRL, formatNumberBR, formatRelativeTime } from "@/lib/format";
 import { OPCOES_PERIODO_RAPIDO } from "@/modules/financeiro/dominio/periodo";
@@ -275,6 +276,8 @@ export default function DashboardPage() {
           </div>
         }
       />
+
+      <ProximoPassoCard />
 
       {!resumo ? (
         <Skeleton className="h-[340px] rounded-md" />

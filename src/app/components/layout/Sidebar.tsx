@@ -25,6 +25,7 @@ import {
   PanelLeftOpen,
   HeartPulse,
   Megaphone,
+  Compass,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -41,6 +42,7 @@ interface ItemMenu {
   icon: Icone;
   label: string;
   visivel?: boolean;
+  dataTour?: string;
 }
 
 /** Agrupa itens relacionados dentro de um SidebarGrupo já aberto (ex.: Financeiro → "Caixa"). */
@@ -90,7 +92,12 @@ const SidebarLink = ({
   const Icon = item.icon;
 
   return (
-    <Link href={item.href} onClick={onNavegar} title={recolhida ? item.label : undefined}>
+    <Link
+      href={item.href}
+      onClick={onNavegar}
+      title={recolhida ? item.label : undefined}
+      data-tour={item.dataTour}
+    >
       <div className={classeItem(ativo, recolhida)}>
         <Icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
         {!recolhida && <span className="truncate text-[13.5px]">{item.label}</span>}
@@ -236,7 +243,7 @@ const Sidebar = () => {
             recolhida ? "px-4 md:justify-center" : "px-5"
           }`}
         >
-          <Link href="/dashboard" aria-label="Skubo — início" onClick={closeSidebarOnMobile}>
+          <Link href="/dashboard" aria-label="Skubo — início" onClick={closeSidebarOnMobile} data-tour="logo">
             <div className="flex items-center gap-2">
               <Logo size="md" variant={recolhida ? "mark" : "full"} />
               {!recolhida && logoUrl && (
@@ -272,6 +279,7 @@ const Sidebar = () => {
         <nav className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
           <SectionLabel recolhida={recolhida}>Início</SectionLabel>
           <SidebarLink item={{ href: "/", icon: Layout, label: "Visão geral" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/comecar", icon: Compass, label: "Configurar minha loja", dataTour: "comecar" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
 
           <SectionLabel recolhida={recolhida}>Vendas e lucro</SectionLabel>
           <SidebarGrupo

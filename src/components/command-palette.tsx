@@ -107,6 +107,7 @@ export function CommandPalette() {
     <>
       <button
         type="button"
+        data-tour="busca"
         onClick={() => setOpen(true)}
         className="hidden min-w-0 max-w-[420px] flex-1 items-center gap-2.5 rounded-full border border-border bg-accent px-3.5 py-2 text-left sm:flex"
       >

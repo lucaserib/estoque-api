@@ -84,6 +84,7 @@ const NotificationsBell = () => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
+          data-tour="notificacoes"
           className="relative p-1 rounded-full hover:bg-muted transition-colors"
           aria-label={
             unreadCount > 0

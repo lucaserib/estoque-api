@@ -105,6 +105,23 @@ describe("calcularVenda — pedido real", () => {
     expect(r.margemContribuicao).toBe(3470 - 208 - 299 - 685 - 1800);
   });
 
+  it("modo produtos + frete total (igual ao Bling/Mercado Turbo) soma o frete inteiro; a margem cresce o valor do frete que o vendedor absorveu, porque esse frete passa a contar como faturamento gerado, não só como custo", async () => {
+    banco.dados.config = { ...banco.dados.config, modoFaturamento: "PRODUTOS_E_FRETE_TOTAL" };
+    const config = await obterConfigRelatorio("user-1");
+    const comprador = calcularVenda(vendaReal({ freteComprador: 500 }) as never, {
+      ...config,
+      modoFaturamento: "PRODUTOS_E_FRETE_COMPRADOR" as never,
+    });
+    const r = calcularVenda(vendaReal({ freteComprador: 500 }) as never, config);
+    expect(r.receitaFrete).toBe(685 + 500);
+    expect(r.receitaTotal).toBe(3470 + 685 + 500);
+    expect(r.frete).toBe(685 + 500);
+    // Mesmo custo de frete do modo "comprador" (685+500) — só a receita de frete é que também
+    // soma o freteVendedor, então a margem sobe exatamente esse valor em relação aos outros modos.
+    expect(r.frete).toBe(comprador.frete);
+    expect(r.margemContribuicao).toBe(comprador.margemContribuicao + 685);
+  });
+
   it("venda cancelada não tem faturamento, imposto nem CMV; tarifa/frete só se confirmados no pagamento", async () => {
     const config = await obterConfigRelatorio("user-1");
     const semDetalhe = calcularVenda(vendaReal({ status: "CANCELADA", enriquecidoEm: null }) as never, config);

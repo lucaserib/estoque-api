@@ -1,6 +1,10 @@
 import { formatBRL, formatPercent } from "@/lib/format";
 
-export type ModoFaturamento = "PRODUTOS" | "PRODUTOS_E_FRETE_COMPRADOR" | "PRODUTOS_MENOS_FRETE";
+export type ModoFaturamento =
+  | "PRODUTOS"
+  | "PRODUTOS_E_FRETE_COMPRADOR"
+  | "PRODUTOS_MENOS_FRETE"
+  | "PRODUTOS_E_FRETE_TOTAL";
 
 export const DESCRICAO_MODO_FATURAMENTO: Record<ModoFaturamento, { titulo: string; resumo: string }> = {
   PRODUTOS: {
@@ -15,6 +19,11 @@ export const DESCRICAO_MODO_FATURAMENTO: Record<ModoFaturamento, { titulo: strin
     titulo: "Faturamento líquido de frete",
     resumo:
       "Desconta do faturamento o frete que o ML cobrou de você em cada venda (o frete deixa de aparecer como custo separado). A margem não muda.",
+  },
+  PRODUTOS_E_FRETE_TOTAL: {
+    titulo: "Produtos + frete total (igual ao Bling/Mercado Turbo)",
+    resumo:
+      "Soma ao faturamento o frete inteiro gerado no envio — o que o comprador pagou e o que você absorveu. O frete que você absorveu passa a contar como faturamento gerado, não só como custo, então a margem fica maior nesse valor (mais faturamento e mais margem, não só mais faturamento).",
   },
 };
 

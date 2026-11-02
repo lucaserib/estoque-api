@@ -8,6 +8,7 @@ import {
   LogOut,
   ChevronDown,
   User,
+  HelpCircle,
 } from "lucide-react";
 import { useLayout } from "../context/LayoutContext";
 import Link from "next/link";
@@ -17,6 +18,7 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import NotificationsBell from "./NotificationsBell";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { CommandPalette } from "@/components/command-palette";
+import { EVENTO_ABRIR_TOUR } from "@/lib/eventosCliente";
 
 const Navbar = () => {
   const { isDarkMode, toggleSidebar, toggleDarkMode } = useLayout();
@@ -105,6 +107,16 @@ const Navbar = () => {
                   <Settings className="h-4 w-4" />
                   Configurações
                 </Link>
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    window.dispatchEvent(new Event(EVENTO_ABRIR_TOUR));
+                  }}
+                  className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
+                >
+                  <HelpCircle className="h-4 w-4" />
+                  Ajuda — Ver tour
+                </button>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
                   className="flex w-full items-center gap-2 rounded-b-lg px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
