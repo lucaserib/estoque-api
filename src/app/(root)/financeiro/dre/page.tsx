@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Download, FileText } from "lucide-react";
+import Link from "next/link";
+import { Download, FileText, HelpCircle, Plus } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
 import { Button } from "@/components/ui/button";
@@ -22,11 +29,14 @@ import {
   DataTableRow,
 } from "@/components/ui/data-table";
 import { formatBRL, formatPercent } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { inicioDoMes, fimDoMes } from "@/modules/financeiro/dominio/periodo";
 import { useAoAtualizarDados } from "../components/SincronizacaoFinanceira";
 import { exportToExcel } from "@/utils/excelExport";
 import { loadPDF, addTableToPDF, canUsePDF } from "@/utils/pdfHelper";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
+import { podeEditar } from "@/lib/permissoes";
+import { CascataResultado } from "../components/CascataResultado";
 import { BotaoAtualizarFinanceiro } from "../components/BotaoAtualizarFinanceiro";
 
 interface ItemDespesaOperacional {
@@ -107,34 +117,35 @@ function montarLinhas(meses: DreMensal[]): LinhaExibicao[] {
     m.custosVariaveis.armazenagemFull + m.custosVariaveis.outrasCobrancas + m.custosVariaveis.outrosCustos;
 
   return [
-    { rotulo: "Pedidos", tipo: "contagem", valores: meses.map((m) => m.pedidos) },
-    { rotulo: "Unidades vendidas", tipo: "contagem", valores: meses.map((m) => m.unidades) },
-    { rotulo: "Vendas brutas (todos os pedidos)", tipo: "valor", valores: meses.map((m) => m.vendasBrutas) },
-    { rotulo: "(−) Cancelamentos e devoluções", tipo: "valor", valores: meses.map((m) => -m.cancelamentosEDevolucoes), ocultarSeZerada: true },
+    { rotulo: "Pedidos", tipo: "contagem", valores: meses.map((m) => m.pedidos), dica: "Quantidade de pedidos válidos (não cancelados) criados no período, no fuso de Brasília." },
+    { rotulo: "Unidades vendidas", tipo: "contagem", valores: meses.map((m) => m.unidades), dica: "Soma das quantidades de todos os itens dos pedidos válidos." },
+    { rotulo: "Vendas brutas (todos os pedidos)", tipo: "valor", valores: meses.map((m) => m.vendasBrutas), dica: "Preço × quantidade de todos os pedidos do período, incluindo os cancelados." },
+    { rotulo: "(−) Cancelamentos e devoluções", tipo: "valor", valores: meses.map((m) => -m.cancelamentosEDevolucoes), ocultarSeZerada: true, dica: "Valor dos pedidos cancelados e o que foi estornado em devoluções parciais." },
     { rotulo: "(=) Faturamento", tipo: "subtotal", valores: meses.map((m) => m.faturamento), dica: "Igual ao painel de vendas do Mercado Livre." },
     { rotulo: "(±) Frete no faturamento", tipo: "valor", valores: meses.map((m) => m.receitaFrete), ocultarSeZerada: true, dica: "Conforme o modo de faturamento em Configurações." },
-    { rotulo: "(+) Outras receitas", tipo: "valor", valores: meses.map((m) => m.outrasReceitas), ocultarSeZerada: true },
-    { rotulo: "(=) Receita bruta", tipo: "subtotal", valores: meses.map((m) => m.receitaTotal) },
-    { rotulo: "(−) Impostos sobre vendas", tipo: "valor", valores: meses.map((m) => -m.impostosSobreVendas) },
-    { rotulo: "(=) Receita líquida", tipo: "subtotal", valores: meses.map((m) => m.receitaLiquida) },
-    { rotulo: "(−) Tarifas do Mercado Livre", tipo: "valor", valores: meses.map((m) => -m.custosVariaveis.tarifas) },
-    { rotulo: "(−) Frete", tipo: "valor", valores: meses.map((m) => -m.custosVariaveis.frete), ocultarSeZerada: true },
-    { rotulo: "(−) Publicidade", tipo: "valor", valores: meses.map((m) => -m.custosVariaveis.ads), ocultarSeZerada: true },
-    { rotulo: "(−) Fatura do ML (Full e outras cobranças)", tipo: "valor", valores: meses.map((m) => -cobrancas(m)), ocultarSeZerada: true },
-    { rotulo: "(−) Outros custos variáveis lançados", tipo: "valor", valores: meses.map((m) => -m.custosVariaveis.lancamentos), ocultarSeZerada: true },
-    { rotulo: "(−) Custo das mercadorias (CMV)", tipo: "valor", valores: meses.map((m) => -m.cmv) },
-    { rotulo: "(=) Margem de contribuição", tipo: "subtotal", valores: meses.map((m) => m.margemContribuicao) },
+    { rotulo: "(+) Outras receitas", tipo: "valor", valores: meses.map((m) => m.outrasReceitas), ocultarSeZerada: true, dica: "Lançamentos manuais de receita fora da venda de produtos." },
+    { rotulo: "(=) Receita bruta", tipo: "subtotal", valores: meses.map((m) => m.receitaTotal), dica: "Faturamento + frete (conforme o modo) + outras receitas." },
+    { rotulo: "(−) Impostos sobre vendas", tipo: "valor", valores: meses.map((m) => -m.impostosSobreVendas), dica: "Alíquota configurada × faturamento, recalculada sempre — ou os lançamentos de imposto, se a conta usar." },
+    { rotulo: "(=) Receita líquida", tipo: "subtotal", valores: meses.map((m) => m.receitaLiquida), dica: "Receita bruta menos os impostos sobre vendas." },
+    { rotulo: "(−) Tarifas do Mercado Livre", tipo: "valor", valores: meses.map((m) => -m.custosVariaveis.tarifas), dica: "Tarifa de venda que o ML cobrou em cada venda, lida do pagamento no Mercado Pago." },
+    { rotulo: "(−) Frete", tipo: "valor", valores: meses.map((m) => -m.custosVariaveis.frete), ocultarSeZerada: true, dica: "Custo de frete pago pelo vendedor em cada venda, confirmado no pagamento ou estimado pela regra de logística." },
+    { rotulo: "(−) Publicidade", tipo: "valor", valores: meses.map((m) => -m.custosVariaveis.ads), ocultarSeZerada: true, dica: "Investimento em Ads do Mercado Livre atribuído às vendas do período." },
+    { rotulo: "(−) Fatura do ML (Full e outras cobranças)", tipo: "valor", valores: meses.map((m) => -cobrancas(m)), ocultarSeZerada: true, dica: "Armazenagem Full e demais cobranças da fatura do Mercado Livre, fora da tarifa de venda e do frete." },
+    { rotulo: "(−) Outros custos variáveis lançados", tipo: "valor", valores: meses.map((m) => -m.custosVariaveis.lancamentos), ocultarSeZerada: true, dica: "Lançamentos manuais de custo variável no período." },
+    { rotulo: "(−) Custo das mercadorias (CMV)", tipo: "valor", valores: meses.map((m) => -m.cmv), dica: "Custo médio do produto vendido, calculado pela média ponderada das compras confirmadas." },
+    { rotulo: "(=) Margem de contribuição", tipo: "subtotal", valores: meses.map((m) => m.margemContribuicao), dica: "Receita líquida menos impostos, tarifas, frete, publicidade, fatura do ML e CMV." },
     ...nomesDespesas.map((nome) => ({
       rotulo: `(−) ${nome}`,
       tipo: "valor" as const,
       valores: meses.map((m) => -(m.despesasOperacionais.find((d) => d.nome === nome)?.valor ?? 0)),
+      dica: "Lançamentos pagos nessa categoria de despesa operacional no período.",
     })),
-    { rotulo: "(=) Resultado operacional", tipo: "subtotal", valores: meses.map((m) => m.resultadoOperacional) },
-    { rotulo: "(±) Resultado financeiro", tipo: "valor", valores: meses.map((m) => m.resultadoFinanceiro), ocultarSeZerada: true },
-    { rotulo: "(±) Não operacional", tipo: "valor", valores: meses.map((m) => m.resultadoNaoOperacional), ocultarSeZerada: true },
-    { rotulo: "(−) IR/CSLL", tipo: "valor", valores: meses.map((m) => -m.impostoLucro), ocultarSeZerada: true },
-    { rotulo: "(=) Lucro líquido", tipo: "subtotal", valores: meses.map((m) => m.lucroLiquido) },
-    { rotulo: "Desconto de campanha embutido nos preços (informativo)", tipo: "info", valores: meses.map((m) => m.descontoCampanha), ocultarSeZerada: true },
+    { rotulo: "(=) Resultado operacional", tipo: "subtotal", valores: meses.map((m) => m.resultadoOperacional), dica: "Margem de contribuição menos as despesas operacionais (aluguel, salários, ferramentas etc.)." },
+    { rotulo: "(±) Resultado financeiro", tipo: "valor", valores: meses.map((m) => m.resultadoFinanceiro), ocultarSeZerada: true, dica: "Rendimentos menos juros e tarifas financeiras lançados no período." },
+    { rotulo: "(±) Não operacional", tipo: "valor", valores: meses.map((m) => m.resultadoNaoOperacional), ocultarSeZerada: true, dica: "Lançamentos fora da operação normal do negócio." },
+    { rotulo: "(−) IR/CSLL", tipo: "valor", valores: meses.map((m) => -m.impostoLucro), ocultarSeZerada: true, dica: "Imposto sobre o lucro lançado manualmente — contas no Simples Nacional não têm essa linha separada." },
+    { rotulo: "(=) Lucro líquido", tipo: "subtotal", valores: meses.map((m) => m.lucroLiquido), dica: "O que sobra depois de todos os custos, despesas e impostos." },
+    { rotulo: "Desconto de campanha embutido nos preços (informativo)", tipo: "info", valores: meses.map((m) => m.descontoCampanha), ocultarSeZerada: true, dica: "Já está embutido no preço do pedido — não entra na conta, é só informativo." },
   ].filter((linha) => !linha.ocultarSeZerada || linha.valores.some((v) => v !== 0)) as LinhaExibicao[];
 }
 
@@ -143,7 +154,8 @@ function formatarCelula(linha: LinhaExibicao, valor: number): string {
 }
 
 export default function DrePage() {
-  const { carregando: carregandoSessao, podeVerFinanceiro } = useAcessoFinanceiro();
+  const { carregando: carregandoSessao, podeVerFinanceiro, papel } = useAcessoFinanceiro();
+  const podeEditarFinanceiro = papel ? podeEditar(papel, "FINANCEIRO_EDITAR") : false;
   const [ate, setAte] = useState(mesAtualString());
   const [quantidadeDeMeses, setQuantidadeDeMeses] = useState("6");
   const [dre, setDre] = useState<DreMensal[] | null>(null);
@@ -283,9 +295,36 @@ export default function DrePage() {
         </SectionCard>
       )}
 
+      {dre && dre.length > 0 && (
+        <SectionCard
+          title="Do faturamento ao lucro"
+          description={`Cascata de ${MESES_LABEL[dre[dre.length - 1].competencia.mes - 1]}/${String(dre[dre.length - 1].competencia.ano).slice(2)} — a barra roxa é faturamento/margem, vermelha é o que foi descontado, verde é o lucro final.`}
+        >
+          <CascataResultado mes={dre[dre.length - 1]} />
+        </SectionCard>
+      )}
+
       <SectionCard
         title="Demonstração de resultado"
-        description={`Valores em R$ · % sobre a receita bruta · faturamento ${modoFaturamento === "PRODUTOS" ? "só de produtos (igual ao ML)" : modoFaturamento === "PRODUTOS_MENOS_FRETE" ? "líquido de frete" : "com o frete do comprador"} (Configurações)`}
+        description={`Valores em R$ · % sobre a receita bruta · faturamento ${
+          modoFaturamento === "PRODUTOS"
+            ? "só de produtos (igual ao ML)"
+            : modoFaturamento === "PRODUTOS_MENOS_FRETE"
+            ? "líquido de frete"
+            : modoFaturamento === "PRODUTOS_E_FRETE_TOTAL"
+            ? "com o frete total (igual ao Bling/Mercado Turbo)"
+            : "com o frete do comprador"
+        } (Configurações)`}
+        actions={
+          podeEditarFinanceiro ? (
+            <Button asChild variant="outline" size="sm" className="gap-1.5">
+              <Link href="/financeiro/lancamentos?novo=despesa">
+                <Plus className="h-3.5 w-3.5" />
+                Despesa
+              </Link>
+            </Button>
+          ) : undefined
+        }
       >
         {carregando ? (
           <Skeleton className="h-[400px] rounded-md" />
@@ -309,25 +348,57 @@ export default function DrePage() {
                       sticky
                       emphasis={linha.tipo === "subtotal"}
                       className={linha.tipo === "info" ? "text-xs text-muted-foreground" : undefined}
-                      title={linha.dica}
                     >
-                      {linha.rotulo}
+                      <span className="inline-flex items-center gap-1.5">
+                        {linha.rotulo}
+                        {linha.dica && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  aria-label={`O que é: ${linha.rotulo}`}
+                                  className="text-muted-foreground/70 hover:text-muted-foreground"
+                                >
+                                  <HelpCircle className="h-3.5 w-3.5" strokeWidth={1.75} />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-[260px] text-xs leading-relaxed">
+                                {linha.dica}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </span>
                     </DataTableCell>
-                    {linha.valores.map((valor, i) => (
-                      <DataTableCell
-                        key={i}
-                        numeric
-                        emphasis={linha.tipo === "subtotal"}
-                        className={linha.tipo === "info" ? "text-xs text-muted-foreground" : undefined}
-                      >
-                        {formatarCelula(linha, valor)}
-                        {linha.tipo !== "contagem" && linha.tipo !== "info" && baseFaturamento[i] ? (
-                          <span className="ml-1.5 text-[11px] text-faint">
-                            {formatPercent((valor / baseFaturamento[i]) * 100)}
-                          </span>
-                        ) : null}
-                      </DataTableCell>
-                    ))}
+                    {linha.valores.map((valor, i) => {
+                      const anterior = i > 0 && !(comTotal && i === linha.valores.length - 1) ? linha.valores[i - 1] : null;
+                      const piorou =
+                        linha.tipo !== "contagem" &&
+                        linha.tipo !== "info" &&
+                        anterior != null &&
+                        anterior !== 0 &&
+                        (valor - anterior) / Math.abs(anterior) < -0.2;
+                      return (
+                        <DataTableCell
+                          key={i}
+                          numeric
+                          emphasis={linha.tipo === "subtotal"}
+                          className={cn(
+                            linha.tipo === "info" && "text-xs text-muted-foreground",
+                            piorou && "bg-destructive/5"
+                          )}
+                          title={piorou ? "Piorou mais de 20% em relação ao mês anterior" : undefined}
+                        >
+                          {formatarCelula(linha, valor)}
+                          {linha.tipo !== "contagem" && linha.tipo !== "info" && baseFaturamento[i] ? (
+                            <span className="ml-1.5 text-[11px] text-faint">
+                              {formatPercent((valor / baseFaturamento[i]) * 100)}
+                            </span>
+                          ) : null}
+                        </DataTableCell>
+                      );
+                    })}
                   </DataTableRow>
                 ))}
               </DataTableBody>

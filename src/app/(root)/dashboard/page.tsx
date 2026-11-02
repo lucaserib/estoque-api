@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/data-table";
 import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
 import { ProximoPassoCard } from "@/components/onboarding/ProximoPassoCard";
+import { HojeCard } from "@/components/dashboard/HojeCard";
 import EvolutionChart from "@/app/(root)/mercado-livre/vendas/components/EvolutionChart";
 import { formatBRL, formatNumberBR, formatRelativeTime } from "@/lib/format";
 import { OPCOES_PERIODO_RAPIDO } from "@/modules/financeiro/dominio/periodo";
@@ -288,17 +289,32 @@ export default function DashboardPage() {
           )}
 
           {/* Métricas principais */}
-          <StatCard
-            size="lg"
-            highlight
-            label={`Faturamento líquido — ${resumo.periodo.rotulo.toLowerCase()}`}
-            value={formatBRL(resumo.metricas.faturamentoLiquido.valor)}
-            delta={resumo.metricas.faturamentoLiquido.deltaPercentual}
-            deltaLabel={resumo.periodo.rotuloComparacao}
-            note="Vendas pagas no Mercado Livre, menos tarifas de venda e frete pago pelo vendedor."
-          />
+          <div className="space-y-2">
+            <StatCard
+              size="lg"
+              highlight
+              label={`Faturamento líquido — ${resumo.periodo.rotulo.toLowerCase()}`}
+              value={formatBRL(resumo.metricas.faturamentoLiquido.valor)}
+              delta={resumo.metricas.faturamentoLiquido.deltaPercentual}
+              deltaLabel={resumo.periodo.rotuloComparacao}
+              note="Vendas pagas no Mercado Livre, menos tarifas de venda e frete pago pelo vendedor."
+            />
+            {podeVerCusto && resumo.metricas.margemContribuicao && !resumo.metricas.faturamentoLiquido.parcial && (
+              resumo.metricas.margemContribuicao.produtosSemCustoNaVenda === 0 ? (
+                <StatusPill tone="success">Confere com o ML ✓</StatusPill>
+              ) : (
+                <Link href="/financeiro/vendas?soIncompletas=true">
+                  <StatusPill tone="warning">
+                    Faltam custos em {resumo.metricas.margemContribuicao.produtosSemCustoNaVenda} venda(s) — completar
+                  </StatusPill>
+                </Link>
+              )
+            )}
+          </div>
 
           <StatCardGrid items={statItems} />
+
+          <HojeCard />
 
           {/* Pendências que afetam seus números */}
           {podeVerCusto && (

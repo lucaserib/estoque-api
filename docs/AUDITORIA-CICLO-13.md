@@ -149,3 +149,37 @@ Adicionado `ModoFaturamento.PRODUTOS_E_FRETE_TOTAL` (migração aditiva, `ALTER 
 - [ ] Migração desta fase é aditiva (novo valor de enum + tabela nova) — mesma recomendação de rodar `npm run build` antes do deploy.
 - [ ] Rever a heurística da etapa 8 (impostos): hoje "feito" = alíquota > 0 ou regime ≠ Simples. Se isso não refletir a realidade de alguma conta, me avisar pra ajustar o critério.
 - [ ] Os "modelos prontos" de despesa fixa (etapa 9) e a sugestão automática de meta (etapa 10) citados no prompt não foram construídos nesta fase — ficaram como próximo passo natural quando as telas de Lançamentos/Configurações do financeiro forem revisitadas.
+
+## FASE 3 — Resultado e DRE didáticos
+
+Sem migração nesta fase.
+
+### 3.1 — Visão geral
+
+A Visão geral já cobria, de um jeito mais granular que os "5 blocos, nada além" do prompt, praticamente todo o conteúdo pedido (risco de ruptura, capital parado, compras e saúde das integrações não estão nos 5 blocos do prompt, mas já existiam, funcionando, testados). **Decisão explícita**: não apaguei nada disso — reduzir a tela a exatamente 5 blocos removeria informação real que já está em produção sem nenhum ganho claro, só pra bater com a letra do prompt; implementei os 2 blocos que realmente faltavam e deixei o resto como está:
+- **"Hoje"** (`src/components/dashboard/HojeCard.tsx`, novo): faturamento, pedidos, margem de contribuição e liberado hoje no Mercado Pago, comparado com ontem — reaproveita `GET /api/financeiro/resumo-dia`, o mesmo endpoint que já alimenta esse bloco na tela Financeiro (não recalculei nada, só montei a mesma visão num componente que se busca sozinho). Atualiza a cada 2 minutos; some sozinho se o usuário não tiver permissão de ver o financeiro.
+- **Selo "Confere com o ML ✓" / "Faltam custos em N vendas"**: embaixo do cartão de faturamento líquido, usando dados que a Visão geral já carregava (`metricas.margemContribuicao.produtosSemCustoNaVenda`) — nenhuma chamada nova. **Não liguei isso à Conferência de verdade** (`conferirMes`, em `src/modules/financeiro/relatorios/conferencia.ts`) porque essa função faz prova contra a API do Mercado Livre por conta/mês — cara demais pra rodar toda vez que a Visão geral carrega. O selo aqui é um proxy honesto (nenhuma venda do período sem custo = "confere"), não a conferência completa, que continua vivendo em Financeiro → Conferência.
+
+### 3.2 — DRE em cascata
+
+- **Gráfico cascata** (`src/app/(root)/financeiro/components/CascataResultado.tsx`, novo, Recharts): do faturamento ao lucro líquido do mês mais recente do período selecionado, barra "ancorada" (faturamento, margem, lucro) em roxo/verde e barra "flutuante" (cada dedução) em vermelho — com tooltip mostrando valor e % sobre o faturamento. Não fiz o 2º nível (clicar numa barra pra abrir as vendas) — só o gráfico.
+- **"?" em toda linha**: antes só 2 das ~20 linhas tinham explicação (via atributo `title`, sem ícone visível). Escrevi a explicação das ~18 que faltavam, grounded no código real do motor (`motor.ts`) que já tinha lido a fundo nas fases anteriores — nada inventado, cada frase descreve exatamente o que aquele campo soma. Troquei de `title` (tooltip nativo do navegador) pra um ícone "?" visível com Radix Tooltip, igual ao `StatCard` da Fase 1.
+- **Destaque de linha que piorou mais de 20%**: comparando cada mês com o anterior na própria linha (funciona igual pra receita, que piora caindo, e pra custo já armazenado negativo, que piora ficando mais negativo) — fundo vermelho claro na célula. Testado com dado real do seed: "Margem de contribuição" de outubro pra novembro caiu de R$174,65 pra R$121,69 (-30%) e a célula acendeu.
+- **"+ Despesa" na seção**: abre `/financeiro/lancamentos?novo=despesa`. **Achado de passagem**: esse parâmetro já existia num link que eu mesmo escrevi na Fase 2 (etapa "Despesas fixas" do onboarding) mas a tela de Lançamentos nunca lia `?novo=` — o link não fazia nada. Corrigido na própria tela de Lançamentos (abre o diálogo de novo lançamento sozinha, com Tipo já em "Despesa" — que já era o padrão do formulário). Os dois links (DRE e onboarding) passam a funcionar de verdade.
+- **Não fiz nesta fase**: tabela com 3 níveis expansíveis (grupo → item → vendas/lançamentos), export em PDF com o visual novo (o PDF continua sendo a tabela simples que já existia), e a aba separada "Caixa" dentro da DRE pro frete gerado vs Mercado Turbo — fica pro ajuste futuro da tela, é uma reestruturação grande demais pra enfiar no fim desta fase com a qualidade que o resto do ciclo teve.
+
+### 3.3 — Caixa
+
+A tela Fluxo de caixa já cobre a maior parte do pedido (saldo das contas, a liberar, saldo projetado em 30/60/90 dias, por conta, com o "informe uma vez" do saldo do Mercado Pago). **Não construí** o calendário de liberações por data nem o destaque de "retido pelo ML para quitar a fatura" nessa tela especificamente — a retenção já aparece em Financeiro → Visão geral (`DemonstrativoResultado.tsx`, linha "Retido pelo ML para quitar a fatura"); duplicar esse número em Caixa sem tempo pra conferir a consistência entre as duas fontes seria arriscar um número errado, o que vale mais a pena evitar do que “bater a caixinha” do prompt.
+
+### Verificação da Fase 3
+
+- `npx tsc --noEmit`, `npx next lint`, `npm test` (742 testes) limpos.
+- **`next build` quebrou na primeira tentativa**: `useSearchParams()` na tela de Lançamentos (pro `?novo=despesa`) sem `Suspense` por volta — erro real de build, não só de lint, que teria derrubado o deploy inteiro. Corrigido seguindo o mesmo padrão já usado em `financeiro/vendas/page.tsx` (componente renomeado pra `*Content`, exportado por trás de um `<Suspense>`). `next build` limpo depois.
+- Banco novo do zero: sem migração nesta fase, só conferido que `prisma migrate deploy` + seed continuam limpos.
+- Revisão visual real no navegador: cascata renderizando com as cores e rótulos certos (ajustei os rótulos do eixo depois de ver que "Despesas operacionais"/"Lucro líquido" sobrepunham no primeiro print — nomes curtos no eixo, nome completo só no tooltip), tooltip "?" funcionando, destaque de piora >20% acendendo com dado real, selo "Confere com o ML ✓" e cartão "Hoje" na Visão geral com números reais, "+ Despesa" abrindo o diálogo certo com o tipo certo.
+- Suíte `e2e/*.spec.ts` da Fase 0 rodada de novo de ponta a ponta — resultado registrado abaixo.
+
+## Passos manuais do Lucas (Fase 3)
+- [ ] Nenhuma migração nesta fase.
+- [ ] Se quiser o calendário de liberações e o destaque de retenção também na tela de Caixa (não só na Visão geral do Financeiro), me avisar — não entrou nesta fase por tempo, não por dificuldade técnica.

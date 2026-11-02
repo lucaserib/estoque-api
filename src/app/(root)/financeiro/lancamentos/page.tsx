@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { SectionCard } from "@/components/ui/section-card";
@@ -227,9 +229,10 @@ function formEdicaoDe(lancamento: Lancamento): FormEdicao {
   };
 }
 
-export default function LancamentosPage() {
+function LancamentosPageContent() {
   const { carregando: carregandoSessao, podeVerFinanceiro, papel } = useAcessoFinanceiro();
   const podeEditarFinanceiro = papel ? podeEditar(papel, "FINANCEIRO_EDITAR") : false;
+  const searchParams = useSearchParams();
 
   const [periodo, setPeriodo] = useState<PeriodoSelecionado>({ preset: "mesAtual", ...periodoDoPreset("mesAtual") });
   const [statusFiltro, setStatusFiltro] = useState("todos");
@@ -411,13 +414,18 @@ export default function LancamentosPage() {
     }
   };
 
-  const abrirCriacao = () => {
+  const abrirCriacao = useCallback(() => {
     setFormUnico(formUnicoVazio());
     setFormRecorrente(formRecorrenteVazio());
     setFormParcelado(formParceladoVazio());
     setAba("unico");
     setDialogAberto(true);
-  };
+  }, []);
+
+  useEffect(() => {
+    if (podeEditarFinanceiro && searchParams.get("novo") === "despesa") abrirCriacao();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [podeEditarFinanceiro]);
 
   const criarUnico = async () => {
     if (!formUnico.descricao || !formUnico.valor || !formUnico.categoriaId || !formUnico.vencimento) {
@@ -1042,5 +1050,19 @@ export default function LancamentosPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function LancamentosPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="container mx-auto flex h-64 items-center justify-center p-6">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
+      <LancamentosPageContent />
+    </Suspense>
   );
 }
