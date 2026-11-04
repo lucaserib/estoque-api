@@ -442,7 +442,7 @@ export default function IntegracoesPage() {
                   Sincronizar agora
                 </Button>
                 <Button asChild size="sm" variant="outline" className="gap-2">
-                  <Link href="/configuracoes">
+                  <Link href="/mercado-livre/configuracoes">
                     <Settings className="h-4 w-4" />
                     Configurar
                   </Link>
@@ -459,7 +459,7 @@ export default function IntegracoesPage() {
               </>
             ) : (
               <Button asChild size="sm" className="gap-2">
-                <Link href="/configuracoes">Conectar Mercado Livre</Link>
+                <Link href="/mercado-livre/configuracoes">Conectar Mercado Livre</Link>
               </Button>
             )}
           </div>
@@ -623,7 +623,7 @@ export default function IntegracoesPage() {
                   </Button>
                 )}
                 <Button asChild size="sm" variant="outline" className="gap-2">
-                  <Link href="/configuracoes-gerais">
+                  <Link href="/ajustes">
                     <Settings className="h-4 w-4" />
                     Configurar
                   </Link>

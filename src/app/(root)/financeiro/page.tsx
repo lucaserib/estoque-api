@@ -484,7 +484,7 @@ export default function FinanceiroPage() {
         <SectionCard
           title="Produtos que mais dão margem"
           actions={
-            <Link href="/financeiro/produtos" className="flex items-center gap-1 text-xs text-primary hover:underline">
+            <Link href="/financeiro/vendas?aba=produto" className="flex items-center gap-1 text-xs text-primary hover:underline">
               Ver todos<ArrowRight className="h-3 w-3" />
             </Link>
           }

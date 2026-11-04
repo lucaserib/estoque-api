@@ -1,437 +1,109 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { SectionCard } from "@/components/ui/section-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
-import {
-  Store,
-  Package,
-  AlertTriangle,
-  RefreshCw,
-  ExternalLink,
-  Loader2,
-  CheckCircle,
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  ShoppingCart,
-  Clock,
-  BarChart3,
-  AlertCircle,
-  Users,
-  Star,
-  Zap,
-} from "lucide-react";
+import { StatusPill } from "@/components/ui/status-pill";
+import { ProductImage } from "@/components/ui/product-image";
+import { Store, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
-import { formatBRL, formatBRLReais, formatNumberBR } from "@/lib/format";
 import { PageHeader } from "@/components/ui/page-header";
-import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
-import MercadoLivreAutoSync from "@/app/components/MercadoLivreAutoSync";
-import MLTopSellingProducts from "@/app/components/MercadoLivre/MLTopSellingProducts";
-import MLRestockSuggestions from "@/app/components/MercadoLivre/MLRestockSuggestions";
-import PartialDataAlert from "@/components/dashboard/PartialDataAlert";
-import Link from "next/link";
+import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
 import type {
-  MLAccount,
-  DashboardMetrics,
-  SalesAnalytics,
-  RestockAnalytics,
-} from "@/types/ml-analytics";
+  CategoriaProblemaAnuncio,
+  SaudeAnunciosResultado,
+} from "@/services/saudeAnunciosService";
 
-interface SalesCompleteResponse {
-  success: boolean;
-  data: {
-    period: { startDate: string; endDate: string; days: number };
-    summary: {
-      totalOrders: number;
-      totalItems: number;
-      totalRevenue: number;
-      averageTicket: number;
-    };
-    trends: {
-      dailyRevenue: Array<{
-        date: string;
-        revenue: number;
-        orders: number;
-        items: number;
-      }>;
-      topProducts: Array<{
-        mlItemId: string;
-        productName: string;
-        totalSales: number;
-        totalRevenue: number;
-        averagePrice: number;
-        salesCount: number;
-      }>;
-    };
-    parcial: boolean;
-    pedidosFaltantes: number;
-  };
-}
-
-function mapSalesCompleteToAnalytics(
-  payload: SalesCompleteResponse
-): SalesAnalytics {
-  const { data } = payload;
-
-  return {
-    period: {
-      from: data.period.startDate,
-      to: data.period.endDate,
-      days: data.period.days,
-    },
-    summary: {
-      totalSales: data.summary.totalItems,
-      totalRevenue: data.summary.totalRevenue,
-      averageTicket: data.summary.averageTicket,
-      revenueGrowth: 0,
-      totalOrders: data.summary.totalOrders,
-    },
-    topSellingProducts: data.trends.topProducts.slice(0, 5).map((product) => ({
-      itemId: product.mlItemId,
-      title: product.productName,
-      quantity: product.totalSales,
-      revenue: product.totalRevenue,
-      orders: product.salesCount,
-      averagePrice: product.averagePrice,
-    })),
-    salesChart: data.trends.dailyRevenue.map((day) => ({
-      date: day.date,
-      sales: day.items,
-      revenue: day.revenue,
-      orders: day.orders,
-    })),
-    categoryBreakdown: [],
-    recentOrders: [],
-  };
-}
+const TONE_POR_CATEGORIA: Record<
+  CategoriaProblemaAnuncio,
+  "critical" | "warning" | "neutral"
+> = {
+  PRECO_ABAIXO_CUSTO: "critical",
+  SEM_ESTOQUE: "critical",
+  FULL_BAIXO: "warning",
+  PAUSADO: "warning",
+  SEM_VINCULO: "neutral",
+  SEM_TARIFA_FRETE: "neutral",
+};
 
 export default function MercadoLivrePage() {
-  const { data: session, status } = useSession();
-  const [loading, setLoading] = useState(true);
-  const [accounts, setAccounts] = useState<MLAccount[]>([]);
-  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
-  const [salesData, setSalesData] = useState<SalesAnalytics | null>(null);
-  const [restockData, setRestockData] = useState<RestockAnalytics | null>(null);
-  const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
-  const [syncing, setSyncing] = useState(false);
-  const [loadingSales, setLoadingSales] = useState(false);
-  const [salesDataPartial, setSalesDataPartial] = useState(false);
-  const [loadingRestock, setLoadingRestock] = useState(false);
-  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState(true);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(
-    null
-  );
+  const { status } = useSession();
+  const [temConta, setTemConta] = useState<boolean | null>(null);
+  const [dados, setDados] = useState<SaudeAnunciosResultado | null>(null);
+  const [carregando, setCarregando] = useState(true);
 
-  useEffect(() => {
-    if (status === "authenticated") {
-      loadAccounts();
-    }
-  }, [status]);
-
-  useEffect(() => {
-    if (selectedAccount) {
-      loadAllData();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAccount]);
-
-  useEffect(() => {
-    setupAutoRefresh();
-
-    return () => {
-      if (pollingInterval) {
-        clearInterval(pollingInterval);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefreshEnabled, selectedAccount]); // ✅ DEPENDÊNCIAS CORRETAS
-
-  const loadAllData = async () => {
-    if (!selectedAccount) return;
-
-    await Promise.all([loadMetrics(), loadSalesData(), loadRestockData()]);
-    setLastUpdate(new Date());
-  };
-
-  const setupAutoRefresh = useCallback(() => {
-    if (pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
-
-    if (autoRefreshEnabled && selectedAccount) {
-      console.log("[AUTO_REFRESH] Configurando polling inteligente...");
-
-      const interval = setInterval(async () => {
-        try {
-          console.log("[AUTO_REFRESH] Atualizando dados automaticamente...");
-          await loadAllData();
-          console.log("[AUTO_REFRESH] Dados atualizados com sucesso");
-        } catch (error) {
-          console.error(
-            "[AUTO_REFRESH] Erro na atualização automática:",
-            error
-          );
-        }
-      }, 120000); // ✅ OTIMIZAÇÃO: Refresh a cada 2 minutos (menos agressivo)
-
-      setPollingInterval(interval);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoRefreshEnabled, selectedAccount, pollingInterval]);
-
-  const toggleAutoRefresh = () => {
-    const newState = !autoRefreshEnabled;
-    setAutoRefreshEnabled(newState);
-
-    console.log(`[AUTO_REFRESH] Toggle: ${newState ? "ON" : "OFF"}`);
-
-    if (!newState && pollingInterval) {
-      clearInterval(pollingInterval);
-      setPollingInterval(null);
-    }
-  };
-
-  const loadAccounts = async () => {
+  const carregarContas = useCallback(async () => {
     try {
-      const response = await fetch("/api/mercadolivre/auth?action=accounts", {
+      const res = await fetch("/api/mercadolivre/auth?action=accounts", {
         credentials: "include",
       });
-      if (!response.ok) throw new Error("Erro ao carregar contas");
-
-      const accountsData = await response.json();
-
-      const accountsList = Array.isArray(accountsData)
-        ? accountsData
-        : accountsData.accounts || [];
-
-      const formattedAccounts = accountsList.map(
-        (acc: {
-          id: string;
-          nickname: string;
-          siteId: string;
-          isActive: boolean;
-        }) => ({
-          id: acc.id,
-          nickname: acc.nickname,
-          siteId: acc.siteId,
-          isActive: acc.isActive,
-        })
-      );
-
-      setAccounts(formattedAccounts);
-
-      const activeAccount = formattedAccounts.find(
-        (acc: MLAccount) => acc.isActive
-      );
-      if (activeAccount) {
-        setSelectedAccount(activeAccount.id);
-      }
-    } catch (error) {
-      console.error("Erro:", error);
-      toast.error("Erro ao carregar contas do Mercado Livre");
-    } finally {
-      setLoading(false);
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      const lista = Array.isArray(data) ? data : data.accounts || [];
+      setTemConta(lista.length > 0);
+    } catch {
+      setTemConta(false);
     }
-  };
+  }, []);
 
-  const loadMetrics = async () => {
-    if (!selectedAccount) return;
-
+  const carregarSaude = useCallback(async () => {
+    setCarregando(true);
     try {
-      const response = await fetch(
-        `/api/mercadolivre/dashboard/metrics?accountId=${selectedAccount}`
-      );
-      if (!response.ok) throw new Error("Erro ao carregar métricas");
-
-      const data = await response.json();
-      setMetrics(data);
-    } catch (error) {
-      console.error("Erro:", error);
-      toast.error("Erro ao carregar métricas do dashboard");
-    }
-  };
-
-  const loadSalesData = async () => {
-    if (!selectedAccount) return;
-
-    setLoadingSales(true);
-    try {
-      const response = await fetch(
-        `/api/mercadolivre/analytics/sales-complete?accountId=${selectedAccount}&period=30`
-      );
-
-      if (response.status === 503) {
-        const body = await response.json().catch(() => null);
-        setSalesDataPartial(body?.code === "ML_DADOS_PARCIAIS");
-        return;
-      }
-
-      if (!response.ok) {
-        console.warn("Erro ao carregar dados de vendas");
-        return;
-      }
-
-      const payload: SalesCompleteResponse = await response.json();
-      setSalesDataPartial(payload.data.parcial);
-      setSalesData(mapSalesCompleteToAnalytics(payload));
-    } catch (error) {
-      console.error("Erro ao carregar dados de vendas:", error);
+      const res = await fetch("/api/mercadolivre/saude-anuncios");
+      if (res.ok) setDados(await res.json());
     } finally {
-      setLoadingSales(false);
+      setCarregando(false);
     }
-  };
+  }, []);
 
-  const loadRestockData = async () => {
-    if (!selectedAccount) return;
-
-    setLoadingRestock(true);
-    try {
-      const response = await fetch(
-        `/api/mercadolivre/analytics/restock?accountId=${selectedAccount}&period=30`
-      );
-      if (!response.ok) {
-        console.warn("Erro ao carregar sugestões de reposição");
-        return;
-      }
-
-      const data = await response.json();
-      setRestockData(data);
-    } catch (error) {
-      console.error("Erro ao carregar sugestões de reposição:", error);
-    } finally {
-      setLoadingRestock(false);
-    }
-  };
-
-  const handleSync = async () => {
-    if (!selectedAccount) return;
-
-    setSyncing(true);
-    try {
-      const response = await fetch("/api/mercadolivre/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          accountId: selectedAccount,
-          syncType: "products",
-        }),
-      });
-
-      if (!response.ok) throw new Error("Erro na sincronização");
-
-      const result = await response.json();
-      toast.success(
-        `Sincronização concluída! ${
-          result.syncedCount || 0
-        } produtos atualizados`
-      );
-      await loadAllData();
-    } catch (error) {
-      console.error("Erro:", error);
-      toast.error("Erro na sincronização");
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  const handleAutoSync = async (syncAll: boolean = false) => {
-    if (!selectedAccount) return;
-
-    setSyncing(true);
-    try {
-      const response = await fetch("/api/mercadolivre/sync/auto-stock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ accountId: selectedAccount, syncAll }),
-      });
-
-      if (!response.ok) throw new Error("Erro na sincronização automática");
-
-      const result = await response.json();
-
-      if (result.success) {
-        const message = syncAll
-          ? `Sincronização completa: ${result.updatedItems} produtos atualizados de ${result.totalProcessed} verificados`
-          : `Sincronização inteligente: ${result.updatedItems} produtos atualizados de ${result.totalProcessed} verificados`;
-
-        toast.success(message);
-
-        if (result.errors && result.errors.length > 0) {
-          toast.warning(
-            `${result.errors.length} produto(s) com erro na sincronização`
-          );
-        }
-      } else {
-        toast.error("Erro na sincronização automática");
-      }
-
-      await loadAllData();
-    } catch (error) {
-      console.error("Erro:", error);
-      toast.error("Erro na sincronização automática de estoque");
-    } finally {
-      setSyncing(false);
-    }
-  };
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    carregarContas();
+    carregarSaude();
+  }, [status, carregarContas, carregarSaude]);
 
   const handleConnect = async () => {
     try {
-      const response = await fetch("/api/mercadolivre/auth?action=connect", {
+      const res = await fetch("/api/mercadolivre/auth?action=connect", {
         credentials: "include",
       });
-      if (!response.ok) throw new Error("Erro ao gerar URL de conexão");
-
-      const data = await response.json();
+      if (!res.ok) throw new Error();
+      const data = await res.json();
       window.location.href = data.authUrl;
-    } catch (error) {
-      console.error("Erro:", error);
+    } catch {
       toast.error("Erro ao conectar conta do Mercado Livre");
     }
   };
 
-  if (status === "loading" || loading) {
+  if (status === "loading" || temConta === null) {
     return (
-      <div className="container mx-auto max-w-7xl p-6 space-y-6">
-        <PageHeader title="Mercado Livre" subtitle="Gestão integrada de vendas" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-[118px] rounded-xl" />
-          ))}
-        </div>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <Skeleton className="h-[320px] rounded-xl" />
-          <Skeleton className="h-[320px] rounded-xl" />
-        </div>
+      <div className="container mx-auto max-w-[1100px] space-y-6 p-6">
+        <PageHeader title="Saúde dos anúncios" subtitle="Mercado Livre" />
+        <Skeleton className="h-40 rounded-xl" />
+        <Skeleton className="h-40 rounded-xl" />
       </div>
     );
   }
 
-  if (accounts.length === 0) {
+  if (!temConta) {
     return (
-      <div className="container mx-auto max-w-7xl p-6">
-        <PageHeader title="Mercado Livre" subtitle="Gestão integrada de vendas" />
+      <div className="container mx-auto max-w-[1100px] p-6">
+        <PageHeader title="Saúde dos anúncios" subtitle="Mercado Livre" />
         <Card>
-          <CardContent className="p-8 text-center">
-            <Store className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-semibold mb-2">
+          <CardContent className="p-10 text-center">
+            <Store className="mx-auto mb-4 h-14 w-14 text-muted-foreground" />
+            <h3 className="mb-2 text-lg font-semibold">
               Conecte sua conta do Mercado Livre
             </h3>
-            <p className="text-muted-foreground mb-6">
-              Para começar a gerenciar seus produtos e vendas, conecte sua conta
-              do Mercado Livre.
+            <p className="mb-6 text-muted-foreground">
+              Assim que conectar, mostramos aqui tudo que precisa de atenção nos seus anúncios.
             </p>
             <Button onClick={handleConnect}>
-              <Store className="h-4 w-4 mr-2" />
+              <Store className="mr-2 h-4 w-4" />
               Conectar Mercado Livre
             </Button>
           </CardContent>
@@ -440,237 +112,93 @@ export default function MercadoLivrePage() {
     );
   }
 
-  const currentAccount = accounts.find((acc) => acc.id === selectedAccount);
-
-  const statStripItems: StatCardItem[] = metrics
-    ? [
-        { label: "Vendas hoje", value: formatNumberBR(metrics.todaySales) },
-        {
-          label: "Pedidos pendentes",
-          value: formatNumberBR(metrics.pendingOrders),
-          note: metrics.pendingOrders > 0 ? "Requer atenção" : undefined,
-        },
-        {
-          label: "Produtos ativos",
-          value: formatNumberBR(metrics.activeProducts),
-          note: `de ${formatNumberBR(metrics.totalProducts)} total`,
-        },
-        {
-          label: "Estoque baixo",
-          value: formatNumberBR(metrics.lowStockProducts),
-          note: metrics.lowStockProducts > 0 ? "Precisa reposição" : undefined,
-        },
-        {
-          label: "Sugestões de reposição",
-          value: formatNumberBR(metrics.needsRestockProducts),
-        },
-        {
-          label: "Produtos pausados",
-          value: formatNumberBR(metrics.pausedProducts),
-          note:
-            metrics.pausedProducts > 0 ? formatBRL(metrics.pausedValue) : undefined,
-        },
-        {
-          label: "Saúde dos produtos",
-          value: `${metrics.productHealth.healthPercentage}%`,
-          note: `${metrics.productHealth.healthy} de ${metrics.productHealth.total} saudáveis`,
-        },
-      ]
-    : [];
+  const semProblemas = dados && dados.grupos.length === 0;
 
   return (
-    <div className="container mx-auto max-w-7xl p-6 space-y-6">
+    <div className="container mx-auto max-w-[1100px] space-y-6 p-6">
       <PageHeader
-        title="Mercado Livre"
-        subtitle={`Gestão integrada de vendas${
-          currentAccount ? ` — ${currentAccount.nickname}` : ""
-        }${
-          lastUpdate
-            ? ` · atualizado às ${lastUpdate.toLocaleTimeString("pt-BR", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}`
-            : ""
-        }`}
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9"
-              onClick={() => loadAllData()}
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-
-            <Button
-              variant={autoRefreshEnabled ? "default" : "outline"}
-              size="sm"
-              className="h-9"
-              onClick={toggleAutoRefresh}
-            >
-              <Clock className="h-4 w-4 mr-2" />
-              {autoRefreshEnabled ? "Auto ativado" : "Auto desativado"}
-            </Button>
-          </div>
+        title="Saúde dos anúncios"
+        subtitle={
+          dados
+            ? `${dados.totalAtivos} anúncio${dados.totalAtivos === 1 ? "" : "s"} ativo${dados.totalAtivos === 1 ? "" : "s"}`
+            : "Mercado Livre"
         }
+        actions={<SincronizacaoCatalogo onConcluido={carregarSaude} compacto />}
       />
 
-      {metrics?.warning && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            {metrics?.warning} - Algumas funcionalidades podem estar limitadas.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {metrics && (
+      {carregando && !dados ? (
         <>
-          <StatCard
-            size="lg"
-            label="Receita semanal"
-            value={formatBRLReais(metrics.totalRevenue)}
-            note={`Ticket médio: ${formatBRL(metrics.averageTicket)} · ${
-              metrics.weekSales
-            } itens vendidos na semana`}
-          />
-          <StatCardGrid items={statStripItems} />
+          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
+          <Skeleton className="h-28 rounded-xl" />
         </>
-      )}
-
-      {metrics && metrics.pausedProducts > 0 && (
-        <Alert variant="warning">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between gap-4">
-            <span>
-              {metrics.pausedProducts} anúncio
-              {metrics.pausedProducts > 1 ? "s" : ""} pausado
-              {metrics.pausedProducts > 1 ? "s" : ""} —{" "}
-              {formatBRL(metrics.pausedValue)} em estoque parado.
-            </span>
-            <Link href="/mercado-livre/produtos?status=paused">
-              <Button variant="outline" size="sm">
-                Ver anúncios pausados
-              </Button>
-            </Link>
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {salesDataPartial && (
-        <PartialDataAlert onRetry={loadSalesData} retrying={loadingSales} />
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {salesData && <MLTopSellingProducts salesData={salesData} />}
-
-        {restockData && <MLRestockSuggestions restockData={restockData} />}
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5" />
-            Ações Rápidas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-4">
-          <Button
-            onClick={handleSync}
-            disabled={syncing}
-            variant={metrics?.needsSync ? "default" : "outline"}
-          >
-            {syncing ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            {syncing ? "Sincronizando..." : "Sincronizar Produtos"}
-          </Button>
-
-          <Button
-            onClick={() => handleAutoSync(false)}
-            disabled={syncing}
-            variant="outline"
-          >
-            <BarChart3 className="h-4 w-4 mr-2" />
-            Sync Inteligente
-          </Button>
-
-          <Button
-            onClick={() => handleAutoSync(true)}
-            disabled={syncing}
-            variant="outline"
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Sync Estoque Completo
-          </Button>
-
-          <Link href="/mercado-livre/produtos">
-            <Button variant="outline">
-              <Package className="h-4 w-4 mr-2" />
-              Gerenciar Produtos
-            </Button>
-          </Link>
-
-          <Link href="/mercado-livre/vendas">
-            <Button variant="outline">
-              <BarChart3 className="h-4 w-4 mr-2" />
-              Análise de Vendas
-            </Button>
-          </Link>
-
-          {currentAccount && (
-            <Button
-              variant="outline"
-              onClick={() =>
-                window.open(
-                  `https://www.mercadolivre.com.br/perfil/${currentAccount.nickname}`,
-                  "_blank"
-                )
-              }
-            >
-              <ExternalLink className="h-4 w-4 mr-2" />
-              Abrir no ML
-            </Button>
-          )}
-        </CardContent>
-      </Card>
-
-      {metrics?.lastSync && (
-        <Alert>
-          <CheckCircle className="h-4 w-4" />
-          <AlertDescription>
-            Última sincronização:{" "}
-            {new Date(metrics.lastSync).toLocaleString("pt-BR")}
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {metrics?.needsSync && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Alguns produtos precisam ser sincronizados. Clique em "Sincronizar
-            Produtos" para atualizar.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {selectedAccount && (
+      ) : semProblemas ? (
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5" />
-              Sincronização Automática
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MercadoLivreAutoSync accountId={selectedAccount} />
+          <CardContent className="flex flex-col items-center gap-3 p-10 text-center">
+            <CheckCircle2 className="h-12 w-12 text-success-text" />
+            <h3 className="text-lg font-semibold">Nenhum problema encontrado</h3>
+            <p className="text-muted-foreground">
+              Todos os anúncios ativos têm estoque, vínculo, tarifa, frete e margem em dia.
+            </p>
           </CardContent>
         </Card>
+      ) : (
+        dados?.grupos.map((grupo) => (
+          <SectionCard
+            key={grupo.categoria}
+            title={grupo.titulo}
+            description={grupo.descricao}
+            actions={
+              <div className="flex items-center gap-2">
+                <StatusPill tone={TONE_POR_CATEGORIA[grupo.categoria]}>
+                  {grupo.anuncios.length}
+                </StatusPill>
+                <Link href={grupo.linkFiltro}>
+                  <Button variant="outline" size="sm">
+                    {grupo.acao}
+                  </Button>
+                </Link>
+              </div>
+            }
+          >
+            <div className="divide-y divide-border">
+              {grupo.anuncios.slice(0, 5).map((anuncio) => (
+                <div
+                  key={anuncio.id}
+                  className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0"
+                >
+                  <ProductImage src={anuncio.mlThumbnail} alt={anuncio.mlTitle} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{anuncio.mlTitle}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {anuncio.produtoSku ?? "sem SKU vinculado"}
+                    </p>
+                  </div>
+                  {anuncio.produtoId ? (
+                    <Link href={`/produtos/${anuncio.produtoId}`}>
+                      <Button variant="ghost" size="sm">
+                        Ver produto
+                      </Button>
+                    </Link>
+                  ) : (
+                    anuncio.mlPermalink && (
+                      <a href={anuncio.mlPermalink} target="_blank" rel="noreferrer">
+                        <Button variant="ghost" size="sm">
+                          Ver no ML
+                        </Button>
+                      </a>
+                    )
+                  )}
+                </div>
+              ))}
+              {grupo.anuncios.length > 5 && (
+                <p className="pt-2.5 text-sm text-muted-foreground">
+                  + {grupo.anuncios.length - 5} outro{grupo.anuncios.length - 5 === 1 ? "" : "s"}
+                </p>
+              )}
+            </div>
+          </SectionCard>
+        ))
       )}
     </div>
   );

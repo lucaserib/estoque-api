@@ -288,8 +288,7 @@ const Sidebar = () => {
             recolhida={recolhida}
             onNavegar={closeSidebarOnMobile}
             itens={[
-              { href: "/mercado-livre", icon: Layout, label: "Painel" },
-              { href: "/mercado-livre/vendas", icon: BarChart3, label: "Vendas" },
+              { href: "/mercado-livre", icon: HeartPulse, label: "Saúde dos anúncios" },
             ]}
           />
           {podeVerFinanceiro && (
@@ -306,13 +305,7 @@ const Sidebar = () => {
                     { href: "/financeiro/dre", icon: FileBarChart, label: "DRE" },
                   ],
                 },
-                {
-                  cluster: "Vendas",
-                  itens: [
-                    { href: "/financeiro/vendas", icon: BarChart3, label: "Lucro por venda" },
-                    { href: "/financeiro/produtos", icon: Package, label: "Lucro por produto" },
-                  ],
-                },
+                { href: "/financeiro/vendas", icon: BarChart3, label: "Vendas" },
                 {
                   cluster: "Caixa",
                   itens: [
@@ -351,7 +344,7 @@ const Sidebar = () => {
           <SectionLabel recolhida={recolhida}>Ajustes</SectionLabel>
           <SidebarLink item={{ href: "/integracoes", icon: Zap, label: "Integrações" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/saude-dados", icon: HeartPulse, label: "Saúde dos dados" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
-          <SidebarLink item={{ href: "/configuracoes-gerais", icon: Settings, label: "Configurações" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/ajustes", icon: Settings, label: "Ajustes" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           {isAdmin && (
             <SidebarLink item={{ href: "/usuarios", icon: Users, label: "Usuários" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           )}

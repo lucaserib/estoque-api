@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -9,12 +10,16 @@ import {
   Star,
   Pencil,
   Link2,
-  Warehouse,
+  Check,
+  X,
 } from "lucide-react";
+import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -27,9 +32,7 @@ import {
 } from "@/components/ui/data-table";
 import { ProductImage } from "@/components/ui/product-image";
 import { formatBRL, formatDateBR } from "@/lib/format";
-import { ProdutoEditarDialog } from "../components/dialogs/ProdutoEditarDialog";
 import { ProdutoFornecedorDialog } from "../components/dialogs/ProdutoFornecedorDialog";
-import { ProdutoEstoqueDialog } from "../components/dialogs/ProdutoEstoqueDialog";
 import type { Produto } from "../types";
 import type { Pendencia } from "@/lib/pendencias";
 import { calcularMargemUnitaria } from "@/lib/margem";
@@ -67,6 +70,7 @@ interface ProdutoFicha extends Omit<Produto, "componentes"> {
     id: number;
     preco: number;
     multiplicador: number;
+    codigoNF: string;
     prazoEntregaDias: number | null;
     precoUnitario: number | null;
     quantidadeMinima: number | null;
@@ -107,14 +111,6 @@ const ORIGEM_MOVIMENTACAO_LABEL: Record<string, string> = {
   SINCRONIZACAO_BLING: "Sincronização Bling",
 };
 
-interface StockItem {
-  produtoId: string;
-  armazemId: string;
-  quantidade: number;
-  estoqueSeguranca?: number;
-  armazem?: { id: string; nome: string };
-}
-
 interface ResultadoFinanceiro30Dias {
   unidades: number;
   margemContribuicao: number;
@@ -125,16 +121,26 @@ interface ResultadoFinanceiro30Dias {
 export default function ProdutoFichaPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const { data: session } = useSession();
+  const podeVerCusto = session?.user?.role === "ADMIN" || session?.user?.role === "COMPRAS";
   const [produto, setProduto] = useState<ProdutoFicha | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showFornecedorModal, setShowFornecedorModal] = useState(false);
-  const [showStockModal, setShowStockModal] = useState(false);
-  const [stockDetails, setStockDetails] = useState<StockItem[]>([]);
-  const [loadingStock, setLoadingStock] = useState(false);
   const [pendencias, setPendencias] = useState<Pendencia[]>([]);
   const [aliquotaImposto, setAliquotaImposto] = useState(0);
   const [resultadoFinanceiro, setResultadoFinanceiro] = useState<ResultadoFinanceiro30Dias | null>(null);
+
+  const [editandoCadastro, setEditandoCadastro] = useState(false);
+  const [draftNome, setDraftNome] = useState("");
+  const [draftEan, setDraftEan] = useState("");
+  const [draftCusto, setDraftCusto] = useState("");
+  const [salvandoCadastro, setSalvandoCadastro] = useState(false);
+
+  const [editandoSeguranca, setEditandoSeguranca] = useState<string | null>(null);
+  const [draftSeguranca, setDraftSeguranca] = useState("");
+  const [salvandoSeguranca, setSalvandoSeguranca] = useState(false);
+  const [salvandoFornecedorId, setSalvandoFornecedorId] = useState<number | null>(null);
+  const [abaAtiva, setAbaAtiva] = useState("dados");
 
   const loadPendencias = useCallback(async () => {
     try {
@@ -181,17 +187,138 @@ export default function ProdutoFichaPage() {
     loadProduto();
   }, [loadProduto]);
 
-  const loadStockDetails = useCallback(async () => {
-    setLoadingStock(true);
-    try {
-      const response = await fetch(`/api/estoque/produto/${params.id}`);
-      if (response.ok) {
-        setStockDetails(await response.json());
-      }
-    } finally {
-      setLoadingStock(false);
+  const iniciarEdicaoCadastro = () => {
+    if (!produto) return;
+    setDraftNome(produto.nome);
+    setDraftEan(produto.codigoEAN ? String(produto.codigoEAN) : "");
+    setDraftCusto(produto.custoMedio != null ? String(produto.custoMedio / 100) : "");
+    setEditandoCadastro(true);
+  };
+
+  const salvarCadastro = async () => {
+    if (!produto) return;
+    if (!draftNome.trim()) {
+      toast.error("O nome do produto é obrigatório");
+      return;
     }
-  }, [params.id]);
+    setSalvandoCadastro(true);
+    try {
+      const custoReais = draftCusto.trim() === "" ? null : Number(draftCusto.replace(",", "."));
+      const response = await fetch("/api/produtos", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: produto.id,
+          nome: draftNome.trim(),
+          sku: produto.sku,
+          ean: draftEan.trim() || null,
+          descricao: produto.descricao ?? null,
+          marca: produto.marca ?? null,
+          categoria: produto.categoria ?? null,
+          pesoGramas: produto.pesoGramas ?? null,
+          alturaCm: produto.alturaCm ?? null,
+          larguraCm: produto.larguraCm ?? null,
+          comprimentoCm: produto.comprimentoCm ?? null,
+          ...(podeVerCusto && custoReais != null && !Number.isNaN(custoReais)
+            ? { custoMedio: Math.round(custoReais * 100) }
+            : {}),
+        }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error || "Erro ao salvar cadastro");
+      }
+      toast.success("Cadastro atualizado");
+      setEditandoCadastro(false);
+      await loadProduto();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao salvar cadastro");
+    } finally {
+      setSalvandoCadastro(false);
+    }
+  };
+
+  const salvarEstoqueSeguranca = async (armazemId: string) => {
+    if (!produto) return;
+    const valor = draftSeguranca.trim() === "" ? 0 : Number(draftSeguranca);
+    if (Number.isNaN(valor) || valor < 0) {
+      toast.error("Estoque de segurança inválido");
+      return;
+    }
+    setSalvandoSeguranca(true);
+    try {
+      const response = await fetch("/api/estoque/estoqueSeguranca", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ produtoId: produto.id, armazemId, estoqueSeguranca: valor }),
+      });
+      if (!response.ok) throw new Error();
+      toast.success("Estoque de segurança atualizado");
+      setEditandoSeguranca(null);
+      await loadProduto();
+    } catch {
+      toast.error("Erro ao salvar estoque de segurança");
+    } finally {
+      setSalvandoSeguranca(false);
+    }
+  };
+
+  const tornarFornecedorPrincipal = async (vinculo: NonNullable<ProdutoFicha["fornecedores"]>[number]) => {
+    setSalvandoFornecedorId(vinculo.id);
+    try {
+      const response = await fetch("/api/produto-fornecedor", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: vinculo.id,
+          preco: vinculo.preco / 100,
+          multiplicador: vinculo.multiplicador,
+          codigoNF: vinculo.codigoNF,
+          prazoEntregaDias: vinculo.prazoEntregaDias,
+          quantidadeMinima: vinculo.quantidadeMinima,
+          codigoNoFornecedor: vinculo.codigoNoFornecedor,
+          principal: true,
+        }),
+      });
+      if (!response.ok) throw new Error();
+      toast.success(`${vinculo.fornecedor.nome} agora é o fornecedor principal`);
+      await loadProduto();
+    } catch {
+      toast.error("Erro ao definir fornecedor principal");
+    } finally {
+      setSalvandoFornecedorId(null);
+    }
+  };
+
+  const salvarPrazoFornecedor = async (
+    vinculo: NonNullable<ProdutoFicha["fornecedores"]>[number],
+    prazoEntregaDias: number | null
+  ) => {
+    setSalvandoFornecedorId(vinculo.id);
+    try {
+      const response = await fetch("/api/produto-fornecedor", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: vinculo.id,
+          preco: vinculo.preco / 100,
+          multiplicador: vinculo.multiplicador,
+          codigoNF: vinculo.codigoNF,
+          prazoEntregaDias,
+          quantidadeMinima: vinculo.quantidadeMinima,
+          codigoNoFornecedor: vinculo.codigoNoFornecedor,
+          principal: vinculo.principal,
+        }),
+      });
+      if (!response.ok) throw new Error();
+      toast.success("Prazo de entrega atualizado");
+      await loadProduto();
+    } catch {
+      toast.error("Erro ao salvar prazo de entrega");
+    } finally {
+      setSalvandoFornecedorId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -226,6 +353,9 @@ export default function ProdutoFichaPage() {
     0
   );
 
+  const fornecedorPrincipal =
+    produto.fornecedores?.find((f) => f.principal) ?? produto.fornecedores?.[0];
+
   return (
     <div className="container mx-auto max-w-5xl p-6 space-y-6">
       <PageHeader
@@ -248,76 +378,90 @@ export default function ProdutoFichaPage() {
             rounded="lg"
           />
 
-          <div className="flex-1 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-semibold">{produto.nome}</h2>
-              {!produto.ativo && <Badge variant="outline">Inativo</Badge>}
-              {produto.isKit && <Badge variant="outline">Kit</Badge>}
-            </div>
-            {produto.isKit && (produto.componentes?.length ?? 0) > 0 && (
-              <p className="text-sm text-muted-foreground">
-                Composição:{" "}
-                {produto.componentes!.map((c, i) => (
-                  <span key={c.produto.id}>
-                    {i > 0 && " + "}
-                    <Link href={`/produtos/${c.produto.id}`} className="text-primary hover:underline">
-                      {c.quantidade}× {c.produto.nome}
-                    </Link>
-                  </span>
-                ))}
-              </p>
+          <div className="flex-1 space-y-3">
+            {editandoCadastro ? (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2 space-y-1">
+                  <Label htmlFor="edit-nome">Nome</Label>
+                  <Input id="edit-nome" value={draftNome} onChange={(e) => setDraftNome(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="edit-ean">EAN</Label>
+                  <Input id="edit-ean" value={draftEan} onChange={(e) => setDraftEan(e.target.value)} inputMode="numeric" />
+                </div>
+                {podeVerCusto && (
+                  <div className="space-y-1">
+                    <Label htmlFor="edit-custo">Custo médio (R$)</Label>
+                    <Input
+                      id="edit-custo"
+                      value={draftCusto}
+                      onChange={(e) => setDraftCusto(e.target.value)}
+                      inputMode="decimal"
+                      placeholder="Não definido"
+                    />
+                  </div>
+                )}
+                <div className="sm:col-span-3 flex gap-2">
+                  <Button size="sm" onClick={salvarCadastro} disabled={salvandoCadastro}>
+                    <Check className="h-4 w-4 mr-2" />
+                    {salvandoCadastro ? "Salvando..." : "Salvar"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditandoCadastro(false)} disabled={salvandoCadastro}>
+                    <X className="h-4 w-4 mr-2" />
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-lg font-semibold">{produto.nome}</h2>
+                  {!produto.ativo && <Badge variant="outline">Inativo</Badge>}
+                  {produto.isKit && <Badge variant="outline">Kit</Badge>}
+                  <Button size="sm" variant="ghost" onClick={iniciarEdicaoCadastro}>
+                    <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                    Editar
+                  </Button>
+                </div>
+                {produto.isKit && (produto.componentes?.length ?? 0) > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Composição:{" "}
+                    {produto.componentes!.map((c, i) => (
+                      <span key={c.produto.id}>
+                        {i > 0 && " + "}
+                        <Link href={`/produtos/${c.produto.id}`} className="text-primary hover:underline">
+                          {c.quantidade}× {c.produto.nome}
+                        </Link>
+                      </span>
+                    ))}
+                  </p>
+                )}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Estoque local</p>
+                    <p className="font-medium">{estoqueLocalTotal}</p>
+                  </div>
+                  {podeVerCusto && (
+                    <div>
+                      <p className="text-muted-foreground">Custo médio</p>
+                      <p className="font-medium">
+                        {produto.custoMedio != null ? formatBRL(produto.custoMedio) : "Não definido"}
+                      </p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-muted-foreground">Fornecedor principal</p>
+                    <p className="font-medium">{fornecedorPrincipal?.fornecedor.nome ?? "Não definido"}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Anúncios ML</p>
+                    <p className="font-medium">
+                      {(produto.ProdutoMercadoLivre?.length ?? 0) + (produto.anunciosViaKit?.length ?? 0)}
+                    </p>
+                  </div>
+                </div>
+              </>
             )}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-              <div>
-                <p className="text-muted-foreground">Estoque local</p>
-                <p className="font-medium">{estoqueLocalTotal}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Custo médio</p>
-                <p className="font-medium">
-                  {produto.custoMedio != null ? formatBRL(produto.custoMedio) : "Não definido"}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Fornecedor principal</p>
-                <p className="font-medium">
-                  {(produto.fornecedores?.find((f) => f.principal) ?? produto.fornecedores?.[0])?.fornecedor.nome ??
-                    "Não definido"}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Anúncios ML</p>
-                <p className="font-medium">
-                  {(produto.ProdutoMercadoLivre?.length ?? 0) + (produto.anunciosViaKit?.length ?? 0)}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex sm:flex-col gap-2">
-            <Button size="sm" onClick={() => setShowEditModal(true)}>
-              <Pencil className="h-4 w-4 mr-2" />
-              Editar
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowFornecedorModal(true)}
-            >
-              <Link2 className="h-4 w-4 mr-2" />
-              Fornecedores
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setShowStockModal(true);
-                loadStockDetails();
-              }}
-            >
-              <Warehouse className="h-4 w-4 mr-2" />
-              Estoque
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -383,16 +527,16 @@ export default function ProdutoFichaPage() {
                   variant="outline"
                   onClick={() => {
                     if (p.codigo === "SEM_FORNECEDOR" || p.codigo === "SEM_FORNECEDOR_PRINCIPAL" || p.codigo === "SEM_PRAZO_FORNECEDOR") {
+                      setAbaAtiva("fornecedores");
                       setShowFornecedorModal(true);
                     } else if (p.codigo === "ESTOQUE_DIVERGENTE") {
-                      setShowStockModal(true);
-                      loadStockDetails();
+                      setAbaAtiva("estoque");
                     } else if (p.codigo === "SEM_VINCULO_ML") {
                       router.push(`/mercado-livre/produtos?stock=unlinked&q=${encodeURIComponent(produto.sku)}`);
                     } else if (p.codigo === "VENDA_INCOMPLETA") {
                       router.push(`/financeiro/vendas?produtoId=${params.id}&soIncompletas=true`);
                     } else {
-                      setShowEditModal(true);
+                      iniciarEdicaoCadastro();
                     }
                   }}
                 >
@@ -406,7 +550,7 @@ export default function ProdutoFichaPage() {
 
 
 
-      <Tabs defaultValue="dados">
+      <Tabs value={abaAtiva} onValueChange={setAbaAtiva}>
         <TabsList>
           <TabsTrigger value="dados">Dados</TabsTrigger>
           <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
@@ -476,6 +620,7 @@ export default function ProdutoFichaPage() {
                       <DataTableHead>Preço</DataTableHead>
                       <DataTableHead>Qtd. mínima</DataTableHead>
                       <DataTableHead>Código no fornecedor</DataTableHead>
+                      <DataTableHead />
                     </DataTableRow>
                   </DataTableHeader>
                   <DataTableBody>
@@ -488,9 +633,21 @@ export default function ProdutoFichaPage() {
                           {vinculo.fornecedor.nome}
                         </DataTableCell>
                         <DataTableCell>
-                          {vinculo.prazoEntregaDias != null
-                            ? `${vinculo.prazoEntregaDias} dias`
-                            : "—"}
+                          <Input
+                            type="number"
+                            min={0}
+                            defaultValue={vinculo.prazoEntregaDias ?? ""}
+                            placeholder="dias"
+                            className="h-8 w-20"
+                            disabled={salvandoFornecedorId === vinculo.id}
+                            onBlur={(e) => {
+                              const valor = e.target.value.trim();
+                              const novoPrazo = valor === "" ? null : Number(valor);
+                              if (novoPrazo !== vinculo.prazoEntregaDias) {
+                                salvarPrazoFornecedor(vinculo, novoPrazo);
+                              }
+                            }}
+                          />
                         </DataTableCell>
                         <DataTableCell>
                           {vinculo.precoUnitario
@@ -500,6 +657,18 @@ export default function ProdutoFichaPage() {
                         <DataTableCell>{vinculo.quantidadeMinima ?? "—"}</DataTableCell>
                         <DataTableCell>
                           {vinculo.codigoNoFornecedor || "—"}
+                        </DataTableCell>
+                        <DataTableCell>
+                          {!vinculo.principal && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              disabled={salvandoFornecedorId === vinculo.id}
+                              onClick={() => tornarFornecedorPrincipal(vinculo)}
+                            >
+                              Tornar principal
+                            </Button>
+                          )}
                         </DataTableCell>
                       </DataTableRow>
                     ))}
@@ -535,7 +704,46 @@ export default function ProdutoFichaPage() {
                         <DataTableCell>{estoque.armazem?.nome || "—"}</DataTableCell>
                         <DataTableCell>{estoque.quantidade}</DataTableCell>
                         <DataTableCell>
-                          {estoque.estoqueSeguranca ?? "—"}
+                          {editandoSeguranca === estoque.armazemId ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                type="number"
+                                min={0}
+                                autoFocus
+                                value={draftSeguranca}
+                                onChange={(e) => setDraftSeguranca(e.target.value)}
+                                className="h-8 w-20"
+                                disabled={salvandoSeguranca}
+                              />
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={salvandoSeguranca}
+                                onClick={() => salvarEstoqueSeguranca(estoque.armazemId)}
+                              >
+                                <Check className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={salvandoSeguranca}
+                                onClick={() => setEditandoSeguranca(null)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              className="hover:underline"
+                              onClick={() => {
+                                setEditandoSeguranca(estoque.armazemId);
+                                setDraftSeguranca(estoque.estoqueSeguranca != null ? String(estoque.estoqueSeguranca) : "");
+                              }}
+                            >
+                              {estoque.estoqueSeguranca ?? "Definir"}
+                            </button>
+                          )}
                         </DataTableCell>
                       </DataTableRow>
                     ))}
@@ -679,16 +887,6 @@ export default function ProdutoFichaPage() {
         </TabsContent>
       </Tabs>
 
-      <ProdutoEditarDialog
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        produto={produto}
-        onSave={() => {
-          setShowEditModal(false);
-          loadProduto();
-        }}
-      />
-
       <ProdutoFornecedorDialog
         isOpen={showFornecedorModal}
         onClose={() => {
@@ -696,14 +894,6 @@ export default function ProdutoFichaPage() {
           loadProduto();
         }}
         produto={produto}
-      />
-
-      <ProdutoEstoqueDialog
-        isOpen={showStockModal}
-        onClose={() => setShowStockModal(false)}
-        produto={produto}
-        stockDetails={stockDetails}
-        isLoading={loadingStock}
       />
     </div>
   );

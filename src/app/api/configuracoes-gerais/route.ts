@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
       nomeLoja: config?.nomeLoja ?? null,
       logoUrl: config?.logoUrl ?? null,
       tema: config?.tema ?? "SISTEMA",
+      avgDeliveryDaysPadrao: config?.avgDeliveryDaysPadrao ?? 7,
     });
   } catch (error) {
     console.error("Erro ao buscar configurações gerais:", error);
@@ -33,13 +34,14 @@ export async function PATCH(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const body = await request.json();
-    const { aliquotaImposto, nomeLoja, logoUrl, tema } = body;
+    const { aliquotaImposto, nomeLoja, logoUrl, tema, avgDeliveryDaysPadrao } = body;
 
     const dadosParaUpdate: {
       aliquotaImposto?: number;
       nomeLoja?: string | null;
       logoUrl?: string | null;
       tema?: TemaPreferencia;
+      avgDeliveryDaysPadrao?: number;
     } = {};
 
     // aliquotaImposto afeta margem/custo exibidos no app inteiro — exige VER_CUSTO.
@@ -88,6 +90,21 @@ export async function PATCH(request: NextRequest) {
       dadosParaUpdate.tema = tema;
     }
 
+    if (avgDeliveryDaysPadrao !== undefined) {
+      if (
+        typeof avgDeliveryDaysPadrao !== "number" ||
+        !Number.isInteger(avgDeliveryDaysPadrao) ||
+        avgDeliveryDaysPadrao < 1 ||
+        avgDeliveryDaysPadrao > 365
+      ) {
+        return NextResponse.json(
+          { error: "avgDeliveryDaysPadrao deve ser um número inteiro entre 1 e 365" },
+          { status: 400 }
+        );
+      }
+      dadosParaUpdate.avgDeliveryDaysPadrao = avgDeliveryDaysPadrao;
+    }
+
     const config = await prisma.configuracaoGeral.upsert({
       where: { userId: user.contaId },
       update: dadosParaUpdate,
@@ -99,6 +116,7 @@ export async function PATCH(request: NextRequest) {
       nomeLoja: config.nomeLoja,
       logoUrl: config.logoUrl,
       tema: config.tema,
+      avgDeliveryDaysPadrao: config.avgDeliveryDaysPadrao,
     });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);

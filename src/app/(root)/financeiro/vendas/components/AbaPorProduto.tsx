@@ -19,9 +19,9 @@ import {
 import { formatBRL, formatPercent, formatNumberBR } from "@/lib/format";
 import { exportToExcel } from "@/utils/excelExport";
 import { loadPDF, addTableToPDF, canUsePDF } from "@/utils/pdfHelper";
-import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "../components/SeletorPeriodo";
-import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
-import { useAoAtualizarDados } from "../components/SincronizacaoFinanceira";
+import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "../../components/SeletorPeriodo";
+import { useAcessoFinanceiro } from "../../components/useAcessoFinanceiro";
+import { useAoAtualizarDados } from "../../components/SincronizacaoFinanceira";
 
 interface LinhaProduto {
   produtoId: string;
@@ -47,7 +47,7 @@ type CampoOrdenacao = "margemContribuicao" | "faturamentoBruto" | "lucroLiquido"
 
 const TOM_ABC: Record<string, "success" | "info" | "neutral"> = { A: "success", B: "info", C: "neutral" };
 
-export default function LucroPorProdutoPage() {
+export function AbaPorProduto() {
   const { carregando: carregandoSessao, podeVerFinanceiro } = useAcessoFinanceiro();
   const [periodo, setPeriodo] = useState<PeriodoSelecionado>({ preset: "mesAtual", ...periodoDoPreset("mesAtual") });
   const [ordenarPor, setOrdenarPor] = useState<CampoOrdenacao>("lucroLiquido");
@@ -93,7 +93,7 @@ export default function LucroPorProdutoPage() {
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <div className="space-y-8">
         <Skeleton className="h-[80px] rounded-md" />
       </div>
     );
@@ -141,7 +141,7 @@ export default function LucroPorProdutoPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
+    <div className="space-y-6">
       <PageHeader
         eyebrow="Financeiro"
         title="Lucro por produto"

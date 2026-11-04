@@ -101,12 +101,12 @@ const Navbar = () => {
                   Meu perfil
                 </Link>
                 <Link
-                  href="/configuracoes-gerais"
+                  href="/ajustes"
                   className="flex items-center gap-2 px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
                   onClick={() => setIsDropdownOpen(false)}
                 >
                   <Settings className="h-4 w-4" />
-                  Configurações
+                  Ajustes
                 </Link>
                 <button
                   onClick={() => {

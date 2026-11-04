@@ -326,6 +326,7 @@ export async function PUT(req: NextRequest) {
       larguraCm,
       comprimentoCm,
       ativo,
+      custoMedio,
     } = body;
     if (!id || !nome || !skuBruto) {
       return NextResponse.json(
@@ -345,6 +346,23 @@ export async function PUT(req: NextRequest) {
         { error: "Produto não encontrado" },
         { status: 404 }
       );
+    }
+
+    let dadosCusto: { custoMedio: number; custoOrigem: "MANUAL" } | undefined;
+    if (custoMedio !== undefined) {
+      exigirPermissao(user.role, "VER_CUSTO");
+      if (
+        custoMedio !== null &&
+        (typeof custoMedio !== "number" || !Number.isFinite(custoMedio) || custoMedio < 0)
+      ) {
+        return NextResponse.json(
+          { error: "custoMedio deve ser um número em centavos, maior ou igual a zero" },
+          { status: 400 }
+        );
+      }
+      if (custoMedio !== null) {
+        dadosCusto = { custoMedio: Math.round(custoMedio), custoOrigem: "MANUAL" };
+      }
     }
 
     const sku = normalizeSku(skuBruto);
@@ -376,6 +394,7 @@ export async function PUT(req: NextRequest) {
         larguraCm: larguraCm ?? null,
         comprimentoCm: comprimentoCm ?? null,
         ...(typeof ativo === "boolean" ? { ativo } : {}),
+        ...dadosCusto,
       },
     });
     return new Response(JSON.stringify(serializeWithEAN(produtoAtualizado)), {

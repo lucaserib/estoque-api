@@ -341,3 +341,55 @@ O scanner (`BarcodeReaderButton` + `BarCodeReader`) já existia, mas só dentro 
 - [ ] O convite de instalação (banner) só aparece pra quem acessa pelo navegador do celular e ainda não instalou; quem já usa como PWA instalado nunca vê. Se quiser forçar reaparecer pra testar, é só limpar `localStorage` (chave `skubo-convite-instalar-visto`) no celular.
 - [ ] O item "Instalar no celular" no menu do usuário (desktop) leva pro mesmo guia — é só uma forma de redescobrir sem depender do banner da primeira visita.
 - [ ] Retrofit de tabelas em card para mobile (item citado no plano mestre) não entrou como trabalho novo nesta fase — as tabelas existentes já rolam horizontalmente dentro de um contêiner (`overflow-auto`) e os testes e2e que conferem "sem rolagem horizontal da página" continuam passando; considerei isso adequado por ora. Se alguma tela específica incomodar no uso real, melhor vir como ajuste pontual dessa tela do que um retrofit genérico.
+
+## FASE 8 — Cortar redundância
+
+Sem migração nesta fase.
+
+### Mercado Livre → Saúde dos anúncios
+
+`/mercado-livre` deixou de ser o painel genérico (Painel + aba Vendas) e passou a abrir direto em **Saúde dos anúncios**: seis grupos (preço abaixo do custo, sem estoque, Full baixo, pausado, sem vínculo, sem tarifa/frete), cada um com a lista dos anúncios afetados e um atalho pra resolver. Lógica nova em `src/services/saudeAnunciosService.ts` (`calcularSaudeAnuncios`) — reaproveita `calcularReposicaoConta` (status do Full) e `calcularMargemUnitaria` (preço abaixo do custo), não duplica nenhuma das duas. "ML → Vendas" saiu do menu; `/mercado-livre/vendas` redireciona para `/financeiro/vendas` (mesmo dado, fonte única no motor do Financeiro — a tela antiga lia direto do snapshot do ML, uma segunda fonte pro mesmo número).
+
+### Uma tela de Ajustes
+
+`/configuracoes` (quase 3.000 linhas, misturava config geral + ajuda do ML + pollers duplicados) foi reduzido a só o callback OAuth do ML (150 linhas) — a gestão de contas ML já vivia em `/mercado-livre/configuracoes`, não precisava duplicar. O resto virou `/ajustes` (nova, 544 linhas): oito seções com âncora lateral (Conta, Loja e marca, Impostos e faturamento, Reposição, Mercado Livre e Bling, Financeiro, Usuários, Aparência). `/configuracoes-gerais` redireciona pra lá.
+
+**Desvio do plano, assumido conscientemente**: o plano pedia `ajustes/secoes/*.tsx` (um arquivo por seção). Com 544 linhas num arquivo só, achei que dividir em 8 arquivos só pra dividir não ajudava a manutenção — cada seção é pequena (20–60 linhas) e todas compartilham o mesmo `useState`/`useEffect` de carregamento. Fica documentado aqui como escolha, não como item pulado.
+
+Achado nesta seção: os dois pollers que a Fase 6 tinha encontrado e não resolvido (`MercadoLivreAutoSync` + `MercadoLivreSmartSync`, rodando juntos em `/configuracoes` com `setInterval` próprio cada um) — **apagados os dois**. `MercadoLivreAutoSync` chamava `/api/mercadolivre/sync/auto-stock`, que continua existindo porque `mercado-livre/produtos/page.tsx` também o usa (caller real, confirmado por grep). `MercadoLivreSmartSync` chamava `/api/mercadolivre/produtos-inteligente`, que **não tinha mais nenhum caller** depois dessa remoção — apagada também (ver abaixo).
+
+### Ficha do produto: cadastro editável inline
+
+`ProdutoEditarDialog`/`ProdutoEstoqueDialog` (modais) saíram da ficha do produto (`produtos/[id]/page.tsx`) — continuam existindo porque `ProdutoList.tsx` ainda os usa de verdade (callers confirmados), mas a ficha agora edita **inline**: nome/EAN/custo manual no cabeçalho (com botão Editar/Salvar/Cancelar), prazo de entrega por fornecedor direto na tabela (`onBlur` salva), botão "Tornar principal" por fornecedor, estoque de segurança por armazém clicável-pra-editar. Isso fechou um buraco real: `PUT /api/produtos` não aceitava `custoMedio` — acrescentei validação (`VER_CUSTO`, número ≥ 0 em centavos) e a prioridade de origem (`custoOrigem: "MANUAL"`) consistente com a regra já documentada no `CLAUDE.md` (custo manual tem prioridade sobre o calculado).
+
+### "Lucro por venda" e "Lucro por produto" → abas de Vendas
+
+`/financeiro/vendas` agora é uma casca (`Suspense` + `Tabs`) com duas abas, cada uma seu próprio componente (`AbaPorVenda`, `AbaPorProduto`) — o conteúdo que já existia em `/financeiro/vendas` e `/financeiro/produtos`, só reorganizado, nenhuma lógica de cálculo nova. `/financeiro/produtos` redireciona pra `/financeiro/vendas?aba=produto`; a sidebar perdeu o cluster "Vendas" com dois links e ganhou um link só ("Vendas").
+
+### Apagar arquivos e rotas sem uso
+
+Os 12 componentes/hooks listados no `PROMPT-CICLO-12-SIMPLIFICAR.md` (Fase 5, item 1) — todos reconfirmados sem nenhum import antes de apagar (`LoadingSpinner`, `GoogleSignin`, `FornecedorModal`, `MercadoLivreProductInfo`, `EditarProdutoModal`, `SignOut`, `MLProductLinkModal`, `ProdutoMLCard`, `FornecedoresDeleteDialog`, `EstoqueSegurancaCalculator`, `ConfirmarPedidoForm`, `PedidoEntradasLoadingSkeleton`, `KpiCard`, `useProducts`, `useReplenishmentCache`, `executeAction`, `KitList`, `ProdutoPagination`, `KitDetalhesDialog`) — apagados. `MLRestockSuggestions`/`MLTopSellingProducts` (usados só pelo `/mercado-livre/page.tsx` antigo, substituído pela Saúde dos anúncios) e `MercadoLivreConfigHelp` (usado só pelo `/configuracoes` antigo, reduzido ao callback OAuth) não estavam na lista do CICLO-12, mas ficaram órfãos com a reescrita dessas duas páginas nesta própria fase — apagados também, depois de confirmar zero chamador restante. Nenhum desses chamava API própria (eram só apresentação, recebiam dado via prop) — não deixaram rota órfã atrás deles.
+
+Das rotas listadas no mesmo item (Fase 5, item 2) do CICLO-12 como "sem chamador na interface — confirmar antes de apagar": não tenho acesso aos logs da Vercel pra confirmar tráfego real, então usei o critério que já está documentado no `CLAUDE.md` (grep por chamador real no código) em vez do critério do plano (logs de produção). É mais fraco — não prova que ninguém bateu a rota nos últimos 30 dias — mas prova que **nenhuma tela ou outro módulo do app consegue chegar nela hoje**, o que já é o bastante pra apagar código morto com segurança:
+
+- `GET/POST /api/mercadolivre/produtos-inteligente` — órfã de verdade depois da remoção do `MercadoLivreSmartSync` acima (nenhum outro chamador).
+- `/api/mercadolivre/monitoring`, `/api/mercadolivre/alerts` (+ seu teste, 2 casos), `/api/mercadolivre/dashboard/realtime`, `/api/mercadolivre/dashboard/metrics`, `/api/produtos/estoque-full` — zero chamador em `.tsx`/`.ts`, nenhum import cruzado, não são cron (`vercel.json` conferido) nem webhook. Apagadas as cinco.
+- **Não apaguei** `mercadolivre/analytics/sales-optimized`, que o `CLAUDE.md` também cita como candidata: tem chamador real, `src/hooks/useMercadoLivreOptimized.ts`, usado por `mercado-livre/produtos/page.tsx` — exatamente o tipo de engano que a regra "grep antes de apagar" existe pra evitar (parece órfã pelo nome, não é).
+- Atualizei a linha do `CLAUDE.md` que citava `produtos-simple`/`produtos-inteligente`/`produtos-dinamicos` como família de rotas duplicadas — `produtos-simple` e `produtos-dinamicos` já nem existiam mais no projeto (removidas em ciclo anterior sem atualizar essa linha), e `produtos-inteligente` acabou de sair nesta fase.
+
+### O que não fiz nesta fase
+
+- Duas implementações de sincronização de anúncio em `mercadoLivreService.ts` além de `modules/catalogo/anunciosMl.ts` (item 3 da Fase 5 do CICLO-12) — não entrei nessa limpeza porque é dentro do serviço que já trata token/rate-limit/retry do ML de verdade; misturar com a limpeza de tela desta fase aumentava o risco sem necessidade. Fica pra uma fase própria de serviço, se for prioridade.
+- `GET /api/produtos` sem parâmetro (item 4) — confirmei que nenhuma tela nova o usa, mas não apaguei nem marquei como legado no código; é comportamento aditivo (ninguém quebra), decidi não arriscar mexer numa rota tão central fora do escopo desta fase.
+
+### Verificação da Fase 8
+
+- `npx tsc --noEmit`, `npx next lint`, `npm test` limpos — **763 testes** (765 da Fase 7, menos os 2 do arquivo de teste apagado junto com `/api/mercadolivre/alerts`).
+- Banco novo do zero (`initdb`/`pg_ctl` locais, sem Docker): `prisma migrate deploy` sem migração nova (fase não mudou schema), seed limpo, `next build` completo nos dois builds que rodei (antes e depois de apagar as 5 rotas órfãs adicionais) — confirmando que a segunda rodada de limpeza não quebrou nada que a primeira já tivesse validado.
+- Suíte `e2e/*.spec.ts` da Fase 0 rodada de ponta a ponta duas vezes (mesmo motivo acima): **12 passaram, 3 pulados, 0 falharam** nas duas rodadas (~29s cada) — inclui `02-sidebar`, que é exatamente o teste que quebraria primeiro se um link novo (`/ajustes`, `/mercado-livre/configuracoes`) estivesse errado.
+- Não fiz verificação visual nova via Playwright nesta fase (só os specs do repo) — a reestruturação de navegação é inteiramente coberta pelos redirects do `next.config.mjs` + o teste de sidebar; achei suficiente dado que não mudou nenhum componente visual novo (os dois achados de UI das Fases 6/7 vieram de componentes **novos**, não de reorganização de link).
+
+## Passos manuais do Lucas (Fase 8)
+- [ ] Sem migração nesta fase.
+- [ ] Os redirects antigos (`/configuracoes-gerais`, `/mercado-livre/vendas`, `/financeiro/produtos`) são `permanent: false` (307) — se algum favorito ou link externo apontar pra eles, continua funcionando, só com um salto extra. Pode trocar pra `permanent: true` depois de confirmar que nada interno ainda usa a URL antiga.
+- [ ] `useMercadoLivreOptimized`/`sales-optimized` ficaram de fora da limpeza por terem caller real — se esse hook também estiver pra sair numa limpeza futura, a rota pode ser revisitada junto.

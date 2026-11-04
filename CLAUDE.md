@@ -67,7 +67,7 @@ This is a **Next.js 15** inventory management system (estoque-api / Leap Stock) 
 - **BlingWebhookEvent** / **MercadoLivreWebhook**: Webhook delivery logs, deduplicated by the provider's event id
 
 #### API Route Structure
-API routes live under `src/app/api/`. A few route families exist in more than one variant from earlier iterations (e.g. `mercadolivre/analytics/sales-complete` vs `sales-optimized`, `produtos` vs `produtos-simple`/`produtos-inteligente`/`produtos-dinamicos`) — **`grep` for real callers before touching or deleting any of them**, don't assume the newest-looking one is the active one.
+API routes live under `src/app/api/`. A few route families exist in more than one variant from earlier iterations (e.g. `mercadolivre/analytics/sales-complete` vs `sales-optimized`) — **`grep` for real callers before touching or deleting any of them**, don't assume the newest-looking one is the active one.
 
 #### Frontend Architecture
 - **App Router**: Next.js 15 app directory structure

@@ -79,7 +79,7 @@ export function ProdutoEditarDialog({
           id: produto.id,
           nome,
           sku,
-          codigoEAN: ean || null,
+          ean: ean || null,
         }),
       });
 
