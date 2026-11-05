@@ -55,7 +55,7 @@ export class NotificationService {
       type: "ML_EXPIRADO",
       title: "Conexão com o Mercado Livre expirou",
       body: "Reconecte sua conta do Mercado Livre para continuar sincronizando anúncios e vendas.",
-      link: "/configuracoes",
+      link: "/mercado-livre/configuracoes",
     }).catch((error) =>
       console.error("[NOTIF] Falha ao criar notificação ML:", error)
     );
@@ -70,7 +70,7 @@ export class NotificationService {
       type: "SYNC_ERRO",
       title: "Falha na sincronização com o Mercado Livre",
       body: detail,
-      link: "/configuracoes",
+      link: "/mercado-livre/configuracoes",
     }).catch((error) =>
       console.error("[NOTIF] Falha ao criar notificação de sync:", error)
     );

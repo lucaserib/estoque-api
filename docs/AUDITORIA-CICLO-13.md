@@ -393,3 +393,54 @@ Das rotas listadas no mesmo item (Fase 5, item 2) do CICLO-12 como "sem chamador
 - [ ] Sem migração nesta fase.
 - [ ] Os redirects antigos (`/configuracoes-gerais`, `/mercado-livre/vendas`, `/financeiro/produtos`) são `permanent: false` (307) — se algum favorito ou link externo apontar pra eles, continua funcionando, só com um salto extra. Pode trocar pra `permanent: true` depois de confirmar que nada interno ainda usa a URL antiga.
 - [ ] `useMercadoLivreOptimized`/`sales-optimized` ficaram de fora da limpeza por terem caller real — se esse hook também estiver pra sair numa limpeza futura, a rota pode ser revisitada junto.
+
+## FASE 9 — Pronto para produção
+
+Sem migração nesta fase. Última fase do ciclo — `npm run build` final e `git push origin master` ficam pra depois dela, junto com a lista de aceite.
+
+### Error boundaries e 404 amigável
+
+`src/components/ui/error-state.tsx` **já existia** desde a Fase 1 (usado hoje por `/comecar`) — quase sobrescrevi com uma versão nova sem notar que já tinha dono; `git status` mostrou "modified" em vez de "untracked" e isso chamou atenção a tempo. Revertido pro original e `src/app/(root)/error.tsx` foi escrito contra a API de verdade do componente (`title` obrigatório, `actionHref`/`actionLabel` em vez de eu montar um link por fora). `src/app/(auth)/error.tsx` não usa esse componente — o cartão com borda não cabia bem dentro do card de login (que já é uma caixa), então é um bloco simples próprio, só pra esse contexto estreito. Como o `error.tsx` de cada grupo só substitui o conteúdo da página (não o `layout.tsx` do próprio grupo — regra do App Router), a Sidebar/Navbar continuam na tela quando uma página quebra dentro de `(root)`. `src/app/global-error.tsx` (já existia, com Sentry) continua sendo o único nível que perde o shell inteiro — só dispara se o próprio `layout.tsx` raiz quebrar, o que não muda nesta fase.
+
+`src/app/not-found.tsx` (raiz, fora de qualquer grupo — cobre URL totalmente desconhecida, sem layout nenhum resolvido ainda) e `src/app/(root)/not-found.tsx` (dentro do app autenticado — mantém a Sidebar). Nenhuma tela chama `notFound()` hoje (são todas client component com fetch próprio, não dá pra usar a função do `next/navigation` em render de servidor) — esses dois arquivos cobrem é URL inválida de verdade (link velho, digitado errado).
+
+### Acessibilidade
+
+Revisão direcionada, não uma auditoria WCAG completa do app inteiro (ver "o que não fiz" abaixo). O que encontrei e corrigi:
+
+- **11 botões de fechar diálogo (ícone "X" sozinho, sem texto nem `aria-label`)**: `ProdutoFornecedorDialog`, `ProdutoFormModal`, `ProdutoEditarDialog`, `ProdutoEstoqueDialog`, `NovaSaidaDialog`, `SaidaDetalhesDialog`, `VendaMLDetalhesDialog`, `FornecedorProdutoDialog`, `PedidoConfirmDialog`, `BarcodeReaderButton`, `PedidoDetalhesDialog` — todos ganharam `aria-label="Fechar"`. Mesma classe de bug do botão do scanner achado na Fase 7, só que espalhado em quase todos os diálogos com cabeçalho customizado do app. `PedidoPagination.tsx` já fazia certo (`sr-only`); os dois botões de `pedidosPendentes/page.tsx` têm `title`, que já dá nome acessível (mais fraco que `aria-label`, não toquei por não ser a mesma lacuna).
+- **Menu do usuário na Navbar (desktop) era um `<div onClick>`, não um `<button>`**: focável só com mouse, fora da ordem de tab, sem `aria-expanded`/`aria-haspopup`. Trocado por `<button type="button" aria-haspopup="menu" aria-expanded={isDropdownOpen} aria-label="Menu do usuário">`. Acrescentei também fechar com `Esc` (só tinha clique-fora). O hambúrguer mobile (`<Menu>` sem rótulo) ganhou `aria-label="Abrir menu"`.
+- **Diálogos (`Dialog` compartilhado) já são `@radix-ui/react-dialog`** — focus trap, `Esc` pra fechar e devolução de foco já vêm de graça da biblioteca; não precisei implementar nada aí.
+- **Foco visível**: o `Button` compartilhado já tem `focus-visible:ring` em todas as variantes (`src/components/ui/button.tsx`) — não é um gap, é o padrão de todo botão do app desde antes desta fase.
+
+### Achados durante a revisão (não eram o objetivo, mas quebravam navegação de verdade)
+
+- **`BottomNav` (barra inferior do celular) apontava "Vendas" pra `/mercado-livre/vendas`** pra quem não tem `FINANCEIRO_VER` — rota apagada na Fase 8. Corrigido pra `/mercado-livre` (Saúde dos anúncios, que não é restrita por papel, ao contrário de `/financeiro/vendas`). Sem esse conserto, um usuário `VENDAS`/`ESTOQUE` tocando "Vendas" no celular via um esqueleto de carregamento pra sempre (a aba checa `podeVerFinanceiro` e nunca sai do skeleton se for falso) — regressão real da Fase 8 que nenhum teste pegou, porque nenhum spec do e2e navega como um papel sem `FINANCEIRO_VER`.
+- **Notificações de "ML expirou" / "falha de sincronização" linkavam pra `/configuracoes`**, que na Fase 8 passou a ser só o callback OAuth — funcionava (redireciona sozinho), mas mostrava "Conectando sua conta…" por um instante mesmo sem nenhuma conexão em andamento. Trocado pra `/mercado-livre/configuracoes` direto (`src/services/notificationService.ts`).
+- **Menu de ações da tela Saídas ainda linkava pra `/mercado-livre/vendas`** ("Análise Completa de Vendas") e rotulava `/mercado-livre` como "Dashboard ML" — ambos da época anterior à Fase 8. Primeiro trocado pra `/financeiro/vendas`, segundo renomeado pra "Saúde dos anúncios" (`src/app/(root)/saidas/page.tsx`).
+
+### Segurança: rate limit e VER_CUSTO nas rotas novas do ciclo
+
+Rotas criadas de A a Z neste ciclo (`git log --diff-filter=A` desde a Fase 0): `busca`, `catalogo/vinculos/lote`, `catalogo/vinculos/sugestoes`, `configuracoes-gerais/logo`, `mercadolivre/saude-anuncios`, `onboarding`, `onboarding/pular`, `onboarding/tour-visto`. Todas autenticadas via `verifyUser` e escopadas por `contaId` — conferido uma por uma, nenhuma faltando.
+
+- **`saude-anuncios`**: não expõe custo nem margem, só a categoria (ex.: "está no grupo preço-abaixo-do-custo") — consistente com `calcularPendencias`, que também só libera o **valor agregado** pra quem tem `VER_CUSTO`, não a categoria. Não precisou de gate novo.
+- **`produtos` PUT (`custoMedio`, Fase 8)**: já exige `VER_CUSTO` antes de aceitar o campo — conferido no código, não é novo nesta fase, só revisado.
+- **`configuracoes-gerais/logo`**: tamanho máximo 2 MB, tipo de imagem conferido pelos bytes reais (magic number), não pelo `Content-Type` que o navegador manda — não dá pra subir um arquivo disfarçado de imagem. Sem rate limit; não achei necessário (upload de logo é ação rara, iniciada pelo próprio usuário, autenticada, não bate em API de terceiro).
+- **`catalogo/vinculos/lote`**: zod valida e corta em 200 itens por chamada — já é um teto natural. As 8 rotas que **têm** rate limit hoje (`src/lib/rateLimit.ts`) são todas rotas que chamam API de terceiro (Bling/ML) e podem gerar ban/bloqueio de conta se marteladas; `vinculos/lote` só escreve no próprio banco, perfil de risco diferente — não adicionei rate limit só pra bater o item do checklist sem um motivo real.
+
+### O que não fiz nesta fase
+
+- **Revisão de acessibilidade completa (WCAG) do app inteiro** — o que fiz acima é o que achei de mais visível (ícones sem nome, menu sem teclado); não percorri telas por tela por tela com leitor de tela de verdade. Fica pra uma fase própria se for prioridade.
+- **Reescrever as ~71 mensagens de erro genéricas ("Erro ao X")** — olhei uma amostra e a maioria já diz o que falhou (ex.: "Erro ao carregar contas do Mercado Livre"), só não sugere o que fazer a seguir. Reescrever as 71 é mecânico mas espalhado por dezenas de arquivos — risco baixo, mas também baixo retorno por arquivo, e não dá pra verificar visualmente cada uma sem forçar cada caminho de erro de propósito. Não arrisquei um passe grande disso no fim do ciclo.
+- **Rate limit "geral" em toda rota de escrita** — o prompt pede isso de forma ampla; revisei só as rotas novas do ciclo (acima) e decidi caso a caso, não aplicável a "toda rota de escrita" do app sem reler cada uma (são centenas).
+
+### Verificação da Fase 9
+
+- `npx tsc --noEmit`, `npx next lint`, `npm test` limpos — 763 testes (sem teste novo nesta fase; só UI e rotas já existentes mudando de link/label).
+- Banco novo do zero, sem Docker: `prisma migrate deploy` sem migração nova, seed limpo, `next build` completo.
+- Suíte `e2e/*.spec.ts` rodada de ponta a ponta: **12 passaram, 3 pulados, 0 falharam** — mesmo padrão das fases anteriores.
+
+## Passos manuais do Lucas (Fase 9)
+- [ ] Sem migração nesta fase.
+- [ ] `docs/MANUAL-DO-USUARIO.md` e a página `/ajuda/manual` têm o mesmo conteúdo — se editar um, repetir no outro (não há geração automática de um a partir do outro).
+- [ ] Os dois achados de link quebrado (`BottomNav`, notificações de ML) só afetam contas sem `FINANCEIRO_VER` (papéis `VENDAS`/`ESTOQUE`/`LEITURA`) ou que recebem notificação de ML expirado — vale confirmar com alguém desses papéis depois do deploy.

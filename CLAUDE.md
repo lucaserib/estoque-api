@@ -19,6 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Testing
 - `npm test` - Run the Vitest suite (`vitest run`)
 - Tests live beside the code they cover, in `__tests__/` folders (services, lib, and API routes all have coverage)
+- `npm run test:e2e` - Run the Playwright suite (`e2e/*.spec.ts`) across three viewports (desktop 1440×900, desktop 1366×680, mobile 390×844). Requires `DATABASE_URL` pointed at a **throwaway** Postgres database — `e2e/global-setup.ts` runs `prisma migrate deploy` + `prisma db seed` against it before the suite starts (destructive, never point this at a real database). Playwright itself starts `next start` on `E2E_PORT` (default `3100`); also needs `NEXTAUTH_SECRET` set (any value) and, if not already configured, dummy `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`TOKEN_ENCRYPTION_KEY` (a random 32-byte base64 string) so the app doesn't throw on routes that read them — the seeded e2e account (`e2e@skubo.test`) never exercises real Google/ML/Bling calls. No Docker needed: a local `initdb`/`pg_ctl` Postgres with a short Unix-socket directory (the default macOS `/tmp` works; a long path like a sandboxed scratch dir can exceed the 103-byte socket-path limit) is enough.
 
 ### Mercado Livre Integration
 - `npm run test:ml` - Test ML configuration
@@ -85,6 +86,7 @@ Quando um número parecer errado, confira primeiro **de onde ele vem** antes de 
 - **Custo médio do produto**: `Produto.custoMedio`, calculado em `src/lib/custo.ts` com prioridade: custo manual/planilha preservado → média ponderada de compras confirmadas → preço do fornecedor no Bling → preço do produto no Bling → `null`. Produto-kit usa a soma do custo dos componentes; se faltar algum, o custo do kit fica `null` (nunca parcial).
 - **Margem**: calculada sob demanda por `calcularMargemUnitaria` (`src/lib/margem.ts`), nunca persistida — sempre recalculada a partir de preço/tarifa/frete/custo/alíquota do momento.
 - **Pendências de cadastro** (sem custo, sem fornecedor, margem negativa etc.): `calcularPendencias` (`src/lib/pendencias.ts`), orquestrado por `src/services/pendenciasService.ts`, cacheado por 60s por conta.
+- **Saúde dos anúncios** (pausado, sem estoque, sem vínculo, Full baixo, sem tarifa/frete, preço abaixo do custo): `calcularSaudeAnuncios` (`src/services/saudeAnunciosService.ts`), consumida só por `GET /api/mercadolivre/saude-anuncios` e pela tela `/mercado-livre`. Reaproveita `calcularReposicaoConta` (status do Full) e `calcularMargemUnitaria` (preço abaixo do custo) — não recalcula nenhuma das duas por conta própria. A resposta não inclui valor de custo/margem, só a categoria (consistente com `calcularPendencias`, que também só libera o valor agregado pra quem tem `VER_CUSTO`).
 - **Sugestão de reposição**: `src/services/reposicaoService.ts` — demanda vem de pedidos pagos do ML (uma chamada por conta, nunca por produto) mais saídas manuais, explodida por kit; estoque disponível soma local + Full (do snapshot) + pedidos de compra em aberto.
 - **Saldo de estoque do Bling**: gravado em `Estoque.quantidade` pela sincronização (`blingProductSync.ts`); `EstoqueMovimentacao.origem` registra se a última mudança veio do Bling ou de outra fonte (usado para detectar divergência).
 - **Todo número do Financeiro** (faturamento, margem, lucro, por produto, por logística, DRE, dashboard): `src/modules/financeiro/relatorios/motor.ts` (`calcularVenda`, `calcularIndicadores`, `agruparVendas`). Nenhuma tela ou rota calcula por conta própria. As definições estão em `docs/financeiro/definicoes.md`. A venda cai no dia da **criação** do pedido (fuso de SP), igual ao ML.
@@ -160,7 +162,9 @@ All business data is scoped by **account** (`User.contaId`), not by individual u
 - Permission matrix: `src/lib/permissoes.ts`
 - Margin / pendency / replenishment logic: `src/lib/margem.ts`, `src/lib/pendencias.ts`, `src/services/reposicaoService.ts`
 - Tailwind config: `tailwind.config.ts`
-- Next.js config: `next.config.mjs` (includes ML image domains)
+- Next.js config: `next.config.mjs` (includes ML image domains and the legacy-route redirects)
+- Error/not-found boundaries: `src/app/(root)/error.tsx` + `not-found.tsx`, `src/app/(auth)/error.tsx`, `src/app/not-found.tsx` (root-level, outside any group) — all use the shared `ErrorState` (`src/components/ui/error-state.tsx`); `src/app/global-error.tsx` only catches errors thrown by the root `layout.tsx` itself
+- User-facing help: `docs/MANUAL-DO-USUARIO.md` (source) mirrored at `/ajuda/manual`, linked from the Navbar user menu alongside `/ajuda/celular` (PWA install guide)
 
 ### Ciclo atual
 O histórico de auditorias e planos de execução por ciclo vive em `docs/` e `docs/historico/`. Ciclo em andamento: **Ciclo 13** — plano em `PROMPT-CICLO-13-PRODUTO-FINAL.md` (raiz, substitui as Fases 2–6 do Ciclo 12), diagnóstico em `docs/ANALISE-CRITICA-PRODUTO.md`. O plano mestre do produto é `PROMPT-DEFINITIVO-LEAP-STOCK.md` na raiz.

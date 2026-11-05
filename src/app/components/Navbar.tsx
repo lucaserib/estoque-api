@@ -10,11 +10,12 @@ import {
   User,
   HelpCircle,
   Smartphone,
+  BookOpen,
 } from "lucide-react";
 import { useLayout } from "../context/LayoutContext";
 import Link from "next/link";
 import { signOut, useSession } from "next-auth/react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useClickOutside } from "@/hooks/useClickOutside";
 import NotificationsBell from "./NotificationsBell";
 import { UserAvatar } from "@/components/ui/user-avatar";
@@ -30,11 +31,21 @@ const Navbar = () => {
 
   useClickOutside(dropdownRef, () => setIsDropdownOpen(false));
 
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsDropdownOpen(false);
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [isDropdownOpen]);
+
   return (
     <div className="mb-6 flex h-[60px] w-full min-w-0 items-center gap-2 border-b border-border bg-card px-1 sm:gap-3.5">
       <button
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-fg2 hover:bg-muted md:hidden"
         onClick={toggleSidebar}
+        aria-label="Abrir menu"
       >
         <Menu className="h-4 w-4" />
       </button>
@@ -56,9 +67,13 @@ const Navbar = () => {
           <div className="mx-1 h-7 w-px bg-border" />
 
           <div className="relative" ref={dropdownRef}>
-            <div
-              className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-muted"
+            <button
+              type="button"
+              className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-muted"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              aria-haspopup="menu"
+              aria-expanded={isDropdownOpen}
+              aria-label="Menu do usuário"
             >
               {status === "loading" ? (
                 <div className="h-4 w-24 animate-pulse rounded bg-muted" />
@@ -80,7 +95,7 @@ const Navbar = () => {
                   isDropdownOpen ? "rotate-180" : ""
                 }`}
               />
-            </div>
+            </button>
 
             {isDropdownOpen && (
               <div className="absolute right-0 z-50 mt-2 w-56 rounded-lg border border-border bg-card shadow-lift">
@@ -118,6 +133,14 @@ const Navbar = () => {
                   <HelpCircle className="h-4 w-4" />
                   Ajuda — Ver tour
                 </button>
+                <Link
+                  href="/ajuda/manual"
+                  className="flex items-center gap-2 px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"
+                  onClick={() => setIsDropdownOpen(false)}
+                >
+                  <BookOpen className="h-4 w-4" />
+                  Manual do usuário
+                </Link>
                 <Link
                   href="/ajuda/celular"
                   className="flex items-center gap-2 px-4 py-3 text-left text-sm text-fg2 hover:bg-muted"

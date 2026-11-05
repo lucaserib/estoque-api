@@ -214,6 +214,7 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
               size="icon"
               onClick={onClose}
               disabled={isSubmitting}
+              aria-label="Fechar"
               className="rounded-full hover:bg-muted"
             >
               <X className="h-5 w-5" />

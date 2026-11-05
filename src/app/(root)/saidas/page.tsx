@@ -284,7 +284,7 @@ const SaidasPage = () => {
                     <DropdownMenuSeparator />
                     <DropdownMenuItem asChild>
                       <Link
-                        href="/mercado-livre/vendas"
+                        href="/financeiro/vendas"
                         className="flex items-center cursor-pointer"
                       >
                         <BarChart3 className="mr-2 h-4 w-4" />
@@ -295,7 +295,7 @@ const SaidasPage = () => {
                     <DropdownMenuItem asChild>
                       <Link href="/mercado-livre" className="flex items-center cursor-pointer">
                         <ShoppingCart className="mr-2 h-4 w-4" />
-                        <span>Dashboard ML</span>
+                        <span>Saúde dos anúncios</span>
                         <ExternalLink className="ml-auto h-3 w-3 opacity-50" />
                       </Link>
                     </DropdownMenuItem>

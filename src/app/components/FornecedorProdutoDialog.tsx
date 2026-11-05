@@ -392,6 +392,7 @@ export function FornecedorProdutoDialog({
                 size="icon"
                 onClick={onClose}
                 disabled={isSubmitting}
+                aria-label="Fechar"
                 className="h-8 w-8 rounded-full border border-border"
               >
                 <X className="h-4 w-4" />

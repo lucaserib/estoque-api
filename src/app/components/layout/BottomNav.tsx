@@ -21,7 +21,7 @@ const BottomNav = () => {
 
   const itens = [
     { href: "/", icon: Layout, label: "Início" },
-    { href: podeVerFinanceiro ? "/financeiro" : "/mercado-livre/vendas", icon: Wallet, label: "Vendas" },
+    { href: podeVerFinanceiro ? "/financeiro" : "/mercado-livre", icon: Wallet, label: "Vendas" },
     { href: "/produtos", icon: Package, label: "Estoque" },
     { href: "/mercado-livre/produtos", icon: Megaphone, label: "Anúncios" },
   ];

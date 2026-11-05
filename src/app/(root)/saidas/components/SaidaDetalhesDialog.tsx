@@ -91,6 +91,7 @@ export function SaidaDetalhesDialog({
                   variant="ghost"
                   size="icon"
                   onClick={onClose}
+                  aria-label="Fechar"
                   className="h-8 w-8 rounded-full border border-border"
                 >
                   <X className="h-4 w-4" />
