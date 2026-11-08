@@ -295,3 +295,10 @@ Antes, a falta de "Contatos (leitura)" **abortava a importação inteira** no pr
 2. No Skubo → **Integrações** → cartão do Bling → **Reconectar** (o Bling só entrega permissões novas depois de autorizar de novo; o token atual foi emitido sem elas).
 3. Ao voltar, o Skubo testa as permissões sozinho; depois use **Verificar permissões** quando quiser conferir, e **Sincronizar produtos e estoque**.
 4. Webhooks: no mesmo app, cadastre `https://estoque-api-4iqj.vercel.app/api/bling/webhook` para produtos e estoque.
+
+
+### Deploy do commit `39da12d` falhou — trava de migração presa no pooler
+
+O build parou antes de compilar: `prisma migrate resolve` esperou 10 s pelo *advisory lock* do Postgres e desistiu (`P1002 … Timed out trying to acquire a postgres advisory lock`). O banco é acessado pelo **pooler do Neon** (PgBouncer em modo transação); a trava do Prisma é de sessão, e pelo pooler o "pegar" e o "soltar" podem cair em conexões diferentes — a trava fica presa numa conexão do pool. O script ainda pegava a trava em **todo** build, mesmo sem migração pendente. Produção não caiu: a Vercel manteve o deploy anterior.
+
+Correção em `scripts/migrate-deploy.mjs`: (1) roda primeiro `prisma migrate status`, que não usa trava, e segue direto para o build quando o banco está em dia; (2) quando há o que aplicar, usa a **conexão direta do Neon** (host sem `-pooler`, ou `DIRECT_URL`/`DATABASE_URL_UNPOOLED` se existirem), onde a trava de sessão funciona; (3) se a trava estiver ocupada, tenta de novo até 4 vezes com 15 s de intervalo. Testado contra produção (só leitura: status em dia, saiu sem travar), contra um banco vazio (aplicou as 51 migrações) e contra um banco em dia (seguiu direto).

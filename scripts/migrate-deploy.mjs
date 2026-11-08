@@ -11,10 +11,37 @@ const PADROES_IGNORAVEIS = [
   "without migrations table",
 ];
 
+const TENTATIVAS_TRAVA = 4;
+const ESPERA_TRAVA_MS = 15000;
+
+function urlDeMigracao(urlOriginal) {
+  const explicita = process.env.DIRECT_URL || process.env.DATABASE_URL_UNPOOLED;
+  if (explicita) return explicita;
+  if (!urlOriginal) return null;
+  try {
+    const url = new URL(urlOriginal);
+    if (!url.hostname.includes("-pooler.")) return null;
+    url.hostname = url.hostname.replace("-pooler.", ".");
+    url.searchParams.delete("pgbouncer");
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+const urlMigracao = urlDeMigracao(process.env.DATABASE_URL);
+const ambiente = urlMigracao ? { ...process.env, DATABASE_URL: urlMigracao } : process.env;
+if (urlMigracao) console.log("[migrate-deploy] Usando a conexão direta do banco para as migrações (sem pooler).");
+
+function esperar(ms) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+}
+
 function rodar(comando, args) {
   const resultado = spawnSync(comando, args, {
     encoding: "utf8",
     stdio: ["inherit", "pipe", "pipe"],
+    env: ambiente,
   });
   if (resultado.stdout) process.stdout.write(resultado.stdout);
   if (resultado.stderr) process.stderr.write(resultado.stderr);
@@ -24,9 +51,28 @@ function rodar(comando, args) {
   };
 }
 
+function rodarComTrava(comando, args) {
+  let resultado = rodar(comando, args);
+  for (let tentativa = 2; tentativa <= TENTATIVAS_TRAVA && resultado.saida.includes("advisory lock"); tentativa++) {
+    console.log(
+      `[migrate-deploy] Trava de migração ocupada; nova tentativa ${tentativa}/${TENTATIVAS_TRAVA} em ${ESPERA_TRAVA_MS / 1000}s.`
+    );
+    esperar(ESPERA_TRAVA_MS);
+    resultado = rodar(comando, args);
+  }
+  return resultado;
+}
+
+console.log("\n[migrate-deploy] Conferindo o estado das migrações...");
+const situacao = rodar("npx", ["prisma", "migrate", "status"]);
+if (situacao.saida.includes("Database schema is up to date")) {
+  console.log("[migrate-deploy] Nenhuma migração pendente nem com falha — seguindo para o build.");
+  process.exit(0);
+}
+
 for (const nome of MIGRACOES_REAPLICAVEIS) {
   console.log(`\n[migrate-deploy] Resolvendo possível estado de falha: ${nome}`);
-  const { status, saida } = rodar("npx", [
+  const { status, saida } = rodarComTrava("npx", [
     "prisma",
     "migrate",
     "resolve",
@@ -54,5 +100,5 @@ for (const nome of MIGRACOES_REAPLICAVEIS) {
 }
 
 console.log("\n[migrate-deploy] Rodando prisma migrate deploy...");
-const deploy = rodar("npx", ["prisma", "migrate", "deploy"]);
+const deploy = rodarComTrava("npx", ["prisma", "migrate", "deploy"]);
 process.exit(deploy.status ?? 1);
