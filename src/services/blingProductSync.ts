@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Armazem } from "@prisma/client";
-import { BlingService, BlingProduct } from "@/services/blingService";
+import { BlingService, BlingProduct, type BlingProductSupplier, escopoFaltandoDe } from "@/services/blingService";
 import { resolverCustoProduto } from "@/lib/custo";
 import { stringToBigIntEAN } from "@/utils/ean";
 import { rehostTemporaryImage } from "@/lib/blingImageHost";
@@ -17,6 +17,7 @@ export interface FornecedorResolvido {
   fornecedorId: string | null;
   precoCusto: number | null;
   codigo: string | undefined;
+  permissaoFaltando?: string;
 }
 
 const CONTATO_TTL_MS = 10 * 60 * 1000;
@@ -37,16 +38,36 @@ export async function resolverFornecedorPrincipalBling(
   blingProdutoId: number,
   userId: string
 ): Promise<FornecedorResolvido> {
-  const fornecedores = await BlingService.getProductSuppliers(
-    accountId,
-    blingProdutoId
-  );
+  let fornecedores: BlingProductSupplier[];
+  try {
+    fornecedores = await BlingService.getProductSuppliers(accountId, blingProdutoId);
+  } catch (erro) {
+    const permissaoFaltando = escopoFaltandoDe(erro);
+    if (!permissaoFaltando) throw erro;
+    return { fornecedorId: null, precoCusto: null, codigo: undefined, permissaoFaltando };
+  }
   const padrao = fornecedores.find((f) => f.padrao) ?? fornecedores[0];
   if (!padrao) {
     return { fornecedorId: null, precoCusto: null, codigo: undefined };
   }
 
-  const contato = await obterContatoBling(accountId, padrao.fornecedor.id);
+  let contato: Awaited<ReturnType<typeof obterContatoBling>>;
+  try {
+    contato = await obterContatoBling(accountId, padrao.fornecedor.id);
+  } catch (erro) {
+    const permissaoFaltando = escopoFaltandoDe(erro);
+    if (!permissaoFaltando) throw erro;
+    const conhecido = await prisma.fornecedor.findUnique({
+      where: { userId_blingContatoId: { userId, blingContatoId: String(padrao.fornecedor.id) } },
+      select: { id: true },
+    });
+    return {
+      fornecedorId: conhecido?.id ?? null,
+      precoCusto: padrao.precoCompra ?? padrao.precoCusto ?? null,
+      codigo: padrao.codigo,
+      permissaoFaltando,
+    };
+  }
 
   const fornecedor = await prisma.fornecedor.upsert({
     where: {
@@ -117,6 +138,7 @@ export async function vincularFornecedorProdutoBling(
 export interface AplicarDetalheResultado {
   produtoId: string;
   criado: boolean;
+  permissoesFaltando?: string[];
 }
 
 export async function aplicarDetalheProdutoBling(params: {
@@ -277,8 +299,12 @@ export async function sincronizarProdutoUnico(
     }
   }
 
-  const { fornecedorId, precoCusto: precoCustoFornecedor, codigo } =
-    await resolverFornecedorPrincipalBling(accountId, blingProdutoId, userId);
+  const {
+    fornecedorId,
+    precoCusto: precoCustoFornecedor,
+    codigo,
+    permissaoFaltando,
+  } = await resolverFornecedorPrincipalBling(accountId, blingProdutoId, userId);
 
   const resultado = await aplicarDetalheProdutoBling({
     userId,
@@ -319,7 +345,7 @@ export async function sincronizarProdutoUnico(
     );
   }
 
-  return resultado;
+  return permissaoFaltando ? { ...resultado, permissoesFaltando: [permissaoFaltando] } : resultado;
 }
 
 export async function sincronizarEstoqueUnico(

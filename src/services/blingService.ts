@@ -232,6 +232,15 @@ export class BlingEscopoError extends Error {
   }
 }
 
+export function escopoFaltandoDe(erro: unknown): string | null {
+  if (erro instanceof BlingEscopoError) return erro.escopo;
+  if (erro instanceof BlingApiError && erro.status === 403) {
+    const recurso = erro.endpoint.split("?")[0];
+    return ESCOPO_POR_RECURSO.find(([padrao]) => padrao.test(recurso))?.[1] ?? null;
+  }
+  return null;
+}
+
 type TokenFormat = "jwt" | "opaco";
 
 const BLING_JWT_HEADER = { "enable-jwt": "1" } as const;
@@ -249,6 +258,7 @@ type LockedRefreshResult =
 export class BlingService {
   private static readonly BASE_URL = "https://api.bling.com.br/Api/v3";
   private static readonly AUTH_URL = "https://www.bling.com.br/Api/v3/oauth";
+  private static readonly TOKEN_URL = "https://api.bling.com.br/Api/v3/oauth/token";
   private static get CLIENT_ID(): string {
     return process.env.BLING_CLIENT_ID?.trim() ?? "";
   }
@@ -278,7 +288,7 @@ export class BlingService {
   }
 
   static async exchangeCodeForTokens(code: string): Promise<BlingAuthTokens> {
-    const response = await fetch(`${this.AUTH_URL}/token`, {
+    const response = await fetch(this.TOKEN_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -308,7 +318,7 @@ export class BlingService {
   static async refreshAccessToken(
     refreshToken: string
   ): Promise<BlingAuthTokens> {
-    const response = await fetch(`${this.AUTH_URL}/token`, {
+    const response = await fetch(this.TOKEN_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -808,7 +818,11 @@ export class BlingService {
   static async verificarEscopos(accountId: string): Promise<string[]> {
     const testes: Array<[string, string]> = [
       ["/produtos?pagina=1&limite=1", "Produtos (leitura)"],
+      ["/produtos/fornecedores?pagina=1&limite=1", "Produtos — fornecedores (leitura)"],
+      ["/contatos?pagina=1&limite=1", "Contatos (leitura)"],
       ["/depositos", "Estoques e depósitos (leitura)"],
+      ["/nfe?pagina=1&limite=1", "Notas fiscais (leitura)"],
+      ["/empresas/me/dados-basicos", "Dados básicos da empresa"],
     ];
     const faltando: string[] = [];
     for (const [caminho, escopo] of testes) {
@@ -817,7 +831,7 @@ export class BlingService {
       } catch (error) {
         if (error instanceof BlingEscopoError) faltando.push(escopo);
         else if (error instanceof BlingApiError && error.status === 403) faltando.push(escopo);
-        else throw error;
+        else if (error instanceof BlingReconnectError) throw error;
       }
     }
     return faltando;

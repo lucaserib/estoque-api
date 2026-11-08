@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
-import { BlingService } from "@/services/blingService";
+import { BlingReconnectError, BlingService } from "@/services/blingService";
 import { criarStateBling } from "@/lib/blingOAuthState";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { diagnosticarConfiguracaoBling, origemDaRequisicao } from "@/lib/blingConfig";
@@ -130,6 +130,53 @@ export async function GET(request: NextRequest) {
       { error: "Erro interno do servidor" },
       { status: 500 }
     );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    if (searchParams.get("action") !== "verificar") {
+      return NextResponse.json({ error: "Ação inválida" }, { status: 400 });
+    }
+
+    const user = await verifyUser(request);
+    exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
+
+    const conta = await prisma.blingAccount.findFirst({
+      where: { userId: user.contaId, isActive: true },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, blingCompanyId: true },
+    });
+    if (!conta) {
+      return NextResponse.json(
+        { error: "Nenhuma conta do Bling ativa. Conecte ou reconecte o Bling.", code: "BLING_DESCONECTADO" },
+        { status: 404 }
+      );
+    }
+
+    const escoposFaltando = await BlingService.verificarEscopos(conta.id);
+    let empresaIdentificada = Boolean(conta.blingCompanyId);
+    if (!empresaIdentificada && !escoposFaltando.includes("Dados básicos da empresa")) {
+      const companyId = await BlingService.getCompanyId(conta.id);
+      if (companyId) {
+        await prisma.blingAccount.update({ where: { id: conta.id }, data: { blingCompanyId: companyId } });
+        empresaIdentificada = true;
+      }
+    }
+
+    return NextResponse.json({ escoposFaltando, empresaIdentificada });
+  } catch (error) {
+    const permissaoResponse = permissaoErrorResponse(error);
+    if (permissaoResponse) return permissaoResponse;
+    if (error instanceof BlingReconnectError) {
+      return NextResponse.json(
+        { error: "O acesso ao Bling expirou. Clique em Reconectar.", code: "BLING_RECONECTAR" },
+        { status: 409 }
+      );
+    }
+    console.error("[BLING_VERIFICAR] Erro ao verificar permissões:", error instanceof Error ? error.message : error);
+    return NextResponse.json({ error: "Não foi possível falar com o Bling agora." }, { status: 502 });
   }
 }
 

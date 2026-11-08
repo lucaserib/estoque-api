@@ -39,6 +39,7 @@ interface ProgressoEtapa {
   ultimoErro?: string;
   ignorados?: number;
   avisos?: string[];
+  permissoesFaltando?: string[];
 }
 
 type Progresso = Partial<Record<EtapaCatalogo, ProgressoEtapa>>;
@@ -127,7 +128,15 @@ async function executarBlingProdutos(ctx: ContextoEtapa): Promise<boolean> {
     if (Date.now() > ctx.prazo) return false;
     const blingId = ids[ctx.cursor.indice];
     try {
-      await sincronizarProdutoUnico(conta.id, ctx.userId, blingId);
+      const resultado = await sincronizarProdutoUnico(conta.id, ctx.userId, blingId);
+      for (const permissao of resultado.permissoesFaltando ?? []) {
+        if (progresso.permissoesFaltando?.includes(permissao)) continue;
+        progresso.permissoesFaltando = [...(progresso.permissoesFaltando ?? []), permissao];
+        progresso.avisos = [
+          ...(progresso.avisos ?? []),
+          `Sem a permissão "${permissao}" no Bling: os produtos entram, mas sem o fornecedor. Marque a permissão no app do Bling e clique em Reconectar para trazer os fornecedores.`,
+        ].slice(-20);
+      }
     } catch (erro) {
       if (erro instanceof BlingProdutoIgnorado) {
         progresso.ignorados = (progresso.ignorados ?? 0) + 1;

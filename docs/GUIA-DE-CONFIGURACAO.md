@@ -71,6 +71,7 @@ Já configurados, todos com `Authorization: Bearer $CRON_SECRET`:
    - **Notas fiscais (leitura)** — novo, é o que alimenta "Em nota fiscal"
    - Dados básicos da empresa
 4. **Webhooks**: `https://app.skubo.com.br/api/bling/webhook` para produtos e estoque.
+5. Marcou ou mudou um escopo depois de conectar? Clique em **Reconectar** em Integrações — o token antigo continua sem a permissão nova. O botão **Verificar permissões** no cartão do Bling mostra na hora o que ainda falta (testa os 6 escopos) e grava o ID da empresa usado pelos webhooks.
 
 O que mudou no Ciclo 14: a conexão não depende mais do cookie de sessão voltar do Bling (o `state` é assinado e carrega o usuário), as credenciais são lidas sem espaços sobrando e, logo depois de conectar, o Skubo testa as permissões e mostra na tela de Integrações exatamente quais faltam. Se tudo estiver certo, já abre a sincronização de produtos e estoque.
 

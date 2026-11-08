@@ -12,6 +12,7 @@ interface ProgressoEtapa {
   total: number;
   erros: number;
   ultimoErro?: string;
+  permissoesFaltando?: string[];
 }
 
 interface StatusCatalogo {
@@ -118,6 +119,12 @@ export function SincronizacaoCatalogoModal({ open, onOpenChange, onConcluido }: 
                   {frase && <p className="text-xs text-muted-foreground">{frase}</p>}
                   {progresso?.ultimoErro && (
                     <p className="text-xs text-warning-text">{progresso.ultimoErro}</p>
+                  )}
+                  {progresso?.permissoesFaltando && progresso.permissoesFaltando.length > 0 && (
+                    <p className="text-xs text-warning-text">
+                      Produtos importados sem fornecedor: falta {progresso.permissoesFaltando.join(", ")} no app do
+                      Bling. Marque a permissão e use Reconectar em Integrações.
+                    </p>
                   )}
                 </div>
               </div>

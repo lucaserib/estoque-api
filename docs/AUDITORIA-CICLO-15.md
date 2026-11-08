@@ -265,3 +265,33 @@ Custo estimado observado: ~R$ 0,13 por pergunta no assistente e ~R$ 0,11 por an�
 Variáveis adicionadas: `ANTHROPIC_API_KEY` (sensível), `ANTHROPIC_WORKSPACE_ID`, `IA_MODELO`, `IA_MODELO_RAPIDO`, `IA_PRECO_*` (Sonnet 5.5: 2 / 10 / 0,2 / 2,5; Haiku 5.5: 0,1 / 0,5 / 0,01 / 0,125 — US$ por milhão de tokens, tabela de out/2026), `IA_COTACAO_DOLAR`, `PLATFORM_ADMIN_EMAILS`, `IA_CONTAS_LIBERADAS` (a conta do dono da plataforma) e **`CRON_SECRET`** — que não existia: todas as rotas `/api/cron/*` respondiam 401 em produção, ou seja, nenhum cron (renovação de token do Bling, sincronização, Financeiro diário, catálogo) rodava.
 
 Deixado de fora de propósito: **`TOKEN_ENCRYPTION_KEY`**. O código aceita ligar a qualquer momento (tokens antigos sem o prefixo `enc:v1:` continuam legíveis), mas é uma porta de mão única: assim que os tokens forem regravados criptografados, um rollback para um deploy anterior (sem a chave) derruba ML e Bling. Ligar depois que esta versão estiver estável, em `production`, `preview` e `development` (as três usam o mesmo banco), e nunca mais trocar. `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET` dependem das suas credenciais do Mercado Pago — sem elas a assinatura não bloqueia ninguém e o "Assinar" do Skubo IA vira pedido de ativação.
+
+## Avaliação da integração com o Bling (07/11, depois do go-live)
+
+Diagnóstico feito sobre a cópia do banco de produção (backup de 07/11, antes do deploy) e sobre o código:
+
+| O que estava acontecendo | Causa | Situação |
+|---|---|---|
+| Sincronização de produtos parou no 2º de 46 e a de estoque falhou nos 20 itens (tentativa de 07/11 22:44) | O **app do Bling não tem as permissões** "Contatos (leitura)" e "Estoques e depósitos (leitura)" — o Bling recusou com `insufficient_scope` | **Depende de você no Bling** (passo a passo abaixo) |
+| O teste de permissões ao conectar não avisava | Ele só testava "Produtos" e "Depósitos"; Contatos, fornecedores, notas fiscais e dados da empresa só falhavam no meio da sincronização | Corrigido: testa os 6 escopos que o Skubo usa |
+| Nenhum webhook do Bling recebido, nunca | A conta não tinha o **ID da empresa** gravado (`blingCompanyId`), que é como o webhook acha a conta; o código que grava isso no callback era do Ciclo 14 e nunca tinha ido ao ar | Corrigido no deploy de hoje + ação "Verificar permissões" grava o ID sem precisar reconectar |
+| Conexão caía com `sessao_invalida`/`state_expirado` e credenciais com espaço quebravam a troca do código | Correções do Ciclo 14 (state assinado, `trim()`), que **só entraram em produção hoje** | Em produção |
+| Token do Bling caducava quando a loja ficava sem usar | **`CRON_SECRET` não existia**: o cron `bling-refresh` respondia 401 todo dia | Configurado hoje; o cron passa a renovar às 06:00 UTC |
+| Aviso do Bling: `www.bling.com.br` bloqueado para chamadas de API | Troca/renovação de token ainda usavam `www` | Agora usam `api.bling.com.br` (testado: os dois domínios respondem igual ao OAuth hoje) |
+| Sincronizações antigas presas em "processando" desde outubro | Rotinas de importação antigas, removidas no Fase 0; a tela de histórico já mostra como "interrompida" | Sem ação |
+
+### Importação que não depende de todas as permissões
+
+Antes, a falta de "Contatos (leitura)" **abortava a importação inteira** no primeiro produto com fornecedor (foi o que parou em 2 de 46), e sem produtos no Skubo os anúncios do Mercado Livre não tinham com o que ser vinculados — reposição, custo e Financeiro dependem desse vínculo. Agora:
+
+- Sem "Contatos (leitura)": o produto entra normalmente; o custo vindo do fornecedor no Bling continua sendo lido (vem da lista de fornecedores do produto, que não depende de Contatos) e o produto é ligado ao fornecedor se ele já existir no Skubo. Só o cadastro de fornecedor novo fica para quando a permissão for dada.
+- Sem "Produtos — fornecedores (leitura)": o produto entra sem fornecedor.
+- A sincronização registra um aviso único na etapa ("Produtos importados sem fornecedor: falta … no app do Bling") em vez de erro, e conclui.
+- Permissões que o Skubo não tem como contornar continuam dando erro claro: sem "Produtos (leitura)" não há o que importar, e sem "Estoques e depósitos (leitura)" o saldo não pode ser lido (a etapa de estoque falha com a instrução, e as etapas do Mercado Livre seguem).
+
+### O que você precisa fazer no Bling (uma vez)
+
+1. Bling → Central de extensões → Área do integrador → app do Skubo → **Escopos**. Marque, todos em leitura: Produtos, Produtos — fornecedores, **Contatos**, **Estoques e depósitos**, Notas fiscais, **Dados básicos da empresa** (e, se for usar contas a pagar/receber do Bling, Financeiro). Salve.
+2. No Skubo → **Integrações** → cartão do Bling → **Reconectar** (o Bling só entrega permissões novas depois de autorizar de novo; o token atual foi emitido sem elas).
+3. Ao voltar, o Skubo testa as permissões sozinho; depois use **Verificar permissões** quando quiser conferir, e **Sincronizar produtos e estoque**.
+4. Webhooks: no mesmo app, cadastre `https://estoque-api-4iqj.vercel.app/api/bling/webhook` para produtos e estoque.

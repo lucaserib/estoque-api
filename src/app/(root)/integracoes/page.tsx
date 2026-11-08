@@ -15,7 +15,7 @@ import {
   DataTableHeader,
   DataTableRow,
 } from "@/components/ui/data-table";
-import { AlertTriangle, Loader2, RefreshCw, Settings, Unplug } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, Settings, ShieldCheck, Unplug } from "lucide-react";
 import { toast } from "sonner";
 import { SincronizacaoCatalogoModal } from "@/components/sincronizacao/SincronizacaoCatalogoModal";
 
@@ -101,6 +101,7 @@ export default function IntegracoesPage() {
   const [regravandoImagens, setRegravandoImagens] = useState(false);
   const [reprocessandoWebhooks, setReprocessandoWebhooks] = useState(false);
   const [conectandoBling, setConectandoBling] = useState(false);
+  const [verificandoBling, setVerificandoBling] = useState(false);
   const [erroBling, setErroBling] = useState<string | null>(null);
   const [diagnosticoBling, setDiagnosticoBling] = useState<DiagnosticoConfigBling | null>(null);
 
@@ -238,6 +239,33 @@ export default function IntegracoesPage() {
     }
   };
 
+  const handleVerificarBling = async () => {
+    setVerificandoBling(true);
+    try {
+      const response = await fetch("/api/bling/auth?action=verificar", { method: "POST" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) {
+        toast.error(data?.error ?? "Não foi possível verificar o Bling agora.");
+        if (data?.code === "BLING_RECONECTAR" || data?.code === "BLING_DESCONECTADO") loadData();
+        return;
+      }
+      const faltando: string[] = data?.escoposFaltando ?? [];
+      setEscoposFaltando(faltando);
+      if (faltando.length > 0) {
+        toast.warning(`Faltam permissões no app do Bling: ${faltando.join(", ")}.`);
+      } else {
+        toast.success(
+          data?.empresaIdentificada
+            ? "Todas as permissões do Bling estão certas."
+            : "Permissões certas, mas a empresa do Bling não foi identificada; os webhooks podem não chegar."
+        );
+      }
+      loadData();
+    } finally {
+      setVerificandoBling(false);
+    }
+  };
+
   const handleConectarBling = async () => {
     setConectandoBling(true);
     try {
@@ -332,7 +360,9 @@ export default function IntegracoesPage() {
               <ol className="list-decimal space-y-1 pl-5 text-fg2">
                 <li>No Bling, abra Central de extensões → Área do integrador → app Skubo → Escopos.</li>
                 <li>Marque as permissões acima e salve.</li>
-                <li>Volte aqui e clique em Reconectar no cartão do Bling.</li>
+                <li>
+                  Volte aqui e clique em Reconectar: o Bling só entrega as permissões novas depois de autorizar de novo.
+                </li>
               </ol>
               <Button size="sm" onClick={handleConectarBling} disabled={conectandoBling} className="mt-1 gap-2">
                 {conectandoBling ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
@@ -557,6 +587,16 @@ export default function IntegracoesPage() {
                     <Button size="sm" onClick={() => setSincronizacaoAberta(true)} className="gap-2">
                       <RefreshCw className="h-4 w-4" />
                       Sincronizar produtos e estoque
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleVerificarBling}
+                      disabled={verificandoBling}
+                      className="gap-2"
+                    >
+                      {verificandoBling ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                      Verificar permissões
                     </Button>
                     <Button
                       size="sm"

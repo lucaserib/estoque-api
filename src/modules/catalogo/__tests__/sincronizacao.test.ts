@@ -10,6 +10,7 @@ const produtosLocais = [
 const sincronizados: number[] = [];
 const anuncios: string[] = [];
 let falharBlingProdutos = false;
+let permissaoFaltandoNosProdutos: string | null = null;
 let relogio = 0;
 
 vi.mock("@/lib/prisma", () => ({
@@ -59,6 +60,11 @@ vi.mock("@/services/blingProductSync", () => ({
   sincronizarProdutoUnico: vi.fn(async (_c: string, _u: string, id: number) => {
     relogio += 20000;
     sincronizados.push(id);
+    return {
+      produtoId: `p-${id}`,
+      criado: true,
+      ...(permissaoFaltandoNosProdutos ? { permissoesFaltando: [permissaoFaltandoNosProdutos] } : {}),
+    };
   }),
   garantirArmazensParaDepositos: vi.fn(async () => new Map([["1", { id: "a1" }]])),
   aplicarEstoqueProdutoBling: (...a: unknown[]) => aplicarEstoque(...(a as [])),
@@ -86,6 +92,7 @@ beforeEach(() => {
   sincronizados.length = 0;
   anuncios.length = 0;
   falharBlingProdutos = false;
+  permissaoFaltandoNosProdutos = null;
   relogio = 0;
   aplicarEstoque.mockClear();
   Date.now = () => realNow() + relogio;
@@ -122,6 +129,18 @@ describe("sincronização de catálogo e estoque", () => {
     expect(status.erro).toContain("Bling fora do ar");
     expect(aplicarEstoque).toHaveBeenCalled();
     expect(anuncios).toHaveLength(3);
+  });
+
+  it("sem a permissão de Contatos no Bling, todos os produtos entram e o aviso aparece uma vez só", async () => {
+    permissaoFaltandoNosProdutos = "Contatos (leitura)";
+    const status = await sincronizarCatalogoSeNecessario("user-1", 200000);
+    expect(sincronizados).toEqual([11, 22, 33]);
+    expect(status.erro).toBeNull();
+    const etapa = status.progresso.BLING_PRODUTOS!;
+    expect(etapa).toMatchObject({ feitos: 3, total: 3, erros: 0, permissoesFaltando: ["Contatos (leitura)"] });
+    expect(etapa.avisos).toHaveLength(1);
+    expect(etapa.avisos![0]).toContain("Reconectar");
+    expect(blingConta!.ultimaSincronizacaoProdutos).toBeInstanceOf(Date);
   });
 
   it("não começa outra rodada se a última terminou há menos de 6 horas", async () => {

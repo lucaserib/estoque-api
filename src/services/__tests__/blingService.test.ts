@@ -230,3 +230,56 @@ describe("BlingService.extractImageInfo", () => {
     expect(info?.temporaria).toBe(true);
   });
 });
+
+describe("BlingService — conexão e permissões", () => {
+  beforeEach(() => {
+    resetAccount();
+    vi.restoreAllMocks();
+  });
+
+  it("troca e renova o token no domínio oficial da API (api.bling.com.br)", async () => {
+    const { BlingService } = await import("@/services/blingService");
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => tokenResponse());
+    vi.stubGlobal("fetch", fetchMock);
+
+    await BlingService.exchangeCodeForTokens("codigo");
+    await BlingService.refreshAccessToken("refresh");
+
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "https://api.bling.com.br/Api/v3/oauth/token",
+      "https://api.bling.com.br/Api/v3/oauth/token",
+    ]);
+    expect(BlingService.getAuthorizationUrl("s")).toMatch(/^https:\/\/www\.bling\.com\.br\/Api\/v3\/oauth\/authorize\?/);
+  });
+
+  it("verifica todos os escopos que o Skubo usa e só conta 403 ou insufficient_scope como permissão faltando", async () => {
+    const { BlingService } = await import("@/services/blingService");
+    const fetchMock = vi.fn(async (url: string) => {
+      if (url.includes("/contatos")) return new Response("insufficient_scope", { status: 403 });
+      if (url.includes("/depositos")) return new Response("Forbidden", { status: 403 });
+      if (url.includes("/produtos/fornecedores")) return new Response("Not found", { status: 404 });
+      return new Response(JSON.stringify({ data: [] }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const faltando = await BlingService.verificarEscopos(accountState.id);
+
+    expect(faltando).toEqual(["Contatos (leitura)", "Estoques e depósitos (leitura)"]);
+    const caminhos = fetchMock.mock.calls.map(([url]) => new URL(url).pathname.replace("/Api/v3", ""));
+    expect(caminhos).toEqual([
+      "/produtos",
+      "/produtos/fornecedores",
+      "/contatos",
+      "/depositos",
+      "/nfe",
+      "/empresas/me/dados-basicos",
+    ]);
+  });
+
+  it("token sem volta interrompe a verificação para pedir reconexão", async () => {
+    const { BlingService, BlingReconnectError } = await import("@/services/blingService");
+    resetAccount({ isActive: false });
+    vi.stubGlobal("fetch", vi.fn());
+    await expect(BlingService.verificarEscopos(accountState.id)).rejects.toBeInstanceOf(BlingReconnectError);
+  });
+});
