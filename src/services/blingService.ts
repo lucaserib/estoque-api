@@ -243,6 +243,18 @@ export function escopoFaltandoDe(erro: unknown): string | null {
 
 type TokenFormat = "jwt" | "opaco";
 
+export function companyIdDoJwt(token: string): string | null {
+  const partes = token.split(".");
+  if (partes.length !== 3) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(partes[1], "base64url").toString("utf8")) as Record<string, unknown>;
+    const id = claims.company_id ?? claims.companyId;
+    return typeof id === "number" || (typeof id === "string" && id.length > 0) ? String(id) : null;
+  } catch {
+    return null;
+  }
+}
+
 const BLING_JWT_HEADER = { "enable-jwt": "1" } as const;
 const TOKEN_RENEWAL_WINDOW_MS = 10 * 60 * 1000;
 const PAGE_DELAY_MS = 100;
@@ -847,8 +859,29 @@ export class BlingService {
       const id = (empresa as { id?: unknown } | undefined)?.id;
       return id !== undefined && id !== null ? String(id) : null;
     } catch (error) {
-      console.error("Erro ao buscar dados da empresa no Bling:", error);
+      if (!(error instanceof BlingEscopoError)) {
+        console.error("Erro ao buscar dados da empresa no Bling:", error);
+      }
       return null;
+    }
+  }
+
+  static async companyIdDoToken(accountId: string): Promise<string | null> {
+    try {
+      return companyIdDoJwt(await this.getValidToken(accountId));
+    } catch {
+      return null;
+    }
+  }
+
+  static async produtoPertenceAConta(accountId: string, produtoId: string): Promise<boolean> {
+    const id = Number(produtoId);
+    if (!Number.isSafeInteger(id) || id <= 0) return false;
+    try {
+      await this.getProductById(accountId, id);
+      return true;
+    } catch {
+      return false;
     }
   }
 

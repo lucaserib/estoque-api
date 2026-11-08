@@ -2,6 +2,7 @@ import { NextRequest, NextResponse, after } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   processarEventoWebhookBling,
+  normalizarCompanyId,
   BlingWebhookEnvelope,
 } from "@/services/blingWebhookProcessor";
 import { verificarAssinaturaBling } from "@/lib/blingWebhookSignature";
@@ -38,7 +39,7 @@ export async function POST(request: NextRequest) {
     data: {
       eventId: payload.eventId,
       event: payload.event,
-      companyId: payload.companyId ?? null,
+      companyId: normalizarCompanyId(payload.companyId),
       payload: payload as unknown as object,
     },
   });

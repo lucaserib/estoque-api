@@ -302,3 +302,17 @@ Antes, a falta de "Contatos (leitura)" **abortava a importação inteira** no pr
 O build parou antes de compilar: `prisma migrate resolve` esperou 10 s pelo *advisory lock* do Postgres e desistiu (`P1002 … Timed out trying to acquire a postgres advisory lock`). O banco é acessado pelo **pooler do Neon** (PgBouncer em modo transação); a trava do Prisma é de sessão, e pelo pooler o "pegar" e o "soltar" podem cair em conexões diferentes — a trava fica presa numa conexão do pool. O script ainda pegava a trava em **todo** build, mesmo sem migração pendente. Produção não caiu: a Vercel manteve o deploy anterior.
 
 Correção em `scripts/migrate-deploy.mjs`: (1) roda primeiro `prisma migrate status`, que não usa trava, e segue direto para o build quando o banco está em dia; (2) quando há o que aplicar, usa a **conexão direta do Neon** (host sem `-pooler`, ou `DIRECT_URL`/`DATABASE_URL_UNPOOLED` se existirem), onde a trava de sessão funciona; (3) se a trava estiver ocupada, tenta de novo até 4 vezes com 15 s de intervalo. Testado contra produção (só leitura: status em dia, saiu sem travar), contra um banco vazio (aplicou as 51 migrações) e contra um banco em dia (seguiu direto).
+
+O deploy seguinte (`72ae02f`) passou: `Database schema is up to date!` pela conexão direta e build completo. Como uma trava esquecida por uma conexão do pooler pode durar enquanto essa conexão viver (com tráfego constante, ela não fica ociosa), o script ganhou uma última saída: se a trava continuar ocupada depois das 4 tentativas, roda uma vez com `PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK=1` (opção do próprio Prisma 6.5). O risco que a trava cobre — dois builds migrando ao mesmo tempo — é menor do que um deploy preso para sempre; e a migração continua registrada em `_prisma_migrations`, então um segundo build não reaplica.
+
+### Webhooks do Bling sem o escopo "Dados básicos da empresa" (07/11, depois do `72ae02f`)
+
+Depois do deploy, o cron `bling-refresh` renovou o token pelo `api.bling.com.br` (`renovadas: 1, erros: 0`), mas `empresasIdentificadas: 0`. O log de produção mostrou o motivo: `BlingEscopoError` em `/empresas/me/dados-basicos` — o app do Bling também não tem **"Dados básicos da empresa"**. Sem o ID da empresa, todo webhook era descartado com "Conta não encontrada para este companyId".
+
+O Skubo deixou de depender desse escopo para os webhooks:
+
+- O processador (`localizarContaDoWebhook`, `services/blingWebhookProcessor.ts`) procura a conta pelo `companyId`; se nenhuma tiver essa empresa, testa as contas Bling ativas ainda sem empresa (até 10): primeiro o `company_id` que o Bling põe no token JWT, depois se o produto do webhook existe naquela conta (`GET /produtos/{id}`, que só responde para a empresa dona — ids de produto do Bling são globais). Achou → grava **o `companyId` do próprio webhook** em `blingCompanyId`, então o formato bate sempre, e processa o evento. O webhook é assinado com o segredo do app, então não dá para forjar um vínculo.
+- `companyId` numérico agora é aceito (gravado como texto); antes, se o Bling mandasse número, a gravação do evento quebraria.
+- A falta do escopo deixou de aparecer como erro no log a cada renovação.
+
+Para isso funcionar, os webhooks precisam estar cadastrados no app do Bling (passo 4 acima). "Dados básicos da empresa" continua recomendado: com ele a empresa é identificada já ao conectar, antes do primeiro webhook.

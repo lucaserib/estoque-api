@@ -135,7 +135,7 @@ export default function IntegracoesPage() {
       } else {
         toast.success(
           aviso === "empresa_nao_identificada"
-            ? "Bling conectado. Não foi possível identificar a empresa agora; os webhooks passam a funcionar depois da próxima renovação automática."
+            ? "Bling conectado. Trazendo produtos e estoque agora; a empresa do Bling é identificada sozinha quando o primeiro webhook chegar."
             : "Bling conectado. Trazendo produtos e estoque agora."
         );
         setSincronizacaoAberta(true);
@@ -257,7 +257,7 @@ export default function IntegracoesPage() {
         toast.success(
           data?.empresaIdentificada
             ? "Todas as permissões do Bling estão certas."
-            : "Permissões certas, mas a empresa do Bling não foi identificada; os webhooks podem não chegar."
+            : "Permissões certas. A empresa do Bling é identificada sozinha no primeiro webhook; confira se os webhooks estão ativos no app do Bling."
         );
       }
       loadData();

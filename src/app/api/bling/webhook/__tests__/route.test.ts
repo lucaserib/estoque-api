@@ -95,4 +95,21 @@ describe("POST /api/bling/webhook", () => {
     expect(segunda.status).toBe(200);
     expect(segundaBody.duplicado).toBe(true);
   });
+
+  it("grava companyId numérico como texto", async () => {
+    const { prisma } = await import("@/lib/prisma");
+    const corpo = JSON.stringify({
+      eventId: "evt-numerico",
+      event: "stock.updated",
+      companyId: 14880421763,
+      data: { produto: { id: 5 } },
+    });
+
+    const response = await POST(criarRequest(corpo, assinar(corpo)));
+
+    expect(response.status).toBe(200);
+    expect(prisma.blingWebhookEvent.create).toHaveBeenLastCalledWith({
+      data: expect.objectContaining({ eventId: "evt-numerico", companyId: "14880421763" }),
+    });
+  });
 });

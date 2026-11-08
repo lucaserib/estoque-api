@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { BlingApiError, BlingEscopoError } from "@/services/blingService";
+import { BlingApiError, BlingEscopoError, BlingService } from "@/services/blingService";
 import {
   inativarProdutoPorBlingId,
   sincronizarEstoqueUnico,
@@ -11,10 +11,51 @@ import {
 export interface BlingWebhookEnvelope {
   eventId: string;
   date: string;
-  version: string;
+  version: string | number;
   event: string;
-  companyId: string;
+  companyId: string | number | null;
   data: Record<string, unknown>;
+}
+
+const MAX_CONTAS_A_IDENTIFICAR = 10;
+
+export function normalizarCompanyId(companyId: unknown): string | null {
+  if (typeof companyId === "number" && Number.isFinite(companyId)) return String(companyId);
+  if (typeof companyId === "string" && companyId.trim().length > 0) return companyId.trim();
+  return null;
+}
+
+async function identificarContaPeloWebhook(companyId: string, blingProdutoId: string | null) {
+  const candidatas = await prisma.blingAccount.findMany({
+    where: { isActive: true, blingCompanyId: null },
+    orderBy: { updatedAt: "desc" },
+    take: MAX_CONTAS_A_IDENTIFICAR,
+  });
+
+  for (const candidata of candidatas) {
+    const pertence =
+      (await BlingService.companyIdDoToken(candidata.id)) === companyId ||
+      (blingProdutoId !== null && (await BlingService.produtoPertenceAConta(candidata.id, blingProdutoId)));
+    if (!pertence) continue;
+
+    console.info(`[BLING_WEBHOOK] Empresa ${companyId} identificada pela conta ${candidata.id}.`);
+    return prisma.blingAccount.update({
+      where: { id: candidata.id },
+      data: { blingCompanyId: companyId },
+    });
+  }
+
+  return null;
+}
+
+export async function localizarContaDoWebhook(companyIdRecebido: unknown, blingProdutoId: string | null) {
+  const companyId = normalizarCompanyId(companyIdRecebido);
+  if (!companyId) return null;
+
+  const conhecida = await prisma.blingAccount.findFirst({
+    where: { blingCompanyId: companyId, isActive: true },
+  });
+  return conhecida ?? identificarContaPeloWebhook(companyId, blingProdutoId);
 }
 
 export function extrairBlingProdutoId(
@@ -39,9 +80,8 @@ export async function processarEventoWebhookBling(eventoId: string): Promise<voi
 
   try {
     const payload = evento.payload as unknown as BlingWebhookEnvelope;
-    const account = await prisma.blingAccount.findFirst({
-      where: { blingCompanyId: payload.companyId, isActive: true },
-    });
+    const blingProdutoId = extrairBlingProdutoId(payload.event, payload.data ?? {});
+    const account = await localizarContaDoWebhook(payload.companyId, blingProdutoId);
 
     if (!account) {
       await prisma.blingWebhookEvent.update({
@@ -55,7 +95,6 @@ export async function processarEventoWebhookBling(eventoId: string): Promise<voi
       return;
     }
 
-    const blingProdutoId = extrairBlingProdutoId(payload.event, payload.data);
     if (!blingProdutoId) {
       await prisma.blingWebhookEvent.update({
         where: { id: eventoId },

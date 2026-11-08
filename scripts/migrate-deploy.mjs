@@ -37,11 +37,11 @@ function esperar(ms) {
   Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
 }
 
-function rodar(comando, args) {
+function rodar(comando, args, extras = {}) {
   const resultado = spawnSync(comando, args, {
     encoding: "utf8",
     stdio: ["inherit", "pipe", "pipe"],
-    env: ambiente,
+    env: { ...ambiente, ...extras },
   });
   if (resultado.stdout) process.stdout.write(resultado.stdout);
   if (resultado.stderr) process.stderr.write(resultado.stderr);
@@ -59,6 +59,12 @@ function rodarComTrava(comando, args) {
     );
     esperar(ESPERA_TRAVA_MS);
     resultado = rodar(comando, args);
+  }
+  if (resultado.saida.includes("advisory lock")) {
+    console.log(
+      "[migrate-deploy] A trava continua presa (provavelmente esquecida por uma conexão do pooler); rodando uma vez sem a trava."
+    );
+    resultado = rodar(comando, args, { PRISMA_SCHEMA_DISABLE_ADVISORY_LOCK: "1" });
   }
   return resultado;
 }
