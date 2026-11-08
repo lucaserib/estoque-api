@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
 import { DataTableCell, DataTableRow } from "@/components/ui/data-table";
+import { BotaoExplicarIa } from "@/components/ia/BotaoExplicarIa";
 import {
   AlertCircle,
   AlertTriangle,
@@ -243,14 +244,22 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
         </DataTableCell>
 
         <DataTableCell className="pr-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onViewDetails(item.produtoId)}
-            className="text-xs"
-          >
-            Detalhes
-          </Button>
+          <div className="flex items-center justify-end gap-1">
+            <BotaoExplicarIa
+              pedido={{ tipo: "reposicao", produtoId: item.produtoId }}
+              rotulo="Por que essa sugestão?"
+              tamanho="xs"
+              perguntaAssistente={`Por que o Skubo sugere isso para ${item.produtoNome} (SKU ${item.sku}) na Reposição?`}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onViewDetails(item.produtoId)}
+              className="text-xs"
+            >
+              Detalhes
+            </Button>
+          </div>
         </DataTableCell>
       </DataTableRow>
     );

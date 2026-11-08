@@ -37,8 +37,13 @@ vi.mock("@/modules/financeiro/canais/mercadoPago/saldo", () => ({
   sincronizarSaldoMercadoPago: (...a: unknown[]) => saldoMock(...a),
 }));
 
+vi.mock("@/modules/financeiro/canais/erp/bling/notasFiscais", () => ({
+  sincronizarNotasFiscais: vi.fn(async () => ({ conectado: true, lidas: 2, gravadas: 2, vinculadas: 1, completo: true, erro: null })),
+}));
+
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    blingAccount: { findMany: vi.fn(async () => [{ userId: "dono-1" }]) },
     mercadoLivreAccount: {
       findMany: vi.fn(async () => [
         { id: "conta-1", userId: "dono-conta-1" },

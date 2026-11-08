@@ -92,7 +92,7 @@ describe("gerarRelatorioConciliacao", () => {
 
   it("diferença acima de 1% gera alerta", async () => {
     vendasAgregadas = { tarifaVenda: 10000, freteVendedor: 0 };
-    cobrancasAgrupadas = [{ tipoNormalizado: "TARIFA_VENDA", valor: 10300 }]; // 3% de diferença
+    cobrancasAgrupadas = [{ tipoNormalizado: "TARIFA_VENDA", valor: 10300 }];
 
     const relatorio = await gerarRelatorioConciliacao("user-1", CanalVenda.MERCADO_LIVRE, "2026-05");
     const linhaTarifa = relatorio.linhas.find((l) => l.tipo === "TARIFA_VENDA")!;

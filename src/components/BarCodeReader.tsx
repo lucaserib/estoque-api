@@ -17,62 +17,27 @@ import {
 } from "lucide-react";
 
 interface BarcodeReaderProps {
-  /**
-   * Callback function triggered when a barcode is successfully scanned or manually entered
-   */
   onScan: (barcode: string) => void;
 
-  /**
-   * Placeholder text for the barcode input field
-   */
   placeholder?: string;
 
-  /**
-   * Disables all interactivity of the component
-   */
   disabled?: boolean;
 
-  /**
-   * Label for the scan button
-   */
   scanButtonLabel?: string;
 
-  /**
-   * Enables or disables manual input of barcodes
-   */
   allowManualInput?: boolean;
 
-  /**
-   * Shows an initial value in the input field
-   */
   initialValue?: string;
 
-  /**
-   * Enable continuous scanning mode (scan multiple items without closing camera)
-   */
   continuousMode?: boolean;
 
-  /**
-   * CSS class name to apply to the component
-   */
   className?: string;
 
-  /**
-   * Function to check if a scanned barcode is valid
-   */
   validateBarcode?: (barcode: string) => boolean | Promise<boolean>;
 
-  /**
-   * Maximum length of the barcode input
-   */
   maxLength?: number;
 }
 
-/**
- * A barcode reader component that uses the Web Barcode Detection API
- * and also allows manual barcode entry. Supports continuous scanning
- * and product validation.
- */
 const BarcodeReader = ({
   onScan,
   placeholder = "EAN-13...",
@@ -102,7 +67,6 @@ const BarcodeReader = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Check support for Barcode Detection API
   const [isBarcodeDetectionSupported, setIsBarcodeDetectionSupported] =
     useState<boolean | null>(null);
 
@@ -126,7 +90,6 @@ const BarcodeReader = ({
     checkBarcodeDetectionSupport();
   }, []);
 
-  // Função para validar EAN-13
   const validateEAN13 = (code: string): boolean => {
     if (code.length !== 13) return false;
     if (!/^\d+$/.test(code)) return false;
@@ -141,14 +104,12 @@ const BarcodeReader = ({
     return checkDigit === calculatedCheckDigit;
   };
 
-  // Função para iniciar o scanner com suporte a câmeras móveis
   const startScanner = async () => {
     try {
       setIsScanning(true);
       setError(null);
       setCameraError(null);
 
-      // Tentar primeiro a câmera traseira
       let stream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -159,7 +120,6 @@ const BarcodeReader = ({
           },
         });
       } catch (backCameraError) {
-        // Se falhar, tentar qualquer câmera disponível
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
@@ -172,7 +132,6 @@ const BarcodeReader = ({
         await videoRef.current.play();
       }
 
-      // Iniciar detecção após 1s para dar tempo de inicializar a câmera
       setTimeout(() => {
         detectBarcode();
       }, 1000);
@@ -185,7 +144,6 @@ const BarcodeReader = ({
     }
   };
 
-  // Function to stop the scanner
   const stopScanner = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -195,7 +153,6 @@ const BarcodeReader = ({
     setIsScanning(false);
   };
 
-  // Function to detect barcode in the image
   const detectBarcode = async () => {
     if (!videoRef.current || !canvasRef.current || !streamRef.current) return;
 
@@ -205,11 +162,9 @@ const BarcodeReader = ({
 
     if (!context) return;
 
-    // Set canvas size to match video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
-    // Capture video frame
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
     try {
@@ -234,7 +189,6 @@ const BarcodeReader = ({
       if (barcodes.length > 0) {
         const detectedBarcode = barcodes[0].rawValue;
 
-        // Validar EAN-13
         if (!validateEAN13(detectedBarcode)) {
           if (continuousModeActive) {
             requestAnimationFrame(detectBarcode);
@@ -246,7 +200,6 @@ const BarcodeReader = ({
           }
         }
 
-        // Validar barcode se função de validação for fornecida
         if (validateBarcode) {
           setValidationInProgress(true);
           try {
@@ -273,28 +226,22 @@ const BarcodeReader = ({
           setValidationInProgress(false);
         }
 
-        // Play beep sound if enabled
         if (isSoundEnabled) {
           playBeepSound();
         }
 
-        // Show visual feedback
         setSuccessScan(true);
         setBarcode(detectedBarcode);
 
-        // Add to scanned items list in continuous mode
         if (continuousModeActive) {
           setScannedItems((prev) => [...prev, detectedBarcode]);
         }
 
-        // Call callback
         onScan(detectedBarcode);
 
-        // Stop scanner after success if not in continuous mode
         if (!continuousModeActive) {
           stopScanner();
         } else {
-          // In continuous mode, reset success after 1 second and continue scanning
           setTimeout(() => {
             setSuccessScan(false);
             requestAnimationFrame(detectBarcode);
@@ -302,7 +249,6 @@ const BarcodeReader = ({
           return;
         }
 
-        // Reset success state after a few seconds
         setTimeout(() => {
           setSuccessScan(false);
         }, 2000);
@@ -310,7 +256,6 @@ const BarcodeReader = ({
         return;
       }
 
-      // If no code found, continue trying
       if (isScanning && streamRef.current) {
         requestAnimationFrame(detectBarcode);
       }
@@ -321,9 +266,7 @@ const BarcodeReader = ({
     }
   };
 
-  // Play beep sound
   const playBeepSound = () => {
-    // Define a classe AudioContext para suporte entre navegadores
     const AudioContextClass: typeof AudioContext =
       window.AudioContext ||
       // @ts-expect-error - Suporte a Safari e navegadores mais antigos
@@ -333,7 +276,6 @@ const BarcodeReader = ({
     const oscillator = audioContext.createOscillator();
     const gainNode = audioContext.createGain();
 
-    // Resto do código permanece igual
     oscillator.type = "square";
     oscillator.frequency.value = 800;
     gainNode.gain.value = 0.1;
@@ -346,14 +288,12 @@ const BarcodeReader = ({
       oscillator.stop();
     }, 100);
   };
-  // Clean up resources when unmounting
   useEffect(() => {
     return () => {
       stopScanner();
     };
   }, []);
 
-  // Função para garantir que o campo de entrada mantenha o foco
   const manterFocoNoCampo = () => {
     setTimeout(() => {
       if (inputRef.current) {
@@ -362,29 +302,23 @@ const BarcodeReader = ({
     }, 10);
   };
 
-  // Ajustar useEffect para focar no campo quando o componente é montado
   useEffect(() => {
     manterFocoNoCampo();
   }, []);
 
-  // Função para evitar a perda de foco ao submeter o formulário
   const evitarPerdaDeFoco = (e: React.FormEvent) => {
     e.preventDefault();
-    // Não fazemos nada aqui, apenas evitamos o comportamento padrão
   };
 
-  // Handle manual submission
   const handleManualSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (barcode && barcode.trim() !== "") {
-      // Validar EAN-13
       if (!validateEAN13(barcode)) {
         setError("Código de barras inválido. Use um EAN-13 válido.");
         manterFocoNoCampo();
         return;
       }
 
-      // Validar barcode se função de validação for fornecida
       if (validateBarcode) {
         setValidationInProgress(true);
         try {
@@ -408,16 +342,13 @@ const BarcodeReader = ({
       onScan(barcode);
       setSuccessScan(true);
 
-      // Add to scanned items list in continuous mode
       if (continuousModeActive) {
         setScannedItems((prev) => [...prev, barcode]);
-        setBarcode(""); // Clear input for next scan
+        setBarcode("");
 
-        // Focar no campo de entrada após limpar
         manterFocoNoCampo();
       } else {
-        // Limpar o campo após o escaneamento e manter o foco para a próxima leitura
-        setBarcode(""); // Limpar imediatamente
+        setBarcode("");
         manterFocoNoCampo();
       }
 
@@ -427,7 +358,6 @@ const BarcodeReader = ({
     }
   };
 
-  // Função para tratar o evento de tecla pressionada (para detectar ENTER)
   const handleKeyDown = async (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (
       e.key === "Enter" &&
@@ -439,14 +369,12 @@ const BarcodeReader = ({
       !validationInProgress
     ) {
       e.preventDefault();
-      // Usar a mesma lógica de handleManualSubmit
       if (!validateEAN13(barcode)) {
         setError("Código de barras inválido. Use um EAN-13 válido.");
         manterFocoNoCampo();
         return;
       }
 
-      // Validar barcode se função de validação for fornecida
       if (validateBarcode) {
         setValidationInProgress(true);
         try {
@@ -474,16 +402,13 @@ const BarcodeReader = ({
       onScan(barcode);
       setSuccessScan(true);
 
-      // Add to scanned items list in continuous mode
       if (continuousModeActive) {
         setScannedItems((prev) => [...prev, barcode]);
-        setBarcode(""); // Clear input for next scan
+        setBarcode("");
 
-        // Focar no campo de entrada após limpar
         manterFocoNoCampo();
       } else {
-        // Limpar o campo após o escaneamento e manter o foco para a próxima leitura
-        setBarcode(""); // Limpar imediatamente para próxima bipagem
+        setBarcode("");
         manterFocoNoCampo();
       }
 
@@ -493,14 +418,12 @@ const BarcodeReader = ({
     }
   };
 
-  // Clear scanned items list
   const clearScannedItems = () => {
     setScannedItems([]);
   };
 
   return (
     <div className={`w-full space-y-4 ${className}`}>
-      {/* Video scanner (visible only when scanning) */}
       {isScanning && (
         <div className="relative w-full max-w-md mx-auto aspect-[4/3] bg-muted rounded-lg overflow-hidden">
           <video
@@ -512,7 +435,6 @@ const BarcodeReader = ({
           />
           <canvas ref={canvasRef} className="hidden" />
 
-          {/* Scanning overlay */}
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <div className="relative w-4/5 h-1/3 border-2 border-white border-opacity-60 rounded-lg">
               <div className="absolute top-0 left-0 w-full h-1 bg-success animate-scan"></div>
@@ -522,7 +444,6 @@ const BarcodeReader = ({
             </p>
           </div>
 
-          {/* Button to cancel scanning */}
           <Button
             variant="secondary"
             className="absolute bottom-4 left-1/2 transform -translate-x-1/2 px-6"
@@ -533,14 +454,12 @@ const BarcodeReader = ({
         </div>
       )}
 
-      {/* Error message */}
       {(error || cameraError) && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription>{error || cameraError}</AlertDescription>
         </Alert>
       )}
 
-      {/* Barcode input */}
       <form
         onSubmit={handleManualSubmit}
         className="flex flex-col sm:flex-row gap-2"
@@ -553,7 +472,6 @@ const BarcodeReader = ({
               EAN-13
             </span>
 
-            {/* Success indicator */}
             {successScan && (
               <Badge className="ml-2 bg-success/10 text-success-text">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
@@ -604,7 +522,7 @@ const BarcodeReader = ({
                 onClick={(e) => {
                   e.preventDefault();
                   setIsSoundEnabled(!isSoundEnabled);
-                  manterFocoNoCampo(); // Manter foco no campo após alternar som
+                  manterFocoNoCampo();
                 }}
                 className="h-7 w-7 p-0 rounded-full"
               >
@@ -676,7 +594,6 @@ const BarcodeReader = ({
         </p>
       )}
 
-      {/* Continuous mode items list */}
       {continuousModeActive && scannedItems.length > 0 && (
         <div className="mt-4 border border-border rounded-md p-4">
           <div className="flex justify-between items-center mb-2">

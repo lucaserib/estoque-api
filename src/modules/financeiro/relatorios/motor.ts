@@ -10,34 +10,6 @@ import {
 } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-/**
- * MOTOR ÚNICO DE CÁLCULO DO FINANCEIRO.
- *
- * Toda tela (Visão geral, DRE, Vendas, Produtos, Por logística, Conferência,
- * Dashboard principal) chega aos números por aqui. As definições estão em
- * docs/financeiro/definicoes.md e valem para todas:
- *
- * - Uma venda pertence ao dia/mês da CRIAÇÃO do pedido no fuso de SP — o
- *   mesmo critério do painel de vendas do Mercado Livre.
- * - Faturamento = preço × quantidade dos pedidos não cancelados, menos o que
- *   foi estornado em devoluções parciais. É o número que bate com o ML.
- * - Frete no faturamento depende do modo da conta (Configurações): igual ao
- *   ML (frete só como custo), somando o frete pago pelo comprador (que também
- *   entra como custo), já descontando o frete pago por você do faturamento
- *   (aí ele não aparece de novo como custo) ou somando o frete total gerado
- *   no envio — vendedor + comprador (igual ao Bling/Mercado Turbo). Nos três
- *   primeiros a margem é sempre a mesma; no último, o frete do vendedor passa
- *   a contar como faturamento gerado (não só como custo), então a margem fica
- *   maior nesse valor.
- * - Desconto de campanha é informativo: o preço do pedido já vem com ele.
- * - Imposto = alíquota atual × faturamento (recalculado sempre, nunca
- *   congelado), a menos que a conta use os lançamentos de imposto.
- * - Margem de contribuição = receita − impostos − tarifas − frete − ads − CMV
- *   − cobranças variáveis do marketplace (armazenagem Full etc.).
- * - Lucro líquido = margem de contribuição − despesas operacionais ±
- *   resultado financeiro ± não operacional − imposto sobre o lucro.
- */
-
 export interface ConfigRelatorio {
   aliquotaImposto: number;
   modoFaturamento: ModoFaturamento;
@@ -144,7 +116,6 @@ export function calcularVenda(venda: VendaParaCalculo, config: ConfigRelatorio):
     receitaFrete = -freteVendedor;
     frete = 0;
   } else if (valida && config.modoFaturamento === ModoFaturamento.PRODUTOS_E_FRETE_TOTAL) {
-    // freteVendedor passa a contar como faturamento (não só custo) — a margem sobe esse valor.
     receitaFrete = freteVendedor + freteComprador;
     frete += freteComprador;
   }
@@ -323,11 +294,6 @@ function somaVazia(): SomaPorGrupo {
   return { total: 0, porCategoria: [] };
 }
 
-/**
- * Lançamentos pela COMPETÊNCIA dentro do período, ignorando os cancelados e as
- * transferências. Despesa soma positivo, receita soma negativo — quem usa
- * decide o sinal na conta final.
- */
 async function somarLancamentosPorGrupo(
   userId: string,
   desde: Date,
@@ -607,7 +573,6 @@ export interface BaldeVendas {
   totais: TotaisVendas;
 }
 
-/** Agrupa as vendas em baldes (dia, logística, produto…) com a MESMA regra de cálculo do total. */
 export function agruparVendas(
   vendas: VendaParaCalculo[],
   config: ConfigRelatorio,

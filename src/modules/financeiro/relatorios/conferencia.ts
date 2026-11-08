@@ -70,12 +70,6 @@ function somarNoTotal(
   total.tarifa += tarifa;
 }
 
-/**
- * Compara, pedido a pedido, o que o Mercado Livre tem no mês (data de criação
- * do pedido, fuso de SP — o mesmo critério de todos os relatórios) com o que
- * está gravado. Faturamento = preço × quantidade dos pedidos não cancelados,
- * exatamente como o painel de vendas do ML.
- */
 export async function conferirMes(
   userId: string,
   accountId: string,
@@ -184,12 +178,6 @@ export interface ResultadoCorrecaoMes {
   lote: ResultadoLote;
 }
 
-/**
- * Corrige o mês de uma vez: busca todos os pedidos do mês no ML (uma única
- * listagem), grava em lote os que faltam ou divergem e devolve a conferência
- * de antes e depois. Os detalhes do pagamento das vendas corrigidas entram na
- * fila de detalhamento.
- */
 export async function corrigirMes(accountId: string, competencia: Competencia): Promise<ResultadoCorrecaoMes> {
   const userId = await obterUserIdDaConta(accountId);
   if (!userId) throw new Error("Conta do Mercado Livre não encontrada");

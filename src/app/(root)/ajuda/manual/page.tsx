@@ -15,7 +15,10 @@ const SECOES = [
             </Link>
             .
           </li>
-          <li>Rode &quot;Sincronizar agora&quot; em cada um — isso traz seus anúncios, produtos e estoque.</li>
+          <li>
+            Logo depois de conectar o Bling, o Skubo já traz produtos, custos e estoque. Se faltar alguma
+            permissão no app do Bling, a tela de Integrações mostra qual marcar.
+          </li>
           <li>
             Em{" "}
             <Link href="/mercado-livre/produtos" className="text-primary hover:underline">
@@ -29,11 +32,100 @@ const SECOES = [
         <p className="mt-3 text-sm text-muted-foreground">
           A jornada{" "}
           <Link href="/comecar" className="text-primary hover:underline">
-            Primeiros passos
+            Configurar minha loja
           </Link>{" "}
           guia por essas etapas na ordem, com uma barra de progresso.
         </p>
       </>
+    ),
+  },
+  {
+    titulo: "Central de controle",
+    conteudo: (
+      <p>
+        A{" "}
+        <Link href="/controle" className="text-primary hover:underline">
+          Central de controle
+        </Link>{" "}
+        dá uma nota de 0 a 100 para a saúde da loja e lista, por ordem de urgência, o que está distorcendo
+        os números ou travando vendas: produto que vende e está sem estoque, sem custo, margem negativa,
+        anúncio sem vínculo, vendas sem custo no DRE, imposto não configurado, despesas do mês não lançadas,
+        integração desconectada. Cada item tem o botão que leva direto para resolver e, com o Skubo IA, o
+        botão <strong>Perguntar sobre isto</strong>. No plano com IA, a análise lê tudo isso e devolve as
+        prioridades do mês, e toda segunda chega o resumo da semana.
+      </p>
+    ),
+  },
+  {
+    titulo: "Assistente IA (Skubo IA)",
+    conteudo: (
+      <div className="space-y-3">
+        <p>
+          Um analista de e-commerce que conversa com os números da sua loja. Abra pelo botão de brilho no canto da
+          tela, pelo atalho <strong>Ctrl + J</strong> (Cmd + J no Mac) ou em{" "}
+          <Link href="/ia" className="text-primary hover:underline">
+            Assistente IA
+          </Link>
+          .
+        </p>
+        <p>
+          <strong>O que perguntar:</strong> estoque, reposição, Full, anúncios, vendas, margem, faturamento com frete,
+          cadastro e a Central de controle. Por exemplo: &quot;O que preciso comprar esta semana?&quot;, &quot;Por que minha
+          margem caiu este mês?&quot;, &quot;Quais anúncios estão perdendo venda?&quot;, &quot;Compare este mês com o mês
+          passado.&quot; Ele mostra o que está consultando e diz em qual tela você confere cada número.
+        </p>
+        <p>
+          <strong>Dentro das telas:</strong> &quot;Por que essa sugestão?&quot; na Reposição, &quot;Resumo do produto&quot; na ficha
+          do produto, &quot;Explicar variação&quot; na Visão geral e no Financeiro, &quot;Plano de ação&quot; na Saúde dos anúncios
+          e &quot;Perguntar sobre isto&quot; na Central de controle. Toda segunda, o resumo da semana chega na Central (dá para
+          desligar o aviso em Perfil).
+        </p>
+        <p>
+          <strong>Limites:</strong> cada conta tem um limite mensal de uso, mostrado no topo do assistente. A IA só lê
+          os dados — nunca altera nada — e pode errar: confira na tela indicada. Quem não pode ver custo e margem não
+          recebe esses números nem pela IA.
+        </p>
+        <p>
+          <strong>Privacidade:</strong> cada pessoa vê só as próprias conversas, guardadas por 90 dias; dá para apagar
+          qualquer uma no histórico, e o dono da conta apaga todas em Ajustes → Skubo IA. Para responder, os números da
+          loja são enviados à Anthropic, a empresa do modelo de IA, sem dados pessoais de compradores; pelos termos
+          comerciais da Anthropic, esses dados não são usados para treinar modelos.
+        </p>
+        <p>
+          <strong>Como contratar:</strong> em{" "}
+          <Link href="/assinatura?recurso=ia" className="text-primary hover:underline">
+            Assinatura
+          </Link>{" "}
+          ou no próprio assistente — teste grátis de 7 dias (uma vez por conta) ou R$ 29,90/mês pelo Mercado Pago,
+          cancelável a qualquer momento.
+        </p>
+      </div>
+    ),
+  },
+  {
+    titulo: "Faturamento com frete",
+    conteudo: (
+      <p>
+        O cartão <strong>Quanto foi faturado de verdade</strong> (Visão geral e Financeiro) mostra o
+        faturamento de três jeitos: só produtos (igual ao Mercado Livre), com frete (produtos + frete do
+        envio, como o Bling registra o pedido) e em nota fiscal (soma das notas de saída autorizadas no
+        Bling). &quot;Ver por dia&quot; abre a tabela diária e &quot;Trazer notas do Bling&quot; atualiza as notas
+        na hora — elas também são atualizadas sozinhas todo dia.
+      </p>
+    ),
+  },
+  {
+    titulo: "Equipe",
+    conteudo: (
+      <p>
+        Em{" "}
+        <Link href="/usuarios" className="text-primary hover:underline">
+          Usuários
+        </Link>
+        , convide quem trabalha com você e escolha o papel (compras, estoque, vendas ou só leitura). Envie o
+        link pelo WhatsApp ou copie. A pessoa pode criar senha ou entrar com o Google usando o e-mail
+        convidado — se ela já tinha login no Skubo sem loja própria, basta entrar.
+      </p>
     ),
   },
   {
@@ -118,7 +210,7 @@ const SECOES = [
 
 export default function ManualDoUsuarioPage() {
   return (
-    <div className="container mx-auto max-w-2xl space-y-6 p-6">
+    <div className="mx-auto w-full max-w-2xl space-y-6">
       <PageHeader title="Manual do usuário" subtitle="Guia rápido das telas principais" />
 
       {SECOES.map((secao) => (

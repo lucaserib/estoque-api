@@ -32,23 +32,19 @@ export function DatePickerWithRange({
     date
   );
 
-  // Atualizar internalDate quando date mudar externamente
   React.useEffect(() => {
     setInternalDate(date);
   }, [date]);
 
-  // Função para aplicar a seleção
   const handleApply = () => {
     onDateChange(internalDate);
   };
 
-  // Função para limpar a seleção
   const handleClear = () => {
     setInternalDate(undefined);
     onDateChange(undefined);
   };
 
-  // Função para selecionar período rápido
   const handleQuickSelection = (days: number) => {
     const today = new Date();
     const newRange =

@@ -25,10 +25,8 @@ interface PageShellProps {
   title: string;
   eyebrow?: string;
   subtitle?: string;
-  /** Mostra "atualizado há 2 min" ao lado do título. */
   updatedAt?: Date | string | null;
   actions?: PageShellAction[];
-  /** Slot de filtros, renderizado abaixo do cabeçalho. */
   filters?: React.ReactNode;
   className?: string;
   children?: React.ReactNode;
@@ -56,7 +54,6 @@ function BotaoAcao({ acao }: { acao: PageShellAction }) {
   );
 }
 
-/** Cabeçalho de página: título, subtítulo de atualização, ações e slot de filtros — ações viram um menu "⋯" no celular. */
 export function PageShell({
   title,
   eyebrow,

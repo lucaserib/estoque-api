@@ -9,6 +9,7 @@ import { useTheme } from "next-themes";
 import { useSession } from "next-auth/react";
 import { TourSlides } from "@/components/onboarding/TourSlides";
 import { InstalarCelularBanner } from "@/components/InstalarCelularBanner";
+import { AssistenteIa } from "@/components/ia/AssistenteIa";
 import { EVENTO_ABRIR_TOUR } from "@/lib/eventosCliente";
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
@@ -18,11 +19,8 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const [tourAberto, setTourAberto] = useState(false);
 
   useEffect(() => {
-    // Sincronizar o estado do isDarkMode do LayoutContext com o tema do next-themes
-    // Isso garante que a configuração de tema seja consistente em toda a aplicação
     setTheme(isDarkMode ? "dark" : "light");
 
-    // Também aplicamos o tema diretamente no elemento HTML para garantir
     const html = document.documentElement;
     html.classList.toggle("dark", isDarkMode);
     html.classList.toggle("light", !isDarkMode);
@@ -52,21 +50,22 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
     <div
       className={`${
         isDarkMode ? "dark" : "light"
-      } flex bg-background text-foreground w-full min-h-screen`}
+      } flex bg-background bg-app text-foreground w-full min-h-screen`}
     >
       <Sidebar />
 
       <main
-        className={`flex min-w-0 flex-col w-full h-full py-7 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-6 md:pb-7 bg-background transition-[padding] duration-300 ${
+        className={`flex min-w-0 flex-col w-full h-full pt-3 px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] md:px-6 md:pb-8 transition-[padding] duration-300 ${
           isSidebarCollapsed ? "md:pl-24" : "md:pl-72"
         }`}
       >
         <Navbar />
-        <div className="w-full min-w-0 max-w-full">{children}</div>
+        <div className="mx-auto w-full min-w-0 max-w-[1440px]">{children}</div>
       </main>
 
       <BottomNav />
       <InstalarCelularBanner />
+      {status === "authenticated" && <AssistenteIa />}
 
       <TourSlides open={tourAberto} onOpenChange={setTourAberto} onConcluido={marcarTourVisto} />
     </div>

@@ -41,7 +41,7 @@ const Navbar = () => {
   }, [isDropdownOpen]);
 
   return (
-    <div className="mb-6 flex h-[60px] w-full min-w-0 items-center gap-2 border-b border-border bg-card px-1 sm:gap-3.5">
+    <div className="sticky top-3 z-30 mx-auto mb-6 flex h-[60px] w-full min-w-0 max-w-[1440px] items-center gap-2 rounded-2xl border border-border/70 bg-card/80 px-2.5 shadow-card backdrop-blur-xl supports-[backdrop-filter]:bg-card/70 sm:gap-3.5 sm:px-3">
       <button
         className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-card text-fg2 hover:bg-muted md:hidden"
         onClick={toggleSidebar}

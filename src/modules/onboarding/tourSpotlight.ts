@@ -1,15 +1,9 @@
 export interface PassoSpotlight {
-  /** Valor do atributo data-tour do elemento a destacar. */
   seletor: string;
   titulo: string;
   texto: string;
 }
 
-/**
- * Passos do tour guiado sobre a interface real. Cada um aponta pra um
- * elemento com [data-tour="<seletor>"] em algum lugar do app — pra adicionar
- * um passo novo, só marcar o elemento com esse atributo e incluir aqui.
- */
 export const PASSOS_SPOTLIGHT: PassoSpotlight[] = [
   {
     seletor: "logo",

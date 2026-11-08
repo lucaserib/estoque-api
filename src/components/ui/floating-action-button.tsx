@@ -6,7 +6,6 @@ interface FloatingActionButtonProps extends React.ButtonHTMLAttributes<HTMLButto
   label: string;
 }
 
-/** Botão "+" flutuante, só no celular — ação principal da tela ao alcance do polegar. */
 const FloatingActionButton = React.forwardRef<HTMLButtonElement, FloatingActionButtonProps>(
   ({ label, className, ...props }, ref) => (
     <button

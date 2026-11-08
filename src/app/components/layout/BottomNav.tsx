@@ -12,7 +12,6 @@ function rotaAtiva(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Barra inferior do celular: Início, Vendas, Estoque, Anúncios e "Mais" (abre a sidebar como folha). Sidebar fica só no desktop. */
 const BottomNav = () => {
   const pathname = usePathname();
   const { toggleSidebar } = useLayout();

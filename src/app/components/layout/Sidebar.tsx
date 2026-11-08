@@ -23,9 +23,11 @@ import {
   ClipboardCheck,
   PanelLeftClose,
   PanelLeftOpen,
-  HeartPulse,
+  Gauge,
+  ShieldCheck,
   Megaphone,
   Compass,
+  Sparkles,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -45,7 +47,6 @@ interface ItemMenu {
   dataTour?: string;
 }
 
-/** Agrupa itens relacionados dentro de um SidebarGrupo já aberto (ex.: Financeiro → "Caixa"). */
 interface ClusterMenu {
   cluster: string;
   itens: ItemMenu[];
@@ -62,7 +63,6 @@ function achatarItens(entradas: EntradaMenu[]): ItemMenu[] {
   return entradas.flatMap((entrada) => (isCluster(entrada) ? entrada.itens : [entrada]));
 }
 
-/** Rota ativa: igual, ou um sub-caminho (ex.: /produtos/123 acende Produtos). */
 function rotaAtiva(pathname: string, href: string, exata = false): boolean {
   if (href === "/") return pathname === "/" || pathname === "/dashboard";
   if (pathname === href) return true;
@@ -70,12 +70,12 @@ function rotaAtiva(pathname: string, href: string, exata = false): boolean {
 }
 
 const classeItem = (ativo: boolean, recolhida: boolean) =>
-  `mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg transition-colors ${
+  `relative mx-2 flex cursor-pointer items-center gap-2.5 rounded-xl transition-all duration-150 ${
     recolhida ? "justify-center py-2.5" : "px-2.5 py-2"
   } ${
     ativo
-      ? "bg-primary/10 font-medium text-primary"
-      : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
+      ? "bg-gradient-to-r from-primary/15 via-primary/10 to-transparent font-semibold text-primary before:absolute before:-left-2 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-r-full before:bg-primary"
+      : "font-normal text-fg2 hover:bg-muted/80 hover:text-foreground"
   }`;
 
 const SidebarLink = ({
@@ -112,10 +112,10 @@ const SubItemLink = ({ item, pathname }: { item: ItemMenu; pathname: string }) =
   return (
     <Link href={item.href}>
       <div
-        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-lg py-1.5 pl-8 pr-2.5 transition-colors ${
+        className={`mx-2 flex cursor-pointer items-center gap-2.5 rounded-xl py-1.5 pl-8 pr-2.5 transition-colors ${
           ativo
-            ? "bg-primary/10 font-medium text-primary"
-            : "font-normal text-fg2 hover:bg-muted hover:text-foreground"
+            ? "bg-primary/10 font-semibold text-primary"
+            : "font-normal text-fg2 hover:bg-muted/80 hover:text-foreground"
         }`}
       >
         <SubIcon className="h-4 w-4 shrink-0 opacity-90" />
@@ -144,14 +144,12 @@ const SidebarGrupo = ({
   const algumFilhoAtivo = folhas.some((i) => rotaAtiva(pathname, i.href));
   const [aberto, setAberto] = useState(algumFilhoAtivo);
 
-  // Abre sozinho quando o usuário chega numa rota do grupo por outro caminho (link, busca, notificação).
   useEffect(() => {
     if (algumFilhoAtivo) setAberto(true);
   }, [algumFilhoAtivo]);
 
   if (visiveis.length === 0 || folhas.length === 0) return null;
 
-  // Recolhida (desktop): não há espaço para submenu — o ícone leva direto à primeira tela do grupo.
   if (recolhida) {
     return (
       <Link href={folhas[0].href} onClick={onNavegar} title={label}>
@@ -221,7 +219,6 @@ const Sidebar = () => {
 
   return (
     <>
-      {/* Fundo escurecido só no celular, quando a sidebar está aberta por cima do conteúdo */}
       {!recolhida && (
         <div
           className="fixed inset-0 z-30 bg-black/40 md:hidden"
@@ -231,13 +228,12 @@ const Sidebar = () => {
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex h-dvh flex-col border-r border-border bg-card transition-[width,transform] duration-300 ${
+        className={`fixed inset-y-0 left-0 z-40 flex h-dvh flex-col border-r border-border/70 bg-card/95 backdrop-blur-xl transition-[width,transform] duration-300 ${
           recolhida
             ? "w-72 -translate-x-full md:w-16 md:translate-x-0"
             : "w-72 translate-x-0 md:w-64"
         }`}
       >
-        {/* Topo fixo */}
         <div
           className={`flex shrink-0 items-center justify-between gap-3 pb-2 pt-6 ${
             recolhida ? "px-4 md:justify-center" : "px-5"
@@ -275,22 +271,14 @@ const Sidebar = () => {
           </button>
         </div>
 
-        {/* Lista rola sozinha: com grupos abertos em tela baixa nada some */}
         <nav className="mt-2 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4">
           <SectionLabel recolhida={recolhida}>Início</SectionLabel>
           <SidebarLink item={{ href: "/", icon: Layout, label: "Visão geral" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/controle", icon: ShieldCheck, label: "Central de controle" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/ia", icon: Sparkles, label: "Assistente IA" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/comecar", icon: Compass, label: "Configurar minha loja", dataTour: "comecar" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
 
           <SectionLabel recolhida={recolhida}>Vendas e lucro</SectionLabel>
-          <SidebarGrupo
-            icon={MercadoLivreIcon}
-            label="Mercado Livre"
-            recolhida={recolhida}
-            onNavegar={closeSidebarOnMobile}
-            itens={[
-              { href: "/mercado-livre", icon: HeartPulse, label: "Saúde dos anúncios" },
-            ]}
-          />
           {podeVerFinanceiro && (
             <SidebarGrupo
               icon={Wallet}
@@ -339,18 +327,17 @@ const Sidebar = () => {
 
           <SectionLabel recolhida={recolhida}>Anúncios</SectionLabel>
           <SidebarLink item={{ href: "/mercado-livre/produtos", icon: Megaphone, label: "Anúncios e vínculos" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/mercado-livre", icon: Gauge, label: "Saúde dos anúncios" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/mercado-livre/configuracoes", icon: Settings, label: "Configurações do ML" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
 
           <SectionLabel recolhida={recolhida}>Ajustes</SectionLabel>
           <SidebarLink item={{ href: "/integracoes", icon: Zap, label: "Integrações" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
-          <SidebarLink item={{ href: "/saude-dados", icon: HeartPulse, label: "Saúde dos dados" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/ajustes", icon: Settings, label: "Ajustes" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           {isAdmin && (
             <SidebarLink item={{ href: "/usuarios", icon: Users, label: "Usuários" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           )}
         </nav>
 
-        {/* Rodapé fixo: recolher/expandir no desktop */}
         <div className="hidden shrink-0 border-t border-border p-2 md:block">
           <button
             type="button"

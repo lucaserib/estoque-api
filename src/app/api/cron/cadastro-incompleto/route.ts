@@ -14,8 +14,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  // "Conta" = usuário dono (contaId nulo); membros convidados compartilham
-  // o mesmo conjunto de produtos via userId = contaId do dono.
   const contas = await prisma.user.findMany({
     where: { contaId: null },
     select: { id: true },

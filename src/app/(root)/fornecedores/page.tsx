@@ -60,7 +60,6 @@ const FornecedoresPage = () => {
     null
   );
 
-  // Estado para controlar os fornecedores selecionados
   const [selectedFornecedores, setSelectedFornecedores] = useState<string[]>(
     []
   );
@@ -71,7 +70,6 @@ const FornecedoresPage = () => {
     }
   }, [initialFornecedores]);
 
-  // Limpar seleções quando o termo de busca muda
   useEffect(() => {
     setSelectedFornecedores([]);
   }, [searchTerm]);
@@ -141,7 +139,6 @@ const FornecedoresPage = () => {
     }
   };
 
-  // Função para exportar apenas os fornecedores selecionados
   const handleExportSelectedFornecedores = () => {
     if (selectedFornecedores.length === 0) {
       toast.warning("Selecione pelo menos um fornecedor para exportar");
@@ -169,7 +166,6 @@ const FornecedoresPage = () => {
     }
   };
 
-  // Função para selecionar/deselecionar um fornecedor
   const toggleFornecedorSelection = (id: string) => {
     setSelectedFornecedores((prev) =>
       prev.includes(id)
@@ -178,7 +174,6 @@ const FornecedoresPage = () => {
     );
   };
 
-  // Função para selecionar/deselecionar todos os fornecedores
   const toggleSelectAllFornecedores = () => {
     if (selectedFornecedores.length === filteredFornecedores.length) {
       setSelectedFornecedores([]);
@@ -322,7 +317,6 @@ const FornecedoresPage = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Cabeçalho com checkbox "Selecionar todos" */}
             <div className="flex items-center gap-3 mb-2 px-4 py-2 bg-background rounded-lg border border-border">
               <div className="flex items-center gap-2 text-sm font-medium text-foreground">
                 <input
@@ -345,7 +339,6 @@ const FornecedoresPage = () => {
               </div>
             </div>
 
-            {/* Contador de selecionados */}
             {selectedFornecedores.length > 0 && (
               <div className="flex justify-between items-center py-2 px-4 bg-primary/10 border border-primary/30 rounded-md text-primary">
                 <span>

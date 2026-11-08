@@ -37,18 +37,11 @@ interface OptimizedPricesData {
   };
 }
 
-/**
- * Hook otimizado para usar as novas APIs do Mercado Livre
- * Foca em performance e dados precisos
- */
 export const useMercadoLivreOptimized = () => {
   const [loading, setLoading] = useState(false);
   const [salesData, setSalesData] = useState<OptimizedSalesData | null>(null);
   const [pricesData, setPricesData] = useState<OptimizedPricesData | null>(null);
 
-  /**
-   * Buscar vendas otimizadas por período
-   */
   const fetchOptimizedSales = useCallback(async (
     accountId: string, 
     period: number = 30
@@ -88,9 +81,6 @@ export const useMercadoLivreOptimized = () => {
     }
   }, []);
 
-  /**
-   * Atualizar preços promocionais em lote
-   */
   const updatePromotionalPrices = useCallback(async (
     accountId: string,
     forceUpdate: boolean = false
@@ -141,9 +131,6 @@ export const useMercadoLivreOptimized = () => {
     }
   }, []);
 
-  /**
-   * Atualização completa: preços + vendas
-   */
   const fullUpdate = useCallback(async (
     accountId: string,
     period: number = 30,
@@ -154,10 +141,8 @@ export const useMercadoLivreOptimized = () => {
     console.log('[HOOK] Iniciando atualização completa...');
     
     try {
-      // Passo 1: Atualizar preços promocionais
       const pricesResult = await updatePromotionalPrices(accountId, forceUpdatePrices);
       
-      // Passo 2: Buscar vendas otimizadas
       const salesResult = await fetchOptimizedSales(accountId, period);
 
       if (pricesResult && salesResult) {
@@ -177,9 +162,6 @@ export const useMercadoLivreOptimized = () => {
     }
   }, [updatePromotionalPrices, fetchOptimizedSales]);
 
-  /**
-   * Verificar se dados estão desatualizados
-   */
   const needsUpdate = useCallback((lastUpdate?: Date, maxAgeMinutes: number = 30): boolean => {
     if (!lastUpdate) return true;
     
@@ -190,20 +172,16 @@ export const useMercadoLivreOptimized = () => {
   }, []);
 
   return {
-    // Estado
     loading,
     salesData,
     pricesData,
 
-    // Ações
     fetchOptimizedSales,
     updatePromotionalPrices,
     fullUpdate,
 
-    // Utilitários
     needsUpdate,
 
-    // Dados derivados
     hasSalesData: !!salesData,
     hasPricesData: !!pricesData,
     totalSales: salesData?.summary.totalQuantity || 0,

@@ -102,12 +102,10 @@ const DialogDescription = React.forwardRef<
 ));
 DialogDescription.displayName = DialogPrimitive.Description.displayName;
 
-// Adicionar um componente de descrição escondido por padrão para resolver o warning
 const HiddenDialogDescription = () => (
   <DialogDescription className="sr-only">Conteúdo do diálogo</DialogDescription>
 );
 
-// Versão aprimorada do DialogContent que sempre inclui uma description acessível
 const DialogContentWithDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -125,7 +123,7 @@ export {
   DialogOverlay,
   DialogTrigger,
   DialogContent,
-  DialogContentWithDescription, // Nova versão com description automática
+  DialogContentWithDescription,
   DialogHeader,
   DialogFooter,
   DialogTitle,

@@ -6,13 +6,6 @@ import { calcularSaldoTotalAtual } from "./saldoContas";
 
 export type Granularidade = "DIA" | "SEMANA" | "MES";
 
-/**
- * Diferente da DRE (onde TRANSFERENCIA não conta — é só rearranjo entre
- * contas próprias): aqui toda TRANSFERENCIA sai como saída de caixa real,
- * porque a única que este sistema de fato gera (pagamento de fatura de
- * cartão) é dinheiro saindo da conta bancária de verdade, sem um lançamento
- * irmão de entrada em lugar nenhum — não é um "wash" de duas pontas.
- */
 export function valorComoCaixa(tipo: TipoLancamento, valor: number): number {
   if (tipo === TipoLancamento.RECEITA) return valor;
   return -valor;
@@ -90,13 +83,6 @@ export interface SaldoProjetado {
   saldoProjetado: number;
 }
 
-/**
- * Cartão de crédito não entra no saldo atual — ele representa dívida, não
- * dinheiro disponível. `saldoAtual` vem de `calcularSaldoTotalAtual` (carteira
- * do Mercado Pago calculada pelas liberações + demais contas pelos
- * lançamentos); somam-se as liberações futuras do horizonte e os lançamentos
- * previstos.
- */
 export async function gerarSaldoProjetado(
   userId: string,
   dias: 30 | 60 | 90

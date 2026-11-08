@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback } from "react";
 import BarcodeReader from "@/components/BarCodeReader";
 import { Produto, SaidaProduto } from "../types";
 
-// UI Components
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -31,7 +30,6 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
-// Estendendo a interface de Produto para incluir códigos de barras
 interface ProdutoEstoque {
   id: string;
   nome: string;
@@ -40,7 +38,6 @@ interface ProdutoEstoque {
   quantidadeDisponivel: number;
   unidade: string;
   categoria?: string;
-  // Campos possíveis para EAN
   ean?: string;
   codigoEAN?: string;
   codigoBarras?: string;
@@ -62,52 +59,41 @@ export default function BarcodeScannerSelecaoProdutos({
   onRemoverProduto,
   onVoltarModoManual,
 }: BarcodeScannerSelecaoProdutosProps) {
-  // Estado para histórico de leituras
   const [historicoScans, setHistoricoScans] = useState<
     Array<{ codigo: string; timestamp: Date; produtoNome?: string }>
   >([]);
 
-  // Estado para produtos não encontrados
   const [produtosDesconhecidos, setProdutosDesconhecidos] = useState<string[]>(
     []
   );
 
-  // Estado para mensagem de erro
   const [erro, setErro] = useState<string | null>(null);
 
-  // Mapeamento de EAN para SKU
   const [eanParaProdutoId, setEanParaProdutoId] = useState<Map<string, string>>(
     new Map()
   );
 
-  // Estado para termo de busca
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Estado para quantidade
   const [quantidade, setQuantidade] = useState<number>(1);
 
-  // Inicializar mapeamento de EAN para ID do produto
   useEffect(() => {
     if (produtos.length > 0) {
       console.log(`Carregados ${produtos.length} produtos`);
 
-      // Mapear EANs para produtos
       const eanMap = new Map<string, string>();
 
       produtos.forEach((produto) => {
-        // Log detalhado para auxiliar na depuração
         console.log(
           `Processando produto: ${produto.nome} (SKU: ${produto.sku})`
         );
         console.log(`Campos disponíveis: ${Object.keys(produto).join(", ")}`);
 
-        // Mapear SKU -> ID
         if (produto.sku) {
           eanMap.set(produto.sku, produto.id);
           console.log(`Mapeado SKU: ${produto.sku} -> ID: ${produto.id}`);
         }
 
-        // Mapear EAN -> ID (verificar todos os campos possíveis)
         if (produto.ean) {
           eanMap.set(produto.ean, produto.id);
           console.log(`Mapeado EAN: ${produto.ean} -> ID: ${produto.id}`);
@@ -127,7 +113,6 @@ export default function BarcodeScannerSelecaoProdutos({
           );
         }
 
-        // Mapear códigos alternativos, se existirem
         if (produto.codigosBarrasAlternativos?.length) {
           produto.codigosBarrasAlternativos.forEach((codigo) => {
             eanMap.set(codigo, produto.id);
@@ -143,47 +128,38 @@ export default function BarcodeScannerSelecaoProdutos({
     }
   }, [produtos]);
 
-  // Função para extrair o código EAN do texto escaneado
   const extrairEAN = (codigo: string): string => {
-    // Remover espaços e caracteres especiais
     const codigoNormalizado = codigo.trim().replace(/[^0-9a-zA-Z]/g, "");
 
     console.log(`Normalizando código: "${codigo}" -> "${codigoNormalizado}"`);
 
-    // Verificar se o código é um EAN-13 (13 dígitos)
     if (/^\d{13}$/.test(codigoNormalizado)) {
       console.log(`Detectado EAN-13: ${codigoNormalizado}`);
       return codigoNormalizado;
     }
 
-    // Verificar se o código é um EAN-8 (8 dígitos)
     if (/^\d{8}$/.test(codigoNormalizado)) {
       console.log(`Detectado EAN-8: ${codigoNormalizado}`);
       return codigoNormalizado;
     }
 
-    // Se começar com números e tiver pelo menos 4 dígitos, pode ser um código válido
     if (/^\d{4,}/.test(codigoNormalizado)) {
       console.log(`Possível código numérico: ${codigoNormalizado}`);
       return codigoNormalizado;
     }
 
-    // Se tiver caracteres alfanuméricos, pode ser Code 128 ou outro formato
     if (codigoNormalizado.length > 3) {
       console.log(`Possível código alfanumérico: ${codigoNormalizado}`);
       return codigoNormalizado;
     }
 
-    // Se estivermos aqui, o código parece inválido
     console.log(`Código possivelmente inválido: ${codigoNormalizado}`);
     return codigoNormalizado;
   };
 
-  // Função auxiliar para buscar um produto por EAN
   const buscarProdutoPorEAN = (ean: string): ProdutoEstoque | undefined => {
     console.log(`Buscando produto pelo EAN: ${ean}`);
 
-    // Primeiro verificar no mapeamento
     const produtoId = eanParaProdutoId.get(ean);
     if (produtoId) {
       const produto = produtos.find((p) => p.id === produtoId);
@@ -193,9 +169,7 @@ export default function BarcodeScannerSelecaoProdutos({
       }
     }
 
-    // Verificar todos os campos possíveis
     for (const produto of produtos) {
-      // Verificar em cada campo possível onde o EAN pode estar armazenado
       if (
         (produto.ean && produto.ean === ean) ||
         (produto.codigoEAN && produto.codigoEAN === ean) ||
@@ -208,7 +182,6 @@ export default function BarcodeScannerSelecaoProdutos({
         return produto;
       }
 
-      // Verificar também em códigos alternativos
       if (
         produto.codigosBarrasAlternativos &&
         produto.codigosBarrasAlternativos.includes(ean)
@@ -220,7 +193,6 @@ export default function BarcodeScannerSelecaoProdutos({
       }
     }
 
-    // Listar todos os produtos e seus campos para debug
     console.log(
       "Não foi possível encontrar o produto. Detalhes de todos os produtos:"
     );
@@ -235,14 +207,12 @@ export default function BarcodeScannerSelecaoProdutos({
     return undefined;
   };
 
-  // Função para buscar produtos pela API
   const buscarProdutoPorEANnaAPI = async (
     ean: string
   ): Promise<ProdutoEstoque | null> => {
     console.log(`Buscando produto com EAN ${ean} diretamente na API...`);
 
     try {
-      // Solicita um produto específico pelo EAN
       const response = await fetch(`/api/produtos/buscar-por-ean?ean=${ean}`);
       if (!response.ok) {
         console.error(`Erro ao buscar produto por EAN: ${response.status}`);
@@ -265,22 +235,18 @@ export default function BarcodeScannerSelecaoProdutos({
     }
   };
 
-  // Função para buscar produtos por código específico
   const buscarProdutoPorCodigo = async (
     ean: string
   ): Promise<ProdutoEstoque | undefined> => {
-    // Primeiro tenta buscar no mapeamento local
     const produtoEncontrado = buscarProdutoPorEAN(ean);
     if (produtoEncontrado) {
       return produtoEncontrado;
     }
 
-    // Se não encontrar localmente, tenta buscar pela API
     if (ean === "7895502400037") {
       console.log("Buscando EAN específico via API...");
       const produtoAPI = await buscarProdutoPorEANnaAPI(ean);
       if (produtoAPI) {
-        // Adicionar o produto encontrado na API ao mapeamento
         console.log(
           `Adicionando produto encontrado na API ao mapeamento local`
         );
@@ -296,11 +262,9 @@ export default function BarcodeScannerSelecaoProdutos({
     return undefined;
   };
 
-  // Função específica para diagnóstico do EAN 7895502400037
   const diagnosticarEANProblematico = (ean: string) => {
     console.log(`\n======= DIAGNÓSTICO PARA EAN ${ean} =======`);
 
-    // Verificar no mapeamento
     console.log("1. Verificando no mapeamento de EANs:");
     console.log(`   Total de entradas no mapeamento: ${eanParaProdutoId.size}`);
 
@@ -310,7 +274,6 @@ export default function BarcodeScannerSelecaoProdutos({
     } else {
       console.log(`   ✗ EAN NÃO encontrado no mapeamento`);
 
-      // Listar os 10 primeiros códigos do mapeamento para verificação
       console.log("   Amostra do mapeamento (primeiros 10 itens):");
       let contador = 0;
       for (const [codigo, id] of eanParaProdutoId.entries()) {
@@ -323,7 +286,6 @@ export default function BarcodeScannerSelecaoProdutos({
       }
     }
 
-    // Verificar em todos os produtos
     console.log("\n2. Verificando em todos os produtos:");
     console.log(`   Total de produtos: ${produtos.length}`);
 
@@ -349,7 +311,6 @@ export default function BarcodeScannerSelecaoProdutos({
     if (!encontradoEmProduto) {
       console.log(`   ✗ EAN NÃO encontrado em nenhum produto`);
 
-      // Verificar similaridade
       console.log("\n3. Verificando similaridade com outros códigos:");
 
       produtos.forEach((produto) => {
@@ -390,14 +351,11 @@ export default function BarcodeScannerSelecaoProdutos({
     console.log("==============================================\n");
   };
 
-  // Função auxiliar para verificar os dados recebidos em tempo real
   const verificarEstruturaDados = useCallback(() => {
-    // Verificar quantidade de produtos
     console.log(`\n--- Verificação de Dados em Tempo Real ---`);
     console.log(`Produtos carregados: ${produtos.length}`);
     console.log(`Códigos mapeados: ${eanParaProdutoId.size}`);
 
-    // Verificar se o EAN específico existe
     const eanEspecifico = "7895502400037";
     const produtoIdEspecifico = eanParaProdutoId.get(eanEspecifico);
     if (produtoIdEspecifico) {
@@ -420,7 +378,6 @@ export default function BarcodeScannerSelecaoProdutos({
     } else {
       console.log(`EAN específico (${eanEspecifico}) NÃO está mapeado`);
 
-      // Verificar se existe entre os produtos
       const produtoComEAN = produtos.find(
         (p) =>
           p.ean === eanEspecifico ||
@@ -442,7 +399,6 @@ export default function BarcodeScannerSelecaoProdutos({
     console.log(`----------------------------------------\n`);
   }, [produtos, eanParaProdutoId]);
 
-  // Executar verificação quando os códigos forem mapeados
   useEffect(() => {
     if (produtos.length > 0 && eanParaProdutoId.size > 0) {
       console.log("Executando verificação de estrutura de dados...");
@@ -450,7 +406,6 @@ export default function BarcodeScannerSelecaoProdutos({
     }
   }, [produtos, eanParaProdutoId, verificarEstruturaDados]);
 
-  // Função chamada quando um código de barras é escaneado
   const handleScan = async (codigo: string) => {
     setErro(null);
     const ean = extrairEAN(codigo);
@@ -462,7 +417,6 @@ export default function BarcodeScannerSelecaoProdutos({
 
     console.log(`Código escaneado: ${codigo}, EAN extraído: ${ean}`);
 
-    // Verificar EAN específico
     if (ean === "7895502400037") {
       console.log(
         "EAN específico detectado: 7895502400037 - Fazendo diagnóstico..."
@@ -470,14 +424,11 @@ export default function BarcodeScannerSelecaoProdutos({
       diagnosticarEANProblematico(ean);
     }
 
-    // Buscar o produto pelo EAN (com busca na API se necessário)
     const produtoEncontrado = await buscarProdutoPorCodigo(ean);
 
     if (produtoEncontrado) {
-      // Adicionar o produto
       onAdicionarProduto(produtoEncontrado, 1);
 
-      // Adicionar ao histórico
       setHistoricoScans((prev) => [
         {
           codigo: ean,
@@ -487,7 +438,6 @@ export default function BarcodeScannerSelecaoProdutos({
         ...prev,
       ]);
     } else {
-      // Produto não encontrado
       setProdutosDesconhecidos((prev) =>
         prev.includes(ean) ? prev : [...prev, ean]
       );
@@ -502,25 +452,20 @@ export default function BarcodeScannerSelecaoProdutos({
     }
   };
 
-  // Função para validar se um código de barras é válido
   const validarCodigoBarras = (codigo: string): boolean => {
-    // Aceita qualquer código que tenha pelo menos 1 caractere
     return codigo.trim().length > 0;
   };
 
-  // Função para limpar o histórico de leituras
   const limparHistorico = () => {
     setHistoricoScans([]);
     setProdutosDesconhecidos([]);
   };
 
-  // Total de itens escaneados (contagem de produtos)
   const totalEscaneado = produtosSelecionados.reduce(
     (total, item) => total + item.quantidade,
     0
   );
 
-  // Função para inspecionar melhor a estrutura dos produtos
   const analisarEstruturaProdutos = useCallback(() => {
     if (produtos.length === 0) {
       console.log("Não há produtos para analisar");
@@ -530,26 +475,22 @@ export default function BarcodeScannerSelecaoProdutos({
     console.log(`\n======= ANÁLISE DE ESTRUTURA DE PRODUTOS =======`);
     console.log(`Total de produtos: ${produtos.length}`);
 
-    // Pegar um produto de amostra
     const amostra = produtos[0];
     console.log("Estrutura do primeiro produto:");
     console.log(JSON.stringify(amostra, null, 2));
 
-    // Verificar campos comuns em todos os produtos
     const camposComuns = new Set(Object.keys(amostra));
     const camposTotais = new Set(Object.keys(amostra));
 
     produtos.slice(1).forEach((produto) => {
       const camposProduto = new Set(Object.keys(produto));
 
-      // Atualizar campos comuns (intersecção)
       for (const campo of camposComuns) {
         if (!camposProduto.has(campo)) {
           camposComuns.delete(campo);
         }
       }
 
-      // Atualizar todos os campos (união)
       for (const campo of camposProduto) {
         camposTotais.add(campo);
       }
@@ -561,7 +502,6 @@ export default function BarcodeScannerSelecaoProdutos({
     console.log("\nTodos os campos encontrados em pelo menos um produto:");
     console.log(Array.from(camposTotais).join(", "));
 
-    // Verificar tipos de campos para códigos
     const camposCodigo = ["ean", "codigoEAN", "codigoBarras", "sku"];
     console.log("\nAnálise dos campos possíveis para códigos:");
 
@@ -570,7 +510,6 @@ export default function BarcodeScannerSelecaoProdutos({
       const exemplos: string[] = [];
 
       produtos.forEach((produto) => {
-        // Usando type assertion de forma mais segura
         const produtoObj = produto as unknown as Record<
           string,
           string | undefined
@@ -595,7 +534,6 @@ export default function BarcodeScannerSelecaoProdutos({
       }
     });
 
-    // Verificar estrutura de codigosBarrasAlternativos
     let produtosComCodigosAlternativos = 0;
     const exemplosCodigosAlternativos: string[] = [];
 
@@ -623,17 +561,14 @@ export default function BarcodeScannerSelecaoProdutos({
     console.log("==============================================\n");
   }, [produtos]);
 
-  // Executar análise quando os produtos forem carregados
   useEffect(() => {
     if (produtos.length > 0) {
-      // Função para análise detalhada dos dados
       analisarEstruturaProdutos();
     }
   }, [produtos, analisarEstruturaProdutos]);
 
   return (
     <div className="space-y-4">
-      {/* Cabeçalho do Scanner */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
@@ -656,7 +591,6 @@ export default function BarcodeScannerSelecaoProdutos({
         </p>
       </div>
 
-      {/* Área do Scanner */}
       <div className="bg-info/10 rounded-lg border border-info/30 p-4">
         <BarcodeReader
           onScan={handleScan}
@@ -675,7 +609,6 @@ export default function BarcodeScannerSelecaoProdutos({
         </div>
       </div>
 
-      {/* Pesquisa alternativa por produto */}
       <div className="p-4 border border-border rounded-lg">
         <h4 className="font-medium text-foreground mb-2 flex items-center gap-2">
           <Search className="h-4 w-4 text-muted-foreground" />
@@ -729,7 +662,6 @@ export default function BarcodeScannerSelecaoProdutos({
         </div>
       </div>
 
-      {/* Mensagem de erro */}
       {erro && (
         <Alert variant="destructive" className="mb-2">
           <AlertCircle className="h-4 w-4" />
@@ -737,7 +669,6 @@ export default function BarcodeScannerSelecaoProdutos({
         </Alert>
       )}
 
-      {/* Lista de produtos selecionados */}
       {produtosSelecionados.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -788,7 +719,6 @@ export default function BarcodeScannerSelecaoProdutos({
         </div>
       )}
 
-      {/* Produtos não encontrados */}
       {produtosDesconhecidos.length > 0 && (
         <div>
           <h3 className="text-lg font-semibold text-warning-text mb-2 flex items-center gap-2">
@@ -810,7 +740,6 @@ export default function BarcodeScannerSelecaoProdutos({
         </div>
       )}
 
-      {/* Histórico de leituras */}
       {historicoScans.length > 0 && (
         <div>
           <div className="flex justify-between items-center mb-2">
@@ -864,7 +793,6 @@ export default function BarcodeScannerSelecaoProdutos({
         </div>
       )}
 
-      {/* Dicas e instruções */}
       <Alert className="bg-background border-border">
         <Info className="h-4 w-4 text-muted-foreground" />
         <AlertDescription className="text-muted-foreground">

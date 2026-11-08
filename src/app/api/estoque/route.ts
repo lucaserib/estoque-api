@@ -2,7 +2,6 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -31,7 +30,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verificar se existe estoque para o produto no armazém
     const estoque = await prisma.estoque.findUnique({
       where: {
         produtoId_armazemId: {
@@ -48,7 +46,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verificar se existem saídas registradas para este produto no armazém
     const saidas = await prisma.saida.findFirst({
       where: {
         produtoId,
@@ -67,7 +64,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Excluir o estoque
     await prisma.estoque.delete({
       where: {
         produtoId_armazemId: {

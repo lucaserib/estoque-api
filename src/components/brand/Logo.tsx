@@ -1,94 +1,98 @@
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 
 interface LogoProps {
   variant?: "full" | "mark";
-  size?: "sm" | "md" | "lg";
-  /** Logo sobre fundo colorido da marca (ex.: painel roxo do login) — força branco/mono. */
+  size?: "sm" | "md" | "lg" | "xl";
   onBrand?: boolean;
   className?: string;
 }
 
 const sizes = {
-  sm: { icon: "h-5 w-5", word: "h-3.5" },
-  md: { icon: "h-7 w-7", word: "h-5" },
-  lg: { icon: "h-10 w-10", word: "h-7" },
+  sm: { icon: "h-6 w-auto", word: "h-4", gap: "gap-2" },
+  md: { icon: "h-8 w-auto", word: "h-[1.375rem]", gap: "gap-2.5" },
+  lg: { icon: "h-11 w-auto", word: "h-[1.875rem]", gap: "gap-3" },
+  xl: { icon: "h-16 w-auto", word: "h-11", gap: "gap-4" },
 };
 
-/** Mesma geometria de public/brand/skubo/skubo-simbolo.svg. */
+const FORMAS = {
+  caixaInterna: "M106 211 L256 297.6 L406 211 L256 124.4 Z",
+  faceEsquerda: "M106 211 L256 297.6 L256 447.6 L106 361 Z",
+  faceDireita: "M256 297.6 L406 211 L406 361 L256 447.6 Z",
+  borda: "M106 211 L256 297.6 L406 211",
+  tampaEsquerda: "M106 151 L256 237.6 L256 263.6 L106 177 Z",
+  tampaDireita: "M256 237.6 L406 151 L406 177 L256 263.6 Z",
+  tampaTopo: "M106 151 L256 237.6 L406 151 L256 64.4 Z",
+};
+
+const PALAVRA =
+  "M336 19Q237 19 169 -12.5Q101 -44 66 -98.5Q31 -153 31 -224H190Q190 -196 205.5 -172Q221 -148 253 -133.5Q285 -119 336 -119Q382 -119 413 -131Q444 -143 460 -164.5Q476 -186 476 -214Q476 -249 446 -269.5Q416 -290 349 -296L294 -301Q185 -310 120 -369Q55 -428 55 -525Q55 -595 88.5 -646Q122 -697 182 -724.5Q242 -752 324 -752Q410 -752 471.5 -722.5Q533 -693 566 -639.5Q599 -586 599 -514H439Q439 -541 426 -563.5Q413 -586 387.5 -600Q362 -614 324 -614Q288 -614 263.5 -602Q239 -590 227 -569.5Q215 -549 215 -525Q215 -494 237 -471Q259 -448 309 -444L365 -439Q445 -432 506 -404.5Q567 -377 601.5 -329.5Q636 -282 636 -214Q636 -144 599.5 -91.5Q563 -39 496 -10Q429 19 336 19Z M1106 0 933 -256H856L1079 -548H1247L1037 -276L1039 -354L1286 0ZM720 0V-730H880V0Z M1517 17Q1422 17 1371 -44.5Q1320 -106 1320 -230V-548H1480V-222Q1480 -178 1505 -152Q1530 -126 1572 -126Q1615 -126 1642 -153Q1669 -180 1669 -226V-548H1829V0H1702V-231H1713Q1713 -148 1691.5 -92.5Q1670 -37 1628 -10Q1586 17 1524 17Z M2294 18Q2227 18 2176 -10.5Q2125 -39 2096 -93Q2067 -147 2065 -225H2084V0H1957V-730H2117V-359L2079 -311Q2082 -394 2110.5 -450.5Q2139 -507 2189 -535.5Q2239 -564 2303 -564Q2359 -564 2404.5 -543.5Q2450 -523 2482 -485.5Q2514 -448 2531.5 -397Q2549 -346 2549 -286V-264Q2549 -204 2531.5 -153Q2514 -102 2480.5 -63.5Q2447 -25 2400 -3.5Q2353 18 2294 18ZM2252 -116Q2293 -116 2323.5 -136Q2354 -156 2371 -192.5Q2388 -229 2388 -275Q2388 -322 2371 -357Q2354 -392 2323.5 -411.5Q2293 -431 2252 -431Q2216 -431 2184 -414Q2152 -397 2132.5 -365.5Q2113 -334 2113 -289V-252Q2113 -209 2133.5 -178.5Q2154 -148 2186 -132Q2218 -116 2252 -116Z M2907 19Q2835 19 2779 -3.5Q2723 -26 2684.5 -65Q2646 -104 2626 -154.5Q2606 -205 2606 -261V-284Q2606 -341 2626.5 -392.5Q2647 -444 2686.5 -483Q2726 -522 2782 -544.5Q2838 -567 2907 -567Q2978 -567 3033.5 -544.5Q3089 -522 3128 -483Q3167 -444 3188 -392.5Q3209 -341 3209 -284V-261Q3209 -205 3189 -154.5Q3169 -104 3130.5 -65Q3092 -26 3036 -3.5Q2980 19 2907 19ZM2907 -116Q2954 -116 2985 -136Q3016 -156 3032.5 -192Q3049 -228 3049 -272Q3049 -319 3032 -354.5Q3015 -390 2983.5 -411Q2952 -432 2907 -432Q2863 -432 2831 -411Q2799 -390 2782.5 -354.5Q2766 -319 2766 -272Q2766 -228 2782 -192Q2798 -156 2830 -136Q2862 -116 2907 -116Z";
+
+const VIEWBOX_SIMBOLO = "92 50 328 412";
+
 export function CubeMark({ className, mono = false }: { className?: string; mono?: boolean }) {
+  const id = useId().replace(/:/g, "");
+
   if (mono) {
     return (
-      <svg viewBox="96 40 320 420" className={className} aria-hidden="true">
-        <path
-          d="M117 196 L256 276 L256 436 L117 356 Z"
-          fill="currentColor"
-          stroke="currentColor"
-          strokeWidth="22"
-          strokeLinejoin="round"
-        />
-        <path
-          d="M256 276 L395 196 L395 356 L256 436 Z"
-          fill="currentColor"
-          stroke="currentColor"
-          strokeWidth="22"
-          strokeLinejoin="round"
-          opacity={0.72}
-        />
-        <path
-          d="M256 72 L395 152 L256 232 L117 152 Z"
-          fill="currentColor"
-          stroke="currentColor"
-          strokeWidth="22"
-          strokeLinejoin="round"
-          opacity={0.45}
-        />
+      <svg viewBox={VIEWBOX_SIMBOLO} className={className} aria-hidden="true" focusable="false">
+        <g fill="currentColor" stroke="currentColor" strokeWidth={14} strokeLinejoin="round">
+          <path d={FORMAS.faceEsquerda} />
+          <path d={FORMAS.faceDireita} opacity={0.78} />
+          <path d={FORMAS.tampaEsquerda} opacity={0.62} />
+          <path d={FORMAS.tampaDireita} opacity={0.5} />
+          <path d={FORMAS.tampaTopo} opacity={0.42} />
+        </g>
       </svg>
     );
   }
 
   return (
-    <svg viewBox="96 40 320 420" className={className} aria-hidden="true">
-      <path
-        d="M117 196 L256 276 L256 436 L117 356 Z"
-        fill="hsl(var(--primary))"
-        stroke="hsl(var(--primary))"
-        strokeWidth="22"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M256 276 L395 196 L395 356 L256 436 Z"
-        fill="hsl(var(--primary-strong))"
-        stroke="hsl(var(--primary-strong))"
-        strokeWidth="22"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M256 72 L395 152 L256 232 L117 152 Z"
-        fill="hsl(var(--success))"
-        stroke="hsl(var(--success))"
-        strokeWidth="22"
-        strokeLinejoin="round"
-      />
+    <svg viewBox={VIEWBOX_SIMBOLO} className={className} aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id={`${id}e`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#7C5CFF" />
+          <stop offset="1" stopColor="#5B3DF5" />
+        </linearGradient>
+        <linearGradient id={`${id}d`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#4A2EE0" />
+          <stop offset="1" stopColor="#3519B8" />
+        </linearGradient>
+        <linearGradient id={`${id}t`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#45F0C0" />
+          <stop offset="1" stopColor="#14C497" />
+        </linearGradient>
+      </defs>
+      <g strokeWidth={14} strokeLinejoin="round">
+        <path d={FORMAS.caixaInterna} fill="#1C0E63" stroke="#1C0E63" />
+        <path d={FORMAS.faceEsquerda} fill={`url(#${id}e)`} stroke={`url(#${id}e)`} />
+        <path d={FORMAS.faceDireita} fill={`url(#${id}d)`} stroke={`url(#${id}d)`} />
+        <path
+          d={FORMAS.borda}
+          fill="none"
+          stroke="#A68FFF"
+          strokeWidth={5}
+          strokeLinecap="round"
+          opacity={0.9}
+        />
+        <path d={FORMAS.tampaEsquerda} fill="#10A47F" stroke="#10A47F" />
+        <path d={FORMAS.tampaDireita} fill="#0B8466" stroke="#0B8466" />
+        <path d={FORMAS.tampaTopo} fill={`url(#${id}t)`} stroke={`url(#${id}t)`} />
+      </g>
     </svg>
   );
 }
 
-/** Palavra "skubo" em curvas (Sora 600), extraída de public/brand/skubo/skubo-logo.svg — não depende de fonte carregada. */
 export function Wordmark({ className, white = false }: { className?: string; white?: boolean }) {
   return (
     <svg
-      viewBox="200 60 630 175"
-      className={className}
-      aria-hidden="true"
+      viewBox="20 -762 3200 792"
+      className={cn("w-auto", className)}
       role="img"
+      aria-label="Skubo"
       focusable="false"
     >
-      <g
-        transform="translate(215 222)"
-        fill={white ? "#FFFFFF" : "hsl(var(--foreground))"}
-      >
-        <path d="M55.2 3.4000000000000004Q32.800000000000004 3.4000000000000004 20.1 -6.1000000000000005Q7.4 -15.600000000000001 6.800000000000001 -32.4H31.8Q32.4 -26.8 38.0 -22.200000000000003Q43.6 -17.6 55.6 -17.6Q65.60000000000001 -17.6 71.5 -21.200000000000003Q77.4 -24.8 77.4 -31.0Q77.4 -36.4 72.9 -39.6Q68.4 -42.800000000000004 57.6 -43.800000000000004L48.0 -44.800000000000004Q29.8 -46.800000000000004 20.0 -55.2Q10.200000000000001 -63.6 10.200000000000001 -77.60000000000001Q10.200000000000001 -88.80000000000001 15.8 -96.4Q21.400000000000002 -104.0 31.300000000000004 -107.9Q41.2 -111.80000000000001 54.0 -111.80000000000001Q74.0 -111.80000000000001 86.4 -103.0Q98.80000000000001 -94.2 99.4 -77.2H74.4Q74.0 -82.80000000000001 68.8 -86.80000000000001Q63.6 -90.80000000000001 53.800000000000004 -90.80000000000001Q45.0 -90.80000000000001 40.2 -87.4Q35.4 -84.0 35.4 -78.60000000000001Q35.4 -73.4 39.3 -70.6Q43.2 -67.8 52.0 -66.8L61.6 -65.8Q80.80000000000001 -63.800000000000004 91.70000000000002 -55.2Q102.60000000000001 -46.6 102.60000000000001 -32.0Q102.60000000000001 -21.200000000000003 96.70000000000002 -13.3Q90.80000000000001 -5.4 80.20000000000002 -1.0Q69.60000000000001 3.4000000000000004 55.2 3.4000000000000004Z M195.60000000000002 0.0 159.20000000000002 -50.800000000000004H143.0L189.20000000000002 -108.60000000000001H218.20000000000002L175.60000000000002 -55.2L176.20000000000002 -69.2L227.0 0.0ZM119.60000000000001 0.0V-146.0H147.4V0.0Z M274.0 3.4000000000000004Q255.20000000000002 3.4000000000000004 244.90000000000003 -9.0Q234.60000000000002 -21.400000000000002 234.60000000000002 -45.800000000000004V-108.80000000000001H262.40000000000003V-43.400000000000006Q262.40000000000003 -33.4 268.0 -27.5Q273.6 -21.6 283.20000000000005 -21.6Q292.8 -21.6 298.9 -27.8Q305.0 -34.0 305.0 -44.6V-108.80000000000001H332.8V0.0H310.8V-46.2H313.0Q313.0 -29.8 308.8 -18.8Q304.6 -7.800000000000001 296.20000000000005 -2.2Q287.8 3.4000000000000004 275.20000000000005 3.4000000000000004Z M422.6 3.6Q409.2 3.6 399.0 -2.1000000000000005Q388.8 -7.800000000000001 383.0 -18.8Q377.2 -29.8 376.6 -45.400000000000006H380.8V0.0H358.8V-146.0H386.6V-73.0L379.2 -61.6Q380.0 -78.4 385.9 -89.60000000000001Q391.8 -100.80000000000001 401.8 -106.4Q411.8 -112.0 424.4 -112.0Q435.6 -112.0 444.8 -107.80000000000001Q454.0 -103.60000000000001 460.6 -96.10000000000001Q467.2 -88.60000000000001 470.70000000000005 -78.60000000000001Q474.20000000000005 -68.60000000000001 474.20000000000005 -56.800000000000004V-52.6Q474.20000000000005 -40.800000000000004 470.6 -30.6Q467.0 -20.400000000000002 460.2 -12.700000000000001Q453.4 -5.0 443.9 -0.7Q434.4 3.6 422.6 3.6ZM416.4 -19.8Q425.4 -19.8 432.1 -24.3Q438.8 -28.8 442.6 -36.6Q446.4 -44.400000000000006 446.4 -54.6Q446.4 -65.0 442.6 -72.6Q438.8 -80.2 432.1 -84.4Q425.4 -88.60000000000001 416.4 -88.60000000000001Q408.2 -88.60000000000001 401.29999999999995 -85.0Q394.4 -81.4 390.1 -74.4Q385.8 -67.4 385.8 -57.6V-49.6Q385.8 -40.2 390.20000000000005 -33.6Q394.6 -27.0 401.6 -23.4Q408.6 -19.8 416.4 -19.8Z M544.8 3.8000000000000003Q530.4 3.8000000000000003 519.4 -0.8Q508.40000000000003 -5.4 500.8 -13.3Q493.2 -21.200000000000003 489.3 -31.200000000000003Q485.40000000000003 -41.2 485.40000000000003 -52.0V-56.2Q485.40000000000003 -67.4 489.5 -77.5Q493.6 -87.60000000000001 501.3 -95.5Q509.0 -103.4 520.0 -107.9Q531.0 -112.4 544.8 -112.4Q558.6 -112.4 569.6 -107.9Q580.6 -103.4 588.3 -95.5Q596.0 -87.60000000000001 600.0 -77.5Q604.0 -67.4 604.0 -56.2V-52.0Q604.0 -41.2 600.1 -31.200000000000003Q596.2 -21.200000000000003 588.6 -13.3Q581.0 -5.4 570.0 -0.8Q559.0 3.8000000000000003 544.8 3.8000000000000003ZM544.8 -20.0Q555.0 -20.0 562.0 -24.5Q569.0 -29.0 572.6 -36.7Q576.2 -44.400000000000006 576.2 -54.2Q576.2 -64.2 572.5 -71.9Q568.8 -79.60000000000001 561.7 -84.10000000000001Q554.6 -88.60000000000001 544.8 -88.60000000000001Q535.0 -88.60000000000001 527.9 -84.10000000000001Q520.8 -79.60000000000001 517.0 -71.9Q513.2 -64.2 513.2 -54.2Q513.2 -44.400000000000006 516.9000000000001 -36.7Q520.6 -29.0 527.6 -24.5Q534.6 -20.0 544.8 -20.0Z" />
-      </g>
+      <path d={PALAVRA} fill={white ? "#FFFFFF" : "hsl(var(--foreground))"} />
     </svg>
   );
 }
@@ -101,9 +105,9 @@ export function Logo({ variant = "full", size = "md", onBrand = false, className
   }
 
   return (
-    <span className={cn("inline-flex items-center gap-2.5", className)}>
-      <CubeMark mono={onBrand} className={cn(s.icon, onBrand && "text-white")} />
-      <Wordmark white={onBrand} className={cn(s.word, "w-auto")} />
+    <span className={cn("inline-flex items-center", s.gap, className)}>
+      <CubeMark mono={onBrand} className={cn(s.icon, "shrink-0", onBrand && "text-white")} />
+      <Wordmark white={onBrand} className={s.word} />
     </span>
   );
 }

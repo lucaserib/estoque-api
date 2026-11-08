@@ -40,7 +40,6 @@ export async function GET(request: NextRequest) {
       .map((v) => {
         const motivos: MotivoPendencia[] = [];
         if (!v.vinculoConfirmado) motivos.push("NAO_CONFIRMADO");
-        // Anúncio de "kit com N unidades" usa o SKU do produto unitário: compara com ele.
         const composicao = v.produto ? descreverComposicao(v.produto) : null;
         const skusAceitos = v.produto && composicao
           ? [normalizeSku(v.produto.sku), normalizeSku(composicao.produtoBaseSku)]

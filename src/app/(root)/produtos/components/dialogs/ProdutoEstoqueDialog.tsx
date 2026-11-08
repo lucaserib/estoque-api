@@ -1,7 +1,6 @@
 import { useEffect } from "react";
 import { Produto } from "../../types";
 
-// UI Components
 import {
   Dialog,
   DialogContent,
@@ -46,7 +45,6 @@ export function ProdutoEstoqueDialog({
   stockDetails,
   isLoading,
 }: ProdutoEstoqueDialogProps) {
-  // Effect for cleanup on unmounting to prevent focus issues
   useEffect(() => {
     return () => {
       if (!isOpen) {
@@ -62,14 +60,12 @@ export function ProdutoEstoqueDialog({
     return Math.min((atual / seguranca) * 100, 100);
   };
 
-  // Get progress color based on percentage
   const getProgressColor = (percentual: number) => {
     if (percentual <= 30) return "bg-destructive";
     if (percentual <= 60) return "bg-warning";
     return "bg-success";
   };
 
-  // Calculate total stock
   const totalStock = stockDetails.reduce(
     (total, item) => total + item.quantidade,
     0
@@ -80,7 +76,6 @@ export function ProdutoEstoqueDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Ensure focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();

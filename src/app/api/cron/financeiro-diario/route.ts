@@ -8,10 +8,14 @@ import { competenciaDe } from "@/modules/financeiro/dominio/periodo";
 import { gerarLancamentosDeTodasAsRecorrencias } from "@/modules/financeiro/lancamentos/recorrencias";
 import { gerarAlertasFinanceiros } from "@/modules/financeiro/alertas";
 import { sincronizarSaldoMercadoPago } from "@/modules/financeiro/canais/mercadoPago/saldo";
+import { sincronizarNotasFiscais } from "@/modules/financeiro/canais/erp/bling/notasFiscais";
+import { atualizarCustoDasVendasAposMudanca } from "@/modules/financeiro/ingestao/sincronizador";
 
 export const maxDuration = 60;
 
 const ORCAMENTO_FILA_MS = 20000;
+const ORCAMENTO_NOTAS_MS = 6000;
+const DIAS_NOTAS = 3;
 
 function competenciaAnteriorA(competencia: { ano: number; mes: number }) {
   return competencia.mes === 1
@@ -19,13 +23,6 @@ function competenciaAnteriorA(competencia: { ano: number; mes: number }) {
     : { ano: competencia.ano, mes: competencia.mes - 1 };
 }
 
-/**
- * Uma vez por dia (plano Hobby): garante que o mês atual e o anterior batem
- * com o Mercado Livre (corrige o que faltar), atualiza o que mudou desde a
- * última sincronização, puxa a fatura do ML dos dois meses, processa a fila
- * por até 20 s e gera recorrências e alertas. O restante da fila é processado
- * quando alguém abre o Financeiro.
- */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
 
@@ -82,7 +79,11 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  let vendasComCustoPreenchido = 0;
   for (const dono of donosDeConta) {
+    const preenchimento = await atualizarCustoDasVendasAposMudanca(dono.id);
+    vendasComCustoPreenchido += preenchimento?.vendasAtualizadas ?? 0;
+
     try {
       const resultado = await gerarLancamentosDeTodasAsRecorrencias(dono.id);
       lancamentosRecorrentesGerados += resultado.gerados;
@@ -107,14 +108,38 @@ export async function GET(request: NextRequest) {
     }
   }
 
+  let notasGravadas = 0;
+  const contasBling = await prisma.blingAccount.findMany({
+    where: { isActive: true },
+    select: { userId: true },
+    distinct: ["userId"],
+  });
+  for (const contaBling of contasBling) {
+    try {
+      const resultado = await sincronizarNotasFiscais(
+        contaBling.userId,
+        new Date(agora.getTime() - DIAS_NOTAS * 24 * 60 * 60 * 1000),
+        agora,
+        ORCAMENTO_NOTAS_MS
+      );
+      notasGravadas += resultado.gravadas;
+    } catch (error) {
+      erros++;
+      console.error(`[CRON_FINANCEIRO_DIARIO] Erro ao trazer notas fiscais da conta ${contaBling.userId}:`, error);
+      Sentry.captureException(error, { tags: { cron: "financeiro-diario", etapa: "notas-fiscais", contaId: contaBling.userId } });
+    }
+  }
+
   return NextResponse.json({
     contasElegiveis: contasAtivas.length,
+    notasGravadas,
     contasProcessadas,
     pedidosProcessados,
     vendasDetalhadas,
     pedidosCorrigidos,
     lancamentosRecorrentesGerados,
     alertasGerados,
+    vendasComCustoPreenchido,
     erros,
   });
 }

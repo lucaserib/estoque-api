@@ -37,7 +37,6 @@ interface ProgressoEtapa {
   total: number;
   erros: number;
   ultimoErro?: string;
-  /** Itens que não entram por cadastro (ex.: produto sem SKU no Bling), com o motivo. */
   ignorados?: number;
   avisos?: string[];
 }
@@ -104,7 +103,6 @@ interface ContextoEtapa {
   salvar: (cursor: Cursor) => Promise<void>;
 }
 
-/** Devolve true quando a etapa terminou; false quando o tempo acabou no meio. */
 async function executarBlingProdutos(ctx: ContextoEtapa): Promise<boolean> {
   const conta = await prisma.blingAccount.findFirst({
     where: { userId: ctx.userId, isActive: true },
@@ -114,7 +112,6 @@ async function executarBlingProdutos(ctx: ContextoEtapa): Promise<boolean> {
 
   let ids = ctx.cursor.ids as number[] | undefined;
   if (!ids) {
-    // Hora de Brasília (o Bling não lê UTC) e 1h de folga para trás.
     const desde = conta.ultimaSincronizacaoProdutos
       ? formatarDataHoraBrasilia(new Date(conta.ultimaSincronizacaoProdutos.getTime() - 60 * 60 * 1000))
       : undefined;
@@ -138,7 +135,6 @@ async function executarBlingProdutos(ctx: ContextoEtapa): Promise<boolean> {
       } else {
         progresso.erros++;
         progresso.ultimoErro = mensagem(erro);
-        // Sem permissão no Bling: os próximos produtos vão falhar igual — para a etapa e avisa.
         if (erro instanceof BlingEscopoError) throw erro;
       }
     }
@@ -262,13 +258,6 @@ const EXECUTORES: Record<EtapaCatalogo, (ctx: ContextoEtapa) => Promise<boolean>
   FULL_ESTOQUE: executarFullEstoque,
 };
 
-/**
- * Atualiza o catálogo e o estoque em etapas retomáveis: produtos do Bling
- * (novos e alterados) → saldo de estoque do Bling por depósito → anúncios do
- * ML (preço, estoque, status, logística, tarifa, frete e estoque Full) →
- * estoque Full gravado no armazém Full. Cada etapa guarda o cursor; uma
- * etapa que falha registra o erro e o processo segue para a próxima.
- */
 export async function processarSincronizacaoCatalogo(userId: string, orcamentoMs: number): Promise<StatusCatalogo> {
   const estado = await obterOuCriarEstado(userId);
   if (!estado.etapa) return obterStatusCatalogo(userId);
@@ -322,7 +311,6 @@ export async function processarSincronizacaoCatalogo(userId: string, orcamentoMs
   return obterStatusCatalogo(userId);
 }
 
-/** Começa uma nova rodada se a última terminou há mais de `horasValidade` (ou nunca rodou) e processa. */
 export async function sincronizarCatalogoSeNecessario(
   userId: string,
   orcamentoMs: number,

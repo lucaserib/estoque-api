@@ -8,7 +8,6 @@ import {
 import { prisma } from "@/lib/prisma";
 import { seedPlanoContasPadrao } from "./planoContasPadrao";
 
-/** Compra até o dia do fechamento (inclusive) entra na fatura que fecha nesse mês; depois, rola para a próxima. */
 export function resolverMesReferenciaFatura(diaFechamento: number, dataCompra: Date): string {
   const dia = dataCompra.getUTCDate();
   const ano = dataCompra.getUTCFullYear();
@@ -23,7 +22,6 @@ function ultimoDiaDoMes(ano: number, mesIndiceZero: number): number {
   return new Date(Date.UTC(ano, mesIndiceZero + 1, 0)).getUTCDate();
 }
 
-/** Vencimento cai no mesmo mês do fechamento se o dia de vencimento vier depois do dia de fechamento; senão, no mês seguinte. */
 export function calcularFechamentoEVencimento(
   diaFechamento: number,
   diaVencimento: number,
@@ -165,14 +163,6 @@ export class FaturaJaPagaError extends Error {
   }
 }
 
-/**
- * Gera UM lançamento de transferência (saída da conta bancária) e marca as
- * despesas da fatura como pagas — a transferência é o único evento que
- * conta no fluxo de caixa; as despesas individuais já contaram na DRE pela
- * própria competência da compra, marcá-las como pagas é só contabilidade,
- * não é um segundo movimento de caixa (ver nota em docs/AUDITORIA-CICLO-7.md
- * para a Fase 6 não somar as duas coisas).
- */
 export async function pagarFatura(
   userId: string,
   faturaId: string,

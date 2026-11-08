@@ -4,10 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchMlWithBackoff } from "@/lib/mlFetch";
 
-/**
- * API OTIMIZADA para atualizar preços promocionais em lote
- * Melhora performance evitando buscar preços individuais
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -19,7 +15,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
 
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: { id: accountId, userId: user.contaId, isActive: true },
@@ -34,9 +29,8 @@ export async function POST(request: NextRequest) {
 
     const accessToken = await MercadoLivreService.getValidToken(accountId);
 
-    // ✅ OTIMIZAÇÃO: Buscar apenas produtos que precisam de atualização
     const cutoffTime = new Date();
-    cutoffTime.setMinutes(cutoffTime.getMinutes() - (forceUpdate ? 0 : 30)); // 30 min cache
+    cutoffTime.setMinutes(cutoffTime.getMinutes() - (forceUpdate ? 0 : 30));
 
     const produtos = await prisma.produtoMercadoLivre.findMany({
       where: {
@@ -61,10 +55,9 @@ export async function POST(request: NextRequest) {
         mlHasPromotion: true,
         lastSyncAt: true,
       },
-      orderBy: { lastSyncAt: "asc" }, // Mais antigos primeiro
-      take: 50, // ✅ PERFORMANCE: Processar em lotes de 50
+      orderBy: { lastSyncAt: "asc" },
+      take: 50,
     });
-
 
     if (produtos.length === 0) {
       return NextResponse.json({
@@ -78,7 +71,6 @@ export async function POST(request: NextRequest) {
     let withPromotion = 0;
     const errors: string[] = [];
 
-    // ✅ PROCESSAMENTO: Atualizar preços em paralelo (max 5 simultâneos)
     const batches = [];
     for (let i = 0; i < produtos.length; i += 5) {
       batches.push(produtos.slice(i, i + 5));
@@ -88,7 +80,6 @@ export async function POST(request: NextRequest) {
       await Promise.all(
         batch.map(async (produto) => {
           try {
-            // ✅ API OFICIAL: Buscar preços usando endpoint /prices
             const response = await fetchMlWithBackoff(
               `https://api.mercadolibre.com/items/${produto.mlItemId}/prices`,
               {
@@ -103,7 +94,6 @@ export async function POST(request: NextRequest) {
 
             const data = await response.json();
 
-            // ✅ PROCESSAMENTO: Extrair preços conforme documentação ML
             const standardPrice = data.prices?.find(
               (p: {
                 type: string;
@@ -129,7 +119,6 @@ export async function POST(request: NextRequest) {
                 )
             );
 
-            // ✅ CÁLCULO: Determinar preços finais
             let finalPrice = Math.round((standardPrice?.amount || 0) * 100);
             let originalPrice: number | null = null;
             let hasPromotion = false;
@@ -147,7 +136,6 @@ export async function POST(request: NextRequest) {
               withPromotion++;
             }
 
-            // ✅ ATUALIZAÇÃO: Apenas se houver mudança real
             if (
               produto.mlPrice !== finalPrice ||
               produto.mlOriginalPrice !== originalPrice ||
@@ -177,17 +165,15 @@ export async function POST(request: NextRequest) {
         })
       );
 
-      // ✅ DELAY: Evitar rate limiting
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
-
 
     return NextResponse.json({
       success: true,
       processed: produtos.length,
       updated,
       withPromotion,
-      errors: errors.slice(0, 10), // Máximo 10 erros
+      errors: errors.slice(0, 10),
       summary: {
         message: `${updated} produtos atualizados, ${withPromotion} com promoção ativa`,
         nextUpdate: forceUpdate ? "Imediato" : "30 minutos",

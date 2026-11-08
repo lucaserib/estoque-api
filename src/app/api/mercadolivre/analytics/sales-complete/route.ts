@@ -116,8 +116,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
     const periodParam = searchParams.get("period") || "mes-atual";
-    // "mes-atual"/"mes-anterior" vêm resolvidos no fuso de SP, com comparação
-    // contra o mesmo trecho do mês anterior (mesma regra do dashboard).
     const periodoMensal =
       periodParam === "mes-atual" || periodParam === "mes-anterior"
         ? resolverPeriodoRapido(periodParam)
@@ -157,8 +155,6 @@ export async function GET(request: NextRequest) {
       let actualPeriod: number;
 
       if (customStartDate && customEndDate) {
-        // Limites do dia no fuso de SP (o servidor roda em UTC: setHours
-        // aqui puxava 3h do dia anterior para dentro do período).
         startDate = inicioDoDia(new Date(customStartDate));
         endDate = fimDoDia(new Date(customEndDate));
 
@@ -231,7 +227,6 @@ export async function GET(request: NextRequest) {
               excludedStatuses.includes(order.status)
             );
           });
-
 
           const productSales = new Map<string, SalesProduct>();
           const dailyData = new Map<

@@ -1,4 +1,3 @@
-// src/app/(root)/saidas/components/VendasMLList.tsx
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,7 +26,6 @@ interface VendasMLListProps {
   vendas: VendaML[];
 }
 
-// Mapa de status para cores e labels
 const statusConfig = {
   paid: {
     label: "Pago",
@@ -63,18 +61,15 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
   const [selectedVenda, setSelectedVenda] = useState<VendaML | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  // Handle opening the details dialog
   const handleViewDetails = (venda: VendaML) => {
     setSelectedVenda(venda);
     setIsDetailsOpen(true);
   };
 
-  // Count total items in a venda
   const countTotalItems = (venda: VendaML) => {
     return venda.items.reduce((acc, item) => acc + item.quantity, 0);
   };
 
-  // Format currency
   const formatCurrency = (value: number, currency: string = "BRL") => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -82,7 +77,6 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
     }).format(value);
   };
 
-  // Get status config
   const getStatusConfig = (status: string) => {
     return (
       statusConfig[status as keyof typeof statusConfig] || {
@@ -93,7 +87,6 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
     );
   };
 
-  // If there are no vendas, show a message
   if (!vendas || vendas.length === 0) {
     return (
       <div className="text-center py-12 bg-background rounded-md border border-dashed border-input">
@@ -220,7 +213,6 @@ export function VendasMLList({ vendas }: VendasMLListProps) {
         </DataTable>
       </div>
 
-      {/* Details Dialog */}
       {selectedVenda && (
         <VendaMLDetalhesDialog
           isOpen={isDetailsOpen}

@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatBRL } from "@/utils/currency";
 
-// UI Components
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -100,7 +99,6 @@ export function PedidoRow({
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Coluna de seleção (opcional) */}
       {onToggleSelect && (
         <TableCell className="w-10 pr-0">
           <input

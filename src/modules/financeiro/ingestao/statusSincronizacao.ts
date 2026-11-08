@@ -6,11 +6,6 @@ import { filtroAguardandoDetalhes } from "./enriquecimento";
 const DIAS_HISTORICO_AUTOMATICO = 400;
 const HORAS_JANELA_ALERTA_WEBHOOK = 24;
 
-/**
- * Versão do formato dos dados de venda. Quando a regra de gravação muda (ex.:
- * a data da venda passou a ser a de criação do pedido), subir este número faz
- * o app reimportar o histórico uma única vez, sozinho, com `forcar`.
- */
 export const VERSAO_DADOS_FINANCEIROS = 10;
 
 export async function garantirHistoricoAtualizado(accountId: string): Promise<void> {

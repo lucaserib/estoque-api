@@ -7,7 +7,6 @@ interface FetchState<T> {
   error: string | null;
 }
 
-// Use Record and unknown instead of any
 type JsonValue =
   | string
   | number
@@ -16,7 +15,6 @@ type JsonValue =
   | JsonValue[]
   | { [key: string]: JsonValue };
 
-// Function to process BigInt values and convert to string
 const processBigIntValues = (data: unknown): unknown => {
   if (data === null || data === undefined) {
     return data;
@@ -45,27 +43,18 @@ const processBigIntValues = (data: unknown): unknown => {
   return data;
 };
 
-/**
- * Custom hook to fetch data from an API endpoint
- * @param url The URL to fetch data from
- * @param processData Optional function to process the response data
- * @param deps Additional dependencies for the useEffect hook
- */
 export function useFetch<T = unknown>(
   url: string,
   processData?: (data: unknown) => T,
   deps: DependencyList = []
 ) {
-  // Initialize with null or empty based on type
   const [state, setState] = useState<FetchState<T>>({
     data: (Array.isArray([]) ? [] : null) as unknown as T,
     loading: true,
     error: null,
   });
 
-  // Explicitly list deps to avoid the spread warning
   const refetch = useCallback(async () => {
-    // If URL is empty, don't fetch
     if (!url) {
       setState((prev) => ({
         ...prev,
@@ -87,10 +76,8 @@ export function useFetch<T = unknown>(
 
       const responseData = await response.json();
 
-      // Process BigInt values
       const processedResponse = processBigIntValues(responseData);
 
-      // Apply processData function if provided
       const processedData = processData
         ? processData(processedResponse)
         : (processedResponse as T);

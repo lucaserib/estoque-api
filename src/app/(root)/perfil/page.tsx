@@ -16,7 +16,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/ui/page-header";
 import { UserAvatar } from "@/components/ui/user-avatar";
-import { Camera, KeyRound, Loader2, Save, ShieldAlert, User } from "lucide-react";
+import { Bell, Camera, KeyRound, Loader2, Save, ShieldAlert, User } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { formatDateBR } from "@/lib/format";
 
@@ -28,10 +29,11 @@ interface Perfil {
   createdAt: string;
   provider: string;
   hasPassword: boolean;
+  receberResumoIa: boolean;
 }
 
 export default function PerfilPage() {
-  const { update } = useSession();
+  const { update, data: session } = useSession();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -44,6 +46,27 @@ export default function PerfilPage() {
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [savingSenha, setSavingSenha] = useState(false);
+  const [salvandoResumoIa, setSalvandoResumoIa] = useState(false);
+
+  const alterarResumoIa = async (receberResumoIa: boolean) => {
+    if (!perfil) return;
+    setSalvandoResumoIa(true);
+    setPerfil({ ...perfil, receberResumoIa });
+    try {
+      const response = await fetch("/api/perfil", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ receberResumoIa }),
+      });
+      if (!response.ok) throw new Error();
+      toast.success(receberResumoIa ? "Você vai receber o resumo semanal." : "Resumo semanal desligado.");
+    } catch {
+      setPerfil({ ...perfil, receberResumoIa: !receberResumoIa });
+      toast.error("Não foi possível salvar a preferência.");
+    } finally {
+      setSalvandoResumoIa(false);
+    }
+  };
 
   useEffect(() => {
     const loadPerfil = async () => {
@@ -155,7 +178,7 @@ export default function PerfilPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto p-6 max-w-2xl space-y-6">
+      <div className="mx-auto w-full max-w-2xl space-y-6">
         <PageHeader title="Meu perfil" subtitle="Dados da sua conta" />
         <Skeleton className="h-48 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -165,7 +188,7 @@ export default function PerfilPage() {
 
   if (!perfil) {
     return (
-      <div className="container mx-auto p-6 max-w-2xl">
+      <div className="mx-auto w-full max-w-2xl">
         <PageHeader title="Meu perfil" subtitle="Dados da sua conta" />
         <Alert variant="destructive">
           <AlertDescription>Não foi possível carregar o perfil.</AlertDescription>
@@ -175,7 +198,7 @@ export default function PerfilPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-2xl space-y-6">
+    <div className="mx-auto w-full max-w-2xl space-y-6">
       <PageHeader title="Meu perfil" subtitle="Dados da sua conta" />
 
       <Card>
@@ -256,6 +279,36 @@ export default function PerfilPage() {
           </Button>
         </CardContent>
       </Card>
+
+      {session?.user?.role === "ADMIN" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Bell className="h-5 w-5" />
+              Notificações
+            </CardTitle>
+            <CardDescription>O que o Skubo avisa para você</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="receber-resumo-ia" className="font-medium">
+                  Resumo semanal do Skubo IA
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Toda segunda de manhã, as 3 prioridades da semana na Central de controle (para contas com o Skubo IA).
+                </p>
+              </div>
+              <Switch
+                id="receber-resumo-ia"
+                checked={perfil.receberResumoIa}
+                onCheckedChange={alterarResumoIa}
+                disabled={salvandoResumoIa}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

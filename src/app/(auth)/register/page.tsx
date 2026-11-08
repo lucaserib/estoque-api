@@ -45,8 +45,17 @@ function RegisterForm() {
         return;
       }
 
+      const entrou = await signIn("credentials", {
+        email: form.email,
+        password: form.password,
+        redirect: false,
+      });
+      if (entrou?.ok) {
+        window.location.href = inviteToken ? "/" : "/comecar";
+        return;
+      }
       router.push("/login");
-    } catch (error) {
+    } catch {
       setError("Ocorreu um erro ao criar sua conta. Tente novamente.");
     } finally {
       setIsLoading(false);
@@ -55,7 +64,7 @@ function RegisterForm() {
 
   const handleGoogleSignIn = () => {
     setIsLoading(true);
-    signIn("google", { callbackUrl: "/" });
+    signIn("google", { callbackUrl: inviteToken ? "/" : "/comecar" });
   };
 
   return (
@@ -78,7 +87,6 @@ function RegisterForm() {
         <span>Cadastrar com o Google</span>
       </button>
 
-      {/* Separador */}
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border"></span>
@@ -147,6 +155,8 @@ function RegisterForm() {
             id="password"
             name="password"
             type="password"
+            minLength={8}
+            autoComplete="new-password"
             placeholder="Sua senha"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}

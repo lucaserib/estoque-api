@@ -23,12 +23,6 @@ export interface DadosContaAPagarDePedido {
   contaFinanceiraId?: string | null;
 }
 
-/**
- * Entra no fluxo de caixa como "Compra de mercadoria (estoque)", fora da
- * DRE — a DRE já recebe o CMV no momento da venda (VendaCanal.cmv), não da
- * compra. Idempotente por chaveExterna: gerar de novo para o mesmo pedido
- * não duplica.
- */
 export async function gerarContaAPagarDePedidoCompra(
   userId: string,
   criadoPorId: string,

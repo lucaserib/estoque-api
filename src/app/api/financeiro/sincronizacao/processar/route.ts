@@ -9,11 +9,6 @@ export const maxDuration = 60;
 
 const ORCAMENTO_MS = 45000;
 
-/**
- * Processa um pedaço da fila de sincronização da conta (importação de
- * pedidos, cobranças, ads e detalhamento das vendas). A tela chama esta rota
- * em sequência enquanto o status disser que há pendência.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

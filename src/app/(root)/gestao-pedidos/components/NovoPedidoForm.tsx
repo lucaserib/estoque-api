@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 
-// UI Components
 import {
   Form,
   FormControl,
@@ -189,14 +188,12 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
       console.log("É array?", Array.isArray(data));
       console.log("Comprimento:", data?.length);
 
-      // Verificar se data tem a estrutura esperada
       if (!data) {
         console.warn("API retornou dados vazios");
         setProdutosFornecedor([]);
         return;
       }
 
-      // Verificar se o valor retornado é realmente um array
       if (!Array.isArray(data)) {
         console.error("API retornou um valor que não é um array:", data);
         setProdutosFornecedor([]);
@@ -205,7 +202,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
 
       console.log(`FRONTEND: Processando ${data.length} produtos recebidos da API`);
 
-      // Verificar se cada item do array tem a estrutura esperada
       const produtosValidos = data.filter((item, index) => {
         console.log(`FRONTEND: Verificando item ${index}:`, item);
         if (!item.produto || !item.produtoId) {
@@ -228,7 +224,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
       console.log(`FRONTEND: Definindo ${produtosValidos.length} produtos no estado`);
       setProdutosFornecedor(produtosValidos);
 
-      // Log adicional após definir o estado
       setTimeout(() => {
         console.log("FRONTEND: Estado atual de produtosFornecedor:", produtosFornecedor.length);
       }, 100);
@@ -246,21 +241,18 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- callback must stay stable; produtosFornecedor.length is only read in a debug log, adding it would restart the loadProdutosFornecedor effect and cause a refetch loop
   }, []);
 
-  // Quando o fornecedor muda, carregar seus produtos
   useEffect(() => {
     console.log("USEEFFECT: Iniciando setup do watcher para fornecedor");
 
-    // Registrar o watcher para monitorar mudanças no fornecedorId
     const subscription = form.watch((value, { name }) => {
       console.log("WATCHER: Campo alterado:", name, "Valor:", value);
       if (name === "fornecedorId" && value.fornecedorId) {
         console.log("WATCHER: Fornecedor selecionado:", value.fornecedorId);
         loadProdutosFornecedor(value.fornecedorId);
-        setSearchTerm(""); // Limpar busca quando trocar fornecedor
+        setSearchTerm("");
       }
     });
 
-    // Também carregar produtos se já há um fornecedor selecionado no mount
     const currentFornecedorId = form.getValues("fornecedorId");
     if (currentFornecedorId) {
       console.log("USEEFFECT: Fornecedor já selecionado no mount:", currentFornecedorId);
@@ -269,14 +261,12 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
 
     console.log("USEEFFECT: Watcher configurado");
 
-    // Cleanup: cancelar a subscrição ao desmontar o componente
     return () => {
       console.log("USEEFFECT: Cleanup - removendo watcher");
       subscription.unsubscribe();
     };
   }, [form, loadProdutosFornecedor]);
 
-  // Adicionar produto ao pedido
   const addProduct = (
     produtoFornecedor: ProdutoFornecedor,
     quantidade: number
@@ -287,7 +277,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
       (p) => p.produtoId === produtoFornecedor.produtoId
     );
 
-    // Converter o preço para número antes de usar
     const precoNumerico =
       typeof produtoFornecedor.preco === "number"
         ? produtoFornecedor.preco
@@ -341,7 +330,6 @@ const NovoPedidoForm = ({ onSuccess }: NovoPedidoFormProps) => {
     );
   });
 
-  // Log para debug da renderização
   console.log("RENDER: produtosFornecedor.length:", produtosFornecedor.length);
   console.log("RENDER: filteredProducts.length:", filteredProducts.length);
   console.log("RENDER: isLoadingProdutos:", isLoadingProdutos);

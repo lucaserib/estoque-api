@@ -53,7 +53,6 @@ export async function DELETE(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
-    // Parâmetro opcional para determinar se deve forçar a exclusão de vínculos
     const forceDelete = searchParams.get("force") === "true";
 
     if (!id) {
@@ -63,7 +62,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Verificar se o fornecedor existe e pertence ao usuário
     const fornecedor = await prisma.fornecedor.findFirst({
       where: {
         id: id,
@@ -86,9 +84,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Verificar se o fornecedor possui vínculos
     if (fornecedor.pedidos.length > 0 || fornecedor.produtos.length > 0) {
-      // Se tem vínculos e não foi solicitada exclusão forçada, retornar erro
       if (!forceDelete) {
         return NextResponse.json(
           {
@@ -101,32 +97,26 @@ export async function DELETE(req: NextRequest) {
         );
       }
 
-      // Caso contrário, executar exclusão em cascata em uma transação
       await prisma.$transaction(async (tx) => {
-        // 1. Primeiro, remover todos os produtos dos pedidos
         for (const pedido of fornecedor.pedidos) {
           await tx.pedidoProduto.deleteMany({
             where: { pedidoId: pedido.id },
           });
         }
 
-        // 2. Depois, remover todos os pedidos
         await tx.pedidoCompra.deleteMany({
           where: { fornecedorId: id },
         });
 
-        // 3. Em seguida, remover os vínculos com produtos
         await tx.produtoFornecedor.deleteMany({
           where: { fornecedorId: id },
         });
 
-        // 4. Por fim, deletar o fornecedor
         await tx.fornecedor.delete({
           where: { id: id },
         });
       });
     } else {
-      // Caso não tenha vínculos, basta deletar o fornecedor diretamente
       await prisma.fornecedor.delete({
         where: { id: id },
       });
@@ -167,7 +157,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Verificar se o fornecedor existe e pertence ao usuário
     const fornecedor = await prisma.fornecedor.findFirst({
       where: {
         id: id,
@@ -182,7 +171,6 @@ export async function PUT(req: NextRequest) {
       );
     }
 
-    // Atualizar o fornecedor
     const updatedFornecedor = await prisma.fornecedor.update({
       where: { id: id },
       data: {

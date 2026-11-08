@@ -8,12 +8,6 @@ export interface ResultadoIngestaoCobrancas {
   naoMapeadas: number;
 }
 
-/**
- * Cobranças com `coberturaPedido=true` (tarifa de venda, frete do pedido) já
- * entram na DRE pelo próprio VendaCanal — aqui só servem para conciliação
- * (Fase 4 item 3). As demais (armazenagem Full, ads quando a API de Ads
- * falhar, outras tarifas) são a própria fonte da DRE para esses valores.
- */
 export async function ingerirCobrancasDoMes(
   accountId: string,
   mesReferencia: string

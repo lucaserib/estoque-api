@@ -14,7 +14,7 @@ function VendasShellContent() {
   const [aba, setAba] = useState<Aba>(searchParams.get("aba") === "produto" ? "produto" : "venda");
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6">
       <Tabs value={aba} onValueChange={(v) => setAba(v as Aba)}>
         <TabsList>
           <TabsTrigger value="venda">Por venda</TabsTrigger>
@@ -35,7 +35,7 @@ export default function VendasPage() {
   return (
     <Suspense
       fallback={
-        <div className="container mx-auto flex h-64 items-center justify-center p-6">
+        <div className="mx-auto w-full flex h-64 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       }

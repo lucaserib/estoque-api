@@ -52,13 +52,6 @@ function esperar(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/**
- * Mantém a sincronização do financeiro andando enquanto alguém está com o
- * Financeiro aberto: lê o status e, se houver pendência (importação de
- * pedidos, fatura, ads ou vendas aguardando o detalhe do pagamento), chama
- * /processar em sequência. Cada rodada que grava algo incrementa
- * `versaoDados`, e as telas recarregam os números sozinhas.
- */
 export function SincronizacaoFinanceiraProvider({ children }: { children: ReactNode }) {
   const { data: session, status: statusSessao } = useSession();
   const papel = session?.user?.role;
@@ -203,7 +196,6 @@ export function useSincronizacaoFinanceira(): ValorContexto {
   return valor;
 }
 
-/** Roda `recarregar` toda vez que a sincronização gravar dados novos (não na montagem). */
 export function useAoAtualizarDados(recarregar: () => void) {
   const { versaoDados } = useSincronizacaoFinanceira();
   const primeira = useRef(true);

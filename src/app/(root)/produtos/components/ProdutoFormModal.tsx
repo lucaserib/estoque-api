@@ -41,7 +41,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
 
-  // Estado para kits
   const [produtoSearch, setProdutoSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Produto[]>([]);
   const [kitProdutos, setKitProdutos] = useState<KitProduto[]>([]);
@@ -56,7 +55,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
 
     setIsSearching(true);
     try {
-      // Busca produtos pelo nome ou SKU
       const response = await fetch(
         `/api/produtos?search=${encodeURIComponent(produtoSearch)}`
       );
@@ -64,8 +62,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
 
       const data = await response.json();
 
-      // Filtra localmente para garantir que apenas produtos (não kits) sejam mostrados
-      // e que correspondam ao termo de busca (no nome ou SKU)
       const filteredData = data.filter(
         (p: Produto) =>
           !p.isKit &&
@@ -90,7 +86,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
       return;
     }
 
-    // Verificar se o produto já está no kit
     if (kitProdutos.some((item) => item.produtoId === selectedProdutoId)) {
       setMessage("Este produto já foi adicionado ao kit");
       setMessageType("error");
@@ -110,19 +105,16 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
     setMessage("");
   };
 
-  // Remover produto do kit
   const handleRemoveProdutoDoKit = (produtoId: string) => {
     setKitProdutos(kitProdutos.filter((item) => item.produtoId !== produtoId));
   };
 
-  // Validar e enviar o formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setMessage("");
     setMessageType("");
 
-    // Validação básica
     if (!nome.trim()) {
       setMessage("Nome é obrigatório");
       setMessageType("error");
@@ -137,7 +129,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
       return;
     }
 
-    // Validação específica para kits
     if (formType === "kit" && !kitProdutos.length) {
       setMessage("Um kit deve ter pelo menos um produto");
       setMessageType("error");
@@ -146,7 +137,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
     }
 
     try {
-      // Construir o objeto para a API
       const produtoData = {
         nome: nome.trim(),
         sku: sku.trim(),
@@ -167,7 +157,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
         throw new Error(data.error || `Erro ao criar ${formType}`);
       }
 
-      // Transformar o BigInt EAN para string
       const produtoComEANString = {
         ...data,
         ean: data.ean ? data.ean.toString() : "",
@@ -178,10 +167,8 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
       );
       setMessageType("success");
 
-      // Chamar o callback com o novo produto
       onSave(produtoComEANString);
 
-      // Limpar o formulário
       setTimeout(() => {
         onClose();
       }, 1500);
@@ -199,12 +186,9 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay com blur */}
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"></div>
 
-        {/* Modal container */}
         <div className="inline-block align-bottom bg-card rounded-xl text-left shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-3xl w-full">
-          {/* Header */}
           <div className="flex justify-between items-center p-6 border-b border-border">
             <h2 className="text-xl font-bold text-foreground">
               Novo {formType === "kit" ? "Kit" : "Produto"}
@@ -221,7 +205,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
             </Button>
           </div>
 
-          {/* Form content */}
           <div className="p-6">
             <form onSubmit={handleSubmit}>
               <Tabs
@@ -248,7 +231,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                 </TabsList>
               </Tabs>
 
-              {/* Campos comuns para Produto e Kit */}
               <Card className="mb-6 border border-border">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-md">Informações Básicas</CardTitle>
@@ -299,7 +281,6 @@ const ProdutoFormModal = ({ onClose, onSave }: ProdutoFormModalProps) => {
                 </CardContent>
               </Card>
 
-              {/* Campos específicos para Kit */}
               {formType === "kit" && (
                 <Card className="mb-6 border border-border">
                   <CardHeader className="pb-3">

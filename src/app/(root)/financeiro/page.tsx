@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { AlertTriangle, ArrowRight, Info } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { BotaoExplicarIa, type PeriodoVariacaoIa } from "@/components/ia/BotaoExplicarIa";
 import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 import { StatusPill } from "@/components/ui/status-pill";
@@ -19,6 +20,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { chartColor } from "@/lib/chart-colors";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "./components/SeletorPeriodo";
+import { FaturamentoComFreteCard } from "@/components/financeiro/FaturamentoComFreteCard";
 import { useAcessoFinanceiro } from "./components/useAcessoFinanceiro";
 import { BotaoAtualizarFinanceiro } from "./components/BotaoAtualizarFinanceiro";
 import { useAoAtualizarDados } from "./components/SincronizacaoFinanceira";
@@ -135,6 +137,13 @@ function eixoMoeda(centavos: number): string {
   return `R$ ${reais.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}`;
 }
 
+const PERIODO_VARIACAO: Partial<Record<PeriodoSelecionado["preset"], PeriodoVariacaoIa>> = {
+  hoje: "hoje",
+  "7dias": "7",
+  mesAtual: "mes-atual",
+  mesAnterior: "mes-anterior",
+};
+
 export default function FinanceiroPage() {
   const { carregando: carregandoSessao, podeVerFinanceiro } = useAcessoFinanceiro();
   const [periodo, setPeriodo] = useState<PeriodoSelecionado>({ preset: "mesAtual", ...periodoDoPreset("mesAtual") });
@@ -192,7 +201,7 @@ export default function FinanceiroPage() {
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <div className="mx-auto w-full max-w-[1400px] space-y-8">
         <Skeleton className="h-[80px] rounded-md" />
       </div>
     );
@@ -284,13 +293,20 @@ export default function FinanceiroPage() {
     : [];
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-8">
       <PageHeader
         eyebrow="Financeiro"
         title="Visão geral"
         actions={
           <>
             <SeletorPeriodo valor={periodo} onChange={setPeriodo} />
+            {PERIODO_VARIACAO[periodo.preset] && (
+              <BotaoExplicarIa
+                pedido={{ tipo: "variacao", periodo: PERIODO_VARIACAO[periodo.preset]! }}
+                rotulo="Explicar variação"
+                perguntaAssistente="Por que minha margem e meu faturamento mudaram neste período?"
+              />
+            )}
             <BotaoAtualizarFinanceiro modo="INCREMENTAL" />
           </>
         }
@@ -332,6 +348,7 @@ export default function FinanceiroPage() {
             }`}
           />
           <StatCardGrid items={indicadoresPeriodo} />
+          <FaturamentoComFreteCard desde={periodo.desde} ate={periodo.ate} rotuloPeriodo="Período selecionado" />
         </>
       ) : (
         <SectionCard>

@@ -3,82 +3,62 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { obterSegredoAuth } from "@/lib/authSecret";
 
-export async function middleware(req: NextRequest) {
-  // ✅ CORREÇÃO: Configurar token com secureCookie baseado no protocolo
-  const isSecure = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
+const ROTAS_PUBLICAS = ["/login", "/register"];
 
+function hostDoAdmin(host: string | null): boolean {
+  if (!host) return false;
+  const configurado = process.env.ADMIN_HOST?.trim().toLowerCase();
+  const atual = host.toLowerCase().split(":")[0];
+  if (configurado) return atual === configurado;
+  return atual.startsWith("admin.");
+}
+
+async function lerToken(req: NextRequest) {
+  const segura = req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https";
+  const segredo = obterSegredoAuth();
   const token = await getToken({
     req,
-    secret: obterSegredoAuth(),
-    secureCookie: isSecure,
-    cookieName: isSecure ? "__Secure-next-auth.session-token" : "next-auth.session-token"
+    secret: segredo,
+    secureCookie: segura,
+    cookieName: segura ? "__Secure-next-auth.session-token" : "next-auth.session-token",
   });
-
-  const { pathname } = req.nextUrl;
-
-  // Verificar se é um callback do Mercado Livre (tem parâmetros code ou error)
-  const isMLCallback =
-    req.nextUrl.searchParams.has("code") ||
-    req.nextUrl.searchParams.has("error");
-
-  // Verificar se está vindo do ngrok
-  const isFromNgrok =
-    req.headers.get("host")?.includes(".ngrok") ||
-    req.headers.get("host")?.includes(".ngrok.io") ||
-    req.headers.get("host")?.includes(".ngrok-free.app");
-
-  // Permitir acesso às rotas públicas
-  if (pathname.startsWith("/login") || pathname.startsWith("/register")) {
-    return NextResponse.next();
-  }
-
-  // Permitir callback do ML vindos do ngrok (mesmo sem token, pois será processado no frontend)
-  if (isMLCallback && isFromNgrok && pathname === "/configuracoes") {
-    return NextResponse.next();
-  }
-
-  // ✅ CORREÇÃO: Para ngrok, tentar também com cookie padrão se não encontrou o seguro
-  if (!token && isFromNgrok) {
-    const fallbackToken = await getToken({
-      req,
-      secret: obterSegredoAuth(),
-      secureCookie: false,
-      cookieName: "next-auth.session-token"
-    });
-
-    if (fallbackToken) {
-      // Token encontrado no cookie não-seguro, permitir acesso
-      const requestHeaders = new Headers(req.headers);
-      if (fallbackToken?.id) {
-        requestHeaders.set("x-user-id", fallbackToken.id as string);
-      }
-
-      return NextResponse.next({
-        request: {
-          headers: requestHeaders,
-        },
-      });
-    }
-  }
-
-  // Redirecionar se o usuário não estiver autenticado
-  if (!token) {
-    return NextResponse.redirect(new URL("/login", req.url));
-  }
-
-  const requestHeaders = new Headers(req.headers);
-  if (token?.id) {
-    requestHeaders.set("x-user-id", token.id as string);
-  }
-
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
+  if (token) return token;
+  return getToken({
+    req,
+    secret: segredo,
+    secureCookie: !segura,
+    cookieName: segura ? "next-auth.session-token" : "__Secure-next-auth.session-token",
   });
 }
 
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+  const noHostAdmin = hostDoAdmin(req.headers.get("host"));
+
+  if (ROTAS_PUBLICAS.some((rota) => pathname.startsWith(rota))) {
+    return NextResponse.next();
+  }
+
+  const token = await lerToken(req);
+
+  if (!token) {
+    const destino = new URL("/login", req.url);
+    if (pathname !== "/") destino.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
+    return NextResponse.redirect(destino);
+  }
+
+  const cabecalhos = new Headers(req.headers);
+  if (token.id) cabecalhos.set("x-user-id", token.id as string);
+
+  if (noHostAdmin && !pathname.startsWith("/admin")) {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname === "/" ? "/admin" : `/admin${pathname}`;
+    return NextResponse.rewrite(url, { request: { headers: cabecalhos } });
+  }
+
+  return NextResponse.next({ request: { headers: cabecalhos } });
+}
+
 export const config = {
-  // manifest, ícones e /pwa ficam públicos: o navegador busca sem cookie ao instalar o app.
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|manifest.webmanifest|icon.png|apple-icon.png|pwa/|brand/).*)"], // Protege todas as rotas exceto estáticas e APIs
+  matcher: ["/((?!api|_next/static|_next/image|manifest.webmanifest|.*\\.[a-zA-Z0-9]+$).*)"],
 };

@@ -583,7 +583,7 @@ function LancamentosPageContent() {
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <div className="mx-auto w-full max-w-[1400px] space-y-8">
         <Skeleton className="h-[80px] rounded-md" />
       </div>
     );
@@ -598,7 +598,7 @@ function LancamentosPageContent() {
   };
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6">
       <PageHeader
         eyebrow="Financeiro"
         title="Lançamentos"
@@ -1057,7 +1057,7 @@ export default function LancamentosPage() {
   return (
     <Suspense
       fallback={
-        <div className="container mx-auto flex h-64 items-center justify-center p-6">
+        <div className="mx-auto w-full flex h-64 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin" />
         </div>
       }

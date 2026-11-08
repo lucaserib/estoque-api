@@ -143,7 +143,6 @@ export async function alterarCategoriaEmLote(
   return { atualizados: resultado.count };
 }
 
-/** Só previstos — excluir um lançamento já pago em lote seria fácil demais de apertar por engano. */
 export async function excluirPrevistosEmLote(
   userId: string,
   ids: string[]

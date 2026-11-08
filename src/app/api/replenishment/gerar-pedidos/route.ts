@@ -4,13 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { calcularReposicaoConta, SugestaoReposicao } from "@/services/reposicaoService";
 
-/**
- * POST /api/replenishment/gerar-pedidos
- * Agrupa as sugestões de compra (reposicaoService, Ciclo 6 Fase 7) por
- * fornecedor principal e cria um rascunho de PedidoCompra (status
- * "pendente") por fornecedor. Itens sem fornecedor principal são
- * ignorados e reportados em itensIgnoradosSemFornecedor.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

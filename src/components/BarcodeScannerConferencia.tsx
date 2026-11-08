@@ -34,8 +34,8 @@ interface Produto {
     codigo: string;
     tipo: string;
   }[];
-  ean?: string | number; // Campo legado para compatibilidade
-  codigoEAN?: string; // Campo legado para compatibilidade
+  ean?: string | number;
+  codigoEAN?: string;
 }
 
 interface PedidoProduto {
@@ -65,7 +65,7 @@ const BarcodeScannerConferencia = ({
   const [produtosMap, setProdutosMap] = useState<Map<string, PedidoProduto>>(
     new Map()
   );
-  const [eanMap, setEanMap] = useState<Map<string, string>>(new Map()); // EAN -> produtoId
+  const [eanMap, setEanMap] = useState<Map<string, string>>(new Map());
   const [produtosDesconhecidos, setProdutosDesconhecidos] = useState<
     { codigoEAN: string; timestamp: Date }[]
   >([]);
@@ -75,7 +75,6 @@ const BarcodeScannerConferencia = ({
     Map<string, number>
   >(new Map());
 
-  // Adicionar função para mapear ean para codigoEAN (no início do componente)
   const getCodigoEAN = (produto: Produto): string | undefined => {
     if (!produto.codigosDeBarras || !Array.isArray(produto.codigosDeBarras)) {
       return undefined;
@@ -88,7 +87,6 @@ const BarcodeScannerConferencia = ({
     return codigoEAN?.codigo;
   };
 
-  // Modificar o useEffect para usar a função getCodigoEAN
   useEffect(() => {
     const prodMap = new Map<string, PedidoProduto>();
     const eanMapping = new Map<string, string>();
@@ -98,22 +96,18 @@ const BarcodeScannerConferencia = ({
     produtos.forEach((produto) => {
       prodMap.set(produto.produtoId, produto);
 
-      // Armazenar a quantidade original
       quantOriginais.set(produto.produtoId, produto.quantidade);
 
-      // Log para verificar se codigoEAN existe e está sendo reconhecido
       console.log(
         `Produto: ${produto.produto?.nome} (ID: ${produto.produtoId})`
       );
 
-      // Obter o código EAN usando a função utilitária
       const codigoEAN = produto.produto
         ? getCodigoEAN(produto.produto)
         : undefined;
       console.log(`  codigoEAN: ${codigoEAN || "Não definido"}`);
       console.log(`  ean original: ${produto.produto?.ean || "Não definido"}`);
 
-      // Se o produto tiver código EAN, mapeamos para o ID do produto
       if (codigoEAN) {
         eanMapping.set(codigoEAN, produto.produtoId);
         console.log(`  Mapeando EAN ${codigoEAN} -> ID ${produto.produtoId}`);
@@ -127,15 +121,12 @@ const BarcodeScannerConferencia = ({
     setQuantidadesOriginais(quantOriginais);
   }, [produtos]);
 
-  // Modificar o useEffect para zerar as quantidades apenas uma vez
   useEffect(() => {
     if (!inicializado) {
-      // Zerar todas as quantidades quando entra no modo de conferência por código de barras
       produtos.forEach((produto) => {
         onQuantidadeAtualizada(produto.produtoId, 0);
       });
 
-      // Limpar histórico e produtos desconhecidos
       setHistoricoScans([]);
       setProdutosDesconhecidos([]);
 
@@ -144,9 +135,7 @@ const BarcodeScannerConferencia = ({
     }
   }, [produtos, onQuantidadeAtualizada, inicializado]);
 
-  // Função para lidar com um novo scan
   const handleScan = (codigoEAN: string) => {
-    // Verificar se o código EAN corresponde a algum produto
     console.log(`Código EAN escaneado: ${codigoEAN}`);
     console.log(`Mapa de EANs atual:`, Object.fromEntries(eanMap));
 
@@ -157,7 +146,6 @@ const BarcodeScannerConferencia = ({
 
     if (!produtoId) {
       console.log(`EAN não encontrado no mapa!`);
-      // Guardar o código desconhecido para referência
       setProdutosDesconhecidos((prev) => [
         {
           codigoEAN,
@@ -175,11 +163,9 @@ const BarcodeScannerConferencia = ({
       return;
     }
 
-    // Atualizar a quantidade
     const novaQuantidade = (produto.quantidade || 0) + 1;
     onQuantidadeAtualizada(produtoId, novaQuantidade);
 
-    // Adicionar ao histórico
     setHistoricoScans((prev) => [
       {
         codigoEAN,
@@ -190,28 +176,21 @@ const BarcodeScannerConferencia = ({
       ...prev,
     ]);
 
-    // Limpar qualquer erro anterior
     setError(null);
   };
 
-  // Validação de código de barras
   const validarCodigoBarras = async (codigo: string): Promise<boolean> => {
-    // Primeiro verificamos se é um EAN-13 válido (validação feita internamente pelo BarcodeReader)
-    // Depois verificamos se o código existe no nosso mapeamento
     return eanMap.has(codigo);
   };
 
-  // Limpar histórico
   const limparHistorico = () => {
     setHistoricoScans([]);
   };
 
-  // Add a function to clear unknown products
   const limparProdutosDesconhecidos = () => {
     setProdutosDesconhecidos([]);
   };
 
-  // Adicionar função para reiniciar a conferência
   const confirmarReiniciar = () => {
     setMostrarConfirmacao(true);
   };
@@ -221,12 +200,10 @@ const BarcodeScannerConferencia = ({
   };
 
   const executarReiniciar = () => {
-    // Zerar todas as quantidades
     produtos.forEach((produto) => {
       onQuantidadeAtualizada(produto.produtoId, 0);
     });
 
-    // Limpar histórico e produtos desconhecidos
     setHistoricoScans([]);
     setProdutosDesconhecidos([]);
 
@@ -234,7 +211,6 @@ const BarcodeScannerConferencia = ({
     setMostrarConfirmacao(false);
   };
 
-  // Função para calcular o total de itens contados
   const calcularTotalContado = (): number => {
     return produtos.reduce(
       (total, produto) => total + (produto.quantidade || 0),

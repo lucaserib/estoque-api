@@ -2,12 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ============================================================
-   Skubo — Design tokens (shadcn CSS variables)
-   Roxo Skubo + Verde Lucro. Sora (títulos) / Inter (interface e
-   números) / JetBrains Mono (SKU, MLB, pedido). Dark-first. darkMode: "class".
-   Ver docs/marca/skubo-identidade.png e PROMPT-CICLO-13-PRODUTO-FINAL.md §1.0-1.1.
-   ============================================================ */
 @layer base {
   :root {
     --background: 252 38% 97%;
@@ -55,6 +49,11 @@
     --shadow-lift: 0 1px 2px rgba(22, 19, 43, 0.06), 0 8px 24px -8px rgba(22, 19, 43, 0.14);
     --card-gradient-from: #ffffff;
     --card-gradient-to: #f3f0ff;
+    --hero-from: #6d4bff;
+    --hero-via: #5b3df5;
+    --hero-to: #3a1fc4;
+    --app-glow: rgba(91, 61, 245, 0.08);
+    --app-glow-2: rgba(22, 199, 154, 0.06);
   }
 
   .dark {
@@ -101,6 +100,11 @@
     --shadow-lift: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px -10px rgba(0, 0, 0, 0.6);
     --card-gradient-from: #17142a;
     --card-gradient-to: #221c45;
+    --hero-from: #5a3be8;
+    --hero-via: #4429cf;
+    --hero-to: #2a1590;
+    --app-glow: rgba(124, 92, 255, 0.16);
+    --app-glow-2: rgba(22, 199, 154, 0.07);
   }
 
   *,
@@ -130,9 +134,31 @@
     @apply text-xs font-medium text-muted-foreground;
   }
 
-  /* Cartão de destaque (resultado do mês): gradiente sutil da cor da marca. */
   .bg-card-gradient {
     background-image: linear-gradient(135deg, var(--card-gradient-from), var(--card-gradient-to));
+  }
+
+  .bg-hero {
+    background-color: var(--hero-via);
+    background-image: radial-gradient(120% 140% at 100% 0%, rgba(22, 199, 154, 0.28) 0%, rgba(22, 199, 154, 0) 42%),
+      radial-gradient(90% 120% at 0% 0%, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 55%),
+      linear-gradient(135deg, var(--hero-from) 0%, var(--hero-via) 45%, var(--hero-to) 100%);
+  }
+
+  .bg-app {
+    background-image: radial-gradient(1200px 520px at 85% -120px, var(--app-glow), transparent 70%),
+      radial-gradient(900px 420px at 15% -160px, var(--app-glow-2), transparent 70%);
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+  }
+
+  .card-hover {
+    transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  }
+
+  .card-hover:hover {
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-1px);
   }
 }
 
@@ -194,7 +220,6 @@
   }
 }
 
-/* Estilos para scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -227,7 +252,6 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
-/* Transições para Dashboard */
 .dashboard-transition {
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
@@ -251,7 +275,6 @@
   transform: translateY(-10px);
 }
 
-/* Loading overlay */
 .loading-overlay {
   position: absolute;
   inset: 0;
@@ -272,7 +295,6 @@
   animation: spin 1s linear infinite;
 }
 
-/* Estilos para garantir que elementos interativos sejam sempre clicáveis */
 button,
 a,
 input,
@@ -287,12 +309,10 @@ textarea,
   z-index: 10;
 }
 
-/* Garantir que elementos com position: absolute não bloqueiem a interação */
 *[class*="absolute"] {
   pointer-events: none;
 }
 
-/* Mas permitir eventos de ponteiro para seus filhos interativos */
 *[class*="absolute"] a,
 *[class*="absolute"] button,
 *[class*="absolute"] input,
@@ -303,7 +323,6 @@ textarea,
   pointer-events: auto;
 }
 
-/* Estilos específicos para páginas de autenticação */
 .auth-input {
   @apply bg-card border-input text-foreground rounded-lg;
   @apply focus:ring-ring focus:border-primary;

@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 
-/**
- * GET /api/replenishment/config
- * Retorna configuração de reposição de um produto específico
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -19,7 +15,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar configuração específica do produto
     const config = await prisma.stockReplenishmentConfig.findFirst({
       where: {
         userId: user.contaId,
@@ -35,7 +30,7 @@ export async function GET(request: NextRequest) {
         minCoverageDays: 30,
         analysisPeriodDays: 90,
       },
-      isGlobal: !config, // Se não encontrou config, está usando valores padrão
+      isGlobal: !config,
     });
   } catch (error) {
     console.error("Erro ao buscar configuração de reposição:", error);
@@ -51,10 +46,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-/**
- * POST /api/replenishment/config
- * Cria ou atualiza configuração de reposição de um produto
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -89,7 +80,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validar período de análise (30, 60 ou 90 dias)
     if (![30, 60, 90].includes(analysisPeriodDays)) {
       return NextResponse.json(
         { error: "Período de análise deve ser 30, 60 ou 90 dias" },
@@ -97,7 +87,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upsert (criar ou atualizar)
     const config = await prisma.stockReplenishmentConfig.upsert({
       where: {
         userId_produtoId: {
@@ -139,10 +128,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * DELETE /api/replenishment/config
- * Remove configuração específica de produto (volta a usar global)
- */
 export async function DELETE(request: NextRequest) {
   try {
     const user = await verifyUser(request);

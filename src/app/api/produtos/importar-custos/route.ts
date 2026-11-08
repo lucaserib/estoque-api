@@ -1,3 +1,4 @@
+import { atualizarCustoDasVendasAposMudanca } from "@/modules/financeiro/ingestao/sincronizador";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -54,6 +55,8 @@ export async function POST(request: NextRequest) {
     );
 
     let aceitas = 0;
+
+    const produtosAtualizados: string[] = [];
     const rejeitadas: LinhaRejeitada[] = [];
 
     for (let i = 0; i < linhas.length; i++) {
@@ -75,6 +78,7 @@ export async function POST(request: NextRequest) {
           where: { id: produtoId },
           data: { custoMedio: linha.custoMedio },
         });
+        produtosAtualizados.push(produtoId);
         aceitas++;
       } catch (rowError) {
         console.error(`Erro ao importar custo da linha ${i + 1}:`, rowError);
@@ -86,6 +90,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    if (produtosAtualizados.length > 0) await atualizarCustoDasVendasAposMudanca(user.contaId, produtosAtualizados);
     return NextResponse.json({ success: true, aceitas, rejeitadas });
   } catch (error) {
     console.error("Erro ao importar planilha de custos:", error);

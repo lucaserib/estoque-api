@@ -38,6 +38,20 @@ descobrir na prática para dar a mensagem certa quando falta permissão
 | `/contas*`, `/categorias*`, `/formas-pagamentos*` | Financeiro — contas a pagar/receber (leitura) |
 | `/pedidos*` | Pedidos de venda (leitura) |
 | `/empresas*` | Dados básicos da empresa |
+| `/nfe*` | Notas fiscais (leitura) — usado pelo "Em nota fiscal" do faturamento |
+
+Logo depois de conectar, o callback testa `/produtos` e `/depositos`
+(`BlingService.verificarEscopos`) e a tela de Integrações mostra o que faltou.
+
+## Notas fiscais de saída
+
+`sincronizarNotasFiscais` (`modules/financeiro/canais/erp/bling/notasFiscais.ts`)
+lê `GET /nfe?tipo=1&dataEmissaoInicial&dataEmissaoFinal` e, quando a lista
+não traz `valorNota`/`numeroPedidoLoja`, busca `GET /nfe/{id}`. Guarda só
+notas autorizadas (situação 5, 6 ou 7) e canceladas (2) em
+`NotaFiscalVenda`, ligando à venda pelo `numeroPedidoLoja` (= número do
+pedido ou do pacote no ML). Roda no cron diário (últimos 3 dias) e pelo botão
+"Trazer notas do Bling" no cartão de faturamento.
 
 Quando falta escopo, a mensagem já orienta: Central de extensões → Área do
 integrador → app Skubo → Escopos → marcar o escopo → Reconectar em

@@ -268,7 +268,6 @@ export const ProdutoTableRow = memo<ProdutoTableRowProps>(
       </DataTableRow>
     );
   },
-  // Custom comparison function - only re-render if these props change
   (prevProps, nextProps) => {
     return (
       prevProps.produto.id === nextProps.produto.id &&

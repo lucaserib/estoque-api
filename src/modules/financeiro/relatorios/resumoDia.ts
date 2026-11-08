@@ -23,7 +23,6 @@ export interface Diferenca {
   percentual: number | null;
 }
 
-/** Variação percentual só quando a base é relevante — evita "+1.059%" contra um dia com uma venda só. */
 function calcularDiferenca(valorAtual: number, valorComparado: number, baseMinima = 0): Diferenca {
   return {
     valorAtual,
@@ -191,10 +190,6 @@ export interface ResumoPeriodo {
   metaMes: MetaMes;
 }
 
-/**
- * Resumo de um período arbitrário + o fechamento do mês que contém o fim do
- * período (ponto de equilíbrio, meta e projeção). Tudo vem do motor único.
- */
 export async function gerarResumoPeriodo(
   userId: string,
   desde: Date,
@@ -281,7 +276,6 @@ function chaveDiaSp(data: Date): string {
   return inicioDoDia(data).toISOString();
 }
 
-/** Uma linha por dia do intervalo (dias sem venda aparecem com zero), com a mesma regra do total. */
 export async function gerarSerieDiaria(
   userId: string,
   desde: Date,

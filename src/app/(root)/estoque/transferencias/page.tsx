@@ -246,7 +246,7 @@ const TransferenciasPage = () => {
   };
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-6">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       <PageHeader
         title="Transferência de Estoque"
         subtitle="Transfira produtos entre armazéns de forma simples e segura"

@@ -43,7 +43,6 @@ describe("revincularVendasDoAnuncio", () => {
 
   it("venda antiga do 'kit com 2' passa a custar 2 unidades e perde a pendência de vínculo", async () => {
     prismaMock.vendaCanal.findMany.mockResolvedValue([venda()]);
-    // kit de 2 adaptadores a R$ 12,00 cada
     prismaMock.produto.findUnique.mockResolvedValue({ isKit: true, custoMedio: null, custoFreteManual: null, custoEmbalagem: null });
     prismaMock.componente.findMany.mockResolvedValue([{ quantidade: 2, produto: { custoMedio: 1200 } }]);
     const { revincularVendasDoAnuncio } = await import("../sincronizador");
@@ -57,7 +56,6 @@ describe("revincularVendasDoAnuncio", () => {
     });
     const dadosVenda = txMock.vendaCanal.update.mock.calls[0][0].data;
     expect(dadosVenda.cmv).toBe(2400);
-    // 5000 - 600 tarifa - 1000 frete - 2400 custo
     expect(dadosVenda.margemContribuicao).toBe(1000);
     expect(dadosVenda.faltando).toEqual(["LIBERACAO_ESTIMADA"]);
     expect(dadosVenda.completo).toBe(true);

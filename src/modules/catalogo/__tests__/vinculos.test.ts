@@ -54,8 +54,8 @@ describe("definirVinculoAnuncio", () => {
 
   it("kit com 2 do mesmo SKU: cria 'Kit 2x' com o adaptador × 2 e liga o anúncio ao kit", async () => {
     prismaMock.produto.findFirst
-      .mockResolvedValueOnce({ id: "adp" }) // produto escolhido
-      .mockResolvedValueOnce(ADAPTADOR); // base do kit
+      .mockResolvedValueOnce({ id: "adp" })
+      .mockResolvedValueOnce(ADAPTADOR);
     prismaMock.produto.findMany.mockResolvedValue([]);
     prismaMock.produto.create.mockResolvedValue({ id: "kit-2" });
     const { definirVinculoAnuncio } = await import("../vinculos");

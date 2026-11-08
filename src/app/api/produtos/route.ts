@@ -1,3 +1,4 @@
+import { atualizarCustoDasVendasAposMudanca } from "@/modules/financeiro/ingestao/sincronizador";
 import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
@@ -230,7 +231,6 @@ export async function POST(req: NextRequest) {
     }
 
     if (isKit || (componentes && componentes.length > 0)) {
-      // Criar um kit
       const novoKit = await prisma.produto.create({
         data: {
           userId: user.contaId,
@@ -258,7 +258,6 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Atualizar o estoque dos componentes (opcional - depende da regra de negócio)
       if (componentes && componentes.length > 0) {
         for (const componente of componentes) {
           await prisma.estoque.updateMany({
@@ -273,7 +272,6 @@ export async function POST(req: NextRequest) {
         headers: { "Content-Type": "application/json" },
       });
     } else {
-      // Criar um produto simples
       const novoProduto = await prisma.produto.create({
         data: {
           userId: user.contaId,
@@ -397,6 +395,7 @@ export async function PUT(req: NextRequest) {
         ...dadosCusto,
       },
     });
+    if (dadosCusto) await atualizarCustoDasVendasAposMudanca(user.contaId, [id]);
     return new Response(JSON.stringify(serializeWithEAN(produtoAtualizado)), {
       status: 200,
       headers: { "Content-Type": "application/json" },
@@ -428,7 +427,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verificar se o produto pertence ao usuário
     const produto = await prisma.produto.findFirst({
       where: {
         id,
@@ -453,7 +451,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verificar vínculos
     const hasVinculos =
       produto._count.componentes > 0 ||
       produto._count.estoques > 0 ||
@@ -476,44 +473,35 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Excluir o produto e seus vínculos em uma transação
     await prisma.$transaction(async (tx) => {
-      // Primeiro, excluir os componentes onde este produto é usado como componente
       await tx.componente.deleteMany({
         where: { produtoId: id },
       });
 
-      // Depois, excluir os componentes onde este produto é um kit
       await tx.componente.deleteMany({
         where: { kitId: id },
       });
 
-      // Excluir detalhes de saída
       await tx.detalhesSaida.deleteMany({
         where: { produtoId: id },
       });
 
-      // Excluir saídas
       await tx.saida.deleteMany({
         where: { produtoId: id },
       });
 
-      // Excluir pedidos de compra
       await tx.pedidoProduto.deleteMany({
         where: { produtoId: id },
       });
 
-      // Excluir estoque
       await tx.estoque.deleteMany({
         where: { produtoId: id },
       });
 
-      // Excluir vínculos com fornecedores
       await tx.produtoFornecedor.deleteMany({
         where: { produtoId: id },
       });
 
-      // Por fim, excluir o produto
       await tx.produto.delete({
         where: { id },
       });

@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
+import { BotaoExplicarIa } from "@/components/ia/BotaoExplicarIa";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -322,7 +323,7 @@ export default function ProdutoFichaPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto max-w-5xl p-6 space-y-6">
+      <div className="mx-auto w-full max-w-5xl space-y-6">
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-40 w-full rounded-xl" />
         <Skeleton className="h-72 w-full rounded-xl" />
@@ -332,7 +333,7 @@ export default function ProdutoFichaPage() {
 
   if (!produto) {
     return (
-      <div className="container mx-auto max-w-5xl p-6">
+      <div className="mx-auto w-full max-w-5xl">
         <PageHeader title="Produto não encontrado" />
         <Card>
           <CardContent className="p-10 text-center text-muted-foreground">
@@ -357,15 +358,22 @@ export default function ProdutoFichaPage() {
     produto.fornecedores?.find((f) => f.principal) ?? produto.fornecedores?.[0];
 
   return (
-    <div className="container mx-auto max-w-5xl p-6 space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       <PageHeader
         title={produto.nome}
         subtitle={`SKU ${produto.sku}`}
         actions={
-          <Button variant="outline" onClick={() => router.push("/produtos")}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <BotaoExplicarIa
+              pedido={{ tipo: "produto", produtoId: produto.id }}
+              rotulo="Resumo do produto"
+              perguntaAssistente={`O que devo fazer com o produto ${produto.nome} (SKU ${produto.sku})?`}
+            />
+            <Button variant="outline" onClick={() => router.push("/produtos")}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Voltar
+            </Button>
+          </div>
         }
       />
 

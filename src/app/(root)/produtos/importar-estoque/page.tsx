@@ -218,7 +218,7 @@ export default function ImportarEstoquePage() {
   };
 
   return (
-    <div className="container mx-auto max-w-4xl p-6 space-y-6">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <PageHeader
         title="Importar Estoque"
         subtitle="Suba uma planilha para atualizar estoque, custo ou só custo em lote"

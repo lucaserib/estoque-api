@@ -12,7 +12,6 @@ import {
 import { Card } from "@/components/ui/card";
 
 export function PedidoLoadingSkeleton() {
-  // Array para criar várias linhas de skeleton
   const rows = Array.from({ length: 5 }, (_, i) => i);
 
   return (

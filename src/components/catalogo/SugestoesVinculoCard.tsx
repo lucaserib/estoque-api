@@ -28,12 +28,10 @@ const TOM_CONFIANCA: Record<SugestaoVinculo["confianca"], "success" | "warning">
 };
 
 interface Props {
-  /** Dispara de novo sempre que a lista de anúncios recarrega, pra sugestão não ficar desatualizada. */
   recarregarGatilho?: unknown;
   onAplicado?: () => void;
 }
 
-/** "Aplicar sugestões selecionadas": SKU exato vem marcado, o resto fica pra conferência manual. */
 export function SugestoesVinculoCard({ recarregarGatilho, onAplicado }: Props) {
   const [sugestoes, setSugestoes] = useState<SugestaoVinculo[] | null>(null);
   const [carregando, setCarregando] = useState(false);

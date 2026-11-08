@@ -61,8 +61,6 @@ describe("accountTokenEncryption", () => {
       const { encryptWriteArgs } = await import("@/lib/accountTokenEncryption");
       const args = { where: { id: "abc" } };
 
-      // encryptWriteArgs só é chamado para operações de escrita no extension;
-      // aqui garantimos que, mesmo chamada, não introduz campos novos.
       const result = encryptWriteArgs("findFirst", args);
       expect(result).toEqual(args);
     });
@@ -121,7 +119,6 @@ describe("accountTokenEncryption", () => {
         data: { accessToken: "access-real", refreshToken: "refresh-real" },
       });
 
-      // Simula o que seria persistido e depois lido de volta do banco.
       const registroComoSeViesseDoBanco = {
         id: "acc-1",
         ...(argsEscrita.data as { accessToken: string; refreshToken: string }),

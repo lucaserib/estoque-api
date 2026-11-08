@@ -20,14 +20,6 @@ export interface MovimentosCarteira {
   totalRelatorioMp: number;
 }
 
-/**
- * `RELATORIO_MP` vem de `conferirLiberacoes` (relatório bruto de liberação
- * do Mercado Pago, Ciclo 7/8) e pode incluir as mesmas liberações já
- * listadas como `LIBERACAO` a partir de `VendaCanal` — os dois não têm uma
- * chave em comum confirmada para deduplicar, então `totalRelatorioMp` fica
- * separado de `liquidoPeriodoVendas` (nunca somados), evitando contar a
- * mesma liberação duas vezes.
- */
 export async function listarMovimentosCarteira(
   userId: string,
   accountId: string,

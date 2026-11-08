@@ -19,14 +19,6 @@ interface PrecoBruto {
   conditions?: { context_restrictions?: string[] };
 }
 
-/**
- * Endpoint correto do preço atual do anúncio (ainda não confirmado contra
- * uma resposta real — ambiente de dev não alcança api.mercadolibre.com).
- * `amount` é o preço que o comprador paga agora; `regular_amount` é o preço
- * "de" quando há promoção ativa. Sem resposta válida, cai para a lógica
- * antiga (`/items/{id}/prices`, primeira promoção com
- * `channel_marketplace`), que já era usada pelas três sincronizações hoje.
- */
 export async function obterPrecoAtualAnuncio(
   itemId: string,
   accessToken: string

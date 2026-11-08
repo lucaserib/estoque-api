@@ -3,8 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { podeVer } from "@/lib/permissoes";
 
-
-// Função para tratar requisições GET
 export async function GET(req: NextRequest) {
   try {
     const user = await verifyUser(req);
@@ -21,7 +19,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// Função para tratar requisições POST
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -131,7 +128,6 @@ export async function PUT(request: NextRequest) {
       include: { produto: true },
     });
 
-    // Converter valores BigInt para números regulares
     const serializedEstoque = {
       produtoId: estoque.produtoId,
       armazemId: estoque.armazemId,

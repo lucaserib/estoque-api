@@ -32,14 +32,6 @@ const DIAS_BACKFILL_PADRAO = 365;
 const DIAS_ADS_INCREMENTAL = 2;
 const DIAS_MAXIMOS_ADS = 31;
 
-/**
- * Ponto único de "atualizar dados": enfileira o que o pedido do usuário
- * precisa (pedidos do período ou alterados desde a última vez, cobranças da
- * fatura dos meses envolvidos e ads dos dias) e processa a fila até o
- * orçamento de tempo. O que não couber continua na próxima chamada de
- * /api/financeiro/sincronizacao/processar (a tela chama sozinha enquanto
- * houver pendência) ou no cron diário.
- */
 export async function sincronizarFinanceiro(
   accountId: string,
   parametros: ParametrosSincronizacao

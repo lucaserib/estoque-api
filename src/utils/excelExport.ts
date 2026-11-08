@@ -1,7 +1,3 @@
-// src/utils/excelExport.ts
-
-// xlsx só carrega quando alguém exporta de verdade — evita engordar o bundle
-// de toda tela que importa este módulo.
 export const exportToExcel = async <T extends Record<string, unknown>>(
   data: T[],
   fileName: string,
@@ -19,7 +15,6 @@ export const exportToExcel = async <T extends Record<string, unknown>>(
   }
 };
 
-// Tipos para dados de exportação
 export interface SaidaExportData {
   ID: string;
   Data: string;
@@ -49,8 +44,6 @@ export interface FornecedorExportData {
   Endereço: string;
 }
 
-// Interfaces para os tipos de dados utilizados
-// Usando as mesmas interfaces que existem no projeto
 interface Produto {
   id: string;
   nome: string;
@@ -78,7 +71,6 @@ interface Saida {
   detalhes: SaidaDetalhe[];
 }
 
-// Interface para item de estoque compatível com a aplicação
 interface ItemEstoque {
   id?: string;
   produtoId?: string;
@@ -87,7 +79,6 @@ interface ItemEstoque {
   estoqueSeguranca?: number;
 }
 
-// Interface para fornecedor compatível com a aplicação
 interface Fornecedor {
   id: string | number;
   nome: string;
@@ -97,7 +88,6 @@ interface Fornecedor {
   endereco?: string;
 }
 
-// Função para formatar os dados de saída para exportação
 export const formatSaidasForExport = (saidas: Saida[]): SaidaExportData[] => {
   return saidas.map((saida) => ({
     ID: saida.id,
@@ -114,14 +104,12 @@ export const formatSaidasForExport = (saidas: Saida[]): SaidaExportData[] => {
   }));
 };
 
-// Função para formatar os dados de estoque para exportação
 export const formatEstoqueForExport = (
   estoque: ItemEstoque[]
 ): EstoqueExportData[] => {
   let valorTotalEstoque = 0;
 
   const formattedData = estoque.map((item) => {
-    // Calcular status do estoque
     const isLowStock = item.quantidade <= (item.estoqueSeguranca || 0);
     const isOutOfStock = item.quantidade === 0;
 
@@ -129,14 +117,12 @@ export const formatEstoqueForExport = (
     if (isOutOfStock) status = "Esgotado";
     else if (isLowStock) status = "Baixo";
 
-    // Calcular o custo médio e o valor total
     const custoMedio = item.produto.custoMedio
       ? Number(item.produto.custoMedio) / 100
       : 0;
 
     const valorTotal = custoMedio * item.quantidade;
 
-    // Somar ao valor total do estoque
     valorTotalEstoque += valorTotal;
 
     return {
@@ -151,13 +137,11 @@ export const formatEstoqueForExport = (
     };
   });
 
-  // Adicionar uma linha com o valor total do estoque
   if (formattedData.length > 0) {
-    // Usando um objeto com o mesmo formato, mas convertido para o tipo requerido
     const totalsRow: EstoqueExportData = {
       SKU: "",
       Produto: "VALOR TOTAL DO ESTOQUE",
-      Quantidade: 0, // Usamos 0 em vez de null para garantir o tipo correto
+      Quantidade: 0,
       "Estoque de Segurança": 0,
       Status: "",
       "É Kit": "",
@@ -171,7 +155,6 @@ export const formatEstoqueForExport = (
   return formattedData;
 };
 
-// Função para formatar os dados de fornecedores para exportação
 export const formatFornecedoresForExport = (
   fornecedores: Fornecedor[]
 ): FornecedorExportData[] => {
@@ -185,7 +168,6 @@ export const formatFornecedoresForExport = (
   }));
 };
 
-// Interface para o retorno da exportação dos detalhes
 interface SaidaDetalheExport {
   Produto: string;
   SKU: string;
@@ -193,7 +175,6 @@ interface SaidaDetalheExport {
   Tipo: string;
 }
 
-// Função para formatar os detalhes de uma saída específica
 export const formatSaidaDetalhesForExport = (
   saida: Saida
 ): SaidaDetalheExport[] => {

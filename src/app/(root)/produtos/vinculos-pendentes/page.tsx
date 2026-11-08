@@ -84,7 +84,7 @@ export default function VinculosPendentesPage() {
 
 
   return (
-    <div className="container mx-auto max-w-[1300px] space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1300px] space-y-6">
       <PageHeader
         eyebrow="Produtos"
         title="Confirme estes vínculos"

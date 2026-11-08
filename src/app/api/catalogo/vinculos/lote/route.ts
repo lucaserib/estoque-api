@@ -29,12 +29,6 @@ interface ResultadoItem {
   kitCriado?: boolean;
 }
 
-/**
- * POST /api/catalogo/vinculos/lote — aplica até 200 vínculos de uma vez
- * (ex.: "Aplicar sugestões selecionadas"). Cada item passa pela mesma
- * `definirVinculoAnuncio` do vínculo único — um item com erro não derruba
- * os demais, o resultado vem item por item.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

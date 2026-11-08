@@ -38,7 +38,6 @@ import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
 import { podeEditar } from "@/lib/permissoes";
 import dynamic from "next/dynamic";
 
-// Recharts só entra no bundle quando a cascata realmente renderiza.
 const CascataResultado = dynamic(
   () => import("../components/CascataResultado").then((mod) => mod.CascataResultado),
   { ssr: false, loading: () => <Skeleton className="h-[280px] rounded-md" /> }
@@ -192,7 +191,7 @@ export default function DrePage() {
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <div className="mx-auto w-full max-w-[1400px] space-y-8">
         <Skeleton className="h-[80px] rounded-md" />
       </div>
     );
@@ -247,7 +246,7 @@ export default function DrePage() {
   };
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6">
       <PageHeader
         eyebrow="Financeiro"
         title="DRE"

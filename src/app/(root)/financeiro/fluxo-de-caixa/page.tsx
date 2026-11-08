@@ -36,6 +36,7 @@ import { chartColor } from "@/lib/chart-colors";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "../components/SeletorPeriodo";
 import { Input } from "@/components/ui/input";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
+import { BotaoAtualizarFinanceiro } from "../components/BotaoAtualizarFinanceiro";
 
 type Granularidade = "DIA" | "SEMANA" | "MES";
 
@@ -151,7 +152,7 @@ export default function FluxoDeCaixaPage() {
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <div className="mx-auto w-full max-w-[1400px] space-y-8">
         <Skeleton className="h-[80px] rounded-md" />
       </div>
     );
@@ -167,8 +168,21 @@ export default function FluxoDeCaixaPage() {
     : [];
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
-      <PageHeader eyebrow="Financeiro" title="Fluxo de caixa" subtitle="Realizado × previsto, e a projeção de saldo." />
+    <div className="mx-auto w-full max-w-[1400px] space-y-6">
+      <PageHeader
+        eyebrow="Financeiro"
+        title="Fluxo de caixa"
+        subtitle="Realizado × previsto, e a projeção de saldo."
+        actions={
+          <BotaoAtualizarFinanceiro
+            modo="INCREMENTAL"
+            onConcluido={() => {
+              carregarFluxo();
+              carregarSaldo();
+            }}
+          />
+        }
+      />
 
       <SectionCard title="Realizado × previsto">
         <div className="mb-4 flex flex-wrap items-end gap-3">

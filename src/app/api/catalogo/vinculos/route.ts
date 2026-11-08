@@ -21,11 +21,6 @@ const corpoSchema = z
     message: "Informe o anúncio (anuncioId ou accountId + mlItemId)",
   });
 
-/**
- * POST /api/catalogo/vinculos — define (ou desfaz, com produtoId null) o
- * produto de um anúncio e quantas unidades cada venda consome. Refaz o custo
- * das vendas já importadas desse anúncio.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

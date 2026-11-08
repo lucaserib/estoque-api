@@ -49,7 +49,6 @@ interface VendaMLDetalhesDialogProps {
   venda: VendaML;
 }
 
-// Mapa de status para cores e labels
 const statusConfig = {
   paid: {
     label: "Pago",
@@ -86,7 +85,6 @@ export function VendaMLDetalhesDialog({
   onClose,
   venda,
 }: VendaMLDetalhesDialogProps) {
-  // Format currency
   const formatCurrency = (value: number, currency: string = "BRL") => {
     return new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -94,7 +92,6 @@ export function VendaMLDetalhesDialog({
     }).format(value);
   };
 
-  // Get status config
   const getStatusConfig = (status: string) => {
     return (
       statusConfig[status as keyof typeof statusConfig] || {
@@ -105,7 +102,6 @@ export function VendaMLDetalhesDialog({
     );
   };
 
-  // Calculate totals
   const totalItems = venda.items.reduce((sum, item) => sum + item.quantity, 0);
   const statusInfo = getStatusConfig(venda.status);
 
@@ -134,7 +130,6 @@ export function VendaMLDetalhesDialog({
 
         <ScrollArea className="max-h-[calc(90vh-5rem)]">
           <div className="p-6 space-y-6">
-            {/* Informações do Pedido */}
             <div className="bg-success/10 p-4 rounded-lg border border-success/30">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -183,7 +178,6 @@ export function VendaMLDetalhesDialog({
               </div>
             </div>
 
-            {/* Informações do Comprador */}
             <div className="bg-background p-4 rounded-lg border border-border">
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                 <User className="h-5 w-5 text-primary" />
@@ -219,7 +213,6 @@ export function VendaMLDetalhesDialog({
               </div>
             </div>
 
-            {/* Informações de Envio */}
             {venda.shipping && (
               <div className="bg-background p-4 rounded-lg border border-border">
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -251,7 +244,6 @@ export function VendaMLDetalhesDialog({
               </div>
             )}
 
-            {/* Informações de Pagamento */}
             {venda.payments && venda.payments.length > 0 && (
               <div className="bg-background p-4 rounded-lg border border-border">
                 <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
@@ -282,7 +274,6 @@ export function VendaMLDetalhesDialog({
               </div>
             )}
 
-            {/* Lista de Produtos */}
             <div>
               <h3 className="font-semibold text-foreground mb-3 flex items-center gap-2">
                 <Package className="h-5 w-5 text-primary" />
@@ -346,7 +337,6 @@ export function VendaMLDetalhesDialog({
               </div>
             </div>
 
-            {/* Resumo Financeiro */}
             <div className="bg-success/10 p-4 rounded-lg border border-success/30">
               <div className="flex justify-between items-center">
                 <div className="text-muted-foreground font-medium">

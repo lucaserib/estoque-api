@@ -25,6 +25,7 @@ export interface MercadoPagoPreapproval {
   status: string;
   init_point: string;
   payer_email: string;
+  external_reference?: string | null;
   auto_recurring: {
     transaction_amount: number;
     frequency: number;
@@ -113,6 +114,7 @@ export const MercadoPagoService = {
     id: number;
     status: string;
     external_reference: string | null;
+    date_approved?: string | null;
   }> {
     return mpFetch(`/v1/payments/${id}`, { method: "GET" });
   },

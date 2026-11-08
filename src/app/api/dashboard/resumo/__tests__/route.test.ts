@@ -162,7 +162,6 @@ describe("GET /api/dashboard/resumo", () => {
   it("lê faturamento, margem e unidades do módulo financeiro, sem estimativa paralela", async () => {
     verifyUserMock.mockResolvedValue({ contaId: "conta-financeiro", role: "ADMIN" });
     resumoPeriodoMock.mockImplementation(async (_userId: string, desde: Date) => {
-      // A primeira chamada (período atual) recebe `desde` mais recente que a segunda (período anterior).
       const ehPeriodoAtual = desde.getTime() > Date.now() - 31 * 24 * 60 * 60 * 1000;
       return ehPeriodoAtual
         ? resumoPeriodo({
@@ -177,7 +176,6 @@ describe("GET /api/dashboard/resumo", () => {
     const response = await GET(criarRequest());
     const body = await response.json();
 
-    // faturamento do período = o mesmo número do Financeiro (motor único)
     expect(body.metricas.faturamentoLiquido.valor).toBe(90000);
     expect(body.metricas.unidadesVendidas).toBe(25);
     expect(body.metricas.margemContribuicao.valor).toBe(40000);

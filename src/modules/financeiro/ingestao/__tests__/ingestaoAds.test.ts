@@ -314,7 +314,7 @@ function item(parcial: Partial<FakeItem> = {}): FakeItem {
 
 const { ingerirGastosAdsDoDia } = await import("../ingestaoAds");
 
-const DIA = new Date("2026-05-10T03:00:00.000Z"); // meia-noite SP
+const DIA = new Date("2026-05-10T03:00:00.000Z");
 
 beforeEach(() => {
   resetFakeDb();
@@ -415,7 +415,7 @@ describe("ingerirGastosAdsDoDia", () => {
     adaptadorFake.atual = { listarGastosAds: vi.fn(async () => [gasto({ custo: 300 })]) };
     await ingerirGastosAdsDoDia("conta-1", DIA);
 
-    expect(venda.itens[0].margemContribuicao).toBe(-300); // 0 (zerado) - 300 de ads, sem mais custo
+    expect(venda.itens[0].margemContribuicao).toBe(-300);
   });
 
   it("sem adaptador de ads (capacidade ausente), não faz nada e não quebra", async () => {

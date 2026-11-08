@@ -28,7 +28,6 @@ function percentualTexto(fracao: number | null): string {
   return fracao == null || !Number.isFinite(fracao) ? "—" : formatPercent(fracao * 100, 1);
 }
 
-/** "Hoje, comparado com ontem" — atualiza sozinho a cada 2 min (os dados já chegam por webhook/cron). */
 export function HojeCard() {
   const [dados, setDados] = useState<ResumoDiaResponse | null | false>(null);
 

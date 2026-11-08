@@ -91,10 +91,6 @@ async function resolverCategoriaDoTipo(userId: string, tipo: string): Promise<st
   return categoria.id;
 }
 
-/**
- * Idempotente por mês/tipo/canal (chaveExterna) — clicar de novo no botão
- * depois que a fatura mudar atualiza o mesmo lançamento em vez de duplicar.
- */
 export async function gerarLancamentoAjusteConciliacao(
   userId: string,
   criadoPorId: string,

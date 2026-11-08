@@ -31,7 +31,7 @@ interface PedidosStats {
 }
 
 const GestaoPedidos = () => {
-  const [activeTab, setActiveTab] = useState<string>("concluidos"); // Começa com concluídos
+  const [activeTab, setActiveTab] = useState<string>("concluidos");
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
   const [stats, setStats] = useState<PedidosStats>({
     pendentes: 0,
@@ -69,7 +69,6 @@ const GestaoPedidos = () => {
   };
 
   const handleExport = () => {
-    // Implementação da exportação (CSV, PDF, etc.)
     console.log("Exportando dados...");
   };
 
@@ -83,7 +82,7 @@ const GestaoPedidos = () => {
   ];
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-8">
       <PageHeader
         title="Pedidos de compra"
         subtitle="Gerencie seus pedidos de compra e monitore o fluxo de entrada de produtos."
@@ -124,7 +123,6 @@ const GestaoPedidos = () => {
         <>
           <StatCardGrid items={statItems} />
 
-          {/* Filtros */}
           <Card className="border border-border shadow-card">
             <CardContent className="p-4">
               <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -156,7 +154,6 @@ const GestaoPedidos = () => {
             </CardContent>
           </Card>
 
-          {/* Tabs and content */}
           <Tabs defaultValue="concluidos" value={activeTab} onValueChange={setActiveTab}>
             <SectionCard
               contentClassName="p-4"

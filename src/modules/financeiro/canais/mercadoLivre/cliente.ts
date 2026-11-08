@@ -130,11 +130,6 @@ async function listarJanelaCompleta(
   return { pedidos, total };
 }
 
-/**
- * Todos os pedidos criados na janela (data de criação, fuso de SP nas bordas
- * que o chamador passar). Busca a janela inteira de uma vez; só fatia por dia
- * quando a janela passa do limite de 10.000 resultados do /orders/search.
- */
 export async function listarPedidosCriadosNoPeriodo(
   contaCanalId: string,
   desde: Date,
@@ -316,11 +311,6 @@ export const adaptadorMercadoLivre: AdaptadorCanalFinanceiro = {
     }
   },
 
-  /**
-   * Endpoint de melhor esforço (Product Ads) — menor confiança de todo o
-   * adaptador, nem o caminho da URL foi confirmado contra uma conta real.
-   * Qualquer falha devolve lista vazia em vez de derrubar a ingestão do dia.
-   */
   async listarGastosAds(conta: ContaCanal, dia: Date): Promise<GastoAdsNormalizado[]> {
     try {
       const { accessToken } = await obterAccessTokenEMlUserId(conta.contaCanalId);

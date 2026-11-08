@@ -52,21 +52,6 @@ export function encryptWriteArgs(
   return next;
 }
 
-/**
- * Criptografa accessToken/refreshToken em repouso para BlingAccount e
- * MercadoLivreAccount (AES-256-GCM, src/lib/tokenCrypto.ts). Cobre toda
- * chamada direta a `prisma.blingAccount.*` / `prisma.mercadoLivreAccount.*`
- * em qualquer arquivo — não é preciso tocar cada rota/serviço que lê ou
- * grava esses campos.
- *
- * Limitação conhecida: extensions do Prisma só interceptam o modelo
- * consultado diretamente. Um `include: { blingAccount: true }` ou
- * `{ mercadoLivreAccount: true }` a partir de OUTRO modelo não passa por
- * aqui — os tokens viriam criptografados nesse caminho. Hoje nenhum ponto
- * do código lê o token por esse caminho (confirmado por grep), mas se um
- * novo `include` desses for adicionado e precisar do token em texto puro,
- * troque por uma consulta direta a `blingAccount`/`mercadoLivreAccount`.
- */
 const WRITE_OPERATIONS = new Set([
   "create",
   "update",

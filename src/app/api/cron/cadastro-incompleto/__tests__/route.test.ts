@@ -96,7 +96,7 @@ describe("GET /api/cron/cadastro-incompleto", () => {
     const body = await response.json();
 
     expect(body.contasNotificadas).toBe(1);
-    expect(notifyCadastroIncompletoMock).toHaveBeenCalledTimes(2); // dono + membro admin
+    expect(notifyCadastroIncompletoMock).toHaveBeenCalledTimes(2);
     expect(contaState.ultimaContagemPendenciasCriticas).toBe(3);
   });
 

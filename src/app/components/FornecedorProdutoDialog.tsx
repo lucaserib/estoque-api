@@ -1,9 +1,7 @@
-// src/components/FornecedorProdutoDialog.tsx
 import { useEffect, useState, useCallback } from "react";
 import { Fornecedor } from "@/app/(root)/fornecedores/types";
 import { Produto } from "@/app/(root)/produtos/types";
 
-// UI Components
 import {
   Dialog,
   DialogContent,
@@ -93,24 +91,21 @@ export function FornecedorProdutoDialog({
       const data = await response.json();
       console.log("Produtos vinculados recebidos:", data);
 
-      // Garantir que data seja sempre tratado como um array
       setProdutosVinculados(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Erro ao buscar produtos vinculados", error);
-      setProdutosVinculados([]); // Garantir que sempre tenhamos um array vazio em caso de erro
+      setProdutosVinculados([]);
     } finally {
       setIsLoading(false);
     }
   }, [fornecedor.id]);
 
-  // Load products and linked products when component mounts
   useEffect(() => {
     if (isOpen) {
       fetchProdutosVinculados();
     }
   }, [isOpen, fornecedor.id, fetchProdutosVinculados]);
 
-  // Effect for cleanup on unmounting to prevent focus issues
   useEffect(() => {
     return () => {
       if (!isOpen) {
@@ -121,7 +116,6 @@ export function FornecedorProdutoDialog({
     };
   }, [isOpen]);
 
-  // Effect for automatic search when typing
   useEffect(() => {
     if (searchTimeout) {
       clearTimeout(searchTimeout);
@@ -130,7 +124,7 @@ export function FornecedorProdutoDialog({
     if (produtoSearch.trim()) {
       const timeout = setTimeout(() => {
         handleProdutoSearch();
-      }, 500); // Buscar após 500ms de inatividade
+      }, 500);
       setSearchTimeout(timeout);
     } else {
       setSearchResults([]);
@@ -143,7 +137,7 @@ export function FornecedorProdutoDialog({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- debounce de busca; incluir searchTimeout/handleProdutoSearch causaria refetch em loop
-  }, [produtoSearch, produtosVinculados]); // Adicionado produtosVinculados como dependência
+  }, [produtoSearch, produtosVinculados]);
 
   const handleProdutoSearch = async () => {
     if (!produtoSearch.trim()) {
@@ -154,7 +148,6 @@ export function FornecedorProdutoDialog({
     setIsSearching(true);
     setMessage("");
     try {
-      // Busca produtos pelo nome ou SKU
       const response = await fetch(
         `/api/produtos?search=${encodeURIComponent(produtoSearch.trim())}`
       );
@@ -162,7 +155,6 @@ export function FornecedorProdutoDialog({
 
       const data = await response.json();
       
-      // Filtrar produtos que já estão vinculados
       const produtosNaoVinculados = data.filter(
         (produto: Produto) => 
           !produtosVinculados.some(vinculo => vinculo.produtoId === produto.id)
@@ -191,7 +183,6 @@ export function FornecedorProdutoDialog({
       return;
     }
 
-    // Verificar se o produto já está vinculado
     if (produtosVinculados.some((vp) => vp.produtoId === selectedProdutoId)) {
       setMessage("Este produto já está vinculado a este fornecedor");
       setMessageType("error");
@@ -229,7 +220,6 @@ export function FornecedorProdutoDialog({
         setMessage("Produto vinculado com sucesso");
         setMessageType("success");
         
-        // Limpar mensagem de sucesso após 3 segundos
         setTimeout(() => {
           setMessage("");
           setMessageType("");
@@ -241,7 +231,6 @@ export function FornecedorProdutoDialog({
         setCodigoNF("");
         setSearchResults([]);
         
-        // Recarregar produtos vinculados para atualizar a lista
         await fetchProdutosVinculados();
       } else {
         const errorData = await response.json();
@@ -272,7 +261,6 @@ export function FornecedorProdutoDialog({
         setMessage("Vínculo removido com sucesso");
         setMessageType("success");
         
-        // Limpar mensagem de sucesso após 3 segundos
         setTimeout(() => {
           setMessage("");
           setMessageType("");
@@ -290,7 +278,6 @@ export function FornecedorProdutoDialog({
 
   const handleEdit = (vinculo: ProdutoFornecedor) => {
     setEditingId(vinculo.id);
-    // Converter o preço de centavos para reais, garantindo que seja um número
     const precoEmReais =
       typeof vinculo.preco === "number"
         ? (vinculo.preco / 100).toFixed(2)
@@ -334,16 +321,15 @@ export function FornecedorProdutoDialog({
         setProdutosVinculados((prev) =>
           prev.map((vinculo) =>
             vinculo.id === vinculoId
-              ? { ...produtoAtualizado, produto } // Keep the original product
+              ? { ...produtoAtualizado, produto }
               : vinculo
           )
         );
 
-        setEditingId(null); // Exit edit mode
+        setEditingId(null);
         setMessage("Vínculo atualizado com sucesso");
         setMessageType("success");
         
-        // Limpar mensagem de sucesso após 3 segundos
         setTimeout(() => {
           setMessage("");
           setMessageType("");
@@ -371,7 +357,6 @@ export function FornecedorProdutoDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Ensure focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();
@@ -403,7 +388,6 @@ export function FornecedorProdutoDialog({
 
         <ScrollArea className="max-h-[calc(90vh-12rem)]">
           <div className="p-6 pt-2 space-y-6">
-            {/* Produtos vinculados */}
             <div>
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Package className="h-5 w-5 text-primary" />
@@ -548,7 +532,6 @@ export function FornecedorProdutoDialog({
               )}
             </div>
 
-            {/* Mensagem de sucesso ou erro */}
             {message && (
               <Alert
                 variant={messageType === "success" ? "success" : "destructive"}
@@ -559,7 +542,6 @@ export function FornecedorProdutoDialog({
               </Alert>
             )}
 
-            {/* Adicionar Novo Produto */}
             <div className="bg-background p-4 rounded-lg border border-border">
               <h3 className="text-md font-semibold mb-4 flex items-center gap-2">
                 <Plus className="h-4 w-4 text-primary" />

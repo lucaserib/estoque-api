@@ -34,7 +34,6 @@ function item(parcial: Record<string, unknown> = {}) {
   };
 }
 
-/** Pedido real 2000019043297364: R$ 34,70, tarifa 2,99 (2,24 + 0,71 + 0,04), frete 6,85, retenção 12,14, líquido 12,72. */
 function vendaReal(parcial: Record<string, unknown> = {}) {
   return banco.venda({
     pedidoExternoId: "2000019043297364",
@@ -116,8 +115,6 @@ describe("calcularVenda — pedido real", () => {
     expect(r.receitaFrete).toBe(685 + 500);
     expect(r.receitaTotal).toBe(3470 + 685 + 500);
     expect(r.frete).toBe(685 + 500);
-    // Mesmo custo de frete do modo "comprador" (685+500) — só a receita de frete é que também
-    // soma o freteVendedor, então a margem sobe exatamente esse valor em relação aos outros modos.
     expect(r.frete).toBe(comprador.frete);
     expect(r.margemContribuicao).toBe(comprador.margemContribuicao + 685);
   });

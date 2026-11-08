@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/table";
 
 export function SaidaLoadingSkeleton() {
-  // Array for generating skeleton rows
   const rows = Array.from({ length: 5 }, (_, i) => i);
 
   return (

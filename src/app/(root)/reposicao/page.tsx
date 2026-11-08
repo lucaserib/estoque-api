@@ -138,7 +138,6 @@ const ReposicaoPage = () => {
   };
 
   const handleConfigUpdated = () => {
-    // Recarregar análise após atualização de configuração
     refetch();
   };
 
@@ -185,7 +184,7 @@ const ReposicaoPage = () => {
     : [];
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-8">
       <PageHeader
         title="Reposição"
         subtitle="Produtos que precisam de reposição urgente"
@@ -228,7 +227,6 @@ const ReposicaoPage = () => {
         </AlertDescription>
       </Alert>
 
-      {/* Loading State */}
       {loading && !analysisData && (
         <>
           <Skeleton className="h-[124px] rounded-md" />
@@ -237,7 +235,6 @@ const ReposicaoPage = () => {
         </>
       )}
 
-      {/* Error State */}
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -247,7 +244,6 @@ const ReposicaoPage = () => {
         </Alert>
       )}
 
-      {/* Success State - Com Dados */}
       {analysisData?.parcial && !loading && (
         <Alert variant="warning">
           <AlertCircle className="h-4 w-4" />
@@ -338,7 +334,6 @@ const ReposicaoPage = () => {
             )}
           </SectionCard>
 
-          {/* Rodapé com estatísticas */}
           {(analysisData?.results?.length || 0) > 0 && (
             <div className="flex items-center justify-between p-4 bg-background rounded-md border border-border">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -359,7 +354,6 @@ const ReposicaoPage = () => {
 
       <CapitalParadoCard />
 
-      {/* Modal de Detalhes */}
       {selectedProdutoId && (
         <ReplenishmentDetailModal
           produtoId={selectedProdutoId}

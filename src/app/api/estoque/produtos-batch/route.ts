@@ -2,12 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 
-/**
- * GET /api/estoque/produtos-batch?ids=id1,id2,id3
- * Retorna o estoque agregado de vários produtos numa única chamada,
- * evitando o N+1 de /api/estoque/produto/<id> por linha da tabela.
- * Resposta: { [produtoId]: { totalQuantity, estoqueSeguranca } }
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);

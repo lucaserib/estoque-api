@@ -12,7 +12,7 @@ import {
 
 describe("inicioDoDia / fimDoDia", () => {
   it("23h50 em Brasília pertence àquele dia, não ao dia seguinte em UTC", () => {
-    const instante = new Date("2026-03-16T02:50:00.000Z"); // 2026-03-15 23:50 em SP
+    const instante = new Date("2026-03-16T02:50:00.000Z");
 
     expect(inicioDoDia(instante).toISOString()).toBe("2026-03-15T03:00:00.000Z");
     expect(fimDoDia(instante).toISOString()).toBe("2026-03-16T02:59:59.999Z");
@@ -28,10 +28,10 @@ describe("inicioDoDia / fimDoDia", () => {
 
 describe("inicioDaSemana / fimDaSemana", () => {
   it("semana começa na segunda-feira e termina no domingo, mesmo fuso SP", () => {
-    const quarta = new Date("2026-03-18T15:00:00.000Z"); // quarta-feira, 12h em SP
+    const quarta = new Date("2026-03-18T15:00:00.000Z");
 
-    expect(inicioDaSemana(quarta).toISOString()).toBe("2026-03-16T03:00:00.000Z"); // segunda 00h SP
-    expect(fimDaSemana(quarta).toISOString()).toBe("2026-03-23T02:59:59.999Z"); // domingo 23:59:59.999 SP
+    expect(inicioDaSemana(quarta).toISOString()).toBe("2026-03-16T03:00:00.000Z");
+    expect(fimDaSemana(quarta).toISOString()).toBe("2026-03-23T02:59:59.999Z");
   });
 
   it("uma segunda-feira é o início da própria semana", () => {
@@ -65,7 +65,7 @@ describe("inicioDoMes / fimDoMes", () => {
 
 describe("competenciaDe", () => {
   it("usa o mês civil de SP, não o de UTC, perto da virada do mês", () => {
-    const instante = new Date("2026-04-01T01:00:00.000Z"); // 2026-03-31 22:00 em SP
+    const instante = new Date("2026-04-01T01:00:00.000Z");
 
     expect(competenciaDe(instante)).toEqual({ ano: 2026, mes: 3 });
   });

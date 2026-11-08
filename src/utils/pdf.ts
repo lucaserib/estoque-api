@@ -109,10 +109,8 @@ export const generatePedidoPDF = async (pedido: Pedido): Promise<void> => {
       },
     };
 
-    // Adiciona a tabela usando nossa função auxiliar
     addTableToPDF(doc, tableOptions);
 
-    // Adiciona rodapé
     const pageHeight = doc.internal.pageSize.getHeight();
     doc.setFontSize(10);
     doc.setTextColor(120, 120, 120);

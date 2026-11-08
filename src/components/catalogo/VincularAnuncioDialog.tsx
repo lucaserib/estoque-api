@@ -19,7 +19,6 @@ import { cn } from "@/lib/utils";
 import { sugerirUnidadesPeloTitulo } from "@/modules/catalogo/unidadesAnuncio";
 
 export interface AnuncioParaVincular {
-  /** id da linha ProdutoMercadoLivre (preferível) */
   id?: string;
   accountId?: string;
   mlItemId: string;
@@ -68,7 +67,6 @@ export function VincularAnuncioDialog({ aberto, onFechar, anuncio, vinculoAtual,
     [anuncio]
   );
 
-  // Ao abrir: parte do vínculo atual, senão do SKU do anúncio.
   useEffect(() => {
     if (!aberto || !anuncio) return;
     setEscolhido(null);
@@ -89,7 +87,6 @@ export function VincularAnuncioDialog({ aberto, onFechar, anuncio, vinculoAtual,
         const body: { itens: ProdutoOpcao[] } = await res.json();
         if (id !== requisicaoAtual.current) return;
         setOpcoes(body.itens);
-        // SKU idêntico ao do anúncio/vínculo: já deixa escolhido.
         setEscolhido((atual) => {
           if (atual) return atual;
           const alvo = (vinculoAtual?.produtoBaseSku ?? anuncio?.mlSellerSku ?? "").trim().toUpperCase();

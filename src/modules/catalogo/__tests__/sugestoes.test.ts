@@ -25,18 +25,19 @@ let produtos: FakeProduto[] = [];
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     produtoMercadoLivre: {
-      findMany: vi.fn(async ({ where }: { where: { mercadoLivreAccount: { userId: string }; produtoId: null; mlStatus: string } }) =>
-        anuncios.filter(
-          (a) =>
-            a.userId === where.mercadoLivreAccount.userId &&
-            a.produtoId === null &&
-            a.mlStatus === where.mlStatus
-        )
+      findMany: vi.fn(
+        async ({ where }: { where: { mercadoLivreAccount: { userId: string }; produtoId: null; mlStatus: { in: string[] } } }) =>
+          anuncios.filter(
+            (a) =>
+              a.userId === where.mercadoLivreAccount.userId &&
+              a.produtoId === null &&
+              where.mlStatus.in.includes(a.mlStatus)
+          )
       ),
     },
     produto: {
-      findMany: vi.fn(async ({ where }: { where: { userId: string; ativo: boolean; isKit: boolean } }) =>
-        produtos.filter((p) => p.userId === where.userId && p.ativo === where.ativo && p.isKit === where.isKit)
+      findMany: vi.fn(async ({ where }: { where: { userId: string; ativo: boolean } }) =>
+        produtos.filter((p) => p.userId === where.userId && p.ativo === where.ativo)
       ),
     },
   },
@@ -143,5 +144,43 @@ describe("sugerirVinculos", () => {
     const sugestoes = await sugerirVinculos("conta-1");
 
     expect(sugestoes).toHaveLength(0);
+  });
+
+  it("sugere kit do Bling pelo SKU, sem multiplicar unidades pelo título", async () => {
+    produtos.push({ id: "kit-1", userId: "conta-1", nome: "Kit 3 Cabos", sku: "KIT-3-CABOS", ativo: true, isKit: true });
+    anuncios = [
+      {
+        id: "an-k",
+        userId: "conta-1",
+        mlItemId: "MLBK",
+        mlTitle: "Kit 3 Cabos HDMI 2m",
+        mlSellerSku: "KIT-3-CABOS",
+        mlStatus: "active",
+        produtoId: null,
+      },
+    ];
+
+    const sugestoes = await sugerirVinculos("conta-1");
+
+    expect(sugestoes).toHaveLength(1);
+    expect(sugestoes[0]).toMatchObject({ produtoId: "kit-1", confianca: "alta", unidadesSugeridas: 1 });
+  });
+
+  it("inclui anúncios pausados sem vínculo", async () => {
+    anuncios = [
+      {
+        id: "an-p",
+        userId: "conta-1",
+        mlItemId: "MLBP",
+        mlTitle: "Cabo HDMI 2m",
+        mlSellerSku: "CABO-HDMI-2M",
+        mlStatus: "paused",
+        produtoId: null,
+      },
+    ];
+
+    const sugestoes = await sugerirVinculos("conta-1");
+
+    expect(sugestoes.map((s) => s.anuncioId)).toEqual(["an-p"]);
   });
 });

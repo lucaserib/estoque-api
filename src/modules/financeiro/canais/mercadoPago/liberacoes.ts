@@ -16,14 +16,6 @@ interface LiberacaoBruta {
   date?: string;
 }
 
-/**
- * Etapa opcional (Fase 4 item 4), desligada por padrão
- * (`ConfiguracaoGeral.usarRelatorioLiberacaoMercadoPago`). Endpoint e
- * formato de resposta são a parte de menor confiança de todo o Ciclo 7 —
- * nem o host (api.mercadopago.com, diferente de api.mercadolibre.com) foi
- * confirmado como aceitando o mesmo token da conta ML. Serve só para
- * conferência manual (Fase 7), nunca alimenta a DRE.
- */
 export async function lerRelatorioLiberacaoMercadoPago(
   accountId: string,
   desde: Date,

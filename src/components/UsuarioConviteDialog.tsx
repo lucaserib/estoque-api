@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Check, Copy, Loader2, UserPlus } from "lucide-react";
+import { Check, Copy, Loader2, Send, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLE_LABELS: Record<string, string> = {
@@ -43,11 +43,13 @@ export function UsuarioConviteDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [jaCadastrado, setJaCadastrado] = useState(false);
 
   const handleClose = () => {
     setEmail("");
     setRole("LEITURA");
     setInviteLink(null);
+    setJaCadastrado(false);
     setCopied(false);
     onClose();
   };
@@ -70,7 +72,10 @@ export function UsuarioConviteDialog({
         throw new Error(data.error || "Erro ao criar convite");
       }
 
-      const link = `${window.location.origin}/register?invite=${data.invitation.token}`;
+      const link = data.usuarioJaCadastrado
+        ? `${window.location.origin}/login`
+        : `${window.location.origin}/register?invite=${data.invitation.token}`;
+      setJaCadastrado(Boolean(data.usuarioJaCadastrado));
       setInviteLink(link);
       onInvited();
     } catch (error) {
@@ -101,9 +106,17 @@ export function UsuarioConviteDialog({
         {inviteLink ? (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Convite criado. Copie o link abaixo e envie para{" "}
-              <span className="font-medium text-foreground">{email}</span>. O
-              acesso será concedido assim que a conta for criada.
+              {jaCadastrado ? (
+                <>
+                  <span className="font-medium text-foreground">{email}</span> já tem login no Skubo. Basta entrar
+                  com esse e-mail (senha ou Google) para cair direto na sua loja.
+                </>
+              ) : (
+                <>
+                  Convite criado. Envie o link para <span className="font-medium text-foreground">{email}</span>. A
+                  pessoa cria a senha ou entra com o Google usando esse e-mail e já acessa a sua loja.
+                </>
+              )}
             </p>
             <div className="flex items-center gap-2 rounded-md border border-border bg-muted p-2">
               <code className="flex-1 truncate text-xs text-foreground">
@@ -123,7 +136,19 @@ export function UsuarioConviteDialog({
                 )}
               </Button>
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button asChild type="button" variant="outline" className="gap-2">
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(
+                    `Você foi convidado para a equipe no Skubo. Entre por aqui: ${inviteLink}`
+                  )}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <Send className="h-4 w-4" />
+                  Enviar no WhatsApp
+                </a>
+              </Button>
               <Button type="button" onClick={handleClose}>
                 Concluir
               </Button>

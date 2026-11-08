@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 
-/**
- * API para buscar preços promocionais usando a API oficial do ML
- * Baseado em: https://developers.mercadolivre.com.br/pt_br/api-de-precos
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -18,11 +14,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-
     const accessToken = await MercadoLivreService.getValidToken(accountId);
     const precos = [];
 
-    // Buscar preços individualmente usando a API oficial
     for (const itemId of itemIds) {
       try {
         const response = await fetch(
@@ -44,7 +38,6 @@ export async function POST(request: NextRequest) {
 
         const precosData = await response.json();
 
-        // Processar preços conforme documentação oficial
         const precoStandard = precosData.prices?.find(
           (p: {
             type: string;
@@ -63,7 +56,6 @@ export async function POST(request: NextRequest) {
             p.conditions?.context_restrictions?.includes("channel_marketplace")
         );
 
-        // ✅ CORREÇÃO: Padronizar valores para centavos (como outras APIs)
         const precoAtualCentavos = Math.round((precoPromocional?.amount || precoStandard?.amount || 0) * 100);
         const precoOriginalCentavos = precoPromocional?.regular_amount 
           ? Math.round(precoPromocional.regular_amount * 100) 
@@ -71,8 +63,8 @@ export async function POST(request: NextRequest) {
 
         const preco = {
           mlItemId: itemId,
-          precoAtual: precoAtualCentavos, // ✅ AGORA EM CENTAVOS
-          precoOriginal: precoOriginalCentavos, // ✅ AGORA EM CENTAVOS
+          precoAtual: precoAtualCentavos,
+          precoOriginal: precoOriginalCentavos,
           temPromocao: !!precoPromocional,
           tipoPreco: precoPromocional ? "promotion" : "standard",
           desconto:
@@ -99,7 +91,6 @@ export async function POST(request: NextRequest) {
         );
       }
     }
-
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,3 @@
-// src/app/api/mercadolivre/orders/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
@@ -23,7 +21,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -43,11 +40,9 @@ export async function GET(request: NextRequest) {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
 
       if (orderId) {
-        // Buscar pedido específico
         const order = await MercadoLivreService.getOrder(orderId, accessToken);
         return NextResponse.json(order);
       } else {
-        // Buscar lista de pedidos
         const orders = await MercadoLivreService.getUserOrders(accessToken, {
           seller: account.mlUserId,
           status: status || undefined,

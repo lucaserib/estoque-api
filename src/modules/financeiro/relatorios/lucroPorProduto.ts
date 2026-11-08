@@ -39,7 +39,6 @@ type OrdenacaoLucroPorProduto = keyof Pick<
   "margemContribuicao" | "faturamentoBruto" | "lucroLiquido" | "unidades"
 >;
 
-/** 80/95 sobre a soma só dos positivos — margem negativa nunca é A/B, cai sempre em C. */
 function calcularCurvaAbc(
   produtos: Array<{ produtoId: string; margemContribuicao: number }>
 ): Map<string, CurvaAbc> {
@@ -48,10 +47,6 @@ function calcularCurvaAbc(
     .sort((a, b) => b.margemContribuicao - a.margemContribuicao);
   const totalPositivo = positivos.reduce((soma, p) => soma + p.margemContribuicao, 0);
 
-  // O corte usa o acumulado ANTES de somar o item atual: o maior produto
-  // sempre abre a curva em A, mesmo que ele só, isoladamente, já passe de
-  // 80% do total — o que o limite decide é onde PARAR de incluir mais
-  // itens em A, não se o primeiro (maior) item qualifica.
   const classificacao = new Map<string, CurvaAbc>();
   let acumulado = 0;
   for (const produto of positivos) {
@@ -79,14 +74,6 @@ interface AcumuladoProduto {
   vendasSemCusto: number;
 }
 
-/**
- * Resultado por produto com a MESMA regra do total (motor.calcularVenda): cada
- * venda é calculada inteira e depois dividida entre os itens na proporção do
- * faturamento de cada item; o CMV é o custo congelado de cada item. A soma da
- * margem de todos os produtos é igual à margem das vendas do período (sem os
- * custos que não pertencem a nenhuma venda — fatura do ML e ads não
- * atribuídos —, que aparecem só no total e na DRE).
- */
 export async function gerarLucroPorProduto(
   userId: string,
   filtros: FiltrosLucroPorProduto,

@@ -28,7 +28,6 @@ export function exibirValorEmReais(valorEmCentavos: number): string {
   return formatBRL(valorEmCentavos);
 }
 
-// Nova função para valores já em reais (usado nas APIs do ML)
 export function formatarReal(valorEmReais: number): string {
   return valorEmReais.toLocaleString("pt-BR", {
     style: "currency",

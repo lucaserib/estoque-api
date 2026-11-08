@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import { generatePedidoPDF } from "@/utils/pdf";
 import { toast } from "@/components/ui/sonner";
 
-// UI Components
 import {
   Dialog,
   DialogContent,
@@ -109,7 +108,6 @@ export function PedidoDetalhesDialog({
                 Pedido #{pedido.id}
               </DialogTitle>
               <div className="flex items-center gap-2">
-                {/* Botão para exportar PDF */}
                 {pedido.status === "confirmado" && (
                   <Button
                     variant="outline"
@@ -147,7 +145,6 @@ export function PedidoDetalhesDialog({
 
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2" id="dialog-description">
-            {/* Status Badge */}
             <div className="mb-4">
               <Badge
                 className={`px-3 py-1 ${
@@ -165,7 +162,6 @@ export function PedidoDetalhesDialog({
               </Badge>
             </div>
 
-            {/* Informações gerais */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-background p-4 rounded-lg border border-border">
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -244,7 +240,6 @@ export function PedidoDetalhesDialog({
               </div>
             </div>
 
-            {/* Tabela de produtos */}
             <div className="mb-4">
               <h3 className="font-medium text-foreground mb-3 flex items-center gap-2">
                 <Package className="h-4 w-4 text-primary" />
@@ -298,7 +293,6 @@ export function PedidoDetalhesDialog({
                       );
                     })}
 
-                    {/* Linha do total */}
                     <DataTableRow className="bg-muted font-medium hover:bg-muted">
                       <DataTableCell colSpan={4} className="pl-4 text-right text-foreground">
                         Total do Pedido:

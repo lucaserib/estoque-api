@@ -1,20 +1,15 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
-/** @type {import('next').NextConfig} */
 const nextConfig = {
   async redirects() {
     return [
-      // "Anúncios e vínculos" (/mercado-livre/produtos) é a única tela de vínculo manual —
-      // esta não tinha mais nenhum link apontando para ela (conferido com grep).
       { source: "/produtos/vincular", destination: "/mercado-livre/produtos", permanent: false },
-      // "Lucro por venda" virou a aba padrão de /financeiro/vendas (Ciclo 13 Fase 8) —
-      // a análise de vendas ao vivo do ML (outra fonte) saiu do menu.
       { source: "/mercado-livre/vendas", destination: "/financeiro/vendas", permanent: false },
-      // Configurações gerais, ML, Bling, Financeiro e Usuários viraram uma tela só com
-      // seções (Ciclo 13 Fase 8) — /configuracoes (OAuth callback do ML) continua existindo.
       { source: "/configuracoes-gerais", destination: "/ajustes", permanent: false },
-      // "Lucro por produto" virou a aba "Por produto" de /financeiro/vendas.
       { source: "/financeiro/produtos", destination: "/financeiro/vendas?aba=produto", permanent: false },
+      { source: "/produtos/importar", destination: "/comecar", permanent: false },
+      { source: "/onboarding", destination: "/comecar", permanent: false },
+      { source: "/saude-dados", destination: "/controle", permanent: false },
     ];
   },
   images: {

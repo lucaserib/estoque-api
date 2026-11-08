@@ -9,12 +9,6 @@ export const maxDuration = 60;
 
 const MAX_EVENTOS_POR_EXECUCAO = 200;
 
-/**
- * Reprocessa webhooks do Bling que ficaram pendentes e lê as contas a pagar
- * e receber. Produtos e estoque do Bling são sincronizados pelo catálogo
- * (`/api/cron/catalogo-diario` e `modules/catalogo/sincronizacao.ts`), com
- * cursor e orçamento de tempo.
- */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
 
@@ -29,7 +23,6 @@ export async function GET(request: NextRequest) {
     select: { id: true },
   });
 
-  // maxDuration é 60s: para os webhooks em ~35s e deixa tempo para as contas.
   const prazo = Date.now() + 35_000;
   let eventosReprocessados = 0;
   for (const evento of eventosPendentes) {

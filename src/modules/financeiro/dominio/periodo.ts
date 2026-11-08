@@ -1,20 +1,14 @@
-/**
- * Todo limite de dia/semana/mês do financeiro é calculado no fuso de
- * América/São_Paulo, não no fuso do servidor. O Brasil não observa mais
- * horário de verão desde 2019, mas calculamos o offset de verdade via `Intl`
- * em vez de fixar "-03:00" — funciona também para datas antigas com DST.
- */
 const FUSO = "America/Sao_Paulo";
 
 interface DataCalendario {
   ano: number;
-  mes: number; // 1-12
+  mes: number;
   dia: number;
 }
 
 export interface Competencia {
   ano: number;
-  mes: number; // 1-12
+  mes: number;
 }
 
 function partesNoFuso(data: Date) {
@@ -46,14 +40,12 @@ function dataCalendarioNoFuso(data: Date): DataCalendario {
   return { ano: p.ano, mes: p.mes, dia: p.dia };
 }
 
-/** Quantos minutos o relógio de FUSO está adiantado em relação ao UTC nesse instante (negativo = atrasado). */
 function offsetMinutos(data: Date): number {
   const p = partesNoFuso(data);
   const comoUtc = Date.UTC(p.ano, p.mes - 1, p.dia, p.hora, p.minuto, p.segundo);
   return (comoUtc - data.getTime()) / 60000;
 }
 
-/** Instante UTC correspondente a um horário de parede em FUSO. */
 function instanteNoFuso(
   cal: DataCalendario,
   hora: number,
@@ -83,11 +75,10 @@ export function fimDoDia(data: Date): Date {
   return new Date(instanteNoFuso(amanha, 0, 0, 0, 0).getTime() - 1);
 }
 
-/** Semana começando na segunda-feira (padrão de relatório financeiro/ISO, não o domingo do calendário comum). */
 export function inicioDaSemana(data: Date): Date {
   const cal = dataCalendarioNoFuso(data);
   const comoUtc = new Date(Date.UTC(cal.ano, cal.mes - 1, cal.dia));
-  const diaDaSemana = comoUtc.getUTCDay(); // 0=domingo..6=sábado
+  const diaDaSemana = comoUtc.getUTCDay();
   const deslocamentoParaSegunda = diaDaSemana === 0 ? -6 : 1 - diaDaSemana;
   const segunda = somarDiasCalendario(cal, deslocamentoParaSegunda);
   return instanteNoFuso(segunda, 0, 0, 0, 0);
@@ -113,19 +104,11 @@ export function fimDoMes(data: Date): Date {
   return new Date(instanteNoFuso(primeiroDoProximoMes, 0, 0, 0, 0).getTime() - 1);
 }
 
-/** Mês/ano de competência (regime de caixa não se aplica — é sempre o calendário de SP). */
 export function competenciaDe(data: Date): Competencia {
   const cal = dataCalendarioNoFuso(data);
   return { ano: cal.ano, mes: cal.mes };
 }
 
-/**
- * Soma meses a uma data de calendário (vencimento, dia de fatura…), não a um
- * instante — por isso usa UTC puro, não o fuso de SP: "todo dia 10" não
- * depende de fuso, é só aritmética de calendário. Preserva o dia do mês,
- * com piso no último dia se o mês de destino for mais curto (ex.: dia 31 de
- * janeiro + 1 mês = 28/29 de fevereiro, não março).
- */
 export function somarMeses(data: Date, quantidadeDeMeses: number): Date {
   const ano = data.getUTCFullYear();
   const mes = data.getUTCMonth();
@@ -135,13 +118,6 @@ export function somarMeses(data: Date, quantidadeDeMeses: number): Date {
   return new Date(Date.UTC(ano, mes + quantidadeDeMeses, Math.min(dia, ultimoDiaDoMesDestino)));
 }
 
-/**
- * Períodos rápidos das telas de resumo (dashboard, vendas do ML). "Mês atual"
- * é o padrão: é como o lojista fecha o resultado, e é o mesmo recorte que o
- * Financeiro usa. A comparação do mês atual é contra o MESMO trecho do mês
- * anterior (dia 1 até o mesmo dia/hora), nunca contra o mês anterior inteiro —
- * senão todo dia 5 o painel mostraria queda de 80%.
- */
 export type ChavePeriodoRapido = "mes-atual" | "mes-anterior" | "7" | "30" | "90";
 
 export const OPCOES_PERIODO_RAPIDO: Array<{ value: ChavePeriodoRapido; label: string }> = [
@@ -220,12 +196,6 @@ export function resolverPeriodoRapido(chaveBruta: string | null | undefined, ago
   };
 }
 
-/**
- * "AAAA-MM-DD HH:mm:ss" no horário de Brasília — formato que o Bling espera
- * em filtros como `dataAlteracaoInicial`. O Bling lê esse texto como hora
- * local; mandar o ISO em UTC (3h adiantado) fazia a sincronização
- * incremental pular as alterações das últimas ~2 horas antes do corte.
- */
 export function formatarDataHoraBrasilia(data: Date): string {
   const p = partesNoFuso(data);
   const dois = (n: number) => String(n).padStart(2, "0");

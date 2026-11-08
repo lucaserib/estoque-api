@@ -90,8 +90,6 @@ describe("dividirEmParcelas", () => {
 });
 
 describe("formatar", () => {
-  // Intl.NumberFormat("pt-BR") usa espaço não separável (U+00A0) entre "R$" e o
-  // número; normalizamos para espaço comum nas comparações abaixo.
   it("formata centavos como moeda brasileira", () => {
     const semEspacosEspeciais = formatar(123456).replace(/ /g, " ");
     expect(semEspacosEspeciais).toBe("R$ 1.234,56");

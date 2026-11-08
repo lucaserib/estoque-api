@@ -31,7 +31,6 @@ interface MLProduct {
   mlStatus: string;
   mlThumbnail?: string;
   mlPermalink: string;
-  // ✅ ATUALIZADO: Compatível com API dinâmica
   produto?: {
     id: string;
     nome: string;
@@ -55,15 +54,13 @@ interface MLProduct {
   localStock?: number;
   stockStatus?: "ok" | "low" | "out" | "unlinked" | string;
   lastSync?: string;
-  lastSyncAt?: string; // ✅ NOVO: Campo da API dinâmica
+  lastSyncAt?: string;
   syncStatus?: string;
-  // ✅ ATUALIZADO: Compatível com API dinâmica
   salesData?: {
     quantityThisMonth?: number;
     revenueThisMonth?: number;
     salesVelocity?: number;
     daysInMonth?: number;
-    // Campos antigos para compatibilidade
     quantity30d?: number;
     revenue30d?: number;
   } | null;
@@ -89,10 +86,9 @@ function MercadoLivreProdutosContent() {
   );
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [stockFilter, setStockFilter] = useState<string>(searchParams.get("stock") || "all");
-  const [sortBy, setSortBy] = useState<string>("sales"); // ✅ PADRÃO: Mais vendidos
+  const [sortBy, setSortBy] = useState<string>("sales");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // Estados do modal de vinculação
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedMLProduct, setSelectedMLProduct] = useState<MLProduct | null>(
     null
@@ -116,7 +112,6 @@ function MercadoLivreProdutosContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- recarrega somente quando a conta selecionada muda
   }, [selectedAccount]);
 
-  // Recarregar produtos quando filtros mudarem
   useEffect(() => {
     if (selectedAccount) {
       loadProducts();
@@ -124,17 +119,14 @@ function MercadoLivreProdutosContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reexecuta quando conta ou filtros mudam; loadProducts lê esses mesmos valores
   }, [selectedAccount, sortBy, sortOrder, statusFilter, stockFilter]);
 
-  // ✅ NOVO: Auto-refetch inicial quando abre a aba (com toast apenas se não for inicial)
   useEffect(() => {
     if (selectedAccount && products.length > 0) {
-      // Refetch silencioso para garantir dados atualizados
       console.log("🔄 Auto-refetch: Atualizando dados ao abrir aba...");
       loadProducts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- executa apenas uma vez ao montar
-  }, []); // Executa apenas uma vez ao montar
+  }, []);
 
-  // Filtrar produtos localmente apenas por termo de busca
   useEffect(() => {
     if (searchTerm) {
       const filtered = products.filter(
@@ -158,12 +150,10 @@ function MercadoLivreProdutosContent() {
 
       const accountsData = await response.json();
 
-      // Fix: The API returns accounts directly, not wrapped in accounts property
       const accountsList = Array.isArray(accountsData)
         ? accountsData
         : accountsData.accounts || [];
 
-      // Extract basic account info from the detailed response
       const formattedAccounts = accountsList.map(
         (acc: {
           id: string;
@@ -245,8 +235,6 @@ function MercadoLivreProdutosContent() {
     }
   };
 
-
-
   const loadStatusCounts = async () => {
     if (!selectedAccount) return;
 
@@ -280,11 +268,10 @@ function MercadoLivreProdutosContent() {
 
   const handleSortChange = (newSortBy: string) => {
     if (sortBy === newSortBy) {
-      // Toggle sort order se é o mesmo campo
       setSortOrder(sortOrder === "desc" ? "asc" : "desc");
     } else {
       setSortBy(newSortBy);
-      setSortOrder("desc"); // Padrão descendente para novos campos
+      setSortOrder("desc");
     }
   };
 
@@ -318,13 +305,9 @@ function MercadoLivreProdutosContent() {
     }
   };
 
-
-
-  // ✅ Funções removidas - agora usamos componentes modulares
-
   if (status === "loading" || loading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="mx-auto w-full">
         <PageHeader
           title="Produtos Mercado Livre"
           subtitle="Gestão integrada de produtos"
@@ -338,7 +321,7 @@ function MercadoLivreProdutosContent() {
 
   if (accounts.length === 0) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="mx-auto w-full">
         <PageHeader
           title="Produtos Mercado Livre"
           subtitle="Gestão integrada de produtos"
@@ -364,7 +347,7 @@ function MercadoLivreProdutosContent() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="mx-auto w-full space-y-6">
       <PageHeader
         title="Produtos Mercado Livre"
         subtitle={`Gestão integrada de produtos${
@@ -385,7 +368,6 @@ function MercadoLivreProdutosContent() {
 
       <SugestoesVinculoCard recarregarGatilho={lastUpdate} onAplicado={() => { loadProducts(); loadStatusCounts(); }} />
 
-      {/* Controles e Filtros */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
@@ -404,7 +386,6 @@ function MercadoLivreProdutosContent() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* ✅ NOVO: Componente de Filtros Componentizado */}
           <MLProductsFilters
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
@@ -424,7 +405,6 @@ function MercadoLivreProdutosContent() {
         </CardContent>
       </Card>
 
-      {/* ✅ NOVO: Tabela de Produtos Componentizada */}
       <MLProductsTable
         products={filteredProducts}
         loading={loading}

@@ -7,10 +7,6 @@ interface CategoriaPadrao {
   ordem: number;
 }
 
-/**
- * Lista fixa definida em PROMPT-CICLO-7-FINANCEIRO.md (seção "Plano de contas padrão").
- * A ordem aqui é a ordem de exibição padrão nas telas do financeiro.
- */
 const PLANO_CONTAS_PADRAO: CategoriaPadrao[] = [
   { nome: "Receitas de vendas", grupoDre: GrupoDre.RECEITA_BRUTA, ordem: 10 },
   { nome: "Cancelamentos e devoluções", grupoDre: GrupoDre.DEDUCAO_RECEITA, ordem: 20 },
@@ -21,9 +17,6 @@ const PLANO_CONTAS_PADRAO: CategoriaPadrao[] = [
   { nome: "Publicidade marketplace", grupoDre: GrupoDre.CUSTO_VARIAVEL, ordem: 70 },
   { nome: "Armazenagem Full", grupoDre: GrupoDre.CUSTO_VARIAVEL, ordem: 80 },
   { nome: "Custo da mercadoria vendida", grupoDre: GrupoDre.CMV, ordem: 90 },
-  // Não está na lista original da Fase 1 — adicionada na Fase 5 porque o
-  // "gerar conta a pagar" de um PedidoCompra precisa de uma categoria que
-  // nunca entra na DRE (o CMV já é reconhecido na venda, não na compra).
   { nome: "Compra de mercadoria (estoque)", grupoDre: GrupoDre.CMV, ordem: 95 },
   { nome: "Pessoal", grupoDre: GrupoDre.DESPESA_OPERACIONAL, ordem: 100 },
   { nome: "Ocupação", grupoDre: GrupoDre.DESPESA_OPERACIONAL, ordem: 110 },
@@ -43,10 +36,6 @@ export interface ResultadoSeedPlanoContas {
   existentes: number;
 }
 
-/**
- * Idempotente: pode ser chamada em todo acesso à aba Financeiro sem duplicar
- * categorias. Só cria as que faltam (comparação por nome, sem pai, por conta).
- */
 export async function seedPlanoContasPadrao(
   userId: string
 ): Promise<ResultadoSeedPlanoContas> {

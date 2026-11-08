@@ -15,7 +15,6 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "50");
     const offset = parseInt(searchParams.get("offset") || "0");
 
-
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
       where: {
         userId: user.contaId,
@@ -41,8 +40,7 @@ export async function GET(request: NextRequest) {
     const endDate = dateTo ? new Date(dateTo) : new Date();
     const startDate = dateFrom
       ? new Date(dateFrom)
-      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 dias por padrão
-
+      : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const validStatuses = [
       "paid",
@@ -119,7 +117,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-
     const mlItemToSku = new Map(
       produtosML.map((p) => [
         p.mlItemId,
@@ -129,7 +126,6 @@ export async function GET(request: NextRequest) {
         },
       ])
     );
-
 
     const vendas = ordersInPeriod.slice(offset, offset + limit).map((order) => {
       const items = order.order_items.map((item) => {
@@ -208,7 +204,6 @@ export async function GET(request: NextRequest) {
         siteId: mlAccount.siteId,
       },
     };
-
 
     return NextResponse.json(response);
   } catch (error) {

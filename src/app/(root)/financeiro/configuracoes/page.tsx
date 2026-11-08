@@ -538,14 +538,14 @@ export default function ConfiguracoesFinanceiroPage() {
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <div className="mx-auto w-full max-w-[1400px] space-y-8">
         <Skeleton className="h-[80px] rounded-md" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6">
       <PageHeader eyebrow="Financeiro" title="Configurações" subtitle="Plano de contas, contas financeiras, regras e manutenção." />
 
       {carregando ? (

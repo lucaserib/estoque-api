@@ -125,7 +125,7 @@ export default function ConferenciaPage() {
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <div className="mx-auto w-full max-w-[1400px] space-y-8">
         <Skeleton className="h-[80px] rounded-md" />
       </div>
     );
@@ -169,7 +169,7 @@ export default function ConferenciaPage() {
     : [];
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6">
       <PageHeader
         eyebrow="Financeiro"
         title="Conferência com o Mercado Livre"

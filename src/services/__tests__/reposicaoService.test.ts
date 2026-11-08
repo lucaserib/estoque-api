@@ -232,7 +232,6 @@ describe("explodirDemandaKits", () => {
 
     expect(resultado.get("componente-a")).toEqual({ v30: 20, v90: 40 });
     expect(resultado.get("componente-b")).toEqual({ v30: 10, v90: 20 });
-    // a entrada do próprio kit permanece (pode ter estoque pré-montado)
     expect(resultado.get("kit-1")).toEqual({ v30: 10, v90: 20 });
   });
 

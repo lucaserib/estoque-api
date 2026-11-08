@@ -2,8 +2,6 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
-
-// Função para serializar BigInt como string
 const serializeBigInt = (obj: unknown): unknown => {
   if (obj === null || obj === undefined) return obj;
 
@@ -18,7 +16,6 @@ const serializeBigInt = (obj: unknown): unknown => {
     );
   } catch (error) {
     console.error("Erro ao serializar objeto:", error);
-    // Se falhar a serialização, tenta retornar o objeto original
     return obj;
   }
 };
@@ -57,7 +54,6 @@ export async function POST(request: NextRequest) {
     const user = await verifyUser(request);
     const body: RequestBody = await request.json();
 
-
     const {
       produtoId,
       fornecedorId,
@@ -95,7 +91,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se o produto e o fornecedor existem e pertencem ao usuário
     const produto = await prisma.produto.findFirst({
       where: { 
         id: produtoId,
@@ -144,12 +139,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Converter o preço para um valor numérico
     const precoNumerico =
       typeof preco === "number" ? preco : parseFloat(preco as string);
 
-
-    // Garantir que o preço seja um valor positivo
     if (isNaN(precoNumerico) || precoNumerico < 0) {
       console.error(`API POST /produto-fornecedor - Preço inválido: ${preco}`);
       return NextResponse.json({ error: "Preço inválido" }, { status: 400 });
@@ -195,7 +187,6 @@ export async function GET(request: NextRequest) {
     const fornecedorId = searchParams.get("fornecedorId");
     const produtoId = searchParams.get("produtoId");
 
-
     if (!fornecedorId && !produtoId) {
       return NextResponse.json(
         { error: "FornecedorId ou ProdutoId é obrigatório" },
@@ -238,7 +229,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(serializedProdutos, { status: 200 });
     } else if (produtoId) {
       
-      // Verificar se o produto pertence ao usuário
       const produto = await prisma.produto.findFirst({
         where: {
           id: produtoId,
@@ -260,7 +250,7 @@ export async function GET(request: NextRequest) {
         where: {
           produtoId: produtoId,
           fornecedor: {
-            userId: user.contaId, // Garantir que o fornecedor pertence ao usuário
+            userId: user.contaId,
           },
         },
         include: {
@@ -291,7 +281,6 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    // Verificar se o vínculo existe e se o usuário tem permissão
     const vinculoExistente = await prisma.produtoFornecedor.findUnique({
       where: { id: Number(id) },
       include: {
@@ -307,7 +296,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Verificar se o produto e fornecedor pertencem ao usuário
     if (vinculoExistente.produto.userId !== user.contaId || vinculoExistente.fornecedor.userId !== user.contaId) {
       return NextResponse.json(
         { error: "Não autorizado" },
@@ -332,7 +320,6 @@ export async function PUT(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const body: RequestBody = await request.json();
-
 
     const {
       id,
@@ -361,7 +348,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verificar se o vínculo existe e se o usuário tem permissão
     const vinculoExistente = await prisma.produtoFornecedor.findUnique({
       where: { id: Number(id) },
       include: {
@@ -380,7 +366,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verificar se o produto e fornecedor pertencem ao usuário
     if (vinculoExistente.produto.userId !== user.contaId || vinculoExistente.fornecedor.userId !== user.contaId) {
       console.error(
         `API PUT /produto-fornecedor - Vínculo não autorizado para usuário: ${user.id}`
@@ -391,12 +376,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Converter o preço para um valor numérico
     const precoNumerico =
       typeof preco === "number" ? preco : parseFloat(preco as string);
 
-
-    // Garantir que o preço seja um valor positivo
     if (isNaN(precoNumerico) || precoNumerico < 0) {
       console.error(`API PUT /produto-fornecedor - Preço inválido: ${preco}`);
       return NextResponse.json({ error: "Preço inválido" }, { status: 400 });

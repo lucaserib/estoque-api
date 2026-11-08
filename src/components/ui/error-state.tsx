@@ -5,9 +5,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 interface ErrorStateProps extends React.HTMLAttributes<HTMLDivElement> {
-  /** O que houve — direto, sem "Erro ao..." sozinho. */
   title: string;
-  /** O que fazer a respeito. */
   description?: string;
   onRetry?: () => void;
   actionLabel?: string;

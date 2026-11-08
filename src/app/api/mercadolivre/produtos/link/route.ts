@@ -4,12 +4,6 @@ import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { mlCache, createCacheKey } from "@/lib/cache";
 import { definirVinculoAnuncio, VinculoErro } from "@/modules/catalogo/vinculos";
 
-/**
- * Mantida por compatibilidade — a regra vive em `modules/catalogo/vinculos.ts`
- * (POST /api/catalogo/vinculos). Não envia mais estoque ao ML na hora do
- * vínculo: o envio automático já trata Full (nunca envia) e kit (divide pelo
- * componente); aqui somava até o armazém Full e zerava anúncio de kit.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

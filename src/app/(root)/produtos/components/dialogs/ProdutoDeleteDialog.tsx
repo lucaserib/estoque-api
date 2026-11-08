@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Produto } from "../../types";
 
-// UI Components
 import {
   AlertDialog,
   AlertDialogAction,

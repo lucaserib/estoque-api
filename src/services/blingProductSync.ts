@@ -6,7 +6,6 @@ import { stringToBigIntEAN } from "@/utils/ean";
 import { rehostTemporaryImage } from "@/lib/blingImageHost";
 import { normalizeSku } from "@/lib/sku";
 
-/** Produto que não entra no estoque por um motivo de cadastro (não é falha da sincronização). */
 export class BlingProdutoIgnorado extends Error {
   constructor(message: string) {
     super(message);
@@ -20,11 +19,6 @@ export interface FornecedorResolvido {
   codigo: string | undefined;
 }
 
-/**
- * Contato do fornecedor muda pouco e se repete em centenas de produtos: guarda
- * por alguns minutos para não gastar 1 de cada 3 chamadas da sincronização
- * (limite do Bling: 3 req/s) buscando o mesmo fornecedor de novo.
- */
 const CONTATO_TTL_MS = 10 * 60 * 1000;
 const cacheContatos = new Map<string, { expiraEm: number; contato: Awaited<ReturnType<typeof BlingService.getContact>> }>();
 
@@ -186,7 +180,6 @@ export async function aplicarDetalheProdutoBling(params: {
 }
 
 export interface ResultadoComponentesKit {
-  /** Componentes do Bling que não existem localmente (kit fica sem custo até chegarem). */
   faltando: string[];
 }
 
@@ -221,10 +214,6 @@ export async function sincronizarComponentesKitBling(
     });
   }
 
-  // Componente que saiu da estrutura no Bling sai aqui também — antes ficava
-  // para sempre e inflava o custo do kit e a demanda da reposição. Só remove
-  // quando a estrutura veio completa (nenhum componente faltando localmente),
-  // para não apagar nada por causa de um componente ainda não importado.
   if (faltando.length === 0) {
     await prisma.componente.deleteMany({
       where: { kitId: kitProdutoId, produtoId: { notIn: [...presentes] } },
@@ -244,8 +233,6 @@ export async function sincronizarProdutoUnico(
   const detalhe = await BlingService.getProductById(accountId, blingProdutoId);
   const skuBruto = BlingService.extractSKU(detalhe);
   if (!skuBruto) {
-    // Pai de variações costuma vir sem código: o que se vende e se estoca são
-    // as variações (cada uma com SKU). Importa as variações e ignora o pai.
     const variacoes = detalhe.variacoes ?? [];
     if (variacoes.length > 0 && profundidade === 0) {
       let importadas = 0;
@@ -267,9 +254,6 @@ export async function sincronizarProdutoUnico(
   }
   const sku = normalizeSku(skuBruto);
 
-  // blingId manda; SKU só vale para produto ainda sem blingId (cadastrado à
-  // mão ou por planilha). Antes o OR podia pegar outro produto com o mesmo SKU
-  // e tentar gravar um blingId que já era de outro (erro de unicidade).
   let existente: { id: string } | null =
     (await prisma.produto.findUnique({
       where: { userId_blingId: { userId, blingId: blingIdStr } },
@@ -285,8 +269,6 @@ export async function sincronizarProdutoUnico(
       select: { id: true, blingId: true, ativo: true },
     });
     if (skuOcupado && !skuOcupado.ativo) {
-      // Produto excluído e recriado no Bling com o mesmo SKU: o cadastro
-      // local (inativo) passa a apontar para o novo id do Bling.
       existente = { id: skuOcupado.id };
     } else if (skuOcupado) {
       throw new Error(
@@ -326,8 +308,6 @@ export async function sincronizarProdutoUnico(
           select: { id: true },
         });
         if (componente) return componente.id;
-        // Componente ainda não importado (a sincronização incremental pode
-        // trazer o kit antes dele): importa agora, um nível só.
         if (profundidade > 0) return null;
         try {
           const importado = await sincronizarProdutoUnico(accountId, userId, Number(blingIdComponente), profundidade + 1);
@@ -351,8 +331,6 @@ export async function sincronizarEstoqueUnico(
     where: { userId, blingId: String(blingProdutoId) },
     select: { id: true, isKit: true, estoques: { select: { armazemId: true, quantidade: true } } },
   });
-  // Saldo de kit no Bling é virtual (calculado dos componentes): gravar aqui
-  // contaria o mesmo estoque duas vezes. A sincronização em lote já pulava kits.
   if (!produtoLocal || produtoLocal.isKit) return;
 
   const armazemPorDeposito = await garantirArmazensParaDepositos(accountId, userId);

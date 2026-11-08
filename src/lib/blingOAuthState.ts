@@ -1,50 +1,51 @@
 import crypto from "crypto";
 import { obterSegredoAuth } from "@/lib/authSecret";
 
-const COOKIE_NAME = "bling_oauth_state";
-const COOKIE_MAX_AGE_SECONDS = 10 * 60;
+const VALIDADE_SEGUNDOS = 15 * 60;
 
-function sign(state: string, userId: string): string {
+export type MotivoStateInvalido = "formato" | "assinatura" | "expirado" | "usuario_diferente";
+
+export type VerificacaoState =
+  | { ok: true; userId: string }
+  | { ok: false; motivo: MotivoStateInvalido };
+
+function assinar(conteudo: string): string {
   const segredo = obterSegredoAuth();
-  if (!segredo) {
-    throw new Error("NEXTAUTH_SECRET/AUTH_SECRET não configurado");
+  if (!segredo) throw new Error("NEXTAUTH_SECRET/AUTH_SECRET não configurado");
+  return crypto.createHmac("sha256", segredo).update(conteudo).digest("base64url");
+}
+
+export function criarStateBling(userId: string, agora: number = Date.now()): string {
+  const nonce = crypto.randomBytes(12).toString("base64url");
+  const expira = Math.floor(agora / 1000) + VALIDADE_SEGUNDOS;
+  const idCodificado = Buffer.from(userId, "utf8").toString("base64url");
+  const conteudo = `${nonce}.${idCodificado}.${expira}`;
+  return `${conteudo}.${assinar(conteudo)}`;
+}
+
+export function verificarStateBling(
+  state: string | null | undefined,
+  userIdSessao: string | null,
+  agora: number = Date.now()
+): VerificacaoState {
+  if (!state) return { ok: false, motivo: "formato" };
+  const partes = state.split(".");
+  if (partes.length !== 4) return { ok: false, motivo: "formato" };
+
+  const [nonce, idCodificado, expiraTexto, assinatura] = partes;
+  const conteudo = `${nonce}.${idCodificado}.${expiraTexto}`;
+  const esperada = Buffer.from(assinar(conteudo));
+  const recebida = Buffer.from(assinatura);
+  if (esperada.length !== recebida.length || !crypto.timingSafeEqual(esperada, recebida)) {
+    return { ok: false, motivo: "assinatura" };
   }
-  return crypto
-    .createHmac("sha256", segredo)
-    .update(`${state}.${userId}`)
-    .digest("hex");
+
+  const expira = Number(expiraTexto);
+  if (!Number.isFinite(expira) || expira * 1000 < agora) return { ok: false, motivo: "expirado" };
+
+  const userId = Buffer.from(idCodificado, "base64url").toString("utf8");
+  if (!userId) return { ok: false, motivo: "formato" };
+  if (userIdSessao && userIdSessao !== userId) return { ok: false, motivo: "usuario_diferente" };
+
+  return { ok: true, userId };
 }
-
-export function buildBlingOAuthStateCookie(
-  state: string,
-  userId: string
-): { name: string; value: string; maxAge: number } {
-  const signature = sign(state, userId);
-  return {
-    name: COOKIE_NAME,
-    value: `${state}.${userId}.${signature}`,
-    maxAge: COOKIE_MAX_AGE_SECONDS,
-  };
-}
-
-export function verifyBlingOAuthStateCookie(
-  cookieValue: string | undefined,
-  stateFromCallback: string,
-  userIdFromSession: string
-): boolean {
-  if (!cookieValue) return false;
-
-  const [state, userId, signature] = cookieValue.split(".");
-  if (!state || !userId || !signature) return false;
-
-  const expectedSignature = sign(state, userId);
-  const signatureBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expectedSignature);
-
-  if (signatureBuffer.length !== expectedBuffer.length) return false;
-  if (!crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) return false;
-
-  return state === stateFromCallback && userId === userIdFromSession;
-}
-
-export const BLING_OAUTH_STATE_COOKIE_NAME = COOKIE_NAME;

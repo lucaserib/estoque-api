@@ -25,7 +25,6 @@ export interface ContaComSaldo {
 
 const STATUS_SEM_LIBERACAO = [StatusVendaCanal.CANCELADA, StatusVendaCanal.DEVOLVIDA];
 
-/** Cria a carteira "Mercado Pago — <apelido>" de cada conta do ML conectada, se ainda não existir. */
 export async function garantirCarteirasMercadoPago(userId: string): Promise<void> {
   const contasMl = await prisma.mercadoLivreAccount.findMany({
     where: { userId, isActive: true },
@@ -53,17 +52,6 @@ async function somarLiquidoDeVendas(
   return resultado._sum.valorLiquidoReceber ?? 0;
 }
 
-/**
- * Saldo de cada conta financeira.
- *
- * - Carteira do Mercado Pago: a API de saldo do Mercado Pago não aceita o
- *   token do Mercado Livre (403), então o saldo é calculado: o valor que você
- *   informou no último "ajustar saldo" + o líquido de cada venda liberada
- *   depois disso (já sem tarifa, frete e retenções) + os lançamentos pagos
- *   nessa conta (saques, transferências, pagamentos). "A liberar" é o líquido
- *   das vendas com liberação futura.
- * - Demais contas: saldo inicial + lançamentos pagos desde a data do saldo inicial.
- */
 export async function listarContasComSaldo(userId: string): Promise<ContaComSaldo[]> {
   await garantirCarteirasMercadoPago(userId);
 
@@ -146,10 +134,6 @@ export class ContaParaAjusteNaoEncontradaError extends Error {
   }
 }
 
-/**
- * "O saldo hoje é X": grava X como novo ponto de partida, com a data de agora.
- * A partir daí o saldo anda sozinho com as liberações e os lançamentos pagos.
- */
 export async function ajustarSaldoConta(userId: string, contaId: string, saldoAtual: number): Promise<void> {
   const conta = await prisma.contaFinanceira.findFirst({ where: { id: contaId, userId } });
   if (!conta) throw new ContaParaAjusteNaoEncontradaError();

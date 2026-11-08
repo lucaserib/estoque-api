@@ -52,12 +52,6 @@ const STATUS_LABEL: Record<string, string> = {
   under_review: "Em revisão",
 };
 
-/**
- * Uma tabela só para tudo que vende este produto: anúncios ligados direto a
- * ele e anúncios de kits que o usam (ex.: "Kit com 2"). Antes a ficha tinha
- * duas tabelas com os mesmos anúncios ("Margem por canal" e a aba ML) e não
- * mostrava os anúncios de kit.
- */
 export function AnunciosDoProduto({ produto, anuncios, anunciosViaKit, aliquotaImposto, onAlterado }: Props) {
   const [editando, setEditando] = useState<{ anuncio: AnuncioParaVincular; vinculo: VinculoAtual | null } | null>(null);
 

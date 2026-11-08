@@ -130,12 +130,6 @@ function janelaDoMes(instante: Date, desde: Date, ate: Date): { inicio: Date; fi
   };
 }
 
-/**
- * Importa os pedidos criados no período, do mês mais recente para o mais
- * antigo (o mês atual fica certo primeiro), uma página de 50 pedidos por vez,
- * gravando o cursor a cada página. Cada página é gravada em lote, sem
- * chamadas extras por pedido.
- */
 async function executarPedidosPeriodo(
   tarefa: TarefaSincronizacaoFinanceira,
   prazoFinal: number
@@ -318,11 +312,6 @@ async function executarTarefa(
   }
 }
 
-/**
- * Uma execução por conta por vez: a coluna `financeiroProcessandoAte` funciona
- * como trava com validade — se outra requisição já está processando, esta
- * devolve OCUPADO na hora em vez de duplicar chamadas à API.
- */
 async function adquirirTravaConta(contaCanalId: string, orcamentoMs: number): Promise<boolean> {
   const agora = new Date();
   const resultado = await prisma.mercadoLivreAccount.updateMany({
@@ -353,11 +342,6 @@ export async function contarTarefasPendentes(userId: string, contaCanalId: strin
   });
 }
 
-/**
- * Processa a fila da conta dentro do orçamento de tempo: primeiro as tarefas
- * (importar pedidos, cobranças, ads), por prioridade; com o tempo que sobrar,
- * detalha as vendas que ainda não têm os dados do pagamento.
- */
 export async function executarFila(
   userId: string,
   contaCanalId: string,

@@ -144,7 +144,7 @@ describe("gerarLancamentosDaRecorrencia", () => {
 
     const resultado = await gerarLancamentosDaRecorrencia("rec-1");
 
-    expect(resultado.gerados).toBe(3); // maio, junho, julho (hoje é maio, horizonte = 3 meses cheios)
+    expect(resultado.gerados).toBe(3);
     expect(lancamentos.every((l) => l.status === "PREVISTO")).toBe(true);
     expect(lancamentos.map((l) => l.vencimento.toISOString().slice(0, 10)).sort()).toEqual([
       "2026-05-10", "2026-06-10", "2026-07-10",
@@ -197,7 +197,7 @@ describe("gerarLancamentosDeTodasAsRecorrencias", () => {
 
     const resultado = await gerarLancamentosDeTodasAsRecorrencias("user-1");
 
-    expect(resultado.gerados).toBe(6); // 3 de cada
+    expect(resultado.gerados).toBe(6);
   });
 });
 

@@ -1,4 +1,3 @@
-// Modificações para src/app/(root)/saidas/components/SaidaList.tsx
 import { useState } from "react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -40,13 +39,11 @@ export function SaidaList({ saidas }: SaidaListProps) {
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  // Handle opening the details dialog
   const handleViewDetails = (saida: Saida) => {
     setSelectedSaida(saida);
     setIsDetailsOpen(true);
   };
 
-  // Function to export all saidas
   const handleExportAllSaidas = () => {
     try {
       if (!saidas || saidas.length === 0) {
@@ -54,13 +51,10 @@ export function SaidaList({ saidas }: SaidaListProps) {
         return;
       }
 
-      // Gerar dados no mesmo formato que usamos para saídas individuais
-      // mas colocando todas em um único arquivo com separadores
       const allDetails = [];
       let hasValidData = false;
 
       for (const saida of saidas) {
-        // Verificar se a saída tem detalhes válidos
         if (
           !saida ||
           !saida.detalhes ||
@@ -68,10 +62,9 @@ export function SaidaList({ saidas }: SaidaListProps) {
           !saida.data ||
           !saida.armazem
         ) {
-          continue; // Pular esta saída se não tiver dados válidos
+          continue;
         }
 
-        // Adicionar cabeçalho com informações da saída
         allDetails.push({
           Produto: `===== SAÍDA - DATA: ${format(
             new Date(saida.data),
@@ -83,7 +76,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
           Tipo: "",
         });
 
-        // Espaço em branco após o cabeçalho
         allDetails.push({
           Produto: "",
           SKU: "",
@@ -91,7 +83,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
           Tipo: "",
         });
 
-        // Adicionar os itens desta saída
         let addedItems = false;
         if (saida.detalhes && Array.isArray(saida.detalhes)) {
           for (const detalhe of saida.detalhes) {
@@ -117,7 +108,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
           });
         }
 
-        // Adicionar linhas em branco entre saídas
         allDetails.push({
           Produto: "",
           SKU: "",
@@ -138,10 +128,8 @@ export function SaidaList({ saidas }: SaidaListProps) {
         return;
       }
 
-      // Limitar o nome da planilha a 31 caracteres (limite do Excel)
       const sheetName = "Detalhes Todas as Saídas";
 
-      // Nome do arquivo que inclui a quantidade de saídas
       const fileName = `saidas_detalhes_completos_${saidas.length}`;
 
       exportToExcel(
@@ -156,7 +144,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
     }
   };
 
-  // Function to export selected saidas
   const handleExportSelectedSaidas = () => {
     if (selectedIds.length === 0) {
       toast.warning("Selecione pelo menos uma saída para exportar");
@@ -173,24 +160,19 @@ export function SaidaList({ saidas }: SaidaListProps) {
         return;
       }
 
-      // Se for apenas uma saída, use exatamente o mesmo comportamento da exportação individual
       if (selectedSaidas.length === 1) {
         handleExportSaidaDetails(selectedSaidas[0]);
         return;
       }
 
-      // Para múltiplas saídas, usamos o mesmo formato que funciona para a exportação individual
-      // mas colocando todas em um único arquivo com separadores
       const allDetails = [];
       let hasValidData = false;
 
       for (const saida of selectedSaidas) {
-        // Verificar se a saída tem detalhes válidos
         if (!saida || !saida.detalhes || !Array.isArray(saida.detalhes)) {
-          continue; // Pular esta saída se não tiver detalhes válidos
+          continue;
         }
 
-        // Adicionar cabeçalho com informações da saída
         allDetails.push({
           Produto: `===== SAÍDA - DATA: ${format(
             new Date(saida.data),
@@ -202,7 +184,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
           Tipo: "",
         });
 
-        // Espaço em branco após o cabeçalho
         allDetails.push({
           Produto: "",
           SKU: "",
@@ -210,7 +191,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
           Tipo: "",
         });
 
-        // Adicionar os itens desta saída
         let addedItems = false;
         for (const detalhe of saida.detalhes) {
           if (detalhe && detalhe.produto) {
@@ -234,7 +214,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
           });
         }
 
-        // Adicionar linhas em branco entre saídas
         allDetails.push({
           Produto: "",
           SKU: "",
@@ -255,7 +234,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
         return;
       }
 
-      // Limitar o nome da planilha a 31 caracteres (limite do Excel)
       const sheetName = `Detalhes Saídas Selecionadas`;
 
       exportToExcel(
@@ -271,25 +249,20 @@ export function SaidaList({ saidas }: SaidaListProps) {
     }
   };
 
-  // Function to export a single saida with details
   const handleExportSaidaDetails = (saida: Saida) => {
     try {
-      // Verificar se a saída tem dados válidos
       if (!saida || !saida.detalhes || !Array.isArray(saida.detalhes)) {
         toast.error("Dados de saída inválidos para exportação");
         return;
       }
 
-      // Verificar se a saída tem data e armazém válidos
       if (!saida.data || !saida.armazem) {
         toast.error("Dados de saída incompletos para exportação");
         return;
       }
 
-      // Preparar os dados para exportação
       const detalhes = [];
 
-      // Adicionar um cabeçalho com informações da saída
       detalhes.push({
         Produto: `Saída - ${format(new Date(saida.data), "dd/MM/yyyy", {
           locale: ptBR,
@@ -299,7 +272,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
         Tipo: "",
       });
 
-      // Adicionar linha em branco
       detalhes.push({
         Produto: "",
         SKU: "",
@@ -307,7 +279,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
         Tipo: "",
       });
 
-      // Adicionar os itens
       let hasItems = false;
       for (const detalhe of saida.detalhes) {
         if (detalhe && detalhe.produto) {
@@ -330,10 +301,8 @@ export function SaidaList({ saidas }: SaidaListProps) {
         });
       }
 
-      // Limitar o nome da planilha a 31 caracteres (limite do Excel)
       const sheetName = "Detalhes da Saída";
 
-      // Nome do arquivo que inclui a data formatada da saída
       const fileDate = format(new Date(saida.data), "dd-MM-yyyy");
       const fileName = `saida_detalhes_${fileDate}`;
 
@@ -350,19 +319,16 @@ export function SaidaList({ saidas }: SaidaListProps) {
     }
   };
 
-  // Function to count total items in a saida
   const countTotalItems = (saida: Saida) => {
     return saida.detalhes.reduce((acc, detalhe) => acc + detalhe.quantidade, 0);
   };
 
-  // Toggle selection of a saida
   const toggleSelection = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
     );
   };
 
-  // Toggle selection of all saidas
   const toggleSelectAll = () => {
     if (selectedIds.length === saidas.length) {
       setSelectedIds([]);
@@ -371,9 +337,7 @@ export function SaidaList({ saidas }: SaidaListProps) {
     }
   };
 
-  // If there are no saidas, show a message
   if (!saidas || saidas.length === 0) {
-    // Mantenha o código existente para quando não há saídas...
     return (
       <div className="text-center py-8 bg-background rounded-md border border-dashed border-input">
         <Package className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
@@ -390,7 +354,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
 
   return (
     <div className="space-y-4">
-      {/* Botões para exportação */}
       <div className="flex justify-between items-center mb-2">
         <div className="text-sm text-muted-foreground">
           {selectedIds.length > 0 ? (
@@ -512,7 +475,6 @@ export function SaidaList({ saidas }: SaidaListProps) {
         </DataTable>
       </div>
 
-      {/* Details Dialog com opção de exportar */}
       {selectedSaida && (
         <SaidaDetalhesDialog
           isOpen={isDetailsOpen}

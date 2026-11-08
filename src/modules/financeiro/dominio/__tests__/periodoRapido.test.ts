@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { resolverPeriodoRapido } from "../periodo";
 
-// 19/10/2026 08:34 em São Paulo
 const AGORA = new Date("2026-10-19T11:34:00.000Z");
 
 describe("resolverPeriodoRapido", () => {
@@ -15,7 +14,6 @@ describe("resolverPeriodoRapido", () => {
   it("mês atual compara com o mesmo trecho do mês anterior, não com o mês inteiro", () => {
     const p = resolverPeriodoRapido("mes-atual", AGORA);
     expect(p.anteriorDesde.toISOString()).toBe("2026-09-01T03:00:00.000Z");
-    // 18 dias e 8h34 depois do dia 1 de setembro
     expect(p.anteriorAte.toISOString()).toBe("2026-09-19T11:34:00.000Z");
   });
 

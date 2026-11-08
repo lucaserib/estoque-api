@@ -5,18 +5,6 @@ import { withCache, createCacheKey } from "@/lib/cache";
 import { calcularTodasPendencias } from "@/services/pendenciasService";
 import type { Pendencia } from "@/lib/pendencias";
 
-/**
- * Lista de produtos da tela Produtos, paginada no servidor.
- *
- * Ordem padrão ("relevancia"): ativos primeiro → mais vendidos em 90 dias
- * (contando as vendas dos kits que usam o produto) → com estoque → nome.
- * Assim a primeira página já mostra o que importa e o resto carrega
- * conforme a rolagem — operação com milhares de SKUs não baixa tudo de uma vez.
- *
- * Tudo que a linha precisa (estoque local, Full, vendas, pendências) vem
- * daqui numa chamada só; a tela não faz mais um fetch por linha.
- */
-
 export type FiltroStatus = "ativos" | "inativos" | "todos";
 export type FiltroTipo = "produtos" | "kits" | "todos";
 export type FiltroEstoque = "all" | "available" | "low" | "none";
@@ -52,10 +40,8 @@ export interface ItemListaProduto {
   vendas90d: number;
   anuncios: number;
   componentes: Array<{ produtoId: string; nome: string; sku: string; quantidade: number }>;
-  /** Kits: quantos kits dá para montar com o estoque local dos componentes. */
   kitsMontaveis: number | null;
   pendencias: Pendencia[];
-  // Campos legados que ProdutoTableRow/diálogos ainda leem.
   _estoqueLocalTotal: number;
   _mlEstoqueFull: number;
   _mlTotalVendas: number;
@@ -161,13 +147,11 @@ export async function listarProdutos(
 
   const pendenciasPorProduto = new Map(pendencias.map((p) => [p.produtoId, p.pendencias]));
 
-  // Vendas próprias de cada produto (Financeiro; sem histórico lá, cai no sold_quantity de 90 dias do anúncio).
   const vendasProprias = new Map<string, number>();
   for (const linha of linhas) {
     const doAnuncio = linha.ProdutoMercadoLivre.reduce((s, a) => s + (a.mlSold90Days ?? 0), 0);
     vendasProprias.set(linha.id, vendasFinanceiro ? vendasFinanceiro.get(linha.id) ?? 0 : doAnuncio);
   }
-  // Venda de kit também é venda dos componentes (2 adaptadores por kit vendido).
   const vendasEquivalentes = new Map(vendasProprias);
   for (const linha of linhas) {
     if (!linha.isKit) continue;
@@ -294,7 +278,6 @@ export async function listarProdutos(
     if (ordem === "nome") return porNome(a, b);
     if (ordem === "estoque") return b.estoqueLocal + b.estoqueFull - (a.estoqueLocal + a.estoqueFull) || porNome(a, b);
     if (ordem === "vendas") return b.vendas90d - a.vendas90d || porNome(a, b);
-    // relevancia
     if (a.ativo !== b.ativo) return a.ativo ? -1 : 1;
     if (b.vendas90d !== a.vendas90d) return b.vendas90d - a.vendas90d;
     const aTem = a.estoqueLocal + a.estoqueFull > 0;

@@ -662,11 +662,11 @@ describe("ingerirPedidoMercadoLivre", () => {
     expect(vendas[0].itens[0].produtoId).toBe("produto-1");
     expect(vendas[0].itens[0].custoUnitario).toBe(5000);
     expect(vendas[0].completo).toBe(true);
-    expect(vendas[0].valorLiquidoReceber).toBe(8200); // 10000 - 0 (desconto) - 1000 (tarifa) - 800 (frete)
+    expect(vendas[0].valorLiquidoReceber).toBe(8200);
   });
 
   it("valorLiquidoReceber fica null quando a tarifa ou o frete ainda são desconhecidos", async () => {
-    adaptadorFake.atual = { obterPedido: vi.fn(async () => normalizado()) }; // sem obterCustoEnvio: frete desconhecido
+    adaptadorFake.atual = { obterPedido: vi.fn(async () => normalizado()) };
 
     await ingerirPedidoMercadoLivre("conta-1", "1000001");
 
@@ -714,12 +714,12 @@ describe("ingerirPedidoMercadoLivre", () => {
     expect(vendas[0].itens[0].custoUnitario).toBe(5000);
 
     const produto1 = produtos.find((p) => p.id === "produto-1")!;
-    produto1.custoMedio = 9000; // custo do produto mudou depois da venda
+    produto1.custoMedio = 9000;
 
-    await ingerirPedidoMercadoLivre("conta-1", "1000001"); // reprocessamento (ex.: cron diário)
+    await ingerirPedidoMercadoLivre("conta-1", "1000001");
 
-    expect(vendas).toHaveLength(1); // upsert, não duplica
-    expect(vendas[0].itens[0].custoUnitario).toBe(5000); // preservado, não 9000
+    expect(vendas).toHaveLength(1);
+    expect(vendas[0].itens[0].custoUnitario).toBe(5000);
   });
 
   it("preenche o custo congelado quando ele estava nulo na primeira ingestão", async () => {
@@ -795,14 +795,14 @@ describe("ingerirPedidoMercadoLivre", () => {
 
     await ingerirPedidoMercadoLivre("conta-1", "A");
     const vendaA = vendas.find((v) => v.pedidoExternoId === "A")!;
-    expect(vendaA.freteVendedor).toBe(1000); // só pedido A conhecido até aqui, fica com o frete inteiro
+    expect(vendaA.freteVendedor).toBe(1000);
 
     await ingerirPedidoMercadoLivre("conta-1", "B");
     const vendaAAtualizada = vendas.find((v) => v.pedidoExternoId === "A")!;
     const vendaB = vendas.find((v) => v.pedidoExternoId === "B")!;
 
     expect(vendaAAtualizada.freteVendedor! + vendaB.freteVendedor!).toBe(1000);
-    expect(vendaB.freteVendedor!).toBeGreaterThan(vendaAAtualizada.freteVendedor!); // B faturou mais
+    expect(vendaB.freteVendedor!).toBeGreaterThan(vendaAAtualizada.freteVendedor!);
   });
 
   it("Ciclo 9 (uma fórmula, um lugar): pagamento do Mercado Pago sobrescreve tarifa/frete estimados e grava retenção, status de liberação e cobranças", async () => {
@@ -868,7 +868,7 @@ describe("ingerirPedidoMercadoLivre", () => {
 
     await ingerirPedidoMercadoLivre("conta-1", "1000001");
 
-    expect(vendas[0].freteVendedor).toBe(500); // 5% de 10000
+    expect(vendas[0].freteVendedor).toBe(500);
     expect(vendas[0].freteOrigem).toBe("PADRAO_LOGISTICA");
   });
 

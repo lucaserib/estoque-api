@@ -19,7 +19,6 @@ export interface EtapaOnboarding {
   progresso?: { feito: number; total: number };
   acao: AcaoEtapa;
   minutosEstimados: number;
-  /** Etapas que não têm como ser "feitas" de forma binária (ex.: instalar no celular) podem ser puladas. */
   pulavel: boolean;
 }
 

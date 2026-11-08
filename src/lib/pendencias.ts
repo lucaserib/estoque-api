@@ -26,11 +26,8 @@ export interface ProdutoParaPendencias {
   componentes: Array<{ produto: { custoMedio: number | null } }>;
   fornecedores: Array<{ principal: boolean; prazoEntregaDias: number | null }>;
   produtosMercadoLivre: ProdutoMLParaPendencias[];
-  /** Pré-computado pelo chamador (comparação com a última sincronização do Bling). */
   estoqueDivergente: boolean;
-  /** Pré-computado pelo chamador (módulo financeiro — venda sem custo, frete ou vínculo nos últimos 30 dias). */
   vendaIncompleta: boolean;
-  /** Produto vendido dentro de um kit que tem anúncio (ex.: "Kit com 2") — já está à venda. */
   vendidoEmKit?: boolean;
 }
 
@@ -56,9 +53,7 @@ export function calcularPendencias(
     });
   }
 
-  // Kit não é comprado: fornecedor, prazo e EAN são dos componentes.
   if (produto.isKit) {
-    // nada de fornecedor para cobrar
   } else if (produto.fornecedores.length === 0) {
     pendencias.push({
       codigo: "SEM_FORNECEDOR",

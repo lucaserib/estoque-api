@@ -10,7 +10,6 @@ export interface DadosCompraParcelada {
   categoriaId: string;
   contaFinanceiraId?: string | null;
   fornecedorId?: string | null;
-  /** A compra em si é reconhecida uma vez só, no mês da compra — só o caixa se espalha pelas parcelas. */
   competencia: Date;
   primeiroVencimento: Date;
   numeroDeParcelas: number;

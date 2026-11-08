@@ -23,7 +23,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
       toastOptions={{
         duration: TOAST_DURATION,
         classNames: {
-          // Fundo sólido (antes 10% de opacidade: o texto ficava por cima da página e o toast "sumia")
           toast:
             "group toast flex w-full items-start gap-3 rounded-xl border border-border border-l-4 bg-card p-4 text-foreground shadow-xl",
           title: "text-sm font-semibold text-foreground",
@@ -46,7 +45,6 @@ const Toaster = ({ ...props }: ToasterProps) => {
   );
 };
 
-// Tipos de opções customizadas para o toast
 type ToastOptions = {
   duration?: number;
   description?: string;

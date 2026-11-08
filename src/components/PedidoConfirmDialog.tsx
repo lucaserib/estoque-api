@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { formatBRL } from "@/utils/currency";
 
-// UI Components
 import {
   Dialog,
   DialogContent,
@@ -64,23 +63,19 @@ interface Produto {
     codigo: string;
     tipo: string;
   }[];
-  ean?: string | number; // Campo legado para compatibilidade
-  codigoEAN?: string; // Campo legado para compatibilidade
+  ean?: string | number;
+  codigoEAN?: string;
 }
 
-// Adicione o utilitário fora do componente principal para poder ser reutilizado
 const getCodigoEAN = (produto: Produto): string | undefined => {
-  // Se já tiver codigoEAN, retorna
   if (produto?.codigoEAN) {
     return produto.codigoEAN;
   }
 
-  // Se tiver ean como BigInt (ou string, após serialização), converte para string
   if (produto?.ean) {
     return produto.ean.toString();
   }
 
-  // Verifica codigosDeBarras
   if (produto.codigosDeBarras && Array.isArray(produto.codigosDeBarras)) {
     const codigoEAN = produto.codigosDeBarras.find(
       (codigo) => codigo.tipo === "EAN" || codigo.tipo === "GTIN"
@@ -88,7 +83,6 @@ const getCodigoEAN = (produto: Produto): string | undefined => {
     if (codigoEAN) return codigoEAN.codigo;
   }
 
-  // Senão, retorna undefined
   return undefined;
 };
 
@@ -211,7 +205,6 @@ export function PedidoConfirmDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Important fix: Ensure we focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();
@@ -241,7 +234,6 @@ export function PedidoConfirmDialog({
             </div>
           </DialogHeader>
 
-          {/* Abas de modo de conferência */}
           <div className="px-6 pb-4">
             <Tabs
               value={modoConferencia}
@@ -272,7 +264,6 @@ export function PedidoConfirmDialog({
 
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2 space-y-6">
-            {/* Mensagem informativa */}
             <div className="bg-info/10 rounded-lg border border-info/30 p-3 text-sm text-info">
               <div className="flex gap-2">
                 <AlertTriangle className="h-5 w-5 text-info flex-shrink-0" />
@@ -288,7 +279,6 @@ export function PedidoConfirmDialog({
               </div>
             </div>
 
-            {/* Erro */}
             {error && (
               <div className="bg-destructive/10 rounded-lg border border-destructive/30 p-3 text-sm text-destructive-text">
                 <div className="flex gap-2">
@@ -301,7 +291,6 @@ export function PedidoConfirmDialog({
               </div>
             )}
 
-            {/* Seleção de armazém e comentários */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="block text-sm font-medium text-foreground  items-center gap-1">
@@ -344,9 +333,7 @@ export function PedidoConfirmDialog({
               </div>
             </div>
 
-            {/* Conteúdo baseado no modo selecionado */}
             {modoConferencia === "manual" ? (
-              /* Tabela de produtos - Modo Manual */
               <div>
                 <div className="flex items-center justify-between mb-3 mt-6">
                   <h3 className="font-medium text-foreground flex items-center gap-2">
@@ -527,7 +514,6 @@ export function PedidoConfirmDialog({
                 </div>
               </div>
             ) : (
-              /* Modo de Código de Barras */
               <BarcodeScannerConferencia
                 produtos={produtos}
                 onQuantidadeAtualizada={handleQuantityChange}

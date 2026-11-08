@@ -37,7 +37,6 @@ describe("calcularResultadoVenda", () => {
   });
 
   it("venda com kit: custoUnitario já é a soma dos componentes resolvida pela ingestão", () => {
-    // kit = 2x componente A (custo 500) + 1x componente B (custo 300) = 1300
     const resultado = calcularResultadoVenda(
       { freteTotal: 0, adsAtribuido: 0 },
       [item({ produtoId: "kit-1", precoUnitario: 5000, tarifaTotal: 400, custoUnitario: 1300 })],
@@ -63,7 +62,7 @@ describe("calcularResultadoVenda", () => {
 
     const [freteA, freteB] = resultado.itens.map((i) => i.freteRateado as number);
     expect(freteA + freteB).toBe(1000);
-    expect(freteB).toBeGreaterThan(freteA); // item b faturou mais, logo carrega mais frete
+    expect(freteB).toBeGreaterThan(freteA);
     expect(resultado.freteVendedor).toBe(1000);
     expect(resultado.completo).toBe(true);
   });
@@ -90,7 +89,6 @@ describe("calcularResultadoVenda", () => {
   });
 
   it("devolução parcial: a quantidade líquida (mantida) já reflete o que não voltou", () => {
-    // pedido original tinha 3 unidades, 2 foram devolvidas: fica 1 unidade válida
     const resultado = calcularResultadoVenda(
       { freteTotal: 0, adsAtribuido: 0 },
       [item({ quantidade: 1, precoUnitario: 2000, tarifaTotal: 200, custoUnitario: 800 })],
@@ -277,8 +275,8 @@ describe("ratearCustoFixoPorProduto", () => {
     const rateio = ratearCustoFixoPorProduto(400, produtos, "UNIDADE");
 
     expect(rateio.a + rateio.b).toBe(400);
-    expect(rateio.a).toBe(40); // 1 de 10 unidades
-    expect(rateio.b).toBe(360); // 9 de 10 unidades
+    expect(rateio.a).toBe(40);
+    expect(rateio.b).toBe(360);
   });
 
   it("método NENHUM: não rateia, cada produto fica com zero", () => {

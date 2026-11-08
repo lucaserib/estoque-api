@@ -43,7 +43,7 @@ export default function AjudaCelularPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-2xl space-y-6 p-6">
+    <div className="mx-auto w-full max-w-2xl space-y-6">
       <PageHeader
         title="Instalar o Skubo no celular"
         subtitle="Abre em tela cheia, com ícone próprio — sem barra do navegador."

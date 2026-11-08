@@ -3,11 +3,6 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { podeVer } from "@/lib/permissoes";
 
-/**
- * GET /api/produtos/buscar-por-ean?ean=7891234567890
- * Busca um produto do usuário pelo código EAN.
- * Resposta: { produto: {...} | null }
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -21,7 +16,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // EAN é BigInt no banco; validar que o parâmetro é numérico
     let ean: bigint;
     try {
       ean = BigInt(eanParam.trim());

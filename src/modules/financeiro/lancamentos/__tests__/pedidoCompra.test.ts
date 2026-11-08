@@ -85,8 +85,8 @@ beforeEach(() => {
       fornecedorId: "fornecedor-1",
       dataConclusao: new Date("2026-05-10"),
       produtos: [
-        { custo: 1000, quantidade: 5, multiplicador: 2 }, // 1000*5*2=10000
-        { custo: 500, quantidade: 10, multiplicador: 1 }, // 500*10*1=5000
+        { custo: 1000, quantidade: 5, multiplicador: 2 },
+        { custo: 500, quantidade: 10, multiplicador: 1 },
       ],
     },
   ];
@@ -103,7 +103,7 @@ describe("gerarContaAPagarDePedidoCompra", () => {
     });
 
     expect(resultado.lancamentos).toHaveLength(1);
-    expect(resultado.lancamentos[0].valor).toBe(15000); // 10000 + 5000
+    expect(resultado.lancamentos[0].valor).toBe(15000);
   });
 
   it("rejeita pedido não confirmado ou de outra conta", async () => {

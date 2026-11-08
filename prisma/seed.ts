@@ -12,7 +12,6 @@ import { mapearCobranca } from "../src/modules/financeiro/canais/mercadoLivre/ma
 
 const prisma = new PrismaClient();
 
-// Categorias de produtos para dar mais organização aos dados
 const CATEGORIAS = [
   "Eletrônicos",
   "Escritório",
@@ -21,19 +20,17 @@ const CATEGORIAS = [
   "Papelaria",
 ];
 
-// Configurações
-const PRODUTOS_COUNT = 20; // Quantidade de produtos simples a criar
-const KITS_COUNT = 5; // Quantidade de kits a criar
-const FORNECEDORES_COUNT = 5; // Quantidade de fornecedores
-const ARMAZENS_COUNT = 2; // Quantidade de armazéns
-const PEDIDOS_COUNT = 8; // Quantidade de pedidos de compra
-const SAIDAS_COUNT = 10; // Quantidade de saídas
-const CONFIRMAR_PEDIDOS = 5; // Quantos pedidos devem ser confirmados
+const PRODUTOS_COUNT = 20;
+const KITS_COUNT = 5;
+const FORNECEDORES_COUNT = 5;
+const ARMAZENS_COUNT = 2;
+const PEDIDOS_COUNT = 8;
+const SAIDAS_COUNT = 10;
+const CONFIRMAR_PEDIDOS = 5;
 
 async function main() {
   console.log("🌱 Iniciando seed do banco de dados...");
 
-  // Criar ou encontrar usuário de teste
   const userEmail = "lfscaffa@gmail.com";
   const userName = "Usuário Teste";
   const userPassword = "teste123";
@@ -64,7 +61,6 @@ async function main() {
     return;
   }
 
-  // Criar fornecedores
   console.log("🏭 Criando fornecedores...");
   const fornecedores = [];
   for (let i = 1; i <= FORNECEDORES_COUNT; i++) {
@@ -82,7 +78,6 @@ async function main() {
     console.log(`  ✓ Criado fornecedor: ${fornecedor.nome}`);
   }
 
-  // Criar armazéns
   console.log("🏪 Criando armazéns...");
   const armazens = [];
   for (let i = 1; i <= ARMAZENS_COUNT; i++) {
@@ -96,12 +91,11 @@ async function main() {
     console.log(`  ✓ Criado armazém: ${armazem.nome}`);
   }
 
-  // Criar produtos simples
   console.log("📦 Criando produtos simples...");
   const produtos = [];
   for (let i = 1; i <= PRODUTOS_COUNT; i++) {
     const categoria = CATEGORIAS[Math.floor(Math.random() * CATEGORIAS.length)];
-    const custoMedio = Math.floor(Math.random() * 10000) + 500; // Valor em centavos entre 5 e 105
+    const custoMedio = Math.floor(Math.random() * 10000) + 500;
     const produto = await prisma.produto.create({
       data: {
         nome: `${categoria} - Produto ${i}`,
@@ -115,10 +109,9 @@ async function main() {
     produtos.push(produto);
     console.log(`  ✓ Criado produto: ${produto.nome} (SKU: ${produto.sku})`);
 
-    // Adicionar estoque para este produto em cada armazém
     for (const armazem of armazens) {
       const quantidade = Math.floor(Math.random() * 100) + 1;
-      const estoqueSeguranca = Math.floor(quantidade * 0.2); // 20% do estoque como segurança
+      const estoqueSeguranca = Math.floor(quantidade * 0.2);
 
       await prisma.estoque.create({
         data: {
@@ -130,17 +123,16 @@ async function main() {
       });
     }
 
-    // Criar relação produto-fornecedor para alguns fornecedores
-    const numFornecedores = Math.floor(Math.random() * 3) + 1; // 1 a 3 fornecedores por produto
+    const numFornecedores = Math.floor(Math.random() * 3) + 1;
     const fornecedoresSelecionados = shuffleArray([...fornecedores]).slice(
       0,
       numFornecedores
     );
 
     for (const fornecedor of fornecedoresSelecionados) {
-      const preco = Math.floor(custoMedio * (0.8 + Math.random() * 0.4)); // Variação de -20% a +20% do custo médio
+      const preco = Math.floor(custoMedio * (0.8 + Math.random() * 0.4));
       const multiplicador =
-        Math.random() < 0.3 ? Math.floor(Math.random() * 5) + 2 : 1; // 30% chance de ter multiplicador > 1
+        Math.random() < 0.3 ? Math.floor(Math.random() * 5) + 2 : 1;
 
       await prisma.produtoFornecedor.create({
         data: {
@@ -154,7 +146,6 @@ async function main() {
     }
   }
 
-  // Criar kits
   console.log("🎁 Criando kits...");
   const kits = [];
   for (let i = 1; i <= KITS_COUNT; i++) {
@@ -171,7 +162,6 @@ async function main() {
     kits.push(kit);
     console.log(`  ✓ Criado kit: ${kit.nome} (SKU: ${kit.sku})`);
 
-    // Adicionar componentes ao kit (2-4 produtos por kit)
     const numComponentes = Math.floor(Math.random() * 3) + 2;
     const componentesProdutos = shuffleArray([...produtos]).slice(
       0,
@@ -189,7 +179,6 @@ async function main() {
       });
     }
 
-    // Adicionar estoque para este kit em cada armazém
     for (const armazem of armazens) {
       const quantidade = Math.floor(Math.random() * 30) + 1;
       const estoqueSeguranca = Math.floor(quantidade * 0.2);
@@ -205,7 +194,6 @@ async function main() {
     }
   }
 
-  // Criar pedidos de compra
   console.log("📝 Criando pedidos de compra...");
   const pedidos = [];
   const todosProdutos = [...produtos, ...kits];
@@ -232,7 +220,6 @@ async function main() {
     pedidos.push(pedido);
     console.log(`  ✓ Criado pedido: #${pedido.id} (${pedido.status})`);
 
-    // Adicionar produtos ao pedido
     const numProdutosPedido = Math.floor(Math.random() * 5) + 1;
     const produtosPedido = shuffleArray([...todosProdutos]).slice(
       0,
@@ -241,7 +228,7 @@ async function main() {
 
     for (const produto of produtosPedido) {
       const quantidade = Math.floor(Math.random() * 10) + 1;
-      const custo = Math.floor(Math.random() * 10000) + 500; // 5 a 105 reais em centavos
+      const custo = Math.floor(Math.random() * 10000) + 500;
       const multiplicador =
         Math.random() < 0.2 ? Math.floor(Math.random() * 5) + 2 : 1;
 
@@ -255,9 +242,7 @@ async function main() {
         },
       });
 
-      // Se o pedido foi confirmado, atualizar o estoque
       if (i <= CONFIRMAR_PEDIDOS) {
-        // Verificar se já existe estoque
         const estoqueExistente = await prisma.estoque.findFirst({
           where: {
             produtoId: produto.id,
@@ -290,7 +275,6 @@ async function main() {
           });
         }
 
-        // Atualizar custo médio
         await prisma.produto.update({
           where: { id: produto.id },
           data: { custoMedio: custo },
@@ -299,7 +283,6 @@ async function main() {
     }
   }
 
-  // Criar registros de saída
   console.log("🚚 Criando registros de saída...");
   for (let i = 1; i <= SAIDAS_COUNT; i++) {
     const armazem = armazens[Math.floor(Math.random() * armazens.length)];
@@ -315,7 +298,6 @@ async function main() {
     });
     console.log(`  ✓ Criada saída: #${saida.id}`);
 
-    // Adicionar detalhes da saída (1-3 produtos)
     const numProdutosSaida = Math.floor(Math.random() * 3) + 1;
     const produtosSaida = shuffleArray([...todosProdutos]).slice(
       0,
@@ -325,7 +307,6 @@ async function main() {
     for (const produto of produtosSaida) {
       const isKit = produto.isKit;
 
-      // Verificar estoque disponível
       const estoque = await prisma.estoque.findFirst({
         where: {
           produtoId: produto.id,
@@ -335,13 +316,12 @@ async function main() {
       });
 
       if (estoque) {
-        const quantidadeDisponivel = Math.min(estoque.quantidade, 5); // No máximo 5 unidades
+        const quantidadeDisponivel = Math.min(estoque.quantidade, 5);
         const quantidadeSaida = Math.max(
           1,
           Math.floor(Math.random() * quantidadeDisponivel)
         );
 
-        // Registrar a saída
         await prisma.detalhesSaida.create({
           data: {
             saidaId: saida.id,
@@ -351,7 +331,6 @@ async function main() {
           },
         });
 
-        // Reduzir o estoque
         await prisma.estoque.update({
           where: {
             produtoId_armazemId: {
@@ -366,7 +345,6 @@ async function main() {
           },
         });
 
-        // Se for um kit, também reduzir o estoque dos componentes
         if (isKit) {
           const componentes = await prisma.componente.findMany({
             where: { kitId: produto.id },
@@ -402,7 +380,6 @@ async function main() {
     }
   }
 
-  // Atualizar alguns produtos para ter baixo estoque de segurança
   console.log(
     "⚠️ Configurando alguns produtos com estoque abaixo do limite de segurança..."
   );
@@ -444,8 +421,6 @@ async function seedE2E() {
     ? await prisma.user.update({ where: { email }, data: { password: hashed } })
     : await prisma.user.create({ data: { email, name: "E2E Skubo", password: hashed } });
 
-  // Conta "pronta pra testar", não "primeiro acesso": sem isso o tour em slides
-  // abre sozinho a cada login e corre contra as ações do teste (race condition).
   await prisma.onboardingProgresso.upsert({
     where: { userId: usuario.id },
     update: { tourVisto: true },
@@ -735,7 +710,6 @@ async function seedE2E() {
   console.log(`  ✓ ${produtosSimples.length} produtos, ${kits.length} kits, 60 vendas, cobranças de 2 meses`);
 }
 
-// Função auxiliar para embaralhar um array
 function shuffleArray<T>(array: T[]): T[] {
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
@@ -745,7 +719,6 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
-// Executar o seed
 main()
   .catch((e) => {
     console.error("❌ Erro durante o seed:", e);

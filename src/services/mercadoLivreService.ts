@@ -45,7 +45,6 @@ type MLLockedRefreshResult =
 export class MercadoLivreService {
   private static readonly BASE_URL = "https://api.mercadolibre.com";
 
-  // Domínios válidos para auth OAuth
   private static readonly AUTH_DOMAINS = [
     "auth.mercadolivre.com.br",
     "auth.mercadolibre.com.ar",
@@ -56,7 +55,6 @@ export class MercadoLivreService {
   private static readonly CLIENT_SECRET = process.env.ML_CLIENT_SECRET!;
   private static readonly REDIRECT_URI = process.env.ML_REDIRECT_URI!;
 
-  // Cache para code verifiers
   private static codeVerifierCache = new Map<
     string,
     { verifier: string; timestamp: number }
@@ -64,9 +62,6 @@ export class MercadoLivreService {
 
   private static tokenRefreshPromises = new Map<string, Promise<string>>();
 
-  /**
-   * Função auxiliar para tratar erros de resposta da API do ML
-   */
   private static async handleApiError(
     response: Response,
     context: string
@@ -81,7 +76,6 @@ export class MercadoLivreService {
           error.message || error.error || response.statusText
         }`;
       } else {
-        // Se não for JSON, tentar ler como texto para debug
         const textError = await response.text();
         console.error(
           `[DEBUG] Non-JSON error response from ${context}:`,
@@ -108,7 +102,6 @@ export class MercadoLivreService {
     return fetchMlWithBackoff(url, init, maxRetries);
   }
 
-  // Validar configurações
   static validateConfig(): void {
     if (!this.CLIENT_ID) {
       throw new Error("ML_CLIENT_ID não configurado no arquivo .env");
@@ -122,20 +115,10 @@ export class MercadoLivreService {
 
   }
 
-  /**
-   * Detecta o domínio de autorização correto baseado na configuração
-   */
   private static getAuthDomain(): string {
-    // Usar o domínio específico do Brasil para evitar redirecionamento para site em espanhol
-    return this.AUTH_DOMAINS[0]; // auth.mercadolivre.com.br
+    return this.AUTH_DOMAINS[0];
   }
 
-  /**
-   * Gera URL de autorização do ML com PKCE.
-   * Retorna também o code_verifier para que o caller possa persisti-lo
-   * fora do processo (ex.: cookie httpOnly) — em serverless, connect e
-   * callback podem cair em instâncias diferentes e o Map em memória se perde.
-   */
   static async getAuthURLWithVerifier(
     state?: string
   ): Promise<{ authUrl: string; codeVerifier: string }> {
@@ -144,9 +127,6 @@ export class MercadoLivreService {
     return { authUrl, codeVerifier };
   }
 
-  /**
-   * Gera URL de autorização do ML com PKCE
-   */
   static async getAuthURL(state?: string): Promise<string> {
     const codeVerifier = await this.generateCodeVerifier();
     return this.buildAuthURL(codeVerifier, state);
@@ -158,10 +138,8 @@ export class MercadoLivreService {
   ): Promise<string> {
     this.validateConfig();
 
-    // Gerar code_challenge para PKCE
     const codeChallenge = await this.generateCodeChallenge(codeVerifier);
 
-    // Salvar code_verifier associado ao state (userId)
     if (state) {
       this.codeVerifierCache.set(state, {
         verifier: codeVerifier,
@@ -169,7 +147,6 @@ export class MercadoLivreService {
       });
     }
 
-    // Limpar cache antigo (mais de 10 minutos)
     this.cleanupCodeVerifierCache();
 
     const authDomain = this.getAuthDomain();
@@ -183,22 +160,16 @@ export class MercadoLivreService {
       ...(state && { state }),
     });
 
-
     const authUrl = `https://${authDomain}/authorization?${params.toString()}`;
-
 
     return authUrl;
   }
 
-  /**
-   * Gera code_verifier para PKCE
-   */
   private static async generateCodeVerifier(): Promise<string> {
     const array = new Uint8Array(32);
     if (typeof crypto !== "undefined" && crypto.getRandomValues) {
       crypto.getRandomValues(array);
     } else {
-      // Fallback para Node.js
       const { randomBytes } = await import("crypto");
       const buffer = randomBytes(32);
       for (let i = 0; i < 32; i++) {
@@ -209,45 +180,32 @@ export class MercadoLivreService {
     return this.base64UrlEncode(array);
   }
 
-  /**
-   * Gera code_challenge a partir do code_verifier
-   */
   private static async generateCodeChallenge(
     verifier: string
   ): Promise<string> {
     if (typeof crypto !== "undefined" && crypto.subtle) {
-      // Browser
       const encoder = new TextEncoder();
       const data = encoder.encode(verifier);
       const hash = await crypto.subtle.digest("SHA-256", data);
       return this.base64UrlEncode(new Uint8Array(hash));
     } else {
-      // Node.js
       const { createHash } = await import("crypto");
       const hash = createHash("sha256").update(verifier).digest();
       return this.base64UrlEncode(hash);
     }
   }
 
-  /**
-   * Codifica em base64url
-   */
   private static base64UrlEncode(array: Uint8Array | Buffer): string {
     let base64;
     if (typeof Buffer !== "undefined") {
-      // Node.js
       base64 = Buffer.from(array).toString("base64");
     } else {
-      // Browser
       base64 = btoa(String.fromCharCode.apply(null, Array.from(array)));
     }
 
     return base64.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
   }
 
-  /**
-   * Troca código de autorização por tokens de acesso com PKCE
-   */
   static async exchangeCodeForToken(
     code: string,
     state?: string,
@@ -255,8 +213,6 @@ export class MercadoLivreService {
   ): Promise<MLAuthResponse> {
     try {
 
-      // Verifier persistido fora do processo (cookie) tem prioridade;
-      // fallback para o cache em memória (dev/local)
       let verifier: string | null = externalVerifier || null;
       if (!verifier && state) {
         verifier = this.getCodeVerifier(state);
@@ -271,7 +227,6 @@ export class MercadoLivreService {
         );
       }
 
-
       const body = new URLSearchParams({
         grant_type: "authorization_code",
         client_id: this.CLIENT_ID,
@@ -280,7 +235,6 @@ export class MercadoLivreService {
         redirect_uri: this.REDIRECT_URI,
         code_verifier: verifier,
       });
-
 
       const url = `${this.BASE_URL}/oauth/token`;
 
@@ -292,7 +246,6 @@ export class MercadoLivreService {
         },
         body: body.toString(),
       });
-
 
       const data = await response.json();
 
@@ -310,7 +263,6 @@ export class MercadoLivreService {
         );
       }
 
-
       return data as MLAuthResponse;
     } catch (error) {
       console.error(`[ML_TOKEN] Erro ao trocar código por token:`, error);
@@ -318,9 +270,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Renova token de acesso usando refresh token
-   */
   static async refreshAccessToken(
     refreshToken: string
   ): Promise<MLAuthResponse> {
@@ -352,9 +301,6 @@ export class MercadoLivreService {
     return response.json();
   }
 
-  /**
-   * Obtém informações do usuário autenticado
-   */
   static async getUserInfo(accessToken: string): Promise<MLUserInfo> {
     const response = await fetch(`${this.BASE_URL}/users/me`, {
       headers: {
@@ -375,22 +321,17 @@ export class MercadoLivreService {
     return response.json();
   }
 
-  /**
-   * Obtém produtos do usuário autenticado usando endpoint correto com USER_ID
-   */
   static async getUserItems(
     accessToken: string,
     filters: MLSearchFilters = {}
   ): Promise<MLItemsResponse> {
 
     try {
-      // Primeiro validar se o token ainda é válido
       const isValid = await this.validateToken(accessToken);
       if (!isValid) {
         throw new Error("Token de acesso inválido ou expirado");
       }
 
-      // Obter informações do usuário para conseguir o USER_ID
       const userInfo = await this.getUserInfo(accessToken);
 
       const params = new URLSearchParams({
@@ -401,7 +342,6 @@ export class MercadoLivreService {
       if (filters.status) params.append("status", filters.status);
       if (filters.category) params.append("category", filters.category);
 
-      // Usar o endpoint correto com USER_ID conforme documentação oficial
       const url = `${this.BASE_URL}/users/${
         userInfo.id
       }/items/search?${params.toString()}`;
@@ -426,9 +366,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Obtém detalhes de um produto específico usando multiget
-   */
   static async getItem(itemId: string, accessToken?: string): Promise<MLItem> {
     const headers: Record<string, string> = {
       Accept: "application/json",
@@ -438,7 +375,6 @@ export class MercadoLivreService {
       headers["Authorization"] = `Bearer ${accessToken}`;
     }
 
-    // Usar multiget para obter item específico conforme documentação
     const response = await this.fetchWithBackoff(`${this.BASE_URL}/items?ids=${itemId}`, {
       headers,
     });
@@ -452,7 +388,6 @@ export class MercadoLivreService {
 
     const data = await response.json();
 
-    // Multiget retorna array com estrutura [{ code: 200, body: {...} }]
     if (Array.isArray(data) && data.length > 0 && data[0].code === 200) {
       return data[0].body;
     }
@@ -460,13 +395,6 @@ export class MercadoLivreService {
     throw new Error(`Item ${itemId} não encontrado`);
   }
 
-  /**
-   * Busca tarifa de venda real (sites/{site}/listing_prices → sale_fee_amount)
-   * e custo de frete pago pelo vendedor (users/{seller}/shipping_options/free
-   * → coverage.all_country.list_cost) para um anúncio ativo. Nunca estima:
-   * se a chamada falhar, o campo correspondente fica `null` (pendência
-   * visível) em vez de inventar um percentual fixo.
-   */
   static async fetchCustosAnuncio(
     item: MLItem,
     accessToken: string,
@@ -549,11 +477,6 @@ export class MercadoLivreService {
     return { mlTarifaVenda, mlCustoFrete, mlLogisticType };
   }
 
-  /**
-   * Busca o custo de envio real pago pelo vendedor para um pedido
-   * (GET /shipments/{id}/costs → senders[0].cost). Retorna null se a
-   * chamada falhar ou o shipment não tiver custo de vendedor — nunca estima.
-   */
   static async getShipmentCost(
     shipmentId: string | number,
     accessToken: string
@@ -590,13 +513,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Busca o estoque Full (fulfillment) real de um anúncio via
-   * GET /inventories/{inventory_id}/stock/fulfillment. `indisponivel` soma
-   * todo `not_available_detail`; `emTransito` isola só o status "transfer"
-   * (o mais próximo de "em trânsito entre centros" documentado pela API —
-   * não há um campo dedicado). Retorna null se a chamada falhar.
-   */
   static async getFulfillmentStock(
     inventoryId: string,
     accessToken: string
@@ -644,14 +560,8 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Extrai o SKU real do produto ML (seller_sku ou seller_custom_field)
-   * Prioridade: 1) SELLER_SKU de variações, 2) seller_custom_field de variações,
-   * 3) SELLER_SKU do item, 4) seller_custom_field do item
-   */
   static extractRealSku(item: MLItem): string | null {
     try {
-      // 1. Verificar SELLER_SKU nas variações primeiro
       if (item.variations && item.variations.length > 0) {
         for (const variation of item.variations) {
           if (variation.attributes) {
@@ -663,14 +573,12 @@ export class MercadoLivreService {
             }
           }
 
-          // 2. seller_custom_field nas variações
           if (variation.seller_custom_field) {
             return variation.seller_custom_field;
           }
         }
       }
 
-      // 3. SELLER_SKU nos atributos do item principal
       if (item.attributes) {
         const sellerSkuAttr = item.attributes.find(
           (attr) => attr.id === "SELLER_SKU"
@@ -680,7 +588,6 @@ export class MercadoLivreService {
         }
       }
 
-      // 4. seller_custom_field do item principal
       if (item.seller_custom_field) {
         return item.seller_custom_field;
       }
@@ -692,9 +599,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Atualiza a quantidade em estoque de um produto no Mercado Livre
-   */
   static async updateItemStock(
     itemId: string,
     quantity: number,
@@ -735,9 +639,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Busca produtos do usuário por SKU usando seller_sku
-   */
   static async searchItemsBySku(
     userId: string,
     sku: string,
@@ -768,9 +669,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Busca produtos do usuário por seller_custom_field
-   */
   static async searchItemsByCustomField(
     userId: string,
     sku: string,
@@ -801,12 +699,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Processa um evento de webhook do ML já gravado em MercadoLivreWebhook
-   * (dedup por mlNotificationId acontece na criação do registro, na rota).
-   * Nunca lança: falha fica registrada em `error` e `processed` permanece
-   * `false`, elegível para reprocessamento futuro.
-   */
   static async processWebhookEvent(webhookId: string): Promise<void> {
     const evento = await prisma.mercadoLivreWebhook.findUniqueOrThrow({
       where: { id: webhookId },
@@ -882,9 +774,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Processa webhooks de itens (produtos)
-   */
   static async processItemWebhook(
     accountId: string,
     resource: string
@@ -911,9 +800,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Obtém detalhes de múltiplos produtos usando multiget
-   */
   static async getMultipleItems(
     itemIds: string[],
     accessToken?: string
@@ -922,14 +808,12 @@ export class MercadoLivreService {
       return [];
     }
 
-    // Filtrar e validar IDs
     const validIds = itemIds.filter((id) => {
       if (!id || typeof id !== "string") {
         console.warn(`[DEBUG] Invalid item ID filtered out:`, id);
         return false;
       }
 
-      // Verificar se o ID parece válido (formato MLB seguido de números)
       const isValid = /^ML[A-Z]\d+$/.test(id);
       if (!isValid) {
         console.warn(`[DEBUG] Item ID with invalid format filtered out:`, id);
@@ -944,7 +828,6 @@ export class MercadoLivreService {
       return [];
     }
 
-
     const headers: Record<string, string> = {
       Accept: "application/json",
     };
@@ -955,7 +838,6 @@ export class MercadoLivreService {
 
     const allItems: MLItem[] = [];
 
-    // Dividir em chunks de 20 itens (limite da API)
     const chunks: string[][] = [];
     for (let i = 0; i < validIds.length; i += 20) {
       chunks.push(validIds.slice(i, i + 20));
@@ -968,14 +850,12 @@ export class MercadoLivreService {
         { headers }
       );
 
-
       if (!response.ok) {
         await this.handleApiError(response, "Erro ao obter produtos ML");
       }
 
       const data = await response.json();
 
-      // Filtrar apenas items com sucesso
       const validItems = data
         .filter((item: { code: number; body: MLItem }) => item.code === 200)
         .map((item: { body: MLItem }) => item.body);
@@ -986,9 +866,6 @@ export class MercadoLivreService {
     return allItems;
   }
 
-  /**
-   * Busca itens por seller_id usando endpoint público
-   */
   static async getItemsBySeller(
     sellerId: string,
     siteId: string = "MLB",
@@ -1029,9 +906,6 @@ export class MercadoLivreService {
     return response.json();
   }
 
-  /**
-   * Busca itens por SKU do vendedor
-   */
   static async getItemsBySKU(
     sku: string,
     accessToken: string,
@@ -1067,9 +941,6 @@ export class MercadoLivreService {
     return response.json();
   }
 
-  /**
-   * Atualiza um produto no ML
-   */
   static async updateItem(
     itemId: string,
     updates: MLItemUpdate,
@@ -1095,9 +966,6 @@ export class MercadoLivreService {
     return response.json();
   }
 
-  /**
-   * Busca categorias do ML
-   */
   static async getCategories(siteId: string = "MLB"): Promise<MLCategory[]> {
     const response = await fetch(
       `${this.BASE_URL}/sites/${siteId}/categories`,
@@ -1118,9 +986,6 @@ export class MercadoLivreService {
     return response.json();
   }
 
-  /**
-   * Obtém detalhes de uma categoria específica
-   */
   static async getCategory(categoryId: string): Promise<MLCategory> {
     const response = await fetch(`${this.BASE_URL}/categories/${categoryId}`, {
       headers: {
@@ -1138,9 +1003,6 @@ export class MercadoLivreService {
     return response.json();
   }
 
-  /**
-   * Obtém pedidos do usuário
-   */
   static async getUserOrders(
     accessToken: string,
     filters: {
@@ -1232,9 +1094,6 @@ export class MercadoLivreService {
     );
   }
 
-  /**
-   * Obtém detalhes de um pedido específico
-   */
   static async getOrder(
     orderId: string,
     accessToken: string
@@ -1256,9 +1115,6 @@ export class MercadoLivreService {
     return response.json();
   }
 
-  /**
-   * Verifica se um token ainda é válido
-   */
   static async validateToken(accessToken: string): Promise<boolean> {
     try {
       await this.getUserInfo(accessToken);
@@ -1268,12 +1124,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Obtém ou renova token válido para uma conta.
-   * Trava distribuída (pg_advisory_xact_lock) evita corrida entre instâncias
-   * serverless diferentes; Map em memória evita chamadas duplicadas dentro
-   * da mesma instância (mesmo padrão do BlingService, Ciclo 6 Fase 1).
-   */
   static async getValidToken(accountId: string): Promise<string> {
     const account = await prisma.mercadoLivreAccount.findUniqueOrThrow({
       where: { id: accountId },
@@ -1384,9 +1234,6 @@ export class MercadoLivreService {
     return result.accessToken;
   }
 
-  /**
-   * Salva conta do ML no banco
-   */
   static async saveAccount(
     userId: string,
     authResponse: MLAuthResponse,
@@ -1407,7 +1254,6 @@ export class MercadoLivreService {
         isActive: true,
       };
 
-
       const account = await prisma.mercadoLivreAccount.upsert({
         where: {
           userId_mlUserId: {
@@ -1426,7 +1272,6 @@ export class MercadoLivreService {
         create: accountData,
       });
 
-
       return account;
     } catch (error) {
       console.error(`[ML_SAVE] Erro ao salvar conta:`, error);
@@ -1434,9 +1279,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Lista contas do ML de um usuário
-   */
   static async getUserAccounts(userId: string): Promise<MercadoLivreAccount[]> {
     return prisma.mercadoLivreAccount.findMany({
       where: {
@@ -1447,9 +1289,6 @@ export class MercadoLivreService {
     });
   }
 
-  /**
-   * Remove conexão com conta do ML
-   */
   static async disconnectAccount(
     accountId: string,
     userId: string
@@ -1465,9 +1304,6 @@ export class MercadoLivreService {
     });
   }
 
-  /**
-   * Cria histórico de sincronização
-   */
   static async createSyncHistory(
     accountId: string,
     syncType: string = "full"
@@ -1488,9 +1324,6 @@ export class MercadoLivreService {
     });
   }
 
-  /**
-   * Atualiza histórico de sincronização
-   */
   static async updateSyncHistory(
     historyId: string,
     data: Partial<{
@@ -1516,9 +1349,6 @@ export class MercadoLivreService {
     });
   }
 
-  /**
-   * Busca histórico de sincronizações
-   */
   static async getSyncHistory(
     accountId: string,
     limit: number = 10
@@ -1530,9 +1360,6 @@ export class MercadoLivreService {
     });
   }
 
-  /**
-   * Processa webhook de pedido - ✅ MELHORADO para vendas em tempo real
-   */
   private static async processOrderWebhook(
     accountId: string,
     resource: string
@@ -1544,20 +1371,15 @@ export class MercadoLivreService {
       const accessToken = await this.getValidToken(accountId);
       const order = await this.getOrder(orderId, accessToken);
 
-
-      // ✅ NOVO: Invalidar cache de vendas quando houver novos pedidos
       if (
         ["paid", "delivered", "ready_to_ship", "shipped"].includes(order.status)
       ) {
 
-        // ✅ MELHORADO: Usar sistema de cache inteligente
         const { mlCache } = await import("@/lib/cache");
         await mlCache.invalidatePattern(`ml:${accountId}:sales`);
 
-        // ✅ NOVO: Atualizar quantidade vendida e disparar notificações
         for (const item of order.order_items) {
           try {
-            // Atualizar produto ML
             const updated = await prisma.produtoMercadoLivre.updateMany({
               where: {
                 mlItemId: item.item.id,
@@ -1571,7 +1393,6 @@ export class MercadoLivreService {
               },
             });
 
-            // ✅ NOVO: Verificar se produto precisa de restock
             if (updated.count > 0) {
               await this.checkAndNotifyLowStock(
                 accountId,
@@ -1588,7 +1409,6 @@ export class MercadoLivreService {
           }
         }
 
-        // ✅ NOVO: Disparar evento de nova venda
         await this.triggerSaleEvent(accountId, order);
       }
 
@@ -1601,11 +1421,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Ingestão financeira do pedido (Ciclo 7). Erro aqui nunca derruba o
-   * webhook de estoque/notificações acima — tem sua própria trilha de
-   * retomada via SincronizacaoFinanceira/reprocessamento diário.
-   */
   private static async processOrderWebhookFinanceiro(
     accountId: string,
     resource: string
@@ -1626,16 +1441,12 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * ✅ NOVO: Verifica estoque baixo e dispara notificações
-   */
   private static async checkAndNotifyLowStock(
     accountId: string,
     mlItemId: string,
     quantitySold: number
   ): Promise<void> {
     try {
-      // Buscar produto com estoque atual
       const produto = await prisma.produtoMercadoLivre.findFirst({
         where: {
           mlItemId,
@@ -1656,21 +1467,18 @@ export class MercadoLivreService {
 
       if (!produto || !produto.produto) return;
 
-      // Calcular estoque total local
       const estoqueTotal =
         produto.produto?.estoques?.reduce(
           (total, estoque) => total + estoque.quantidade,
           0
         ) || 0;
 
-      // Verificar se estoque está baixo (menos de 5 unidades ou 20% do estoque de segurança)
       const estoqueSeguranca =
         produto.produto?.estoques?.[0]?.estoqueSeguranca || 10;
       const limiteAlerta = Math.max(5, Math.round(estoqueSeguranca * 0.2));
 
       if (estoqueTotal <= limiteAlerta) {
 
-        // ✅ NOVO: Criar alerta de estoque baixo
         await this.createStockAlert(
           accountId,
           produto,
@@ -1679,7 +1487,6 @@ export class MercadoLivreService {
         );
       }
 
-      // ✅ NOVO: Se estoque ML for maior que local, sincronizar
       if (produto.mlAvailableQuantity > estoqueTotal + 2) {
 
         const accessToken = await this.getValidToken(accountId);
@@ -1690,9 +1497,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * ✅ NOVO: Cria alerta de estoque baixo
-   */
   private static async createStockAlert(
     accountId: string,
     produto: { mlItemId: string; mlTitle: string; produto?: { sku?: string } | null },
@@ -1700,7 +1504,6 @@ export class MercadoLivreService {
     quantidadeVendida: number
   ): Promise<void> {
     try {
-      // Por enquanto, apenas log. Pode ser expandido para notificações por email/SMS
       const alert = {
         accountId,
         mlItemId: produto.mlItemId,
@@ -1717,17 +1520,11 @@ export class MercadoLivreService {
         timestamp: new Date().toISOString(),
       };
 
-
-      // ✅ TODO: Implementar sistema de notificações (email, webhook, etc.)
-      // await this.sendStockNotification(alert);
     } catch (error) {
       console.error(`[STOCK_ALERT] Erro ao criar alerta:`, error);
     }
   }
 
-  /**
-   * ✅ NOVO: Dispara evento de nova venda para métricas
-   */
   private static async triggerSaleEvent(
     accountId: string,
     order: {
@@ -1759,9 +1556,6 @@ export class MercadoLivreService {
         })),
       };
 
-
-      // ✅ TODO: Expandir para analytics em tempo real
-      // await this.updateRealTimeMetrics(saleEvent);
     } catch (error) {
       console.error(`[SALE_EVENT] Erro ao processar evento de venda:`, error);
     }
@@ -1868,16 +1662,12 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * ✅ NOVO: Processa webhook de pagamento
-   */
   private static async processPaymentWebhook(
     accountId: string,
     resource: string
   ): Promise<void> {
     try {
 
-      // Invalidar cache quando há mudanças de pagamento
       const { mlCache } = await import("@/lib/cache");
       await mlCache.delete(`orders:${accountId}:recent`);
       await mlCache.delete(`metrics:${accountId}:dashboard`);
@@ -1904,9 +1694,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Obtém estatísticas de vendas do usuário
-   */
   static async getSalesStats(
     accessToken: string,
     filters: {
@@ -1948,7 +1735,6 @@ export class MercadoLivreService {
     const totalRevenue = orders.reduce((sum: number, order) => {
       return sum + (order.total_amount || 0);
     }, 0);
-    // ✅ CORREÇÃO: Ticket médio já está correto aqui (valor total ÷ número de pedidos)
     const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
 
     return {
@@ -1959,9 +1745,6 @@ export class MercadoLivreService {
     };
   }
 
-  /**
-   * Obtém informações financeiras detalhadas do vendedor
-   */
   static async getSellerFinancialInfo(
     accessToken: string,
     sellerId: string
@@ -1978,9 +1761,6 @@ export class MercadoLivreService {
     );
   }
 
-  /**
-   * Obtém métricas detalhadas do vendedor
-   */
   static async getSellerMetrics(accessToken: string): Promise<{
     totalListings: number;
     activeListings: number;
@@ -1995,27 +1775,22 @@ export class MercadoLivreService {
   }> {
     try {
 
-      // Obter informações do usuário
       const userInfo = await this.getUserInfo(accessToken);
 
-      // Obter listagens ativas
       const activeItems = await this.getUserItems(accessToken, {
         status: "active",
         limit: 1,
       });
 
-      // Obter listagens pausadas
       const pausedItems = await this.getUserItems(accessToken, {
         status: "paused",
         limit: 1,
       });
 
-      // Obter total de listagens
       const allItems = await this.getUserItems(accessToken, {
         limit: 1,
       });
 
-      // Extrair dados de reputação
       const reputation = userInfo.seller_reputation || {};
       const transactions = reputation.transactions || {};
 
@@ -2023,8 +1798,8 @@ export class MercadoLivreService {
         totalListings: allItems.paging?.total || 0,
         activeListings: activeItems.paging?.total || 0,
         pausedListings: pausedItems.paging?.total || 0,
-        totalViews: 0, // Requer API específica não disponível publicamente
-        totalQuestions: 0, // Requer API específica não disponível publicamente
+        totalViews: 0,
+        totalQuestions: 0,
         reputationLevel: reputation.level_id || "novo_usuario",
         reputationScore: reputation.transactions?.ratings?.positive || 0,
         powerSellerStatus: reputation.power_seller_status,
@@ -2048,9 +1823,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Obtém informações detalhadas de estoque com produtos específicos
-   */
   static async getStockInfo(accessToken: string): Promise<{
     totalProducts: number;
     totalStock: number;
@@ -2075,7 +1847,6 @@ export class MercadoLivreService {
   }> {
     try {
 
-      // Obter todos os produtos ativos do usuário
       const items = await this.getUserItems(accessToken, {
         status: "active",
         limit: 50,
@@ -2091,7 +1862,6 @@ export class MercadoLivreService {
         };
       }
 
-      // Obter detalhes dos produtos em lotes
       const itemDetails = await this.getMultipleItems(
         items.results,
         accessToken
@@ -2148,9 +1918,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Obtém informações detalhadas de envio e logística
-   */
   static async getShippingInfo(accessToken: string): Promise<{
     mercadoEnviosEnabled: boolean;
     freeShippingEnabled: boolean;
@@ -2166,7 +1933,6 @@ export class MercadoLivreService {
   }> {
     try {
 
-      // Obter uma amostra de produtos para verificar configurações de envio
       const items = await this.getUserItems(accessToken, {
         status: "active",
         limit: 20,
@@ -2183,7 +1949,6 @@ export class MercadoLivreService {
         };
       }
 
-      // Obter detalhes dos produtos
       const itemDetails = await this.getMultipleItems(
         items.results.slice(0, 10),
         accessToken
@@ -2206,9 +1971,8 @@ export class MercadoLivreService {
           freeShippingCount++;
         }
 
-        // Estimar custo de envio baseado no preço do produto
         if (item.price && !item.shipping?.free_shipping) {
-          const estimatedShipping = item.price * 0.1; // 10% do preço como estimativa
+          const estimatedShipping = item.price * 0.1;
           totalShippingCost += estimatedShipping;
           itemsWithShippingCost++;
         }
@@ -2253,9 +2017,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Obtém informações de vendas e performance
-   */
   static async getSalesPerformance(
     accessToken: string,
     sellerId: string,
@@ -2277,7 +2038,6 @@ export class MercadoLivreService {
   }> {
     try {
 
-      // Definir período padrão se não fornecido
       if (!dateFrom) {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -2288,12 +2048,11 @@ export class MercadoLivreService {
         dateTo = new Date().toISOString().split("T")[0];
       }
 
-      // ✅ CORREÇÃO: Obter pedidos pagos COM seller ID obrigatório
       const paidOrders = await this.getUserOrders(accessToken, {
         seller: sellerId,
         status: "paid",
         limit: 50,
-        sort: "date_desc", // Mais recentes primeiro
+        sort: "date_desc",
       });
 
       const orders = paidOrders.results || [];
@@ -2303,7 +2062,6 @@ export class MercadoLivreService {
       }, 0);
       const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-      // Obter produtos para calcular conversion rate
       const activeItems = await this.getUserItems(accessToken, {
         status: "active",
         limit: 50,
@@ -2314,7 +2072,6 @@ export class MercadoLivreService {
         accessToken
       );
 
-      // Calcular produtos mais vendidos
       const topSellingProducts = itemDetails
         .filter((item) => item.sold_quantity > 0)
         .sort((a, b) => b.sold_quantity - a.sold_quantity)
@@ -2326,15 +2083,13 @@ export class MercadoLivreService {
           revenue: item.price * item.sold_quantity,
         }));
 
-      // Calcular taxa de conversão aproximada
       const totalViews = itemDetails.reduce(
         (sum, item) => sum + (item.sold_quantity || 0) * 10,
         0
-      ); // Estimativa: 10 views por venda
+      );
       const conversionRate =
         totalViews > 0 ? (totalSales / totalViews) * 100 : 0;
 
-      // Determinar tendência de vendas
       const salesTrend = totalSales > averageTicket ? "crescendo" : "estável";
 
       return {
@@ -2360,9 +2115,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Sincroniza produtos locais com produtos do ML usando SKU com validação de token
-   */
   static async syncProductsBySKU(
     accessToken: string,
     accountId: string
@@ -2380,7 +2132,6 @@ export class MercadoLivreService {
   }> {
 
     try {
-      // Verificar se o token é válido antes de continuar
       const isValid = await this.validateToken(accessToken);
       if (!isValid) {
         throw new Error(
@@ -2388,18 +2139,14 @@ export class MercadoLivreService {
         );
       }
 
-      // Obter token válido (renovado se necessário)
       const validToken = await this.getValidToken(accountId);
 
-      // Obter todos os produtos do ML do usuário usando o método corrigido
       const allMLItems: string[] = [];
       let offset = 0;
       const limit = 50;
       let hasMore = true;
 
-      // Buscar todos os produtos paginando
       while (hasMore && offset < 1000) {
-        // Limite de segurança
 
         const itemsResponse = await this.getUserItems(validToken, {
           offset,
@@ -2411,7 +2158,6 @@ export class MercadoLivreService {
           allMLItems.push(...itemsResponse.results);
           offset += limit;
 
-          // Verificar se há mais páginas
           const total = itemsResponse.paging?.total || 0;
           hasMore = offset < total;
 
@@ -2419,7 +2165,6 @@ export class MercadoLivreService {
           hasMore = false;
         }
       }
-
 
       if (allMLItems.length === 0) {
         return {
@@ -2430,7 +2175,6 @@ export class MercadoLivreService {
         };
       }
 
-      // Obter detalhes completos dos items em lotes de 20 (limite da API)
       const itemDetails: MLItem[] = [];
       for (let i = 0; i < allMLItems.length; i += 20) {
         const batch = allMLItems.slice(i, i + 20);
@@ -2443,12 +2187,9 @@ export class MercadoLivreService {
             `[ERROR] Failed to process batch ${i}-${i + 20}:`,
             batchError
           );
-          // Continuar com os próximos lotes mesmo se um falhar
         }
       }
 
-
-      // Processar cada item para sincronização por SKU
       const results: Array<{
         mlItemId: string;
         localProductId?: string;
@@ -2461,11 +2202,9 @@ export class MercadoLivreService {
       let unmatched = 0;
 
       for (const mlItem of itemDetails) {
-        // Procurar SKU no seller_custom_field ou nos atributos
         let sku = mlItem.seller_custom_field;
 
         if (!sku) {
-          // Procurar nos atributos SELLER_SKU
           const skuAttribute = mlItem.attributes?.find(
             (attr) => attr.id === "SELLER_SKU"
           );
@@ -2473,7 +2212,6 @@ export class MercadoLivreService {
         }
 
         if (sku) {
-          // Tentar encontrar produto local por SKU
           const localProduct = await this.findLocalProductBySKU(sku);
 
           if (localProduct) {
@@ -2505,7 +2243,6 @@ export class MercadoLivreService {
         }
       }
 
-
       return {
         matched,
         unmatched,
@@ -2518,9 +2255,6 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Busca produto local por SKU
-   */
   private static async findLocalProductBySKU(
     sku: string
   ): Promise<{ id: string } | null> {
@@ -2536,12 +2270,9 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Limpa code_verifiers antigos do cache
-   */
   private static cleanupCodeVerifierCache(): void {
     const now = Date.now();
-    const maxAge = 10 * 60 * 1000; // 10 minutos
+    const maxAge = 10 * 60 * 1000;
 
     for (const [key, value] of this.codeVerifierCache.entries()) {
       if (now - value.timestamp > maxAge) {
@@ -2550,22 +2281,15 @@ export class MercadoLivreService {
     }
   }
 
-  /**
-   * Busca code_verifier do cache
-   */
   private static getCodeVerifier(state: string): string | null {
     const cached = this.codeVerifierCache.get(state);
     if (cached) {
-      // Remover do cache após uso
       this.codeVerifierCache.delete(state);
       return cached.verifier;
     }
     return null;
   }
 
-  /**
-   * Sincroniza estoque entre ML e sistema local
-   */
   static async syncStock(
     accessToken: string,
     accountId: string,
@@ -2585,10 +2309,8 @@ export class MercadoLivreService {
     try {
       for (const mapping of mappings) {
         try {
-          // Buscar dados do ML
           const mlItem = await this.getItem(mapping.mlItemId, accessToken);
 
-          // Buscar dados locais
           const localProduct = await prisma.produto.findUnique({
             where: { id: mapping.localProductId },
             include: {
@@ -2605,18 +2327,15 @@ export class MercadoLivreService {
             continue;
           }
 
-          // Calcular estoque total local
           const totalLocalStock = localProduct.estoques.reduce(
             (total, estoque) => total + estoque.quantidade,
             0
           );
 
-          // Sincronizar baseado na direção
           if (
             mapping.syncDirection === "local_to_ml" ||
             mapping.syncDirection === "bidirectional"
           ) {
-            // Atualizar estoque no ML
             try {
               await this.updateItem(
                 mapping.mlItemId,
@@ -2638,12 +2357,10 @@ export class MercadoLivreService {
             mapping.syncDirection === "ml_to_local" ||
             mapping.syncDirection === "bidirectional"
           ) {
-            // Atualizar estoque local (apenas se houver diferença significativa)
             const difference = Math.abs(
               mlItem.available_quantity - totalLocalStock
             );
             if (difference > 0) {
-              // Implementar lógica de atualização do estoque local se necessário
             }
           }
 

@@ -1,5 +1,3 @@
-// src/app/api/produtos/mercadolivre/route.ts
-
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
@@ -17,7 +15,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se o produto pertence ao usuário
     const produto = await prisma.produto.findFirst({
       where: {
         id: produtoId,
@@ -32,7 +29,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar produtos ML vinculados
     const produtosMl = await prisma.produtoMercadoLivre.findMany({
       where: {
         produtoId,

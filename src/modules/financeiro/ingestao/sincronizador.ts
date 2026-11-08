@@ -343,13 +343,6 @@ interface SobrescritasRecalculo {
   forcarPersistencia?: boolean;
 }
 
-/**
- * Recarrega uma VendaCanal já persistida, aplica a mesma regra de "zerar
- * quantidade se cancelada/devolvida" e recalcula a margem com frete e/ou ads
- * atualizados — usado quando um dado que chega depois (frete de um pacote
- * cujo irmão só agora apareceu, ads do dia) muda um número que já tinha sido
- * gravado. Idempotente: não re-escreve nada se o valor não mudou.
- */
 export async function recalcularEPersistirMargem(
   vendaId: string,
   sobrescritas: SobrescritasRecalculo
@@ -492,10 +485,6 @@ async function prepararItens(
         i.anuncioExternoId === item.anuncioExternoId &&
         i.variacaoExternaId === item.variacaoExternaId
     );
-    // O custo fica congelado na venda (custo médio muda depois, a venda não),
-    // mas só enquanto o item continuar apontando para o MESMO produto: se o
-    // anúncio foi revinculado (ex.: virou "kit com 2 unidades"), o custo
-    // antigo era de outro produto e precisa ser refeito.
     const custoCongelado =
       itemExistente && itemExistente.produtoId === produtoId ? itemExistente.custoUnitario : null;
     const infoProduto = produtoId ? await resolverCustoAtualDoProduto(produtoId) : null;
@@ -602,19 +591,6 @@ export interface OpcoesPersistencia {
   vendaExistente?: VendaExistenteComItens | null;
 }
 
-/**
- * Grava (cria ou atualiza) uma venda a partir do pedido normalizado.
- *
- * RAPIDO: usa só o que o próprio pedido traz (/orders/search) — nenhuma
- * chamada extra à API. Faturamento, status, unidades e tarifa (sale_fee)
- * ficam corretos na hora; frete e liberação reaproveitam o que já estava
- * confirmado ou caem nas regras configuradas. A venda fica com
- * `enriquecidoEm = null` e entra na fila de detalhamento.
- *
- * COMPLETO: busca o pagamento no Mercado Pago (tarifa real, frete real,
- * retenções, líquido e data de liberação) e a logística do envio, e marca a
- * venda como detalhada.
- */
 export async function persistirVendaNormalizada(
   contaCanal: ContaCanal,
   adaptador: AdaptadorCanalFinanceiro,
@@ -829,11 +805,6 @@ async function persistirCobrancasPagamento(
   }
 }
 
-/**
- * Os relatórios calculam tudo direto das vendas (relatorios/motor.ts) — não
- * há mais snapshot diário para manter. Mantida só para invalidar o cache
- * curto dos relatórios depois de uma escrita.
- */
 export async function atualizarResumoDoDia(
   userId: string,
   _canal?: CanalVenda,
@@ -901,15 +872,6 @@ export async function reprocessarErrosPendentes(accountId: string): Promise<{ pr
   return { processados };
 }
 
-
-
-/**
- * Refaz o vínculo e o custo de todas as vendas já gravadas de um anúncio
- * depois que o usuário troca o produto dele (ou define que o anúncio vende
- * N unidades). Usa só o que já está no banco — nenhuma chamada ao canal.
- * Tarifa, frete, ads e desconto ficam como estavam; mudam produto, custo,
- * CMV, margem e as pendências de vínculo/custo.
- */
 export async function revincularVendasDoAnuncio(params: {
   userId: string;
   contaCanalId: string;
@@ -945,7 +907,6 @@ export async function revincularVendasDoAnuncio(params: {
         ? {
             ...item,
             produtoId,
-            // Mesmo produto com custo já gravado: mantém o custo histórico.
             custoUnitario:
               item.produtoId === produtoId && item.custoUnitario != null ? item.custoUnitario : custoNovo,
           }
@@ -999,4 +960,118 @@ export async function revincularVendasDoAnuncio(params: {
 
   await invalidarCacheFinanceiro(userId);
   return vendas.length;
+}
+
+export interface ResultadoPreenchimentoCusto {
+  vendasAtualizadas: number;
+  itensPreenchidos: number;
+  restantes: boolean;
+}
+
+async function produtosAfetadosPeloCusto(userId: string, produtoIds: string[]): Promise<string[]> {
+  const kits = await prisma.componente.findMany({
+    where: { produtoId: { in: produtoIds }, kit: { userId } },
+    select: { kitId: true },
+  });
+  return [...new Set([...produtoIds, ...kits.map((k) => k.kitId)])];
+}
+
+export async function preencherCustoDasVendasSemCusto(params: {
+  userId: string;
+  produtoIds?: string[];
+  limite?: number;
+}): Promise<ResultadoPreenchimentoCusto> {
+  const { userId } = params;
+  const limite = params.limite ?? 300;
+  const produtos = params.produtoIds?.length ? await produtosAfetadosPeloCusto(userId, params.produtoIds) : null;
+
+  const vendas = await prisma.vendaCanal.findMany({
+    where: {
+      userId,
+      itens: { some: { custoUnitario: null, produtoId: produtos ? { in: produtos } : { not: null } } },
+    },
+    include: { itens: true },
+    orderBy: { dataVenda: "desc" },
+    take: limite + 1,
+  });
+  const restantes = vendas.length > limite;
+  if (vendas.length === 0) return { vendasAtualizadas: 0, itensPreenchidos: 0, restantes: false };
+
+  const config = await obterConfigIngestao(userId);
+  const custos = new Map<string, number | null>();
+  const custoDe = async (produtoId: string) => {
+    if (!custos.has(produtoId)) custos.set(produtoId, (await resolverCustoAtualDoProduto(produtoId)).custoUnitario);
+    return custos.get(produtoId) ?? null;
+  };
+  const PENDENCIAS_CALCULADAS = new Set(["SEM_CUSTO", "SEM_TARIFA", "SEM_FRETE", PENDENCIA_SEM_VINCULO]);
+
+  let vendasAtualizadas = 0;
+  let itensPreenchidos = 0;
+  for (const venda of vendas.slice(0, limite)) {
+    const itens = await Promise.all(
+      venda.itens.map(async (item) =>
+        item.custoUnitario == null && item.produtoId ? { ...item, custoUnitario: await custoDe(item.produtoId) } : item
+      )
+    );
+    const preenchidos = itens.filter((item, i) => venda.itens[i].custoUnitario == null && item.custoUnitario != null);
+    if (preenchidos.length === 0) continue;
+
+    const zerar = statusZeraQuantidade(venda.status);
+    const resultado = calcularResultadoVenda(
+      { freteTotal: venda.freteVendedor, adsAtribuido: venda.adsAtribuido },
+      itens.map((item) => ({
+        produtoId: item.produtoId,
+        quantidade: zerar ? 0 : item.quantidade,
+        precoUnitario: item.precoUnitario,
+        tarifaTotal: item.tarifaVenda,
+        descontoVendedorTotal: item.descontoRateado,
+        custoUnitario: item.custoUnitario,
+      })),
+      { aliquotaImposto: config.aliquotaImposto }
+    );
+    const semVinculo = itens.some((item) => item.produtoId === null);
+
+    await prisma.$transaction(async (tx) => {
+      for (let i = 0; i < itens.length; i++) {
+        if (venda.itens[i].custoUnitario != null || itens[i].custoUnitario == null) continue;
+        await tx.vendaCanalItem.update({
+          where: { id: itens[i].id },
+          data: { custoUnitario: itens[i].custoUnitario, margemContribuicao: resultado.itens[i].margemContribuicao },
+        });
+      }
+      await tx.vendaCanal.update({
+        where: { id: venda.id },
+        data: {
+          cmv: resultado.cmv,
+          margemContribuicao: resultado.margemContribuicao,
+          completo: resultado.completo && !semVinculo,
+          faltando: [
+            ...new Set([
+              ...venda.faltando.filter((f) => !PENDENCIAS_CALCULADAS.has(f)),
+              ...resultado.faltando,
+              ...(semVinculo ? [PENDENCIA_SEM_VINCULO] : []),
+            ]),
+          ],
+        },
+      });
+    });
+    vendasAtualizadas++;
+    itensPreenchidos += preenchidos.length;
+  }
+
+  if (vendasAtualizadas > 0) await invalidarCacheFinanceiro(userId);
+  return { vendasAtualizadas, itensPreenchidos, restantes };
+}
+
+export async function atualizarCustoDasVendasAposMudanca(userId: string, produtoIds?: string[]) {
+  try {
+    return await preencherCustoDasVendasSemCusto({ userId, produtoIds });
+  } catch (error) {
+    console.error("[CUSTO_RETROATIVO] Falha ao preencher o custo das vendas", {
+      conta: userId,
+      produtos: produtoIds?.length ?? "todos",
+      erro: error instanceof Error ? error.name : "desconhecido",
+    });
+    return null;
+  }
 }

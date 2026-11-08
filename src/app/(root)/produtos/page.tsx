@@ -130,7 +130,7 @@ function ProdutosPageContent() {
   };
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-4 sm:p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6 p-4 sm:p-6">
       <FloatingActionButton label="Novo produto" onClick={() => setCadastroManual(true)} />
       <PageHeader
         title="Produtos"
@@ -162,12 +162,6 @@ function ProdutosPageContent() {
                   <Link href="/produtos/importar-estoque" className="gap-2">
                     <FileSpreadsheet className="h-4 w-4" />
                     Importar estoque (planilha)
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/produtos/importar" className="gap-2">
-                    <Download className="h-4 w-4" />
-                    Importar produtos e custos
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>

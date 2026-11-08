@@ -12,6 +12,7 @@ import { ProductImage } from "@/components/ui/product-image";
 import { Store, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
+import { BotaoExplicarIa } from "@/components/ia/BotaoExplicarIa";
 import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
 import type {
   CategoriaProblemaAnuncio,
@@ -81,7 +82,7 @@ export default function MercadoLivrePage() {
 
   if (status === "loading" || temConta === null) {
     return (
-      <div className="container mx-auto max-w-[1100px] space-y-6 p-6">
+      <div className="mx-auto w-full max-w-[1100px] space-y-6">
         <PageHeader title="Saúde dos anúncios" subtitle="Mercado Livre" />
         <Skeleton className="h-40 rounded-xl" />
         <Skeleton className="h-40 rounded-xl" />
@@ -91,7 +92,7 @@ export default function MercadoLivrePage() {
 
   if (!temConta) {
     return (
-      <div className="container mx-auto max-w-[1100px] p-6">
+      <div className="mx-auto w-full max-w-[1100px]">
         <PageHeader title="Saúde dos anúncios" subtitle="Mercado Livre" />
         <Card>
           <CardContent className="p-10 text-center">
@@ -115,7 +116,7 @@ export default function MercadoLivrePage() {
   const semProblemas = dados && dados.grupos.length === 0;
 
   return (
-    <div className="container mx-auto max-w-[1100px] space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1100px] space-y-6">
       <PageHeader
         title="Saúde dos anúncios"
         subtitle={
@@ -123,7 +124,18 @@ export default function MercadoLivrePage() {
             ? `${dados.totalAtivos} anúncio${dados.totalAtivos === 1 ? "" : "s"} ativo${dados.totalAtivos === 1 ? "" : "s"}`
             : "Mercado Livre"
         }
-        actions={<SincronizacaoCatalogo onConcluido={carregarSaude} compacto />}
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {dados && dados.grupos.length > 0 && (
+              <BotaoExplicarIa
+                pedido={{ tipo: "anuncios" }}
+                rotulo="Plano de ação"
+                perguntaAssistente="Quais anúncios estão perdendo venda e o que eu faço primeiro?"
+              />
+            )}
+            <SincronizacaoCatalogo onConcluido={carregarSaude} compacto />
+          </div>
+        }
       />
 
       {carregando && !dados ? (

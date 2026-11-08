@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -41,12 +40,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-
     try {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
       const startTime = Date.now();
 
-      // ✅ SINCRONIZAÇÃO INCREMENTAL INTELIGENTE
       const result = await performIncrementalSync(
         accessToken,
         accountId,
@@ -56,7 +53,6 @@ export async function POST(request: NextRequest) {
       );
 
       const timeElapsed = Date.now() - startTime;
-
 
       return NextResponse.json({
         success: true,
@@ -88,9 +84,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * ✅ SINCRONIZAÇÃO INCREMENTAL INTELIGENTE
- */
 async function performIncrementalSync(
   accessToken: string,
   accountId: string,
@@ -107,7 +100,6 @@ async function performIncrementalSync(
     syncStrategies: [] as string[],
   };
 
-  // ✅ ESTRATÉGIA 1: Sincronizar apenas produtos modificados recentemente
   if (syncType === "auto" || syncType === "modified") {
 
     const modifiedResult = await syncModifiedProducts(
@@ -124,7 +116,6 @@ async function performIncrementalSync(
     result.syncStrategies.push("modified_products");
   }
 
-  // ✅ ESTRATÉGIA 2: Sincronizar produtos com estoque crítico
   if (syncType === "auto" || syncType === "critical") {
 
     const criticalResult = await syncCriticalStockProducts(
@@ -139,7 +130,6 @@ async function performIncrementalSync(
     result.syncStrategies.push("critical_stock");
   }
 
-  // ✅ ESTRATÉGIA 3: Sincronizar produtos com erro de sincronização
   if (syncType === "auto" || syncType === "errors") {
 
     const errorResult = await syncErrorProducts(
@@ -154,7 +144,6 @@ async function performIncrementalSync(
     result.syncStrategies.push("error_recovery");
   }
 
-  // ✅ ESTRATÉGIA 4: Sincronizar produtos mais vendidos (prioridade)
   if (syncType === "auto" || syncType === "bestsellers") {
 
     const bestSellersResult = await syncBestSellingProducts(
@@ -173,9 +162,6 @@ async function performIncrementalSync(
   return result;
 }
 
-/**
- * ✅ SINCRONIZAR PRODUTOS MODIFICADOS RECENTEMENTE
- */
 async function syncModifiedProducts(
   accessToken: string,
   accountId: string,
@@ -185,10 +171,8 @@ async function syncModifiedProducts(
   const result = { processed: 0, updated: 0, created: 0, errors: [] as string[] };
 
   try {
-    // Buscar produtos no ML que foram modificados nas últimas 2 horas
     const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
 
-    // Usar API de search com filtro de data
     const searchUrl = `https://api.mercadolibre.com/users/${accountId}/items/search`;
     const searchResponse = await fetch(
       `${searchUrl}?offset=0&limit=${maxItems}&sort=last_updated_desc`,
@@ -206,15 +190,12 @@ async function syncModifiedProducts(
     const searchData = await searchResponse.json();
     const itemIds = searchData.results || [];
 
-
-    // Processar em lotes pequenos
     const BATCH_SIZE = 5;
     for (let i = 0; i < itemIds.length && i < maxItems; i += BATCH_SIZE) {
       const batch = itemIds.slice(i, i + BATCH_SIZE);
 
       const batchPromises = batch.map(async (itemId: string) => {
         try {
-          // Verificar se produto já existe localmente
           const localProduct = await prisma.produtoMercadoLivre.findFirst({
             where: {
               mlItemId: itemId,
@@ -222,11 +203,9 @@ async function syncModifiedProducts(
             },
           });
 
-          // Buscar dados atuais do ML
           const item = await MercadoLivreService.getItem(itemId, accessToken);
           const lastUpdated = new Date(item.last_updated);
 
-          // Se produto não existe localmente OU foi modificado recentemente
           if (!localProduct || (localProduct.mlLastUpdated && lastUpdated > localProduct.mlLastUpdated)) {
             await updateProductFromML(item, accountId, userId);
 
@@ -247,7 +226,6 @@ async function syncModifiedProducts(
 
       await Promise.allSettled(batchPromises);
 
-      // Pequena pausa entre lotes
       if (i + BATCH_SIZE < itemIds.length) {
         await new Promise(resolve => setTimeout(resolve, 200));
       }
@@ -261,9 +239,6 @@ async function syncModifiedProducts(
   return result;
 }
 
-/**
- * ✅ SINCRONIZAR PRODUTOS COM ESTOQUE CRÍTICO
- */
 async function syncCriticalStockProducts(
   accessToken: string,
   accountId: string,
@@ -272,7 +247,6 @@ async function syncCriticalStockProducts(
   const result = { processed: 0, updated: 0, errors: [] as string[] };
 
   try {
-    // Buscar produtos locais com estoque crítico (≤ 5 unidades)
     const criticalProducts = await prisma.produtoMercadoLivre.findMany({
       where: {
         mercadoLivreAccountId: accountId,
@@ -281,19 +255,16 @@ async function syncCriticalStockProducts(
           lte: 5,
         },
       },
-      take: 20, // Máximo 20 produtos críticos por vez
+      take: 20,
       orderBy: {
-        mlAvailableQuantity: "asc", // Mais críticos primeiro
+        mlAvailableQuantity: "asc",
       },
     });
 
-
     for (const produto of criticalProducts) {
       try {
-        // Buscar dados atuais do estoque no ML
         const item = await MercadoLivreService.getItem(produto.mlItemId, accessToken);
 
-        // Atualizar apenas se houve mudança no estoque
         if (item.available_quantity !== produto.mlAvailableQuantity) {
           await updateProductFromML(item, accountId, userId);
           result.updated++;
@@ -316,9 +287,6 @@ async function syncCriticalStockProducts(
   return result;
 }
 
-/**
- * ✅ SINCRONIZAR PRODUTOS COM ERRO
- */
 async function syncErrorProducts(
   accessToken: string,
   accountId: string,
@@ -327,22 +295,19 @@ async function syncErrorProducts(
   const result = { processed: 0, updated: 0, errors: [] as string[] };
 
   try {
-    // Buscar produtos com erro de sincronização
     const errorProducts = await prisma.produtoMercadoLivre.findMany({
       where: {
         mercadoLivreAccountId: accountId,
         syncStatus: "error",
       },
-      take: 10, // Máximo 10 produtos com erro por vez
+      take: 10,
       orderBy: {
-        lastSyncAt: "asc", // Mais antigos primeiro
+        lastSyncAt: "asc",
       },
     });
 
-
     for (const produto of errorProducts) {
       try {
-        // Tentar sincronizar novamente
         const item = await MercadoLivreService.getItem(produto.mlItemId, accessToken);
         await updateProductFromML(item, accountId, userId);
 
@@ -350,7 +315,6 @@ async function syncErrorProducts(
 
         result.processed++;
       } catch (itemError) {
-        // Manter como erro, mas não contar como erro desta operação se for o mesmo erro
         console.warn(`[INCREMENTAL_SYNC] Produto ${produto.mlItemId} ainda com erro:`, itemError);
         result.processed++;
       }
@@ -364,9 +328,6 @@ async function syncErrorProducts(
   return result;
 }
 
-/**
- * ✅ SINCRONIZAR PRODUTOS MAIS VENDIDOS
- */
 async function syncBestSellingProducts(
   accessToken: string,
   accountId: string,
@@ -376,7 +337,6 @@ async function syncBestSellingProducts(
   const result = { processed: 0, updated: 0, errors: [] as string[] };
 
   try {
-    // Buscar produtos ordenados por vendas
     const bestSellers = await prisma.produtoMercadoLivre.findMany({
       where: {
         mercadoLivreAccountId: accountId,
@@ -390,7 +350,6 @@ async function syncBestSellingProducts(
         mlSoldQuantity: "desc",
       },
     });
-
 
     for (const produto of bestSellers) {
       try {
@@ -416,12 +375,8 @@ async function syncBestSellingProducts(
   return result;
 }
 
-/**
- * ✅ HELPER: Atualizar produto a partir dos dados do ML
- */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- item bruto da API do ML
 async function updateProductFromML(item: any, accountId: string, userId: string) {
-  // Processar preços
   const currentPrice = Math.round(item.price * 100);
   const originalPrice = item.original_price ? Math.round(item.original_price * 100) : null;
   const basePrice = item.base_price ? Math.round(item.base_price * 100) : null;
@@ -453,7 +408,6 @@ async function updateProductFromML(item: any, accountId: string, userId: string)
     syncError: null,
   };
 
-  // Verificar se já existe
   const existingProduct = await prisma.produtoMercadoLivre.findFirst({
     where: {
       mlItemId: item.id,
@@ -467,7 +421,6 @@ async function updateProductFromML(item: any, accountId: string, userId: string)
       data: productData,
     });
   } else {
-    // Tentar encontrar produto local por SKU
     const sku = MercadoLivreService.extractRealSku(item);
     let localProductId = null;
 

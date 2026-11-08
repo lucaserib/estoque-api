@@ -8,12 +8,6 @@ import { Loader2 } from "lucide-react";
 
 const DESTINO_APOS_CONECTAR = "/mercado-livre/configuracoes";
 
-/**
- * Landing de retorno do OAuth do Mercado Livre — mantém a URL registrada em
- * ML_REDIRECT_URI (env.example, docs/BLING_API.md). A gestão de contas em si
- * vive em /mercado-livre/configuracoes; esta página só termina a troca do
- * código por token e manda o usuário pra lá.
- */
 export default function MercadoLivreCallbackPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -48,7 +42,6 @@ export default function MercadoLivreCallbackPage() {
             toast.success(`Conta ${dados.account.nickname} conectada com sucesso!`);
           }
         } catch {
-          // ignora payload inválido
         } finally {
           localStorage.removeItem("mlAuthSuccess");
         }
@@ -66,7 +59,6 @@ export default function MercadoLivreCallbackPage() {
             toast.error(`Erro ao conectar conta: ${dados.error}`);
           }
         } catch {
-          // ignora payload inválido
         } finally {
           localStorage.removeItem("mlAuthError");
         }
@@ -132,7 +124,6 @@ export default function MercadoLivreCallbackPage() {
       return;
     }
 
-    // Visita direta, sem nenhum parâmetro de callback (link antigo/favorito).
     router.replace(DESTINO_APOS_CONECTAR);
   }, [isNgrokUrl, getLocalhostUrl, router]);
 

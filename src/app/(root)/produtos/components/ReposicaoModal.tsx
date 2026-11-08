@@ -98,15 +98,13 @@ export function ReposicaoModal({
     null
   );
 
-  // Fetch config and suggestion only when modal opens
-  // Use separate effect to avoid double calls
   useEffect(() => {
     if (isOpen && produto?.id) {
       buscarConfiguracao();
       calcularSugestao();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]); // Only depend on isOpen, not produto.id (produto doesn't change while modal is open)
+  }, [isOpen]);
 
   const buscarConfiguracao = async () => {
     try {
@@ -163,7 +161,7 @@ export function ReposicaoModal({
 
       if (response.ok) {
         toast.success("Configuração de reposição salva!");
-        await calcularSugestao(); // Recalcular com novos parâmetros
+        await calcularSugestao();
       } else {
         throw new Error("Erro ao salvar configuração");
       }
@@ -220,13 +218,11 @@ export function ReposicaoModal({
         </div>
 
         <div className="space-y-6 p-6">
-          {/* Configuração */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm text-foreground">
               Parâmetros de Reposição
             </h3>
 
-            {/* Período de Análise - Destacado */}
             <div className="bg-primary/10 p-4 rounded-lg border-2 border-primary/30">
               <Label
                 htmlFor="analysisPeriodDays"
@@ -348,7 +344,6 @@ export function ReposicaoModal({
             </div>
           </div>
 
-          {/* Análise */}
           {calculando ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -358,7 +353,6 @@ export function ReposicaoModal({
             </div>
           ) : sugestao ? (
             <div className="space-y-5">
-              {/* Header com Status Geral */}
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-sm text-foreground">
                   Análise Inteligente
@@ -366,7 +360,6 @@ export function ReposicaoModal({
                 {getStatusBadge(sugestao.statusGeral)}
               </div>
 
-              {/* Visão Geral dos Estoques */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 <div className="bg-background p-3 rounded-lg border border-border">
                   <p className="text-xs text-muted-foreground mb-1">
@@ -406,7 +399,6 @@ export function ReposicaoModal({
                 </div>
               </div>
 
-              {/* Métricas de Vendas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="bg-background p-4 rounded-lg border border-border">
                   <p className="text-sm font-medium text-muted-foreground mb-2">
@@ -432,7 +424,6 @@ export function ReposicaoModal({
                 </div>
               </div>
 
-              {/* Reposição Full (se aplicável) */}
               {sugestao.reposicaoFull && (
                 <div className="border-2 border-info/30 rounded-lg overflow-hidden">
                   <div className="bg-info p-3">
@@ -531,7 +522,6 @@ export function ReposicaoModal({
                 </div>
               )}
 
-              {/* Reposição Local */}
               <div className="border-2 border-warning/30 rounded-lg overflow-hidden">
                 <div className="bg-warning p-3">
                   <div className="flex items-center justify-between">
@@ -581,7 +571,6 @@ export function ReposicaoModal({
                           <p className="text-sm font-medium text-foreground mb-1">
                             {sugestao.reposicaoLocal.mensagem}
                           </p>
-                          {/* Detalhamento da distribuição da compra */}
                           {(sugestao.reposicaoLocal.quantidadeParaFull > 0 ||
                             sugestao.reposicaoLocal.quantidadeParaLocal >
                               0) && (
@@ -629,7 +618,6 @@ export function ReposicaoModal({
                 </div>
               </div>
 
-              {/* Ações Prioritárias Recomendadas */}
               {sugestao.acoesPrioritarias &&
                 Array.isArray(sugestao.acoesPrioritarias) &&
                 sugestao.acoesPrioritarias.length > 0 && (

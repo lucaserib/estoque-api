@@ -1,4 +1,3 @@
-// app/fornecedores/components/FornecedorList.tsx
 "use client";
 import { FaTrash } from "react-icons/fa";
 import { Fornecedor } from "../types";

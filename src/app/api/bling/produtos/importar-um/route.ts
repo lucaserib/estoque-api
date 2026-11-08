@@ -10,12 +10,6 @@ import { sincronizarEstoqueUnico, sincronizarProdutoUnico } from "@/services/bli
 
 const corpoSchema = z.object({ blingIds: z.array(z.number().int().positive()).min(1).max(20) });
 
-/**
- * POST /api/bling/produtos/importar-um — importa (ou atualiza) produtos
- * escolhidos na busca do Bling: nome, SKU, EAN, preço, custo, fornecedor
- * padrão, foto, composição (kit) e saldo por depósito. Mesma rotina da
- * sincronização e do webhook (`sincronizarProdutoUnico`).
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -41,7 +35,6 @@ export async function POST(request: NextRequest) {
         await sincronizarEstoqueUnico(conta.id, user.contaId, blingId);
         resultados.push({ blingId, produtoId, criado });
       } catch (erro) {
-        // Conexão caída ou limite do Bling: não adianta seguir para os próximos.
         if (erro instanceof BlingReconnectError || erro instanceof BlingRateLimitError) throw erro;
         resultados.push({ blingId, erro: erro instanceof Error ? erro.message : "Erro ao importar" });
       }

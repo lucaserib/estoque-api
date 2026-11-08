@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
 
-/** Torna o app instalável ("Adicionar à tela de início") no celular e no computador. */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Skubo",

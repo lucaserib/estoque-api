@@ -15,9 +15,9 @@ import {
   DataTableHeader,
   DataTableRow,
 } from "@/components/ui/data-table";
-import { Loader2, RefreshCw, Settings, Unplug } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, Settings, Unplug } from "lucide-react";
 import { toast } from "sonner";
-import { pollBlingSyncHistory } from "@/lib/pollBlingSyncHistory";
+import { SincronizacaoCatalogoModal } from "@/components/sincronizacao/SincronizacaoCatalogoModal";
 
 interface MLAccount {
   id: string;
@@ -72,8 +72,8 @@ const MENSAGENS_ERRO_BLING: Record<string, string> = {
   acesso_negado: "A autorização foi cancelada na tela do Bling.",
   bling_recusou: "O Bling recusou a autorização. Confira se o aplicativo está ativo no portal de desenvolvedores do Bling.",
   parametros_ausentes: "O Bling voltou sem o código de autorização. Tente conectar novamente.",
-  sessao_invalida: "Sua sessão não chegou no retorno do Bling. Entre no Skubo pelo mesmo endereço do link de redirecionamento cadastrado no Bling e tente de novo.",
-  state_expirado: "A tentativa de conexão expirou (mais de 10 minutos) ou foi iniciada em outro navegador/domínio. Clique em Conectar novamente.",
+  sessao_invalida: "Não encontramos o usuário que iniciou a conexão. Entre de novo no Skubo e clique em Conectar.",
+  state_expirado: "A tentativa de conexão expirou (mais de 15 minutos). Clique em Conectar novamente.",
   state_invalido: "A tentativa de conexão não confere com a sua sessão. Clique em Conectar novamente.",
   credenciais_invalidas: "O Bling recusou o Client ID/Client Secret configurados no servidor. Confira BLING_CLIENT_ID e BLING_CLIENT_SECRET na Vercel.",
   codigo_invalido: "O código de autorização do Bling expirou ou já foi usado. Clique em Conectar novamente.",
@@ -96,8 +96,8 @@ export default function IntegracoesPage() {
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingML, setSyncingML] = useState(false);
-  const [syncingBlingProdutos, setSyncingBlingProdutos] = useState(false);
-  const [syncingBlingEstoque, setSyncingBlingEstoque] = useState(false);
+  const [sincronizacaoAberta, setSincronizacaoAberta] = useState(false);
+  const [escoposFaltando, setEscoposFaltando] = useState<string[]>([]);
   const [regravandoImagens, setRegravandoImagens] = useState(false);
   const [reprocessandoWebhooks, setReprocessandoWebhooks] = useState(false);
   const [conectandoBling, setConectandoBling] = useState(false);
@@ -118,6 +118,7 @@ export default function IntegracoesPage() {
     const resultado = params.get("bling");
     const erro = params.get("bling_erro");
     const aviso = params.get("bling_aviso");
+    const escopos = params.get("bling_escopos");
     if (!resultado && !erro) return;
 
     if (erro) {
@@ -126,11 +127,18 @@ export default function IntegracoesPage() {
       toast.error(mensagem);
       carregarDiagnosticoBling();
     } else if (resultado === "conectado") {
-      toast.success(
-        aviso === "empresa_nao_identificada"
-          ? "Bling conectado. Não foi possível identificar a empresa agora; os webhooks passam a funcionar depois da próxima renovação automática."
-          : "Bling conectado com sucesso."
-      );
+      const faltando = escopos ? escopos.split("|").filter(Boolean) : [];
+      setEscoposFaltando(faltando);
+      if (faltando.length > 0) {
+        toast.warning("Bling conectado, mas faltam permissões. Veja o passo a passo no cartão do Bling.");
+      } else {
+        toast.success(
+          aviso === "empresa_nao_identificada"
+            ? "Bling conectado. Não foi possível identificar a empresa agora; os webhooks passam a funcionar depois da próxima renovação automática."
+            : "Bling conectado. Trazendo produtos e estoque agora."
+        );
+        setSincronizacaoAberta(true);
+      }
     }
 
     window.history.replaceState(null, "", window.location.pathname);
@@ -185,52 +193,6 @@ export default function IntegracoesPage() {
       toast.error("Erro ao sincronizar com o Mercado Livre");
     } finally {
       setSyncingML(false);
-    }
-  };
-
-  const handleSyncBlingProdutos = async () => {
-    if (!blingAccount) return;
-    setSyncingBlingProdutos(true);
-    try {
-      const response = await fetch("/api/bling/produtos/importar", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ accountId: blingAccount.id }),
-      });
-      if (!response.ok) throw new Error("Erro na sincronização");
-      const { syncHistoryId } = await response.json();
-      const resultado = await pollBlingSyncHistory(syncHistoryId);
-
-      if (resultado.status === "error") {
-        throw new Error(resultado.errors?.[0] || "Erro na sincronização");
-      }
-
-      toast.success(
-        `Produtos sincronizados! ${resultado.newItems} criados, ${resultado.updatedItems} atualizados`
-      );
-      loadData();
-    } catch (error) {
-      toast.error("Erro ao sincronizar produtos do Bling");
-    } finally {
-      setSyncingBlingProdutos(false);
-    }
-  };
-
-  const handleSyncBlingEstoque = async () => {
-    if (!blingAccount) return;
-    setSyncingBlingEstoque(true);
-    try {
-      const response = await fetch("/api/produtos/estoque-bling", { method: "POST" });
-      if (!response.ok) throw new Error("Erro na sincronização");
-      const data = await response.json();
-      toast.success(
-        `Estoque sincronizado! ${data.stats.atualizados} divergência(s) corrigida(s)`
-      );
-      loadData();
-    } catch (error) {
-      toast.error("Erro ao sincronizar estoque do Bling");
-    } finally {
-      setSyncingBlingEstoque(false);
     }
   };
 
@@ -325,7 +287,7 @@ export default function IntegracoesPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto max-w-[1400px] p-6">
+      <div className="mx-auto w-full max-w-[1400px]">
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -344,12 +306,42 @@ export default function IntegracoesPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-8">
       <PageHeader
         eyebrow="Sistema"
         title="Integrações"
         subtitle="Conexões ativas, validade dos tokens e histórico das últimas sincronizações."
       />
+
+      <SincronizacaoCatalogoModal
+        open={sincronizacaoAberta}
+        onOpenChange={setSincronizacaoAberta}
+        onConcluido={loadData}
+      />
+
+      {escoposFaltando.length > 0 && (
+        <div className="rounded-card border border-warning/40 bg-warning/10 p-5">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-warning-text" />
+            <div className="space-y-2 text-sm">
+              <p className="font-semibold text-foreground">O Bling conectou, mas não deu todas as permissões.</p>
+              <p className="text-fg2">
+                Faltam: <strong>{escoposFaltando.join(", ")}</strong>. Sem isso o Skubo não consegue ler seus produtos e
+                o estoque.
+              </p>
+              <ol className="list-decimal space-y-1 pl-5 text-fg2">
+                <li>No Bling, abra Central de extensões → Área do integrador → app Skubo → Escopos.</li>
+                <li>Marque as permissões acima e salve.</li>
+                <li>Volte aqui e clique em Reconectar no cartão do Bling.</li>
+              </ol>
+              <Button size="sm" onClick={handleConectarBling} disabled={conectandoBling} className="mt-1 gap-2">
+                {conectandoBling ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                Reconectar Bling
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <SectionCard
         title="URLs de notificação"
@@ -374,7 +366,6 @@ export default function IntegracoesPage() {
       </SectionCard>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-        {/* Mercado Livre */}
         <SectionCard
           contentClassName="p-0"
           className="overflow-hidden"
@@ -465,7 +456,6 @@ export default function IntegracoesPage() {
           </div>
         </SectionCard>
 
-        {/* Bling */}
         <SectionCard
           contentClassName="p-0"
           className="overflow-hidden"
@@ -564,32 +554,9 @@ export default function IntegracoesPage() {
               <>
                 {blingAccount.isActive ? (
                   <>
-                    <Button
-                      size="sm"
-                      onClick={handleSyncBlingProdutos}
-                      disabled={syncingBlingProdutos}
-                      className="gap-2"
-                    >
-                      {syncingBlingProdutos ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
-                      Sincronizar produtos
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleSyncBlingEstoque}
-                      disabled={syncingBlingEstoque}
-                      className="gap-2"
-                    >
-                      {syncingBlingEstoque ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-4 w-4" />
-                      )}
-                      Sincronizar estoque
+                    <Button size="sm" onClick={() => setSincronizacaoAberta(true)} className="gap-2">
+                      <RefreshCw className="h-4 w-4" />
+                      Sincronizar produtos e estoque
                     </Button>
                     <Button
                       size="sm"

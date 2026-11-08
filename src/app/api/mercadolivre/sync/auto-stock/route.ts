@@ -22,7 +22,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -41,21 +40,18 @@ export async function POST(request: NextRequest) {
     try {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
 
-      // Buscar produtos vinculados que precisam de sincronização
       const whereClause: Record<string, unknown> = {
         mercadoLivreAccountId: accountId,
-        produtoId: { not: { equals: null } }, // Apenas produtos vinculados
-        mlStatus: "active", // Apenas produtos ativos no ML
-        mlAutoStockPausado: false, // Respeita a pausa manual de envio automático
+        produtoId: { not: { equals: null } },
+        mlStatus: "active",
+        mlAutoStockPausado: false,
       };
 
       if (!syncAll) {
-        // Se não for sync completo, sincronizar apenas produtos com diferenças de estoque
-        // ou que foram vendidos recentemente
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         (whereClause as Record<string, unknown>).OR = [
-          { lastSyncAt: { lt: oneHourAgo } }, // Não sincronizado há mais de 1 hora
-          { syncStatus: "pending" }, // Marcados para sincronização
+          { lastSyncAt: { lt: oneHourAgo } },
+          { syncStatus: "pending" },
         ];
       }
 
@@ -85,7 +81,6 @@ export async function POST(request: NextRequest) {
         },
       });
 
-
       let syncedItems = 0;
       let updatedItems = 0;
       const errors: string[] = [];
@@ -94,14 +89,12 @@ export async function POST(request: NextRequest) {
       for (const produtoML of produtosML) {
         if (!produtoML.produto) continue;
 
-        // Nunca enviar estoque para anúncio atendido pelo Full (fulfillment)
         const isFulfillment =
           produtoML.mlLogisticType === "fulfillment" ||
           produtoML.mlShippingMode === "fulfillment";
         if (isFulfillment) continue;
 
         try {
-          // Estoque local (apenas armazéns LOCAL, excluindo FULL_ML)
           let computedStock: number;
           if (
             produtoML.produto.isKit &&
@@ -136,7 +129,6 @@ export async function POST(request: NextRequest) {
 
           if (shouldUpdate) {
 
-            // Atualizar estoque no ML (variação correta quando o anúncio tiver variações)
             const updateSuccess = await MercadoLivreService.updateItemStock(
               produtoML.mlItemId,
               computedStock,
@@ -145,7 +137,6 @@ export async function POST(request: NextRequest) {
             );
 
             if (updateSuccess) {
-              // Atualizar no banco local
               await prisma.produtoMercadoLivre.update({
                 where: { id: produtoML.id },
                 data: {
@@ -161,7 +152,6 @@ export async function POST(request: NextRequest) {
             } else {
               errors.push(`Erro ao atualizar estoque do produto ${produtoML.mlTitle}`);
 
-              // Marcar erro no banco
               await prisma.produtoMercadoLivre.update({
                 where: { id: produtoML.id },
                 data: {
@@ -171,7 +161,6 @@ export async function POST(request: NextRequest) {
               });
             }
           } else {
-            // Apenas atualizar timestamp de sincronização
             await prisma.produtoMercadoLivre.update({
               where: { id: produtoML.id },
               data: {
@@ -187,7 +176,6 @@ export async function POST(request: NextRequest) {
           console.error(`[AUTO_SYNC] Erro ao processar ${produtoML.mlItemId}:`, itemError);
           errors.push(`Erro ao processar produto ${produtoML.mlTitle}: ${itemError}`);
 
-          // Marcar erro no banco
           await prisma.produtoMercadoLivre.update({
             where: { id: produtoML.id },
             data: {
@@ -198,7 +186,6 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // Salvar histórico de sincronização
       await prisma.mercadoLivreSyncHistory.create({
         data: {
           mercadoLivreAccountId: accountId,
@@ -214,7 +201,6 @@ export async function POST(request: NextRequest) {
           completedAt: new Date(),
         },
       });
-
 
       return NextResponse.json({
         success: true,
@@ -242,7 +228,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Endpoint GET para verificar status de sincronização automática
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -256,7 +241,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -272,7 +256,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Buscar produtos que precisam de sincronização
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
     const [
@@ -281,7 +264,6 @@ export async function GET(request: NextRequest) {
       errorProducts,
       lastSync
     ] = await Promise.all([
-      // Total de produtos vinculados ativos
       prisma.produtoMercadoLivre.count({
         where: {
           mercadoLivreAccountId: accountId,
@@ -290,7 +272,6 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Produtos que precisam de sincronização
       prisma.produtoMercadoLivre.count({
         where: {
           mercadoLivreAccountId: accountId,
@@ -304,7 +285,6 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Produtos com erro
       prisma.produtoMercadoLivre.count({
         where: {
           mercadoLivreAccountId: accountId,
@@ -312,7 +292,6 @@ export async function GET(request: NextRequest) {
         },
       }),
 
-      // Última sincronização automática
       prisma.mercadoLivreSyncHistory.findFirst({
         where: {
           mercadoLivreAccountId: accountId,

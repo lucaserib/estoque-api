@@ -3,20 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { normalizeSku } from "@/lib/sku";
 import { revincularVendasDoAnuncio } from "@/modules/financeiro/ingestao/sincronizador";
 
-/**
- * Fonte única para gravar o vínculo "anúncio do canal → produto do estoque".
- *
- * Antes existiam três rotas que gravavam vínculo, cada uma com uma regra
- * (uma não marcava como manual, outra empurrava estoque do Full para o
- * anúncio). Agora todas passam por aqui.
- *
- * Anúncio que vende mais de uma unidade (ex.: "Kit com 2 adaptadores" usando
- * o mesmo SKU do adaptador): o vínculo aponta para um produto-kit com um único
- * componente × N. Com isso reposição (explode demanda), custo (soma dos
- * componentes), envio de estoque ao ML (divide pelo N) e Financeiro (CMV)
- * passam a contar N unidades por venda sem nenhuma regra especial.
- */
-
 export class VinculoErro extends Error {
   constructor(
     message: string,
@@ -30,16 +16,12 @@ export class VinculoErro extends Error {
 export const UNIDADES_POR_VENDA_MAXIMO = 100;
 
 export interface ComposicaoVinculo {
-  /** Produto unitário que sai do estoque. */
   produtoBaseId: string;
   produtoBaseNome: string;
   produtoBaseSku: string;
-  /** Quantas unidades do produto base cada venda consome. */
   unidadesPorVenda: number;
-  /** Produto efetivamente ligado ao anúncio (o base ou o kit de quantidade). */
   produtoVinculadoId: string;
   ehKitDeQuantidade: boolean;
-  /** Kit de vários produtos diferentes (montado no Bling ou à mão). */
   ehKitMisto: boolean;
 }
 
@@ -51,7 +33,6 @@ type ProdutoComComponentes = {
   componentes: Array<{ quantidade: number; produto: { id: string; nome: string; sku: string } }>;
 };
 
-/** Lê como o anúncio está montado a partir do produto vinculado. */
 export function descreverComposicao(produto: ProdutoComComponentes): ComposicaoVinculo {
   if (produto.isKit && produto.componentes.length === 1) {
     const [componente] = produto.componentes;
@@ -90,11 +71,6 @@ function skuDoKit(skuBase: string, unidades: number, tentativa: number): string 
   return normalizeSku(`${skuBase}-KIT${unidades}${sufixo}`);
 }
 
-/**
- * Acha (ou cria) o produto-kit "N × produto base". Reaproveita qualquer kit
- * que já tenha exatamente esse único componente nessa quantidade — inclusive
- * um kit importado do Bling — para não duplicar cadastro.
- */
 export async function obterOuCriarKitDeQuantidade(
   contaId: string,
   produtoBaseId: string,
@@ -147,7 +123,6 @@ export async function obterOuCriarKitDeQuantidade(
       });
       return { id: kit.id, criado: true };
     } catch (erro) {
-      // SKU já usado por outro produto: tenta o próximo sufixo.
       if (erro instanceof Prisma.PrismaClientKnownRequestError && erro.code === "P2002") continue;
       throw erro;
     }
@@ -157,11 +132,9 @@ export async function obterOuCriarKitDeQuantidade(
 
 export interface DefinirVinculoEntrada {
   contaId: string;
-  /** id da linha ProdutoMercadoLivre; ou o par conta + mlItemId. */
   anuncioId?: string;
   mercadoLivreAccountId?: string;
   mlItemId?: string;
-  /** null desfaz o vínculo. */
   produtoId: string | null;
   unidadesPorVenda?: number;
 }
@@ -227,9 +200,6 @@ export async function definirVinculoAnuncio(entrada: DefinirVinculoEntrada): Pro
           produtoId: produtoVinculadoId,
           vinculoOrigem: OrigemVinculoProduto.MANUAL,
           vinculoConfirmado: true,
-          // "pending" entra na próxima rodada do envio automático de estoque,
-          // que já pula anúncio Full e divide pelo kit — o vínculo em si não
-          // empurra estoque para o ML.
           syncStatus: "pending",
         }
       : {
@@ -256,7 +226,6 @@ export async function definirVinculoAnuncio(entrada: DefinirVinculoEntrada): Pro
   };
 }
 
-/** Confirma um vínculo automático (por SKU/EAN) e tira a pendência das vendas dele. */
 export async function confirmarVinculoAnuncio(contaId: string, anuncioId: string): Promise<void> {
   const anuncio = await prisma.produtoMercadoLivre.findFirst({
     where: { id: anuncioId, mercadoLivreAccount: { userId: contaId }, produtoId: { not: null } },

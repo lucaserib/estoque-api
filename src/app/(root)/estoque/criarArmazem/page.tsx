@@ -43,7 +43,7 @@ const CriarArmazem = () => {
         setMessage("Armazém criado com sucesso!");
         setMessageType("success");
         setNome("");
-        fetchArmazens(); // Atualizar a lista de armazéns
+        fetchArmazens();
       } else {
         const errorData = await response.json();
         setMessage(errorData.error || "Erro ao criar armazém");
@@ -62,13 +62,13 @@ const CriarArmazem = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ armazemId: id }), // Altere aqui para armazemId
+        body: JSON.stringify({ armazemId: id }),
       });
 
       if (response.ok) {
         setMessage("Armazém deletado com sucesso!");
         setMessageType("success");
-        fetchArmazens(); // Atualizar a lista de armazéns
+        fetchArmazens();
       } else {
         const errorData = await response.json();
         setMessage(errorData.error || "Erro ao deletar armazém");

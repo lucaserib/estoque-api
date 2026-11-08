@@ -31,7 +31,6 @@ export function Spotlight({ open, onOpenChange }: SpotlightProps) {
 
     const alvo = document.querySelector<HTMLElement>(`[data-tour="${passo.seletor}"]`);
     if (!alvo) {
-      // Elemento não está nesta tela (ex.: escondido no celular) — pula pro próximo.
       if (indice < PASSOS_SPOTLIGHT.length - 1) setIndice((i) => i + 1);
       else onOpenChange(false);
       return;
@@ -60,7 +59,6 @@ export function Spotlight({ open, onOpenChange }: SpotlightProps) {
 
   return createPortal(
     <div className="fixed inset-0 z-[100]">
-      {/* 4 tiras escurecidas ao redor do alvo — cria o "recorte" sem precisar de máscara SVG */}
       <div className="absolute inset-x-0 top-0 bg-black/60" style={{ height: Math.max(0, rect.top - MARGEM) }} />
       <div
         className="absolute inset-x-0 bottom-0 bg-black/60"

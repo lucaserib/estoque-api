@@ -38,12 +38,6 @@ interface Props {
   onCadastrarManual: () => void;
 }
 
-/**
- * Cadastro rápido: digita SKU, nome ou EAN → escolhe no Bling → importa com
- * custo, EAN, fornecedor, foto, composição (kit) e estoque por depósito.
- * Quem tem catálogo grande usa a sincronização completa; isto é para o
- * produto novo do dia a dia, sem esperar o catálogo inteiro.
- */
 export function ImportarDoBlingDialog({ aberto, onFechar, onImportado, onCadastrarManual }: Props) {
   const [termo, setTermo] = useState("");
   const [resultados, setResultados] = useState<ResultadoBling[]>([]);

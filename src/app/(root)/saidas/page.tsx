@@ -40,7 +40,6 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
 
-// Main component for the Saidas page
 const SaidasPage = () => {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -51,7 +50,6 @@ const SaidasPage = () => {
   });
   const [activeTab, setActiveTab] = useState("manual");
 
-  // Fetch saidas manuais data
   const {
     data: saidas,
     loading,
@@ -59,7 +57,6 @@ const SaidasPage = () => {
     refetch,
   } = useFetch<Saida[]>("/api/saida", undefined, [refreshTrigger]);
 
-  // Normalizar datas para garantir que cubram o dia inteiro
   const normalizedDateRange = useMemo(() => {
     if (!dateRange?.from || !dateRange?.to) {
       const defaultFrom = subDays(new Date(), 30);
@@ -78,33 +75,27 @@ const SaidasPage = () => {
     return { from, to };
   }, [dateRange]);
 
-  // Construir URL para vendas do ML
   const vendasMLUrl = useMemo(() => {
     return `/api/saida/vendas-ml?dateFrom=${normalizedDateRange.from.toISOString()}&dateTo=${normalizedDateRange.to.toISOString()}`;
   }, [normalizedDateRange]);
 
-  // Memorizar a função de processamento para evitar loops
   const processVendasMLData = useCallback((data: unknown) => {
-    // Se o hook converteu para array, pegar o primeiro elemento
     if (Array.isArray(data) && data.length > 0) {
       return data[0] as unknown as VendasMLResponse;
     }
     return data as unknown as VendasMLResponse;
   }, []);
 
-  // Fetch vendas do Mercado Livre
   const {
     data: vendasMLData,
     loading: loadingVendasML,
     error: errorVendasML,
   } = useFetch<VendasMLResponse>(vendasMLUrl, processVendasMLData, [
     refreshTrigger,
-    vendasMLUrl, // Adicionar a URL como dependência explícita
+    vendasMLUrl,
   ]);
 
-  // Filter saidas based on search term and date range
   const filteredSaidas = (saidas || []).filter((saida) => {
-    // Filter by search term
     const matchesSearch =
       searchTerm === "" ||
       saida.armazem.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -116,7 +107,6 @@ const SaidasPage = () => {
           detalhe.produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
       );
 
-    // Filter by date range (usando datas normalizadas)
     const saidaDate = new Date(saida.data);
     const isInDateRange =
       saidaDate >= normalizedDateRange.from &&
@@ -125,28 +115,23 @@ const SaidasPage = () => {
     return matchesSearch && isInDateRange;
   });
 
-  // Handle successful creation of new saida
   const handleSaveSuccess = () => {
     setShowCreateModal(false);
     setRefreshTrigger((prev) => prev + 1);
   };
 
-  // Filter vendas ML based on search term
   const filteredVendasML = (vendasMLData?.vendas || []).filter((venda) => {
     if (searchTerm === "" || !searchTerm) return true;
 
     const searchLower = searchTerm.toLowerCase().trim();
 
-    // Search in order ID
     const matchesOrderId = venda.orderId?.toLowerCase().includes(searchLower);
 
-    // Search in buyer info
     const matchesBuyer =
       venda.buyer?.nickname?.toLowerCase().includes(searchLower) ||
       venda.buyer?.first_name?.toLowerCase().includes(searchLower) ||
       venda.buyer?.last_name?.toLowerCase().includes(searchLower);
 
-    // Search in items
     const matchesItems = venda.items?.some(
       (item) =>
         item.title?.toLowerCase().includes(searchLower) ||
@@ -156,7 +141,6 @@ const SaidasPage = () => {
     return matchesOrderId || matchesBuyer || matchesItems;
   });
 
-  // Calculate summary metrics for manual saidas
   const totalSaidas = filteredSaidas.length;
   const totalItens = filteredSaidas.reduce(
     (sum, saida) =>
@@ -168,7 +152,6 @@ const SaidasPage = () => {
     0
   );
 
-  // Calculate summary metrics for ML vendas
   const totalVendasML = filteredVendasML.length;
   const totalItensML = filteredVendasML.reduce(
     (sum, venda) =>
@@ -206,7 +189,7 @@ const SaidasPage = () => {
         ];
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-8">
       <PageHeader
         title="Saídas"
         subtitle="Gerencie todas as saídas de produtos: manuais e vendas do Mercado Livre."
@@ -220,7 +203,6 @@ const SaidasPage = () => {
 
       <StatCardGrid items={statItems} />
 
-      {/* Filters */}
       <Card className="border border-border shadow-card">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row justify-between gap-4">
@@ -256,7 +238,6 @@ const SaidasPage = () => {
         </CardContent>
       </Card>
 
-      {/* Main Content com Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <SectionCard
           title={activeTab === "manual" ? "Saídas manuais" : "Vendas do Mercado Livre"}
@@ -361,7 +342,6 @@ const SaidasPage = () => {
         </SectionCard>
       </Tabs>
 
-      {/* Modal for creating new saida */}
       {showCreateModal && (
         <NovaSaidaDialog
           isOpen={showCreateModal}

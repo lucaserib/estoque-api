@@ -4,11 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { conferirLiberacoes } from "@/modules/financeiro/canais/mercadoPago/liberacoes";
 
-/**
- * Só devolve dado se ConfiguracaoGeral.usarRelatorioLiberacaoMercadoPago
- * estiver ligado (etapa opcional, Fase 4 item 4) — serve para conferência
- * manual na tela de configurações (Fase 7), nunca alimenta a DRE.
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);

@@ -17,11 +17,6 @@ function getKey(): Buffer | null {
   return key;
 }
 
-/**
- * Criptografa um token para gravação em repouso. Sem TOKEN_ENCRYPTION_KEY
- * configurada, devolve o texto puro (ambiente de desenvolvimento sem a
- * chave definida) — nunca falha a escrita por falta de criptografia.
- */
 export function encryptToken(plaintext: string): string {
   const key = getKey();
   if (!key) return plaintext;
@@ -40,11 +35,6 @@ export function encryptToken(plaintext: string): string {
   );
 }
 
-/**
- * Descriptografa um token gravado por encryptToken. Valores sem o prefixo
- * `enc:v1:` são tratados como texto puro legado (período de transição) e
- * devolvidos como estão.
- */
 export function decryptToken(stored: string): string {
   if (!stored.startsWith(PREFIX)) {
     return stored;

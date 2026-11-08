@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { normalizeSku } from "@/lib/sku";
 
-/** Vínculo direto por anúncio (ProdutoMercadoLivre) — usado por vendas e por ads. */
 export async function vincularProdutoPorAnuncio(
   accountId: string,
   anuncioExternoId: string
@@ -18,7 +17,6 @@ export async function vincularProdutoPorAnuncio(
   return vinculo?.produtoId ?? null;
 }
 
-/** Fallback por SKU normalizado — só vendas têm SKU disponível no próprio item do pedido. */
 export async function vincularProdutoPorSku(
   userId: string,
   sku: string

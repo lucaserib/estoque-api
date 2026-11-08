@@ -16,11 +16,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Definir o período para calcular a média (últimos 90 dias)
     const dataInicio = new Date();
     dataInicio.setDate(dataInicio.getDate() - 90);
 
-    // Buscar histórico de saídas para o produto no armazém
     const detalhesSaidas = await prisma.detalhesSaida.findMany({
       where: {
         produtoId,
@@ -41,7 +39,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Se não houver saídas, retorna zero
     if (detalhesSaidas.length === 0) {
       return NextResponse.json({ mediaDiaria: 0, totalSaidas: 0, periodo: 90 });
     }

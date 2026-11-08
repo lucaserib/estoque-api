@@ -1,10 +1,5 @@
 import type { CobrancaNormalizada } from "../tipos";
 
-/**
- * Formato de cada linha de GET /billing/integration/periods/key/{AAAA-MM-01}/group/ML/details
- * (documentação "Billing reports" do Mercado Livre). Campos opcionais porque a
- * API omite blocos inteiros conforme o tipo da cobrança.
- */
 export interface CobrancaBruta {
   charge_info?: {
     detail_id?: number | string;
@@ -26,7 +21,6 @@ export interface CobrancaBruta {
   document_info?: { document_id?: number | string } | null;
 }
 
-/** Sub-tipos documentados (detail_sub_type) → categoria do app. */
 const POR_SUB_TIPO: Record<string, string> = {
   CV: "TARIFA_VENDA",
   BV: "BONIFICACAO",
@@ -39,25 +33,16 @@ const POR_SUB_TIPO: Record<string, string> = {
   CEW: "ASSINATURA",
 };
 
-/**
- * Famílias de sub-tipo vistas na fatura real da LEAPSTORE (out/2026) e que
- * não estão na documentação: todas são cobranças POR VENDA que o pagamento
- * de cada pedido já desconta (sale_fee e frete do vendedor). Antes caíam em
- * NAO_MAPEADO e entravam de novo na DRE como "Outras cobranças do ML" — em
- * outubro, R$ 1.942,36 contados duas vezes (margem 1,5% em vez de ~29%).
- */
 const POR_PREFIXO: Array<[RegExp, string]> = [
-  [/^CVVPRC/, "TARIFA_MERCADO_PAGO"], // custo por cobrar no Mercado Pago
-  [/^CVVFN/, "TARIFA_MERCADO_PAGO"], // taxa de parcelamento / de recebimento (CVVFN, CVVFNU)
-  [/^CFON/, "TARIFA_MERCADO_PAGO"], // taxa de parcelamento equivalente ao acréscimo do comprador
-  [/^CVV/, "TARIFA_VENDA"], // custo por vender no Mercado Livre (CVVML e variações)
-  [/^CFF/, "FRETE"], // tarifa de envio (CFFE intermunicipal, CFFI interno ao município)
+  [/^CVVPRC/, "TARIFA_MERCADO_PAGO"],
+  [/^CVVFN/, "TARIFA_MERCADO_PAGO"],
+  [/^CFON/, "TARIFA_MERCADO_PAGO"],
+  [/^CVV/, "TARIFA_VENDA"],
+  [/^CFF/, "FRETE"],
 ];
 
-/** Sub-tipos que são sempre de uma venda específica, mesmo quando a linha vem sem order_id. */
 const SEMPRE_DA_VENDA = /^(CVV|CFON|CFF)/;
 
-/** Quando o sub-tipo não é conhecido, o concept_type ainda diz a natureza da cobrança. */
 const POR_CONCEITO: Record<string, string> = {
   SHIPPING: "FRETE",
   FLEX: "FRETE",
@@ -68,7 +53,6 @@ const POR_CONCEITO: Record<string, string> = {
   SUBSCRIPTION: "ASSINATURA",
 };
 
-/** Já descontadas no pagamento de cada venda (tarifa e frete do pedido) — na fatura servem só para conferência. */
 const TIPOS_COBERTOS_PELO_PEDIDO = new Set(["TARIFA_VENDA", "FRETE", "BONIFICACAO", "TARIFA_MERCADO_PAGO"]);
 
 export function classificarCobranca(subTipo: string | null, conceito: string | null): string {

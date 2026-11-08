@@ -63,13 +63,11 @@ interface RespostaLista {
 
 interface ProdutoListProps {
   aba: AbaProdutos;
-  /** Muda quando algo fora da lista (cadastro, exclusão, sincronização) exige recarregar. */
   versao: number;
   onDelete: (produto: { id: string; nome: string }) => void;
   onContagens?: (contagens: RespostaLista["contagens"]) => void;
 }
 
-// Rótulos curtos para os atalhos de pendência no topo da lista.
 const ROTULO_PENDENCIA: Record<string, string> = {
   SEM_CUSTO: "Sem custo",
   SEM_FORNECEDOR: "Sem fornecedor",
@@ -194,13 +192,11 @@ export default function ProdutoList({ aba, versao, onDelete, onContagens }: Prod
     [parametros]
   );
 
-  // Filtro mudou (ou algo externo pediu recarga): volta para a primeira página.
   useEffect(() => {
     setSelecionados(new Set());
     buscarPagina(1);
   }, [buscarPagina, versao]);
 
-  // Rolagem infinita: carrega a próxima página quando o fim da lista aparece.
   useEffect(() => {
     const alvo = sentinela.current;
     if (!alvo || !temMais) return;
@@ -270,7 +266,6 @@ export default function ProdutoList({ aba, versao, onDelete, onContagens }: Prod
 
   return (
     <div className="space-y-4">
-      {/* Atalhos de pendência: um clique filtra; substitui o alerta genérico que repetia a coluna Pendências */}
       {(atalhosPendencia.length > 0 || pendencia) && aba !== "inativos" && (
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted-foreground">Precisa de atenção:</span>

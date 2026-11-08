@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (action === "connect") {
       try {
 
-        const state = user.id; // Usar ID do usuário como state
+        const state = user.id;
         const { authUrl, codeVerifier } =
           await MercadoLivreService.getAuthURLWithVerifier(state);
 
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
-          maxAge: 10 * 60, // 10 minutos
+          maxAge: 10 * 60,
           path: "/",
         });
 
@@ -119,7 +119,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { code, state } = body;
 
-
     if (!code || !state) {
       console.error("[ML_AUTH] Código ou state não fornecido");
       return NextResponse.json(
@@ -130,7 +129,6 @@ export async function POST(request: NextRequest) {
 
     const host = request.headers.get("host") || "";
     const isFromNgrok = host.includes(".ngrok") || host.includes("ngrok");
-
 
     let userId: string;
     let contaId: string;
@@ -162,7 +160,6 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "State inválido" }, { status: 400 });
       }
     }
-
 
     try {
       const cookieVerifier = request.cookies.get("ml_pkce_verifier")?.value;
@@ -219,7 +216,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      throw mlError; // Re-throw para ser capturado pelo catch geral
+      throw mlError;
     }
   } catch (error) {
     console.error("Erro ao processar callback ML:", error);

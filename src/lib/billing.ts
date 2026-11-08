@@ -4,6 +4,7 @@ export const PRICING = {
   MONTHLY_FIRST_CYCLE: 19.7,
   MONTHLY_RENEWAL: 37.9,
   ANNUAL: 389.7,
+  IA_MENSAL: 29.9,
 } as const;
 
 export function trialEndsAt(from: Date = new Date()): Date {

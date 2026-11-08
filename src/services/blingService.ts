@@ -43,7 +43,6 @@ export interface BlingProduct {
       imagensURL?: string[];
     };
   };
-  /** Produto pai (formato "V"): as variações vêm aqui, cada uma com id e código próprios. */
   variacoes?: Array<{ id: number; codigo?: string; nome?: string }>;
   estrutura?: {
     componentes?: Array<{
@@ -215,13 +214,9 @@ const ESCOPO_POR_RECURSO: Array<[RegExp, string]> = [
   [/^\/(contas|categorias|formas-pagamentos)/, "Financeiro — contas a pagar/receber (leitura)"],
   [/^\/pedidos/, "Pedidos de venda (leitura)"],
   [/^\/empresas/, "Dados básicos da empresa"],
+  [/^\/nfe/, "Notas fiscais (leitura)"],
 ];
 
-/**
- * O token do Bling não tem o escopo para esse recurso. Só se resolve no Bling:
- * marcar o escopo no app (Central de extensões → Área do integrador) e
- * reconectar aqui — repetir a chamada não adianta.
- */
 export class BlingEscopoError extends Error {
   readonly code = "BLING_ESCOPO_INSUFICIENTE";
   readonly escopo: string;
@@ -254,8 +249,12 @@ type LockedRefreshResult =
 export class BlingService {
   private static readonly BASE_URL = "https://api.bling.com.br/Api/v3";
   private static readonly AUTH_URL = "https://www.bling.com.br/Api/v3/oauth";
-  private static readonly CLIENT_ID = process.env.BLING_CLIENT_ID!;
-  private static readonly CLIENT_SECRET = process.env.BLING_CLIENT_SECRET!;
+  private static get CLIENT_ID(): string {
+    return process.env.BLING_CLIENT_ID?.trim() ?? "";
+  }
+  private static get CLIENT_SECRET(): string {
+    return process.env.BLING_CLIENT_SECRET?.trim() ?? "";
+  }
   private static tokenRefreshPromises = new Map<string, Promise<string>>();
 
   static getAuthorizationUrl(state: string): string {
@@ -620,10 +619,6 @@ export class BlingService {
     return data.data ?? [];
   }
 
-  /**
-   * Busca para o cadastro rápido: SKU exato (codigos[]) e nome (nome=).
-   * A API v3 não filtra por GTIN/EAN — quem chama faz isso localmente.
-   */
   static async buscarProdutos(accountId: string, termo: string, limite = 20): Promise<BlingProduct[]> {
     const limpo = termo.trim();
     if (!limpo) return [];
@@ -790,6 +785,44 @@ export class BlingService {
     });
   }
 
+  static async listarNotasFiscaisSaida(
+    accountId: string,
+    filtros: { pagina: number; dataEmissaoInicial: string; dataEmissaoFinal: string; limite?: number }
+  ): Promise<Array<Record<string, unknown>>> {
+    const params = new URLSearchParams({
+      pagina: String(filtros.pagina),
+      limite: String(filtros.limite ?? 100),
+      tipo: "1",
+      dataEmissaoInicial: filtros.dataEmissaoInicial,
+      dataEmissaoFinal: filtros.dataEmissaoFinal,
+    });
+    const data = await this.requestJson<{ data?: Array<Record<string, unknown>> }>(`/nfe?${params.toString()}`, accountId);
+    return data.data ?? [];
+  }
+
+  static async obterNotaFiscal(accountId: string, id: string): Promise<Record<string, unknown> | null> {
+    const data = await this.requestJson<{ data?: Record<string, unknown> }>(`/nfe/${encodeURIComponent(id)}`, accountId);
+    return data.data ?? null;
+  }
+
+  static async verificarEscopos(accountId: string): Promise<string[]> {
+    const testes: Array<[string, string]> = [
+      ["/produtos?pagina=1&limite=1", "Produtos (leitura)"],
+      ["/depositos", "Estoques e depósitos (leitura)"],
+    ];
+    const faltando: string[] = [];
+    for (const [caminho, escopo] of testes) {
+      try {
+        await this.requestJson(caminho, accountId);
+      } catch (error) {
+        if (error instanceof BlingEscopoError) faltando.push(escopo);
+        else if (error instanceof BlingApiError && error.status === 403) faltando.push(escopo);
+        else throw error;
+      }
+    }
+    return faltando;
+  }
+
   static async getCompanyId(accountId: string): Promise<string | null> {
     try {
       const body = await this.requestJson<{ data?: unknown }>(
@@ -805,14 +838,6 @@ export class BlingService {
     }
   }
 
-  /**
-   * Ciclo 9 (Fase 5, P4): URL assinada (S3/`Expires`) pode vir em qualquer um
-   * dos três campos — o campo de origem não é confiável para decidir se a
-   * URL expira. Antes, só `internas[].linkMiniatura` era tratado como
-   * temporário; `externas[].link` e `imagensURL`/`imagemURL` eram salvos
-   * como definitivos mesmo quando a URL já trazia assinatura S3, e por isso
-   * nunca passavam por `rehostTemporaryImage`.
-   */
   static pareceUrlAssinada(url: string): boolean {
     return /X-Amz-|Expires=|Signature=/i.test(url) || /\.s3[.\-][\w-]*\.amazonaws\.com/i.test(url);
   }

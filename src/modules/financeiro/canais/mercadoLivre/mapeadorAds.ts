@@ -13,14 +13,6 @@ export interface GastoAdsBruto {
   };
 }
 
-/**
- * Mapeamento de melhor esforço contra a documentação pública de Product Ads
- * — ao contrário de pedidos/descontos/frete (APIs centrais, estáveis), esta
- * é a parte do Ciclo 7 com menor confiança: nem o endpoint em si foi
- * confirmado contra uma conta real (ver docs/financeiro/fontes-mercado-livre.md).
- * Falha graciosamente: `cliente.ts` devolve lista vazia em qualquer erro, em
- * vez de quebrar a ingestão do dia.
- */
 export function mapearGastoAds(bruto: GastoAdsBruto): GastoAdsNormalizado {
   const metrics = bruto.metrics ?? {};
   const anuncioExternoId =

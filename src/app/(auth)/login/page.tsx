@@ -5,6 +5,13 @@ import { useState } from "react";
 import { FcGoogle } from "react-icons/fc";
 import Link from "next/link";
 
+function destinoAposLogin(): string {
+  if (typeof window === "undefined") return "/";
+  const destino = new URLSearchParams(window.location.search).get("callbackUrl");
+  if (!destino || !destino.startsWith("/") || destino.startsWith("//")) return "/";
+  return destino;
+}
+
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -30,7 +37,7 @@ const LoginPage = () => {
         return;
       }
 
-      window.location.href = "/";
+      window.location.href = destinoAposLogin();
     } catch (error) {
       setError("Ocorreu um erro ao tentar fazer login");
       console.error("Login error:", error);
@@ -41,7 +48,7 @@ const LoginPage = () => {
 
   const handleGoogleSignIn = () => {
     setIsLoading(true);
-    signIn("google", { callbackUrl: "/" });
+    signIn("google", { callbackUrl: destinoAposLogin() });
   };
 
   return (
@@ -62,7 +69,6 @@ const LoginPage = () => {
         <span>Entrar com o Google</span>
       </button>
 
-      {/* Separador */}
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border"></span>

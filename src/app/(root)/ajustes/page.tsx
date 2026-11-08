@@ -26,6 +26,8 @@ import {
   TrendingDown,
   Wallet,
   Users,
+  Sparkles,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
@@ -96,6 +98,7 @@ const SECOES = [
   { id: "integracoes", label: "Mercado Livre e Bling" },
   { id: "financeiro-link", label: "Financeiro" },
   { id: "usuarios", label: "Usuários" },
+  { id: "ia", label: "Skubo IA" },
   { id: "aparencia", label: "Aparência" },
 ] as const;
 
@@ -120,10 +123,28 @@ export default function AjustesPage() {
   const [nomeLoja, setNomeLoja] = useState("");
   const [salvandoNomeLoja, setSalvandoNomeLoja] = useState(false);
   const [enviandoLogo, setEnviandoLogo] = useState(false);
+  const [apagandoConversas, setApagandoConversas] = useState(false);
 
   const papel = session?.user?.role;
   const podeVerCusto = papel === "ADMIN" || papel === "COMPRAS";
   const isAdmin = papel === "ADMIN";
+  const donoDaConta = Boolean(session?.user?.id && session.user.contaId === session.user.id);
+
+  const apagarConversasDaConta = async () => {
+    if (!window.confirm("Apagar todas as conversas com o Skubo IA de todas as pessoas da conta? Não dá para desfazer.")) return;
+    setApagandoConversas(true);
+    try {
+      const resposta = await fetch("/api/ia/conversas?escopo=conta", { method: "DELETE" });
+      const corpo = await resposta.json().catch(() => null);
+      if (!resposta.ok) {
+        toast.error(corpo?.error ?? "Não foi possível apagar as conversas.");
+        return;
+      }
+      toast.success(`${corpo?.apagadas ?? 0} conversa(s) apagada(s).`);
+    } finally {
+      setApagandoConversas(false);
+    }
+  };
 
   useEffect(() => {
     fetch("/api/configuracoes-gerais")
@@ -243,7 +264,7 @@ export default function AjustesPage() {
   const secoesVisiveis = SECOES.filter((s) => s.id !== "usuarios" || isAdmin);
 
   return (
-    <div className="container mx-auto max-w-5xl space-y-6 p-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       <PageHeader title="Ajustes" subtitle="Loja, impostos, reposição, integrações e aparência" />
 
       <div className="flex flex-col gap-6 lg:flex-row">
@@ -507,6 +528,51 @@ export default function AjustesPage() {
               </CardHeader>
             </Card>
           )}
+
+          <Card id="ia" className="scroll-mt-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                Skubo IA
+              </CardTitle>
+              <CardDescription>Assistente, explicações nas telas e resumo semanal</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <ul className="space-y-1.5 text-sm text-fg2">
+                <li>Cada conversa é de quem perguntou: ninguém da equipe vê a conversa do outro.</li>
+                <li>As conversas ficam guardadas por 90 dias e depois são apagadas sozinhas. Você pode apagar qualquer uma antes.</li>
+                <li>
+                  Para responder, os números da loja são enviados à Anthropic, a empresa do modelo de IA, sem dados pessoais de
+                  compradores. Pelos termos comerciais da Anthropic, esses dados não são usados para treinar modelos.
+                </li>
+              </ul>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline" size="sm" className="gap-2">
+                  <Link href="/ia">
+                    Abrir o assistente
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+                {isAdmin && (
+                  <Button asChild variant="outline" size="sm">
+                    <Link href="/assinatura?recurso=ia">Contratar ou gerenciar</Link>
+                  </Button>
+                )}
+                {donoDaConta && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={apagarConversasDaConta}
+                    disabled={apagandoConversas}
+                    className="gap-2 text-destructive-text"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Apagar todas as conversas da conta
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           <Card id="aparencia" className="scroll-mt-6">
             <CardHeader>

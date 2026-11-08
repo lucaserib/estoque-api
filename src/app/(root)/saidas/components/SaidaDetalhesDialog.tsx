@@ -3,7 +3,6 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Saida } from "../types";
 
-// UI Components
 import {
   Dialog,
   DialogContent,
@@ -36,7 +35,7 @@ interface SaidaDetalhesDialogProps {
   isOpen: boolean;
   onClose: () => void;
   saida: Saida;
-  onExport?: () => void; // Nova propriedade para exportação
+  onExport?: () => void;
 }
 
 export function SaidaDetalhesDialog({

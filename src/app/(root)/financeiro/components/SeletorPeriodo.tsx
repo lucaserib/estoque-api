@@ -45,7 +45,6 @@ export function periodoDoPreset(preset: PeriodoPreset): { desde: Date; ate: Date
     const mesPassado = somarMeses(agora, -1);
     return { desde: inicioDoMes(mesPassado), ate: fimDoMes(mesPassado) };
   }
-  // mesAtual e fallback de personalizado antes de o usuário escolher
   return { desde: inicioDoMes(agora), ate: fimDoMes(agora) };
 }
 

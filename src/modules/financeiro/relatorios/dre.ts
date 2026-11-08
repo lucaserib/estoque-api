@@ -93,7 +93,6 @@ function paraDreMensal(competencia: Competencia, ind: Indicadores): DreMensal {
   };
 }
 
-/** DRE mês a mês — cada mês é exatamente o `calcularIndicadores` do mês de calendário (SP). */
 export async function gerarDre(
   userId: string,
   ate: Competencia,

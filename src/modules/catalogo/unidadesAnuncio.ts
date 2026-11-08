@@ -1,4 +1,3 @@
-/** "Kit com 2", "2 unidades", "par", "2x" no título → sugere a quantidade por venda. */
 export function sugerirUnidadesPeloTitulo(titulo: string): number | null {
   const t = titulo.toLowerCase();
   const padroes = [

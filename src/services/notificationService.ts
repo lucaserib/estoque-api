@@ -43,7 +43,7 @@ export class NotificationService {
       type: "BLING_EXPIRADO",
       title: "Conexão com o Bling expirou",
       body: "Reconecte sua conta do Bling para continuar importando produtos e sincronizando estoque.",
-      link: "/produtos/importar",
+      link: "/integracoes",
     }).catch((error) =>
       console.error("[NOTIF] Falha ao criar notificação Bling:", error)
     );

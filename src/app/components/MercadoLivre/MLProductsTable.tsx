@@ -72,7 +72,6 @@ interface MLProductsTableProps {
   onTogglePause: (product: Product) => void;
 }
 
-// Skeleton para loading
 const ProductRowSkeleton = () => (
   <DataTableRow>
     <td className="p-4">
@@ -158,12 +157,10 @@ export default function MLProductsTable({
             </DataTableHeader>
             <DataTableBody>
               {loading ? (
-                // Skeleton Loading
                 Array.from({ length: 5 }).map((_, index) => (
                   <ProductRowSkeleton key={index} />
                 ))
               ) : products.length === 0 ? (
-                // Estado vazio
                 <DataTableRow>
                   <td
                     colSpan={9}
@@ -180,7 +177,6 @@ export default function MLProductsTable({
                   </td>
                 </DataTableRow>
               ) : (
-                // Lista de produtos
                 products.map((product) => (
                   <MLProductRow
                     key={product.mlItemId}
@@ -197,7 +193,6 @@ export default function MLProductsTable({
           </DataTable>
         </div>
 
-        {/* Informações de paginação/totais */}
         {!loading && products.length > 0 && (
           <div className="p-4 border-t bg-muted/50">
             <div className="flex justify-between items-center text-sm text-muted-foreground">

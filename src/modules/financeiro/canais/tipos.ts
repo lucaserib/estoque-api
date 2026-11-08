@@ -1,7 +1,6 @@
 import { CanalVenda, Confianca, StatusVendaCanal } from "@prisma/client";
 
 export interface ContaCanal {
-  /** Identificador da conta no canal (ex.: MercadoLivreAccount.id) — cada adaptador resolve o que precisar a partir dele. */
   contaCanalId: string;
   userId: string;
 }
@@ -14,7 +13,6 @@ export interface ItemVendaCanalNormalizado {
   quantidade: number;
   precoUnitario: number;
   precoCheio: number | null;
-  /** Já é o total da linha (quantidade já aplicada pelo mapeador), não por unidade. */
   tarifaTotal: number | null;
 }
 
@@ -29,14 +27,11 @@ export interface VendaCanalNormalizada {
   envioExternoId: string | null;
   pagamentoExternoId: string | null;
   freteComprador: number;
-  /** Valor devolvido ao comprador numa devolução parcial (pedido continua válido pelo restante). */
   valorEstornado?: number;
-  /** Nível do pedido inteiro — a camada de ingestão rateia entre os itens. */
   descontoVendedorTotal: number;
   descontoCusteadoPeloMlTotal: number;
   atualizadoNoCanalEm: Date;
   itens: ItemVendaCanalNormalizado[];
-  /** Preenchido só por adaptadores que espelham pedidos de outro canal (ex.: ERP espelhando o ML). Ausente = este pedido é a própria origem. */
   origemReal?: { canal: CanalVenda; pedidoExternoId: string } | null;
 }
 
@@ -115,13 +110,6 @@ export interface PagamentoNormalizado {
   desconhecidos: string[];
 }
 
-/**
- * Contrato estável entre o domínio financeiro e cada canal de venda. O
- * domínio só conhece os tipos `*Normalizada` acima — nada aqui menciona
- * Mercado Livre, Shopee ou qualquer API específica. Capacidades opcionais
- * ausentes (`undefined`) significam "o canal não informa isso", tratado na
- * tela como dado faltante, nunca como zero.
- */
 export interface AdaptadorCanalFinanceiro {
   canal: CanalVenda;
   listarPedidosAlterados(

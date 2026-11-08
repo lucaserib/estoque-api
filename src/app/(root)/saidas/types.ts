@@ -1,4 +1,3 @@
-// src/app/(root)/saidas/types.ts
 export interface Produto {
   id: string;
   nome: string;
@@ -23,7 +22,7 @@ export interface SaidaProduto {
 }
 
 export interface Saida {
-  id: string; // Note: Mudado de number para string conforme migração
+  id: string;
   data: string;
   armazem: { id: string; nome: string };
   detalhes: {
@@ -39,7 +38,6 @@ export interface Armazem {
   nome: string;
 }
 
-// Tipos para vendas do Mercado Livre
 export interface VendaMLItem {
   id: string;
   mlItemId: string;

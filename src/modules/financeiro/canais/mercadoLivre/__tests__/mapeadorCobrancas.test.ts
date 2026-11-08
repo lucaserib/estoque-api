@@ -70,7 +70,6 @@ describe("mapearCobranca — formato real de /billing/.../details", () => {
     for (const [subTipo, esperado] of casos) {
       const r = mapearCobranca(linha({ detail_sub_type: subTipo }))!;
       expect(r.tipoNormalizado).toBe(esperado);
-      // mesmo sem order_id na linha: é tarifa/frete de uma venda, já descontado no pagamento dela
       expect(r.coberturaPedido).toBe(true);
     }
   });

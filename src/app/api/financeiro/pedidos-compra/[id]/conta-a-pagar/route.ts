@@ -9,12 +9,6 @@ interface RequestBody {
   contaFinanceiraId?: string | null;
 }
 
-/**
- * Botão "Gerar conta a pagar" oferecido depois de confirmar um pedido de
- * compra (Fase 5 item 6) — não toca na rota de confirmação em si
- * (src/app/api/pedidos-compra/route.ts), é um passo seguinte, opcional,
- * disparado pela tela.
- */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }

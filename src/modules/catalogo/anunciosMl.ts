@@ -17,10 +17,6 @@ export interface ContaMl {
   mlUserId: string;
 }
 
-/**
- * Todos os anúncios do vendedor (ativos, pausados e encerrados), com
- * paginação real. Acima de 1.000 resultados o ML exige `search_type=scan`.
- */
 export async function listarIdsAnunciosMl(accessToken: string, mlUserId: string): Promise<string[]> {
   const ids: string[] = [];
   const cabecalhos = { Authorization: `Bearer ${accessToken}`, Accept: "application/json" };
@@ -130,12 +126,6 @@ async function montarDadosAnuncio(item: MLItem, accessToken: string, conta: Cont
 
 export type ResultadoAnuncio = "CRIADO" | "ATUALIZADO";
 
-/**
- * Sincroniza um anúncio do ML para `ProdutoMercadoLivre`: preço atual
- * (sale_price), estoque disponível, status, logística, tarifa e frete
- * estimados e o estoque do Full. Usada pela sincronização do catálogo, pelo
- * botão de sincronizar e pelo webhook `items` — uma implementação só.
- */
 export async function sincronizarAnuncioMl(conta: ContaMl, accessToken: string, itemId: string): Promise<ResultadoAnuncio> {
   const item = await MercadoLivreService.getItem(itemId, accessToken);
   const dados = await montarDadosAnuncio(item, accessToken, conta);
@@ -173,11 +163,6 @@ export async function registrarErroAnuncio(contaId: string, itemId: string, mens
   });
 }
 
-/**
- * Grava no armazém "Full (Mercado Livre)" (tipo FULL_ML) o estoque disponível
- * no Full de cada produto, somando os anúncios Full vinculados a ele. Só usa
- * o snapshot já sincronizado — nenhuma chamada à API.
- */
 export async function atualizarEstoqueFullDosAnuncios(userId: string, contaId: string): Promise<number> {
   const anunciosFull = await prisma.produtoMercadoLivre.findMany({
     where: { mercadoLivreAccountId: contaId, produtoId: { not: null }, mlLogisticType: "fulfillment" },

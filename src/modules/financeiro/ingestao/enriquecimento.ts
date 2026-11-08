@@ -25,13 +25,6 @@ export interface ResultadoEnriquecimento {
   restantes: number;
 }
 
-/**
- * Etapa 2 da sincronização: completa cada venda gravada pela etapa 1 com o
- * pagamento do Mercado Pago (tarifa real, frete real, retenções, líquido e
- * liberação) e a logística do envio. Vai das vendas mais recentes para as
- * mais antigas, respeita o orçamento de tempo da requisição e desiste de uma
- * venda depois de 5 falhas (fica marcada com o motivo, sem travar a fila).
- */
 export async function enriquecerVendasPendentes(
   contaCanalId: string,
   userId: string,

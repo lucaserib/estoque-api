@@ -22,6 +22,7 @@ import { loadPDF, addTableToPDF, canUsePDF } from "@/utils/pdfHelper";
 import { SeletorPeriodo, periodoDoPreset, type PeriodoSelecionado } from "../../components/SeletorPeriodo";
 import { useAcessoFinanceiro } from "../../components/useAcessoFinanceiro";
 import { useAoAtualizarDados } from "../../components/SincronizacaoFinanceira";
+import { BotaoAtualizarFinanceiro } from "../../components/BotaoAtualizarFinanceiro";
 
 interface LinhaProduto {
   produtoId: string;
@@ -155,6 +156,7 @@ export function AbaPorProduto() {
               <FileText className="mr-1 h-4 w-4" /> PDF
             </Button>
             <SeletorPeriodo valor={periodo} onChange={setPeriodo} />
+            <BotaoAtualizarFinanceiro modo="PERIODO" desde={periodo.desde} ate={periodo.ate} />
           </div>
         }
       />

@@ -4,7 +4,6 @@ import { useClickOutside } from "@/hooks/useClickOutside";
 import { Produto, Armazem, SaidaProduto, KitComponente } from "../types";
 import BarcodeScannerSelecaoProdutos from "./BarcodeScannerSelecaoProdutos";
 
-// UI Components
 import {
   Dialog,
   DialogContent,
@@ -67,7 +66,6 @@ interface NovaSaidaDialogProps {
   onSave: () => void;
 }
 
-// Interface para o tipo Kit
 interface Kit {
   id: string;
   nome: string;
@@ -75,7 +73,6 @@ interface Kit {
   componentes?: KitComponente[];
 }
 
-// Interface que representa um produto no estoque da aplicação
 interface ProdutoEstoque {
   id: string;
   nome: string;
@@ -84,7 +81,6 @@ interface ProdutoEstoque {
   quantidadeDisponivel: number;
   unidade: string;
   categoria?: string;
-  // Campos possíveis para EAN
   ean?: string;
   codigoEAN?: string;
   codigoBarras?: string;
@@ -96,7 +92,6 @@ export function NovaSaidaDialog({
   onClose,
   onSave,
 }: NovaSaidaDialogProps) {
-  // State for form fields
   const [sku, setSku] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [quantidade, setQuantidade] = useState<number>(1);
@@ -108,20 +103,17 @@ export function NovaSaidaDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [modoBarcodeScanner, setModoBarcodeScanner] = useState(false);
 
-  // Fetch armazens and produtos from API
   const { data: armazens = [] } = useFetch<Armazem[]>("/api/estoque/armazens");
   const { data: produtos = [], loading: produtosLoading } = useFetch<Produto[]>(
     armazemId ? `/api/produtos?armazemId=${armazemId}` : ""
   );
 
-  // Filter products based on search term
   const filteredProdutos = produtos.filter(
     (produto) =>
       produto.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       produto.sku.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Effect for cleanup on unmounting to prevent focus issues
   useEffect(() => {
     return () => {
       if (!isOpen) {
@@ -144,10 +136,8 @@ export function NovaSaidaDialog({
 
     try {
       if (produtoToAdd && !produtoToAdd.isKit) {
-        // Adicionar produto simples
         adicionarProdutoSaida(produtoToAdd, qty);
       } else {
-        // Tentar buscar um kit com o SKU informado
         setMessage("Buscando kit...");
         setMessageType("");
 
@@ -174,7 +164,6 @@ export function NovaSaidaDialog({
           const kit = kitData[0];
           console.log("Kit encontrado:", kit);
 
-          // Adicionar kit à lista de saída
           adicionarKitSaida(kit, qty);
 
           setSku("");
@@ -267,7 +256,6 @@ export function NovaSaidaDialog({
     setIsSubmitting(true);
 
     try {
-      // Preparar dados para envio
       const produtosFormatados = saidaProdutos.map((produto) => ({
         produtoId: produto.produtoId,
         quantidade: produto.quantidade,
@@ -314,17 +302,14 @@ export function NovaSaidaDialog({
     }
   };
 
-  // Alternar entre modo manual e modo de scanner
   const toggleScannerMode = () => {
     setModoBarcodeScanner(!modoBarcodeScanner);
   };
 
-  // Manejador de adição de produto via scanner
   const handleProdutoScaneado = (produto: Produto, quantidade: number) => {
     adicionarProdutoSaida(produto, quantidade);
   };
 
-  // Manejador de remoção de produto
   const handleRemoverProduto = (sku: string) => {
     setSaidaProdutos((prev) => prev.filter((p) => p.sku !== sku));
   };
@@ -334,7 +319,6 @@ export function NovaSaidaDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Ensure focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();
@@ -388,7 +372,6 @@ export function NovaSaidaDialog({
 
         <ScrollArea className="max-h-[calc(90vh-11rem)]">
           <div className="p-6 pt-2 space-y-6">
-            {/* Message alert */}
             {message && (
               <Alert
                 variant={messageType === "success" ? "success" : "destructive"}
@@ -403,7 +386,6 @@ export function NovaSaidaDialog({
               </Alert>
             )}
 
-            {/* Armazém selection */}
             <div>
               <Label
                 htmlFor="armazem"
@@ -442,7 +424,6 @@ export function NovaSaidaDialog({
             </div>
 
             {armazemId && modoBarcodeScanner ? (
-              /* Modo de leitura por código de barras */
               <BarcodeScannerSelecaoProdutos
                 produtos={produtos as unknown as ProdutoEstoque[]}
                 produtosSelecionados={saidaProdutos}
@@ -451,11 +432,8 @@ export function NovaSaidaDialog({
                 onVoltarModoManual={() => setModoBarcodeScanner(false)}
               />
             ) : (
-              /* Modo de adição manual de produtos */
               <>
-                {/* Product search and quantity */}
                 <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
-                  {/* Product search autocomplete */}
                   <div className="md:col-span-4">
                     <Label
                       htmlFor="produto"
@@ -520,7 +498,6 @@ export function NovaSaidaDialog({
                     </Popover>
                   </div>
 
-                  {/* Quantity input */}
                   <div className="md:col-span-2">
                     <Label
                       htmlFor="quantidade"
@@ -540,7 +517,6 @@ export function NovaSaidaDialog({
                   </div>
                 </div>
 
-                {/* Add product button */}
                 <Button
                   type="button"
                   onClick={handleAddProduto}
@@ -555,7 +531,6 @@ export function NovaSaidaDialog({
               </>
             )}
 
-            {/* List of added products */}
             {!modoBarcodeScanner && saidaProdutos.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">

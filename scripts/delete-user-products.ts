@@ -4,7 +4,6 @@ const prisma = new PrismaClient()
 
 async function deleteUserProducts() {
   try {
-    // Encontrar o usuário "Leap Store"
     const user = await prisma.user.findFirst({
       where: {
         name: {
@@ -21,13 +20,11 @@ async function deleteUserProducts() {
 
     console.log(`Usuário encontrado: ${user.name} (ID: ${user.id})`)
 
-    // Buscar IDs dos produtos do usuário
     const produtoIds = (await prisma.produto.findMany({
       where: { userId: user.id },
       select: { id: true }
     })).map(p => p.id)
 
-    // Deletar todas as relações primeiro
     await prisma.componente.deleteMany({
       where: {
         OR: [
@@ -61,7 +58,6 @@ async function deleteUserProducts() {
       where: { produtoId: { in: produtoIds } }
     })
 
-    // Deletar produtos
     const result = await prisma.produto.deleteMany({
       where: {
         userId: user.id

@@ -6,10 +6,6 @@ import { serializeWithEAN } from "@/utils/api";
 import { podeVer } from "@/lib/permissoes";
 import { calcularCustoKit } from "@/lib/custo";
 
-/**
- * GET /api/produtos/[id]
- * Busca detalhes de um produto específico incluindo estoques
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -67,7 +63,6 @@ export async function GET(
             mlFreeShipping: true,
           },
         },
-        // Anúncios que vendem este produto dentro de um kit (ex.: "Kit com 2").
         kitsComponentes: {
           select: {
             quantidade: true,
@@ -157,7 +152,6 @@ export async function GET(
     }
 
     const verCusto = podeVer(user.role, "VER_CUSTO");
-    // Kit não tem custo próprio: é a soma dos componentes (null se faltar algum).
     const custoMedio = produto.isKit ? (await calcularCustoKit(produto.id)).custoMedio : produto.custoMedio;
     const { kitsComponentes, ...produtoBase } = produto;
     const anunciosViaKit = (kitsComponentes ?? []).flatMap((vinculoKit) =>
@@ -169,7 +163,6 @@ export async function GET(
           nome: vinculoKit.kit.nome,
           sku: vinculoKit.kit.sku,
           ativo: vinculoKit.kit.ativo,
-          // Kit de um componente só = "anúncio vende N unidades deste produto".
           kitDeQuantidade: vinculoKit.kit._count.componentes === 1,
         },
         unidadesPorVenda: vinculoKit.quantidade,
@@ -180,7 +173,6 @@ export async function GET(
       ...produtoBase,
       anunciosViaKit,
       imagemUrl: normalizeImageUrl(produto.imagemUrl),
-      // null continua null: "sem custo" não é custo zero (antes virava 0 e a margem parecia ótima).
       custoMedio: verCusto && custoMedio != null ? Number(custoMedio) : null,
       estoques: produto.estoques.map((estoque) => ({
         ...estoque,

@@ -87,9 +87,6 @@ export async function processarEventoWebhookBling(eventoId: string): Promise<voi
     });
   } catch (error) {
     const mensagem = error instanceof Error ? error.message : "Erro desconhecido";
-    // Erro que nunca vai passar (produto apagado no Bling, sem SKU, SKU
-    // duplicado) fecha o evento; senão ele era reprocessado todo dia para
-    // sempre e ocupava a vez dos eventos novos no cron (limite de 200).
     const permanente = erroPermanenteBling(error);
     await prisma.blingWebhookEvent.update({
       where: { id: eventoId },

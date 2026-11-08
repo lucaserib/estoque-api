@@ -90,7 +90,7 @@ const EstoquePage = () => {
   const [estoqueSegurancaMode, setEstoqueSegurancaMode] = useState<
     "manual" | "auto"
   >("manual");
-  const [tempoReposicao, setTempoReposicao] = useState<number>(7); // Padrão: 7 dias
+  const [tempoReposicao, setTempoReposicao] = useState<number>(7);
   const [calculandoEstoqueSeguranca, setCalculandoEstoqueSeguranca] =
     useState(false);
   const [mediaConsumoDiario, setMediaConsumoDiario] = useState<number | null>(
@@ -104,7 +104,6 @@ const EstoquePage = () => {
       const data = await response.json();
       setArmazens(data);
 
-      // If there's no active warehouse set and we have data, set the first one active
       if (data.length > 0 && !activeWarehouse) {
         setActiveWarehouse(data[0].id);
       }
@@ -240,33 +239,6 @@ const EstoquePage = () => {
     try {
       setIsSaving(true);
 
-      // Comentado temporariamente: Atualização direta de quantidade no estoque
-      /* 
-      if (quantidadeProduto !== null) {
-        console.log(
-          "Enviando atualização com armazemId:",
-          activeWarehouse,
-          "tipo:",
-          typeof activeWarehouse
-        );
-        const response = await fetch("/api/estoque/armazens", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            produtoId,
-            armazemId: activeWarehouse,
-            quantidade: quantidadeProduto,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Error response:", errorData);
-          throw new Error(errorData.message || "Erro ao atualizar quantidade");
-        }
-      }
-      */
-
       if (estoqueSeguranca !== null) {
         const estoqueSegurancaNumber = Number(estoqueSeguranca);
 
@@ -301,7 +273,6 @@ const EstoquePage = () => {
           item.produto.id === produtoId
             ? {
                 ...item,
-                // Mantém a quantidade atual em vez de usar o valor editado
                 quantidade: item.quantidade,
                 estoqueSeguranca: estoqueSeguranca ?? item.estoqueSeguranca,
               }
@@ -406,7 +377,7 @@ const EstoquePage = () => {
     : [];
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-6">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       <PageHeader
         title="Gestão de Estoque"
         subtitle="Gerencie seu estoque por armazém e monitore níveis de produtos"
@@ -907,7 +878,6 @@ const EstoquePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
       {estoqueToDelete && (
         <EstoqueDeleteDialog
           isOpen={!!estoqueToDelete}

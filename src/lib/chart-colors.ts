@@ -1,14 +1,3 @@
-/**
- * Cores centralizadas para gráficos (Recharts).
- * Espelham os tokens --chart-1..5 do tema (styles/global.css).
- */
-export const CHART_COLORS = [
-  "#059669", // esmeralda (primary)
-  "#2563EB", // azul
-  "#F59E0B", // âmbar
-  "#8B5CF6", // violeta
-  "#EC4899", // rosa
-] as const;
+export const CHART_COLORS = ["#5B3DF5", "#16C79A", "#F59E0B", "#3B82F6", "#EC4899"] as const;
 
-export const chartColor = (index: number): string =>
-  CHART_COLORS[index % CHART_COLORS.length];
+export const chartColor = (index: number): string => CHART_COLORS[index % CHART_COLORS.length];

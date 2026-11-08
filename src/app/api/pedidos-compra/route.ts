@@ -8,6 +8,7 @@ import { serializeWithEAN } from "@/utils/api";
 import { NotificationService } from "@/services/notificationService";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse, podeVer } from "@/lib/permissoes";
 import { gerarContaAPagarDePedidoCompra } from "@/modules/financeiro/lancamentos/pedidoCompra";
+import { atualizarCustoDasVendasAposMudanca } from "@/modules/financeiro/ingestao/sincronizador";
 
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
@@ -462,6 +463,10 @@ export async function PUT(request: NextRequest) {
     await NotificationService.notifyPedidoConcluido(
       user.id,
       pedidoAtualizado.fornecedor?.nome ?? "sem fornecedor"
+    );
+    await atualizarCustoDasVendasAposMudanca(
+      user.contaId,
+      pedidoAtualizado.produtos.map((p) => p.produtoId)
     );
 
     try {

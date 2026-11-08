@@ -34,7 +34,6 @@ const EANDisplay: React.FC<EANDisplayProps> = ({
   size = "md",
   className = "",
 }) => {
-  // Tratar o produto como ProdutoComEAN para a função getEANFromProduct
   const ean = getEANFromProduct(produto as ProdutoComEAN);
 
   if (!ean) {

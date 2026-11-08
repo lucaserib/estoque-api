@@ -53,7 +53,6 @@ export default function MercadoLivreConfiguracoesPage() {
 
       const accountsData = await response.json();
 
-      // Handle both response formats
       const accountsList = Array.isArray(accountsData) ? accountsData : accountsData.accounts || [];
 
       setAccounts(accountsList);
@@ -103,7 +102,7 @@ export default function MercadoLivreConfiguracoesPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="container mx-auto p-6">
+      <div className="mx-auto w-full">
         <PageHeader title="Configurações Mercado Livre" subtitle="Gerencie suas contas conectadas" />
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin" />
@@ -113,7 +112,7 @@ export default function MercadoLivreConfiguracoesPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="mx-auto w-full space-y-6">
       <PageHeader
         title="Configurações Mercado Livre"
         subtitle="Gerencie suas contas conectadas"
@@ -127,7 +126,6 @@ export default function MercadoLivreConfiguracoesPage() {
         }
       />
 
-      {/* Botão Conectar Nova Conta */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -146,7 +144,6 @@ export default function MercadoLivreConfiguracoesPage() {
         </CardContent>
       </Card>
 
-      {/* Lista de Contas Conectadas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -225,7 +222,6 @@ export default function MercadoLivreConfiguracoesPage() {
         </CardContent>
       </Card>
 
-      {/* Informações Importantes */}
       <Alert>
         <Settings className="h-4 w-4" />
         <AlertDescription>

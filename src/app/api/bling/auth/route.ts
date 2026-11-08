@@ -1,9 +1,8 @@
-import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { BlingService } from "@/services/blingService";
-import { buildBlingOAuthStateCookie } from "@/lib/blingOAuthState";
+import { criarStateBling } from "@/lib/blingOAuthState";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { diagnosticarConfiguracaoBling, origemDaRequisicao } from "@/lib/blingConfig";
 
@@ -117,20 +116,8 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      const state = crypto.randomBytes(24).toString("hex");
-      const authUrl = BlingService.getAuthorizationUrl(state);
-      const cookie = buildBlingOAuthStateCookie(state, user.id);
-
-      const response = NextResponse.json({ authUrl });
-      response.cookies.set(cookie.name, cookie.value, {
-        httpOnly: true,
-        secure: origem.startsWith("https://"),
-        sameSite: "lax",
-        maxAge: cookie.maxAge,
-        path: "/",
-      });
-
-      return response;
+      const authUrl = BlingService.getAuthorizationUrl(criarStateBling(user.id));
+      return NextResponse.json({ authUrl });
     }
 
     return NextResponse.json({ error: "Ação inválida" }, { status: 400 });

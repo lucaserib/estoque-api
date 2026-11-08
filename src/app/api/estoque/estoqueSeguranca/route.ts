@@ -3,14 +3,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { podeVer } from "@/lib/permissoes";
 
-
 export async function PUT(request: NextRequest) {
   try {
     const user = await verifyUser(request);
     const body = await request.json();
     const { produtoId, armazemId, estoqueSeguranca } = body;
 
-    // Validação dos campos
     if (!produtoId || !armazemId || estoqueSeguranca === undefined) {
       return NextResponse.json(
         { message: "Produto, armazém e estoque de segurança são obrigatórios" },
@@ -18,7 +16,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Verificar se o armazém pertence ao usuário
     const armazem = await prisma.armazem.findFirst({
       where: {
         id: armazemId,
@@ -33,7 +30,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Atualizar o estoque de segurança
     const estoque = await prisma.estoque.update({
       where: {
         produtoId_armazemId: {
@@ -49,7 +45,6 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    // Converter valores BigInt para números regulares
     const serializedEstoque = {
       produtoId: estoque.produtoId,
       armazemId: estoque.armazemId,

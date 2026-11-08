@@ -286,7 +286,6 @@ export function ReplenishmentDetailModal({
               </TabsTrigger>
             </TabsList>
 
-            {/* ABA: ANÁLISE */}
             <TabsContent value="analise" className="space-y-6">
               {calculando ? (
                 <div className="flex items-center justify-center py-12">
@@ -297,7 +296,6 @@ export function ReplenishmentDetailModal({
                 </div>
               ) : sugestao ? (
                 <div className="space-y-6">
-                  {/* Cards de Estoque */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Card>
                       <CardHeader className="pb-3">
@@ -363,7 +361,6 @@ export function ReplenishmentDetailModal({
                     </Card>
                   </div>
 
-                  {/* Ações Prioritárias */}
                   {sugestao.acoesPrioritarias.length > 0 && (
                     <Card className="border-primary/30">
                       <CardHeader>
@@ -464,9 +461,7 @@ export function ReplenishmentDetailModal({
                     </Card>
                   )}
 
-                  {/* Detalhamento Full e Local */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Reposição Full */}
                     {sugestao.reposicaoFull && (
                       <Card className="border-info/30">
                         <CardHeader className="bg-info/10">
@@ -502,7 +497,6 @@ export function ReplenishmentDetailModal({
                       </Card>
                     )}
 
-                    {/* Reposição Local */}
                     <Card className="border-warning/30">
                       <CardHeader className="bg-warning/10">
                         <CardTitle className="flex items-center justify-between text-sm">
@@ -544,9 +538,7 @@ export function ReplenishmentDetailModal({
               )}
             </TabsContent>
 
-            {/* ABA: CONFIGURAÇÃO */}
             <TabsContent value="configuracao" className="space-y-6">
-              {/* Período de Análise - Destaque */}
               <Card className="border-2 border-primary/30">
                 <CardHeader>
                   <CardTitle className="text-base flex items-center gap-2">
@@ -606,7 +598,6 @@ export function ReplenishmentDetailModal({
                 </CardContent>
               </Card>
 
-              {/* Outros Parâmetros */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">Parâmetros de Tempo e Segurança</CardTitle>
@@ -683,11 +674,9 @@ export function ReplenishmentDetailModal({
               </Card>
             </TabsContent>
 
-            {/* ABA: DETALHES */}
             <TabsContent value="detalhes" className="space-y-6">
               {produto && (
                 <>
-                  {/* Informações do Produto */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Informações do Produto</CardTitle>
@@ -718,7 +707,6 @@ export function ReplenishmentDetailModal({
                     </CardContent>
                   </Card>
 
-                  {/* Estoque por Armazém */}
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base">Estoque por Armazém</CardTitle>
@@ -743,7 +731,6 @@ export function ReplenishmentDetailModal({
           </Tabs>
         </div>
 
-        {/* Footer Fixo */}
         <div className="sticky bottom-0 backdrop-blur-md bg-card/90 border-t border-border p-6 rounded-b-xl">
           <DialogFooter className="flex items-center justify-between">
             <Button variant="outline" onClick={onClose}>

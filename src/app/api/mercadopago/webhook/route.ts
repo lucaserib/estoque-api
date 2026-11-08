@@ -3,6 +3,13 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { MercadoPagoService } from "@/services/mercadoPagoService";
 import { PRICING } from "@/lib/billing";
+import {
+  cancelarIaJuntoComPrincipal,
+  contaDaReferenciaIa,
+  ehPreapprovalIa,
+  processarPagamentoIa,
+  processarPreapprovalIa,
+} from "@/modules/ia/cobranca";
 
 function isValidSignature(request: NextRequest, dataId: string): boolean {
   const secret = process.env.MP_WEBHOOK_SECRET;
@@ -38,6 +45,15 @@ function isValidSignature(request: NextRequest, dataId: string): boolean {
 async function handlePreapprovalNotification(preapprovalId: string) {
   const preapproval = await MercadoPagoService.getPreapproval(preapprovalId);
 
+  const assinaturaIa = await prisma.subscription.findUnique({
+    where: { mpPreapprovalIaId: preapprovalId },
+    select: { id: true },
+  });
+  if (assinaturaIa || ehPreapprovalIa(preapproval)) {
+    await processarPreapprovalIa(preapproval);
+    return;
+  }
+
   const subscription = await prisma.subscription.findUnique({
     where: { mpPreapprovalId: preapprovalId },
   });
@@ -65,12 +81,17 @@ async function handlePreapprovalNotification(preapprovalId: string) {
       where: { id: subscription.id },
       data: { status: "CANCELED" },
     });
+    await cancelarIaJuntoComPrincipal(subscription.userId);
   }
 }
 
 async function handlePaymentNotification(paymentId: string) {
   const payment = await MercadoPagoService.getPayment(paymentId);
   if (!payment.external_reference) return;
+  if (contaDaReferenciaIa(payment.external_reference)) {
+    await processarPagamentoIa(payment);
+    return;
+  }
 
   const subscription = await prisma.subscription.findUnique({
     where: { userId: payment.external_reference },

@@ -53,8 +53,6 @@ export async function POST(request: NextRequest) {
       fim: body.fim ? new Date(body.fim) : null,
     });
 
-    // Gera já o primeiro lote (próximos meses) em vez de esperar o cron
-    // diário — idempotente, então o cron rodar depois não duplica nada.
     await gerarLancamentosDaRecorrencia(recorrencia.id);
 
     return NextResponse.json(recorrencia, { status: 201 });

@@ -49,7 +49,6 @@ interface SincronizacaoCatalogoModalProps {
   onConcluido?: () => void;
 }
 
-/** Tela de carregamento com o progresso real da sincronização de catálogo (Bling + Mercado Livre). */
 export function SincronizacaoCatalogoModal({ open, onOpenChange, onConcluido }: SincronizacaoCatalogoModalProps) {
   const [status, setStatus] = useState<StatusCatalogo | null>(null);
   const [erroRede, setErroRede] = useState<string | null>(null);

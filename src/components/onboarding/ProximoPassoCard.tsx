@@ -12,7 +12,6 @@ function proximaEtapa(etapas: EtapaOnboarding[]): EtapaOnboarding | null {
   return etapas.find((e) => e.status === "pendente" || e.status === "atencao") ?? null;
 }
 
-/** Fixo no topo da Visão geral enquanto a configuração não passar de 90%. */
 export function ProximoPassoCard() {
   const [dados, setDados] = useState<ResultadoOnboarding | null>(null);
 
@@ -47,7 +46,7 @@ export function ProximoPassoCard() {
           <p className="truncate font-medium text-foreground">{proxima.titulo}</p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto">
         <Button asChild variant="ghost" size="sm">
           <Link href="/comecar">Ver jornada completa</Link>
         </Button>

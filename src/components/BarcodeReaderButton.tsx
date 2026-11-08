@@ -43,10 +43,8 @@ const BarcodeReaderButton = ({
   const handleBarcodeScan = (barcode: string) => {
     setLastScannedCode(barcode);
     onScan(barcode);
-    // Fechar o diálogo após um breve atraso para dar feedback visual
     setTimeout(() => {
       setIsOpen(false);
-      // Limpar o código escaneado após fechar
       setTimeout(() => setLastScannedCode(null), 500);
     }, 1000);
   };

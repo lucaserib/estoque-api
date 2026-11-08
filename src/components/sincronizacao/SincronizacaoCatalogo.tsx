@@ -40,12 +40,6 @@ interface Props {
   compacto?: boolean;
 }
 
-/**
- * Mantém produtos, estoque local (Bling), anúncios e estoque Full (ML)
- * atualizados: ao abrir a tela, pede ao servidor para sincronizar se a última
- * atualização tiver mais de 6 h e continua chamando enquanto houver etapa
- * pendente. "Atualizar estoque agora" força uma rodada nova.
- */
 export function SincronizacaoCatalogo({ onConcluido, compacto }: Props) {
   const [status, setStatus] = useState<StatusCatalogo | null>(null);
   const [rodando, setRodando] = useState(false);

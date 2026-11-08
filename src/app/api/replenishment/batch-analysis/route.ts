@@ -3,17 +3,6 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { podeVer } from "@/lib/permissoes";
 import { calcularReposicaoConta } from "@/services/reposicaoService";
 
-/**
- * GET /api/replenishment/batch-analysis
- * Analisa todos os produtos (via reposicaoService, Ciclo 6 Fase 7) e
- * retorna apenas os que precisam de reposição (crítico ou atenção).
- *
- * A resposta mantém o formato (BatchAnalysisResult) já consumido por
- * src/app/(root)/reposicao/* para não exigir reescrever a UI; os valores
- * monetários continuam em reais neste limite da API (o serviço interno
- * já calcula tudo em centavos — a conversão abaixo só existe para não
- * quebrar o contrato que o frontend já espera).
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);

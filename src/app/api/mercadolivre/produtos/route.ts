@@ -12,11 +12,10 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
-    const sortBy = searchParams.get("sortBy") || "smart"; // smart, lastSync, sales, price, stock, name
+    const sortBy = searchParams.get("sortBy") || "smart";
     const sortOrder = searchParams.get("sortOrder") || "desc";
     const filterStatus = searchParams.get("status") || "all";
     const filterStock = searchParams.get("stock") || "all";
-
 
     if (!accountId) {
       return NextResponse.json(
@@ -25,8 +24,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -42,8 +39,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-
-    // Construir filtros where
     const whereClause: Record<string, unknown> = {
       mercadoLivreAccountId: accountId,
       syncStatus: { not: { equals: "ignored" } },
@@ -53,7 +48,6 @@ export async function GET(request: NextRequest) {
       whereClause.mlStatus = filterStatus;
     }
 
-    // Buscar produtos ML vinculados com consulta otimizada
     const produtosML = await prisma.produtoMercadoLivre.findMany({
       where: whereClause,
       select: {
@@ -61,10 +55,10 @@ export async function GET(request: NextRequest) {
         mlItemId: true,
         mlTitle: true,
         mlPrice: true,
-        mlOriginalPrice: true, // ✅ NOVO: Preço original
-        mlBasePrice: true, // ✅ NOVO: Preço base
-        mlHasPromotion: true, // ✅ NOVO: Se tem promoção
-        mlPromotionDiscount: true, // ✅ NOVO: % desconto
+        mlOriginalPrice: true,
+        mlBasePrice: true,
+        mlHasPromotion: true,
+        mlPromotionDiscount: true,
         mlAvailableQuantity: true,
         mlSoldQuantity: true,
         mlStatus: true,
@@ -140,9 +134,7 @@ export async function GET(request: NextRequest) {
       mapa.set(item.anuncioExternoId, atual);
     }
 
-    // Mapear produtos com informações completas
     const products = produtosML.map((produtoML) => {
-      // Calcular estoque local total
       const totalLocalStock =
         produtoML.produto?.estoques.reduce(
           (sum: number, estoque: { quantidade: number }) =>
@@ -150,7 +142,6 @@ export async function GET(request: NextRequest) {
           0
         ) || 0;
 
-      // Calcular status do estoque
       let stockStatus = "unlinked";
       if (produtoML.produto && !produtoML.produto.sku.startsWith("ML_")) {
         if (produtoML.mlAvailableQuantity === 0) {
@@ -162,7 +153,6 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      // ✅ CORREÇÃO: Dados de vendas deste mês e mês anterior
       const sales = salesData.get(produtoML.mlItemId) || {
         quantity: 0,
         revenue: 0,
@@ -182,12 +172,10 @@ export async function GET(request: NextRequest) {
         mlPrice: produtoML.mlPrice,
         mlAutoStockPausado: produtoML.mlAutoStockPausado,
 
-        // ✅ NOVO: Informações de preços promocionais
         mlOriginalPrice: produtoML.mlOriginalPrice,
         mlBasePrice: produtoML.mlBasePrice,
         mlHasPromotion: produtoML.mlHasPromotion || false,
         mlPromotionDiscount: produtoML.mlPromotionDiscount,
-        // Calcular economia se há promoção
         mlSavings:
           produtoML.mlHasPromotion && produtoML.mlOriginalPrice
             ? produtoML.mlOriginalPrice - produtoML.mlPrice
@@ -207,25 +195,20 @@ export async function GET(request: NextRequest) {
               }
             : null,
         mlSellerSku: produtoML.mlSellerSku,
-        // Como o anúncio sai do estoque: produto unitário × N (kit de quantidade) ou kit misto.
         composicao: produtoML.produto ? descreverComposicao(produtoML.produto) : null,
         localStock: totalLocalStock,
         stockStatus,
         lastSync: produtoML.lastSyncAt?.toISOString() || "",
         syncStatus: produtoML.syncStatus,
         salesData: {
-          // Este mês
           quantityThisMonth: sales.quantity,
           revenueThisMonth: sales.revenue,
-          // Dias no fuso de SP (getDate() no servidor UTC dava 1 para "fim do mês").
           salesVelocity: sales.quantity / diasDecorridosNoMes,
           daysInMonth: diasNoMes,
 
-          // Mês anterior
           quantityPreviousMonth: salesPreviousMonth.quantity,
           revenuePreviousMonth: salesPreviousMonth.revenue,
 
-          // Comparações (% de variação)
           quantityGrowth:
             salesPreviousMonth.quantity > 0
               ? ((sales.quantity - salesPreviousMonth.quantity) /
@@ -243,7 +226,6 @@ export async function GET(request: NextRequest) {
               ? 100
               : 0,
 
-          // Para comparação e debug
           totalHistoricalSales: produtoML.mlSoldQuantity || 0,
         },
       };
@@ -251,16 +233,13 @@ export async function GET(request: NextRequest) {
       return product;
     });
 
-    // Aplicar filtros de estoque
     let filteredProducts = products;
     if (filterStock !== "all") {
       filteredProducts = products.filter((p) => p.stockStatus === filterStock);
     }
 
-    // ✅ MELHORIA: Priorização inteligente otimizada
     if (sortBy === "smart") {
       filteredProducts.sort((a, b) => {
-        // 0. PRIORIDADE ABSOLUTA: Produtos ativos com promoção e vendas
         const aActivePromo =
           a.mlStatus === "active" &&
           a.mlHasPromotion &&
@@ -273,7 +252,6 @@ export async function GET(request: NextRequest) {
         if (aActivePromo && !bActivePromo) return -1;
         if (!aActivePromo && bActivePromo) return 1;
 
-        // 1. PRIORIDADE MÁXIMA: Produtos ativos com vendas recentes (hot sellers)
         const aHotSeller =
           a.mlStatus === "active" && a.salesData.quantityThisMonth > 0;
         const bHotSeller =
@@ -282,9 +260,7 @@ export async function GET(request: NextRequest) {
         if (aHotSeller && !bHotSeller) return -1;
         if (!aHotSeller && bHotSeller) return 1;
 
-        // 2. Entre hot sellers, priorizar por urgência de estoque
         if (aHotSeller && bHotSeller) {
-          // Produtos vendendo MAS com estoque crítico = URGENTE
           const aCritical =
             (a.stockStatus === "low" || a.stockStatus === "out") &&
             a.salesData.salesVelocity > 0.1;
@@ -295,24 +271,20 @@ export async function GET(request: NextRequest) {
           if (aCritical && !bCritical) return -1;
           if (!aCritical && bCritical) return 1;
 
-          // Depois por vendas (mais vendidos primeiro)
           const salesDiff =
             b.salesData.quantityThisMonth - a.salesData.quantityThisMonth;
           if (salesDiff !== 0) return salesDiff;
         }
 
-        // 3. Produtos ativos (sem vendas) vêm antes de pausados
         if (a.mlStatus === "active" && b.mlStatus !== "active") return -1;
         if (a.mlStatus !== "active" && b.mlStatus === "active") return 1;
 
-        // 4. Entre produtos ativos sem vendas, priorizar vinculados
         if (a.mlStatus === "active" && b.mlStatus === "active") {
           const aLinked = !!a.localProduct;
           const bLinked = !!b.localProduct;
           if (aLinked && !bLinked) return -1;
           if (!aLinked && bLinked) return 1;
 
-          // Por estoque baixo (precisam atenção)
           if (a.stockStatus !== b.stockStatus) {
             const stockPriority: Record<string, number> = {
               low: 1,
@@ -327,14 +299,11 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // 5. Produtos não ativos: priorizar pausados com promoção
         if (a.mlStatus !== "active" && b.mlStatus !== "active") {
-          // Entre produtos não ativos, promoção vem primeiro
           if (a.mlHasPromotion && !b.mlHasPromotion) return -1;
           if (!a.mlHasPromotion && b.mlHasPromotion) return 1;
         }
 
-        // 6. Produtos não ativos por status (paused antes de closed)
         const statusPriority: Record<string, number> = {
           active: 1,
           paused: 2,
@@ -345,7 +314,6 @@ export async function GET(request: NextRequest) {
           (statusPriority[a.mlStatus] || 5) - (statusPriority[b.mlStatus] || 5);
         if (statusDiff !== 0) return statusDiff;
 
-        // 6. Por última atualização (mais recente primeiro)
         return new Date(b.lastSync).getTime() - new Date(a.lastSync).getTime();
       });
     } else if (sortBy === "sales") {
@@ -407,7 +375,7 @@ function getOrderBy(sortBy: string, sortOrder: string) {
     case "lastSync":
       return { lastSyncAt: direction };
     case "sales":
-      return { mlSoldQuantity: direction }; // Fallback para vendas totais do ML
+      return { mlSoldQuantity: direction };
     default:
       return { lastSyncAt: "desc" };
   }

@@ -8,7 +8,6 @@ export const serializeWithEAN = (data: unknown): unknown => {
     })
   );
 
-  // Definir um tipo mais específico para os objetos
   type SerializedObject = {
     ean?: string | number | bigint;
     codigoEAN?: string;
@@ -22,7 +21,6 @@ export const serializeWithEAN = (data: unknown): unknown => {
       return obj.map((item) => addEANField(item));
     }
 
-    // Tratar como objeto serializado
     const typedObj = obj as SerializedObject;
 
     if (typedObj.ean !== undefined && typedObj.codigoEAN === undefined) {

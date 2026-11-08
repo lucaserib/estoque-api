@@ -12,7 +12,7 @@ interface RestockSuggestion {
   currentMLStock: number;
   currentLocalStock: number;
   suggestedRestock: number;
-  salesVelocity: number; // vendas por dia
+  salesVelocity: number;
   daysUntilStockout: number;
   totalSold: number;
   lastSaleDate?: string;
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     const user = await verifyUser(request);
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
-    const period = parseInt(searchParams.get("period") || "30"); // Período em dias para análise
+    const period = parseInt(searchParams.get("period") || "30");
 
     if (!accountId) {
       return NextResponse.json(
@@ -36,7 +36,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verificar se a conta pertence ao usuário
     const account = await prisma.mercadoLivreAccount.findFirst({
       where: {
         id: accountId,
@@ -55,14 +54,13 @@ export async function GET(request: NextRequest) {
     try {
       const accessToken = await MercadoLivreService.getValidToken(accountId);
 
-      // Buscar produtos vinculados com consulta otimizada
       const produtosML = await prisma.produtoMercadoLivre.findMany({
         where: {
           mercadoLivreAccountId: accountId,
           produtoId: {
             not: null,
           },
-          mlStatus: "active", // Apenas produtos ativos
+          mlStatus: "active",
         },
         include: {
           produto: {
@@ -76,23 +74,20 @@ export async function GET(request: NextRequest) {
                 include: {
                   fornecedor: true,
                 },
-                take: 1, // Apenas o primeiro fornecedor para performance
+                take: 1,
               },
             },
           },
         },
       });
 
-      // Buscar dados de vendas do período
       const orders = await MercadoLivreService.getUserOrders(accessToken, {
         seller: account.mlUserId,
         limit: 50,
       });
 
-      // Calcular período de análise
       const periodStart = new Date(Date.now() - period * 24 * 60 * 60 * 1000);
 
-      // Processar vendas por produto
       const productSales = new Map<
         string,
         {
@@ -132,7 +127,6 @@ export async function GET(request: NextRequest) {
           });
         });
 
-      // Gerar sugestões de reposição
       const suggestions: RestockSuggestion[] = [];
 
       for (const produtoML of produtosML) {
@@ -144,7 +138,6 @@ export async function GET(request: NextRequest) {
           0
         );
 
-        // Calcular velocidade de vendas
         const salesVelocity = salesData ? salesData.totalSold / period : 0;
         const daysUntilStockout =
           salesVelocity > 0
@@ -156,22 +149,21 @@ export async function GET(request: NextRequest) {
         let priority: RestockSuggestion["priority"] = "low";
         let suggestedRestock = 0;
 
-        // Análise de prioridade e razões
         if (produtoML.mlAvailableQuantity === 0) {
           priority = "critical";
           reasons.push("Produto esgotado no ML");
           actions.push("Reabastecer imediatamente");
-          suggestedRestock = Math.max(10, Math.ceil(salesVelocity * 7)); // 1 semana de vendas
+          suggestedRestock = Math.max(10, Math.ceil(salesVelocity * 7));
         } else if (produtoML.mlAvailableQuantity <= 2 && salesVelocity > 0) {
           priority = "critical";
           reasons.push("Estoque criticamente baixo com vendas ativas");
           actions.push("Reposição urgente necessária");
-          suggestedRestock = Math.max(5, Math.ceil(salesVelocity * 14)); // 2 semanas
+          suggestedRestock = Math.max(5, Math.ceil(salesVelocity * 14));
         } else if (produtoML.mlAvailableQuantity <= 5 && salesVelocity > 0.5) {
           priority = "high";
           reasons.push("Estoque baixo com boa velocidade de vendas");
           actions.push("Programar reposição em breve");
-          suggestedRestock = Math.ceil(salesVelocity * 21); // 3 semanas
+          suggestedRestock = Math.ceil(salesVelocity * 21);
         } else if (daysUntilStockout <= 7 && salesVelocity > 0) {
           priority = "high";
           reasons.push(`Estoque acabará em ${daysUntilStockout} dias`);
@@ -192,10 +184,9 @@ export async function GET(request: NextRequest) {
           priority = "medium";
           reasons.push("Estoque moderado com vendas regulares");
           actions.push("Monitorar e planejar reposição");
-          suggestedRestock = Math.ceil(salesVelocity * 30); // 1 mês
+          suggestedRestock = Math.ceil(salesVelocity * 30);
         }
 
-        // Adicionar razões específicas
         if (salesData && salesData.totalSold > 10) {
           reasons.push(
             `Produto popular: ${salesData.totalSold} vendas em ${period} dias`
@@ -216,7 +207,6 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        // Apenas incluir produtos que precisam de atenção
         if (reasons.length > 0) {
           suggestions.push({
             priority,
@@ -232,14 +222,13 @@ export async function GET(request: NextRequest) {
             totalSold: salesData?.totalSold || 0,
             lastSaleDate: salesData?.lastSaleDate?.toISOString(),
             revenue: salesData?.totalRevenue || 0,
-            mlPrice: produtoML.mlPrice / 100, // Converter centavos para reais
+            mlPrice: produtoML.mlPrice / 100,
             reasons,
             actions,
           });
         }
       }
 
-      // Ordenar por prioridade e então por velocidade de vendas
       const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
       suggestions.sort((a, b) => {
         if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
@@ -248,7 +237,6 @@ export async function GET(request: NextRequest) {
         return b.salesVelocity - a.salesVelocity;
       });
 
-      // Estatísticas resumidas
       const summary = {
         totalProducts: produtosML.length,
         needsAttention: suggestions.length,
@@ -271,7 +259,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({
         summary,
-        suggestions: suggestions.slice(0, 50), // Limitar a 50 produtos para performance
+        suggestions: suggestions.slice(0, 50),
         period: {
           days: period,
           from: periodStart.toISOString(),

@@ -28,7 +28,6 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Saida, Produto as ProdutoBase } from "../types";
 
-// Interface estendida para incluir a propriedade ean
 interface ProdutoComEAN extends ProdutoBase {
   codigoEAN?: string;
   ean?: string | number;
@@ -62,7 +61,7 @@ const BarcodeScannerSaidasConferencia = ({
   const [detalhesMap, setDetalhesMap] = useState<Map<number, SaidaDetalhe>>(
     new Map()
   );
-  const [eanMap, setEanMap] = useState<Map<string, number>>(new Map()); // EAN -> detalheId
+  const [eanMap, setEanMap] = useState<Map<string, number>>(new Map());
   const [produtosDesconhecidos, setProdutosDesconhecidos] = useState<
     { codigoEAN: string; timestamp: Date }[]
   >([]);
@@ -73,7 +72,6 @@ const BarcodeScannerSaidasConferencia = ({
   >(new Map());
   const [conferido, setConferido] = useState(false);
 
-  // Função para extrair o código EAN de um produto
   const getCodigoEAN = (produto: ProdutoComEAN): string | undefined => {
     if (produto?.codigoEAN) {
       return produto.codigoEAN;
@@ -86,7 +84,6 @@ const BarcodeScannerSaidasConferencia = ({
     return undefined;
   };
 
-  // Mapeamento de detalhes da saída e códigos EAN
   useEffect(() => {
     const detMap = new Map<number, SaidaDetalhe>();
     const eanMapping = new Map<string, number>();
@@ -95,22 +92,18 @@ const BarcodeScannerSaidasConferencia = ({
     console.log("Iniciando mapeamento de produtos da saída com códigos EAN:");
 
     saida.detalhes.forEach((detalhe) => {
-      // Tratar o produto como ProdutoComEAN
       const detalheComConferencia: SaidaDetalhe = {
         ...detalhe,
-        quantidadeConferida: 0, // Inicializar a quantidade conferida como 0
+        quantidadeConferida: 0,
         produto: detalhe.produto as ProdutoComEAN,
       };
 
       detMap.set(detalhe.id, detalheComConferencia);
 
-      // Armazenar a quantidade original
       quantOriginais.set(detalhe.id, detalhe.quantidade);
 
-      // Log para verificar se codigoEAN existe
       console.log(`Produto: ${detalhe.produto.nome} (ID: ${detalhe.id})`);
 
-      // Obter o código EAN usando a função utilitária
       const codigoEAN = getCodigoEAN(detalhe.produto as ProdutoComEAN);
       console.log(`  codigoEAN: ${codigoEAN || "Não definido"}`);
       console.log(
@@ -119,7 +112,6 @@ const BarcodeScannerSaidasConferencia = ({
         }`
       );
 
-      // Se o produto tiver código EAN, mapeamos para o ID do detalhe
       if (codigoEAN) {
         eanMapping.set(codigoEAN, detalhe.id);
         console.log(`  Mapeando EAN ${codigoEAN} -> ID ${detalhe.id}`);
@@ -133,15 +125,12 @@ const BarcodeScannerSaidasConferencia = ({
     setQuantidadesOriginais(quantOriginais);
   }, [saida]);
 
-  // Inicialização das quantidades conferidas
   useEffect(() => {
     if (!inicializado) {
-      // Zerar todas as quantidades quando entra no modo de conferência por código de barras
       saida.detalhes.forEach((detalhe) => {
         onQuantidadeAtualizada(detalhe.id, 0);
       });
 
-      // Limpar histórico e produtos desconhecidos
       setHistoricoScans([]);
       setProdutosDesconhecidos([]);
 
@@ -152,7 +141,6 @@ const BarcodeScannerSaidasConferencia = ({
     }
   }, [saida, onQuantidadeAtualizada, inicializado]);
 
-  // Verificar se a conferência está completa (todas as quantidades conferidas batem com as originais)
   useEffect(() => {
     if (saida.detalhes.length === 0) return;
 
@@ -163,12 +151,10 @@ const BarcodeScannerSaidasConferencia = ({
       const detalheMapeado = detalhesMap.get(detalhe.id);
       if (!detalheMapeado) return;
 
-      // Se alguma quantidade foi conferida, mas não corresponde à quantidade original
       if (detalheMapeado.quantidadeConferida !== detalhe.quantidade) {
         todas_conferidas = false;
       }
 
-      // Se alguma quantidade foi conferida
       if (
         detalheMapeado.quantidadeConferida &&
         detalheMapeado.quantidadeConferida > 0
@@ -177,7 +163,6 @@ const BarcodeScannerSaidasConferencia = ({
       }
     });
 
-    // Só é considerado completamente conferido se todas as quantidades baterem
     const novoStatus = todas_conferidas && alguma_conferida;
     if (novoStatus !== conferido) {
       setConferido(novoStatus);
@@ -185,9 +170,7 @@ const BarcodeScannerSaidasConferencia = ({
     }
   }, [saida.detalhes, detalhesMap, conferido, onConferenciaCompleta]);
 
-  // Função para lidar com um novo scan
   const handleScan = (codigoEAN: string) => {
-    // Verificar se o código EAN corresponde a algum produto
     console.log(`Código EAN escaneado: ${codigoEAN}`);
     console.log(`Mapa de EANs atual:`, Object.fromEntries(eanMap));
 
@@ -198,7 +181,6 @@ const BarcodeScannerSaidasConferencia = ({
 
     if (!detalheId) {
       console.log(`EAN não encontrado no mapa!`);
-      // Guardar o código desconhecido
       setProdutosDesconhecidos((prev) => [
         {
           codigoEAN,
@@ -216,18 +198,15 @@ const BarcodeScannerSaidasConferencia = ({
       return;
     }
 
-    // Atualizar a quantidade conferida
     const novaQuantidade = (detalhe.quantidadeConferida || 0) + 1;
     onQuantidadeAtualizada(detalheId, novaQuantidade);
 
-    // Atualizar o detalhesMap
     detalhesMap.set(detalheId, {
       ...detalhe,
       quantidadeConferida: novaQuantidade,
     });
     setDetalhesMap(new Map(detalhesMap));
 
-    // Adicionar ao histórico
     setHistoricoScans((prev) => [
       {
         codigoEAN,
@@ -238,26 +217,21 @@ const BarcodeScannerSaidasConferencia = ({
       ...prev,
     ]);
 
-    // Limpar qualquer erro anterior
     setError(null);
   };
 
-  // Validação de código de barras
   const validarCodigoBarras = async (codigo: string): Promise<boolean> => {
     return eanMap.has(codigo);
   };
 
-  // Limpar histórico
   const limparHistorico = () => {
     setHistoricoScans([]);
   };
 
-  // Limpar produtos desconhecidos
   const limparProdutosDesconhecidos = () => {
     setProdutosDesconhecidos([]);
   };
 
-  // Reiniciar conferência
   const confirmarReiniciar = () => {
     setMostrarConfirmacao(true);
   };
@@ -267,11 +241,9 @@ const BarcodeScannerSaidasConferencia = ({
   };
 
   const executarReiniciar = () => {
-    // Zerar todas as quantidades
     saida.detalhes.forEach((detalhe) => {
       onQuantidadeAtualizada(detalhe.id, 0);
 
-      // Atualizar o detalhesMap
       const detalheAtual = detalhesMap.get(detalhe.id);
       if (detalheAtual) {
         detalhesMap.set(detalhe.id, {
@@ -283,7 +255,6 @@ const BarcodeScannerSaidasConferencia = ({
 
     setDetalhesMap(new Map(detalhesMap));
 
-    // Limpar histórico e produtos desconhecidos
     setHistoricoScans([]);
     setProdutosDesconhecidos([]);
 
@@ -291,7 +262,6 @@ const BarcodeScannerSaidasConferencia = ({
     setMostrarConfirmacao(false);
   };
 
-  // Função para calcular o total de itens contados
   const calcularTotalContado = (): number => {
     let total = 0;
     detalhesMap.forEach((detalhe) => {
@@ -300,7 +270,6 @@ const BarcodeScannerSaidasConferencia = ({
     return total;
   };
 
-  // Função para calcular o total de itens esperados
   const calcularTotalEsperado = (): number => {
     return saida.detalhes.reduce(
       (total, detalhe) => total + detalhe.quantidade,

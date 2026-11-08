@@ -2,30 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { BlingOAuthError, BlingService } from "@/services/blingService";
 import { verifyUser } from "@/helpers/verifyUser";
-import {
-  BLING_OAUTH_STATE_COOKIE_NAME,
-  verifyBlingOAuthStateCookie,
-} from "@/lib/blingOAuthState";
+import { verificarStateBling } from "@/lib/blingOAuthState";
 import { origemDaRequisicao } from "@/lib/blingConfig";
 
-function redirectToIntegracoes(
-  request: NextRequest,
-  params: Record<string, string>
-): NextResponse {
-  const redirectUrl = new URL(
-    "/integracoes",
-    origemDaRequisicao(request.url, request.headers)
-  );
-  for (const [key, value] of Object.entries(params)) {
-    redirectUrl.searchParams.set(key, value);
-  }
-
-  const response = NextResponse.redirect(redirectUrl);
-  response.cookies.set(BLING_OAUTH_STATE_COOKIE_NAME, "", {
-    maxAge: 0,
-    path: "/",
-  });
-  return response;
+function redirecionarParaIntegracoes(request: NextRequest, params: Record<string, string>): NextResponse {
+  const destino = new URL("/integracoes", origemDaRequisicao(request.url, request.headers));
+  for (const [chave, valor] of Object.entries(params)) destino.searchParams.set(chave, valor);
+  return NextResponse.redirect(destino);
 }
 
 interface TokensBling {
@@ -35,16 +18,16 @@ interface TokensBling {
 }
 
 async function salvarConta(contaId: string, tokens: TokensBling): Promise<string> {
-  const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
   const dados = {
     accessToken: tokens.access_token,
     refreshToken: tokens.refresh_token,
-    expiresAt,
+    expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
     isActive: true,
   };
 
   const existente = await prisma.blingAccount.findFirst({
     where: { userId: contaId },
+    orderBy: { createdAt: "desc" },
     select: { id: true },
   });
 
@@ -55,41 +38,48 @@ async function salvarConta(contaId: string, tokens: TokensBling): Promise<string
   return conta.id;
 }
 
+async function idDaSessao(request: NextRequest): Promise<string | null> {
+  try {
+    const user = await verifyUser(request);
+    return user.id;
+  } catch {
+    return null;
+  }
+}
+
+async function resolverConta(userId: string): Promise<string | null> {
+  const usuario = await prisma.user.findUnique({ where: { id: userId }, select: { id: true, contaId: true } });
+  if (!usuario) return null;
+  return usuario.contaId ?? usuario.id;
+}
+
 export async function GET(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
-  const errorBling = searchParams.get("error");
+  const erroBling = searchParams.get("error");
 
-  if (errorBling) {
-    return redirectToIntegracoes(request, {
-      bling_erro: errorBling === "access_denied" ? "acesso_negado" : "bling_recusou",
+  if (erroBling) {
+    return redirecionarParaIntegracoes(request, {
+      bling_erro: erroBling === "access_denied" ? "acesso_negado" : "bling_recusou",
     });
   }
 
   if (!code || !state) {
-    return redirectToIntegracoes(request, { bling_erro: "parametros_ausentes" });
+    return redirecionarParaIntegracoes(request, { bling_erro: "parametros_ausentes" });
   }
 
-  let userId: string;
-  let contaId: string;
-  try {
-    const user = await verifyUser(request);
-    userId = user.id;
-    contaId = user.contaId;
-  } catch (sessionError) {
-    console.error("[BLING_CALLBACK] Sessão ausente no retorno do Bling:", sessionError);
-    return redirectToIntegracoes(request, { bling_erro: "sessao_invalida" });
+  const verificacao = verificarStateBling(state, await idDaSessao(request));
+  if (!verificacao.ok) {
+    console.error("[BLING_CALLBACK] State recusado", { motivo: verificacao.motivo });
+    return redirecionarParaIntegracoes(request, {
+      bling_erro: verificacao.motivo === "expirado" ? "state_expirado" : "state_invalido",
+    });
   }
 
-  const cookieValue = request.cookies.get(BLING_OAUTH_STATE_COOKIE_NAME)?.value;
-  if (!verifyBlingOAuthStateCookie(cookieValue, state, userId)) {
-    console.error("[BLING_CALLBACK] State inválido", {
-      cookiePresente: Boolean(cookieValue),
-    });
-    return redirectToIntegracoes(request, {
-      bling_erro: cookieValue ? "state_invalido" : "state_expirado",
-    });
+  const contaId = await resolverConta(verificacao.userId);
+  if (!contaId) {
+    return redirecionarParaIntegracoes(request, { bling_erro: "sessao_invalida" });
   }
 
   let tokens: TokensBling;
@@ -102,10 +92,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         motivo: error.motivo,
         detalhe: error.detalhe,
       });
-      return redirectToIntegracoes(request, { bling_erro: error.motivo });
+      return redirecionarParaIntegracoes(request, { bling_erro: error.motivo });
     }
     console.error("[BLING_CALLBACK] Falha de rede ao trocar o código:", error);
-    return redirectToIntegracoes(request, { bling_erro: "bling_indisponivel" });
+    return redirecionarParaIntegracoes(request, { bling_erro: "bling_indisponivel" });
   }
 
   let accountId: string;
@@ -113,24 +103,25 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     accountId = await salvarConta(contaId, tokens);
   } catch (error) {
     console.error("[BLING_CALLBACK] Falha ao gravar a conta Bling:", error);
-    return redirectToIntegracoes(request, { bling_erro: "erro_salvar_conta" });
+    return redirecionarParaIntegracoes(request, { bling_erro: "erro_salvar_conta" });
   }
 
-  const blingCompanyId = await BlingService.getCompanyId(accountId);
-  const companyIdGravado = blingCompanyId
-    ? await prisma.blingAccount
-        .update({ where: { id: accountId }, data: { blingCompanyId } })
-        .then(() => true)
-        .catch((error: unknown) => {
-          console.error("[BLING_CALLBACK] Falha ao gravar o companyId:", error);
-          return false;
-        })
-    : false;
+  const [blingCompanyId, escoposFaltando] = await Promise.all([
+    BlingService.getCompanyId(accountId),
+    BlingService.verificarEscopos(accountId).catch((error: unknown) => {
+      console.error("[BLING_CALLBACK] Falha ao testar escopos:", error);
+      return [] as string[];
+    }),
+  ]);
 
-  return redirectToIntegracoes(
-    request,
-    companyIdGravado
-      ? { bling: "conectado" }
-      : { bling: "conectado", bling_aviso: "empresa_nao_identificada" }
-  );
+  if (blingCompanyId) {
+    await prisma.blingAccount
+      .update({ where: { id: accountId }, data: { blingCompanyId } })
+      .catch((error: unknown) => console.error("[BLING_CALLBACK] Falha ao gravar o companyId:", error));
+  }
+
+  const params: Record<string, string> = { bling: "conectado" };
+  if (!blingCompanyId) params.bling_aviso = "empresa_nao_identificada";
+  if (escoposFaltando.length > 0) params.bling_escopos = escoposFaltando.join("|");
+  return redirecionarParaIntegracoes(request, params);
 }

@@ -59,13 +59,6 @@ async function persistirGastoAds(
   }
 }
 
-/**
- * Recalcula do zero o ads de cada item tocado pelos anúncios com gasto
- * nesse dia — nunca incrementa (reprocessar o mesmo dia tem que dar o mesmo
- * resultado). Cada anúncio rateia seu próprio custo só entre os itens dele
- * no dia (proporcional ao faturamento); um pedido com itens de anúncios
- * diferentes recebe a soma de cada parte, não um rateio único do total.
- */
 async function ratearAdsDoDiaEntreVendas(
   userId: string,
   canal: CanalVenda,
@@ -93,7 +86,7 @@ async function ratearAdsDoDiaEntreVendas(
   const adsPorItemId = new Map<string, number>();
   for (const { anuncioExternoId, custo } of anuncios) {
     const itensDoAnuncio = itens.filter((i) => i.anuncioExternoId === anuncioExternoId);
-    if (itensDoAnuncio.length === 0) continue; // ads sem venda no dia: só fica em GastoAdsCanal
+    if (itensDoAnuncio.length === 0) continue;
 
     const pesos = itensDoAnuncio.map((i) => i.precoUnitario * i.quantidade);
     const partes = ratear(custo, pesos);

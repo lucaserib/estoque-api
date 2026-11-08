@@ -1,5 +1,3 @@
-// src/types/mercadolivre.ts
-
 import { JsonValue } from "@prisma/client/runtime/library";
 
 export interface MLAuthResponse {
@@ -238,7 +236,7 @@ export interface MLItemsResponse {
     offset: number;
     limit: number;
   };
-  results: string[]; // Array de IDs dos items
+  results: string[];
   orders: Array<{
     id: string;
     name: string;
@@ -310,10 +308,10 @@ export interface ProdutoMercadoLivre {
   mlItemId: string;
   mlTitle: string;
   mlPrice: number;
-  mlOriginalPrice?: number | null; // ✅ NOVO: Preço original antes da promoção
-  mlBasePrice?: number | null; // ✅ NOVO: Preço base do produto
-  mlHasPromotion?: boolean; // ✅ NOVO: Se tem promoção ativa
-  mlPromotionDiscount?: number | null; // ✅ NOVO: Percentual de desconto
+  mlOriginalPrice?: number | null;
+  mlBasePrice?: number | null;
+  mlHasPromotion?: boolean;
+  mlPromotionDiscount?: number | null;
   mlAvailableQuantity: number;
   mlStatus: string;
   mlPermalink?: string;

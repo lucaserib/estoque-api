@@ -11,6 +11,7 @@ interface PerfilResponse {
   createdAt: string;
   provider: string;
   hasPassword: boolean;
+  receberResumoIa: boolean;
 }
 
 interface PerfilError {
@@ -37,6 +38,7 @@ export async function GET(
       createdAt: user.createdAt.toISOString(),
       provider: account?.provider ?? "credentials",
       hasPassword: user.password !== null,
+      receberResumoIa: user.receberResumoIa,
     });
   } catch (error) {
     console.error("Erro ao buscar perfil:", error);
@@ -47,14 +49,23 @@ export async function GET(
   }
 }
 
-const patchSchema = z.object({
-  name: z.string().min(2, "Nome deve ter ao menos 2 caracteres").max(80, "Nome deve ter no máximo 80 caracteres"),
-  image: z.string().url().nullable().optional(),
-});
+const patchSchema = z
+  .object({
+    name: z
+      .string()
+      .min(2, "Nome deve ter ao menos 2 caracteres")
+      .max(80, "Nome deve ter no máximo 80 caracteres")
+      .optional(),
+    image: z.string().url().nullable().optional(),
+    receberResumoIa: z.boolean().optional(),
+  })
+  .refine((d) => d.name !== undefined || d.image !== undefined || d.receberResumoIa !== undefined, {
+    message: "Nada para atualizar",
+  });
 
 export async function PATCH(
   request: NextRequest
-): Promise<NextResponse<Pick<PerfilResponse, "id" | "name" | "email" | "image"> | PerfilError>> {
+): Promise<NextResponse<Pick<PerfilResponse, "id" | "name" | "email" | "image" | "receberResumoIa"> | PerfilError>> {
   try {
     const user = await verifyUser(request);
     const parsed = patchSchema.safeParse(await request.json());
@@ -66,13 +77,14 @@ export async function PATCH(
       );
     }
 
-    const { name, image } = parsed.data;
+    const { name, image, receberResumoIa } = parsed.data;
 
     const updated = await prisma.user.update({
       where: { id: user.id },
       data: {
-        name,
+        ...(name !== undefined ? { name } : {}),
         ...(image !== undefined ? { image } : {}),
+        ...(receberResumoIa !== undefined ? { receberResumoIa } : {}),
       },
     });
 
@@ -81,6 +93,7 @@ export async function PATCH(
       name: updated.name,
       email: updated.email,
       image: updated.image,
+      receberResumoIa: updated.receberResumoIa,
     });
   } catch (error) {
     console.error("Erro ao atualizar perfil:", error);

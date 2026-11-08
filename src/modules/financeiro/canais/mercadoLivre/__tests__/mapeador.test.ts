@@ -167,7 +167,7 @@ describe("mapearItem", () => {
       sale_fee: 5,
     });
 
-    expect(item.tarifaTotal).toBe(1500); // 5 * 3 * 100
+    expect(item.tarifaTotal).toBe(1500);
   });
 
   it("prioriza seller_sku sobre seller_custom_field", () => {
@@ -278,7 +278,7 @@ describe("mapearCustoEnvio", () => {
       senders: [{ cost: 20, compensations: [{ amount: 5 }, { amount: 2 }] }],
     });
 
-    expect(resultado.valor).toBe(1300); // (20 - 7) * 100
+    expect(resultado.valor).toBe(1300);
     expect(resultado.confianca).toBe("CONFIRMADO");
   });
 

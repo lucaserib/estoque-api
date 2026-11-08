@@ -2,11 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 
-/**
- * GET /api/estoque/calcular-media-saidas?produtoId=xxx&dias=90
- * Calcula a média diária de saídas de um produto no período informado.
- * Resposta: { mediaDiaria, totalSaidas, dias }
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);
@@ -21,7 +16,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Garantir que o produto pertence ao usuário
     const produto = await prisma.produto.findFirst({
       where: { id: produtoId, userId: user.contaId },
       select: { id: true },

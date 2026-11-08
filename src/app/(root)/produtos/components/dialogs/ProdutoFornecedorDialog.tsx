@@ -1,7 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Produto } from "../../types";
 
-// UI Components
 import {
   Dialog,
   DialogContent,
@@ -100,7 +99,6 @@ export function ProdutoFornecedorDialog({
     }
   }, [produto.id, setFornecedoresVinculados, setIsLoading]);
 
-  // Load suppliers and linked suppliers when component mounts
   useEffect(() => {
     if (isOpen) {
       fetchFornecedores();
@@ -108,7 +106,6 @@ export function ProdutoFornecedorDialog({
     }
   }, [isOpen, produto.id, fetchFornecedoresVinculados]);
 
-  // Effect for cleanup on unmounting to prevent focus issues
   useEffect(() => {
     return () => {
       if (!isOpen) {
@@ -219,7 +216,7 @@ export function ProdutoFornecedorDialog({
 
   const handleEdit = (vinculo: ProdutoFornecedor) => {
     setEditingId(vinculo.id);
-    setPreco((vinculo.preco / 100).toString()); // Convert from cents
+    setPreco((vinculo.preco / 100).toString());
     setMultiplicador(vinculo.multiplicador.toString());
     setCodigoNF(vinculo.codigoNF);
   };
@@ -257,12 +254,12 @@ export function ProdutoFornecedorDialog({
         setFornecedoresVinculados((prev) =>
           prev.map((vinculo) =>
             vinculo.id === vinculoId
-              ? { ...fornecedorAtualizado, fornecedor: fornecedor } // Keep the original supplier
+              ? { ...fornecedorAtualizado, fornecedor: fornecedor }
               : vinculo
           )
         );
 
-        setEditingId(null); // Exit edit mode
+        setEditingId(null);
         setMessage("Fornecedor atualizado com sucesso");
         setMessageType("success");
         setPreco("");
@@ -287,7 +284,6 @@ export function ProdutoFornecedorDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Ensure focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();
@@ -319,7 +315,6 @@ export function ProdutoFornecedorDialog({
 
         <ScrollArea className="max-h-[calc(90vh-12rem)]">
           <div className="p-6 pt-2 space-y-6">
-            {/* Fornecedores vinculados */}
             <div>
               <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                 <Truck className="h-5 w-5 text-primary" />
@@ -456,7 +451,6 @@ export function ProdutoFornecedorDialog({
               )}
             </div>
 
-            {/* Adicionar Novo Fornecedor */}
             {message && (
               <Alert
                 variant={messageType === "success" ? "success" : "destructive"}

@@ -13,7 +13,6 @@ interface LayoutContextProps {
   logoUrl: string | null;
   atualizarBranding: (dados: { nomeLoja?: string | null; logoUrl?: string | null }) => void;
   toggleSidebar: () => void;
-  /** Fecha a sidebar só quando ela está sobreposta ao conteúdo (telas < md). */
   closeSidebarOnMobile: () => void;
   toggleDarkMode: () => void;
 }
@@ -37,7 +36,6 @@ function gravarStorage(chave: string, valor: string) {
   try {
     window.localStorage.setItem(chave, valor);
   } catch {
-    // modo privado / storage bloqueado: preferência só não persiste
   }
 }
 
@@ -62,8 +60,6 @@ export const LayoutProvider = ({ children }: { children: React.ReactNode }) => {
     const ouvirMudancaSistema = (e: MediaQueryListEvent) => setSegueSistemaEscuro(e.matches);
     media.addEventListener("change", ouvirMudancaSistema);
 
-    // No celular a sidebar sobrepõe o conteúdo: começa sempre fechada.
-    // No desktop respeita a última escolha do usuário.
     if (window.matchMedia(MOBILE_QUERY).matches) {
       setIsSidebarCollapsed(true);
     } else {
@@ -74,7 +70,6 @@ export const LayoutProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    // Páginas sem sessão (login, registro) não têm conta pra buscar tema/marca — evita 401 à toa.
     if (status !== "authenticated") return;
 
     fetch("/api/configuracoes-gerais")
@@ -90,7 +85,6 @@ export const LayoutProvider = ({ children }: { children: React.ReactNode }) => {
         setLogoUrl(dados.logoUrl ?? null);
       })
       .catch(() => {
-        // falha de rede: fica no padrão local
       });
   }, [status]);
 
@@ -116,7 +110,6 @@ export const LayoutProvider = ({ children }: { children: React.ReactNode }) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tema: novoTema }),
     }).catch(() => {
-      // preferência já aplicada no cliente; só não foi sincronizada com a conta
     });
   }, []);
 

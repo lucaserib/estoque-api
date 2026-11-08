@@ -4,12 +4,6 @@ import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { mlCache, createCacheKey } from "@/lib/cache";
 import { definirVinculoAnuncio, VinculoErro } from "@/modules/catalogo/vinculos";
 
-/**
- * POST /api/produtos/vincular-manual — compatibilidade com a tela
- * /produtos/vincular. A regra vive em `modules/catalogo/vinculos.ts`.
- * `syncStock` é ignorado: o envio automático de estoque cuida disso
- * respeitando Full e kits.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

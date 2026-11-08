@@ -30,14 +30,6 @@ export interface OpcoesLote {
   etapa?: string;
 }
 
-/**
- * Etapa 1 da sincronização: grava de uma vez os pedidos que o /orders/search
- * já devolveu completos (status, itens, preço, quantidade, sale_fee, frete do
- * comprador), sem nenhuma chamada extra à API. É o que faz faturamento,
- * pedidos, unidades e tarifa baterem com o Mercado Livre em segundos. O
- * detalhamento (pagamento no Mercado Pago, frete real, liberação) vem depois,
- * venda a venda, em `enriquecimento.ts`.
- */
 export async function ingerirPedidosEmLote(
   contaCanal: ContaCanal,
   pedidosBrutos: MLOrder[],

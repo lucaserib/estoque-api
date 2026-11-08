@@ -77,7 +77,6 @@ function RotuloEixo({ x, y, payload }: { x?: number; y?: number; payload?: { val
   );
 }
 
-/** Gráfico cascata do faturamento até o lucro líquido, mês mais recente do período selecionado. */
 export function CascataResultado({ mes }: { mes: DreMensalParaCascata }) {
   const dados = construirCascata(mes);
   const base = mes.faturamento || 1;

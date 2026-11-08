@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 
-/**
- * GET /api/produtos/[id]/mercadolivre
- * Busca produtos ML vinculados a um produto local
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -14,7 +10,6 @@ export async function GET(
     const user = await verifyUser(request);
     const { id: produtoId } = await params;
 
-    // Verificar se o produto pertence ao usuário
     const produto = await prisma.produto.findFirst({
       where: {
         id: produtoId,
@@ -29,7 +24,6 @@ export async function GET(
       );
     }
 
-    // Buscar produtos ML vinculados
     const mlProducts = await prisma.produtoMercadoLivre.findMany({
       where: {
         produtoId: produtoId,

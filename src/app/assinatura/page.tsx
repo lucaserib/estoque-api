@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatBRLReais, formatDateBR } from "@/lib/format";
+import { PRICING } from "@/lib/billing";
+import { CartaoSkuboIaAssinatura } from "@/components/ia/CartaoSkuboIaAssinatura";
 
 interface SubscriptionStatus {
   status: "TRIALING" | "ACTIVE" | "PAST_DUE" | "CANCELED";
@@ -27,7 +29,6 @@ export default function AssinaturaPage() {
     null
   );
   const [cancelling, setCancelling] = useState(false);
-
   const loadStatus = () => {
     fetch("/api/mercadopago/status")
       .then((response) => response.json())
@@ -90,7 +91,7 @@ export default function AssinaturaPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto max-w-3xl p-6 space-y-6">
+      <div className="mx-auto w-full max-w-3xl space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold">Assinatura</h1>
@@ -168,14 +169,14 @@ export default function AssinaturaPage() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-3xl font-bold tabular-nums">
-                  {formatBRLReais(19.7)}
+                  {formatBRLReais(PRICING.MONTHLY_FIRST_CYCLE)}
                   <span className="text-sm font-normal text-muted-foreground">
                     {" "}
                     no primeiro mês
                   </span>
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Depois {formatBRLReais(37.9)}/mês
+                  Depois {formatBRLReais(PRICING.MONTHLY_RENEWAL)}/mês
                 </p>
               </div>
               <Button
@@ -206,7 +207,7 @@ export default function AssinaturaPage() {
             <CardContent className="space-y-4">
               <div>
                 <p className="text-3xl font-bold tabular-nums">
-                  {formatBRLReais(389.7)}
+                  {formatBRLReais(PRICING.ANNUAL)}
                   <span className="text-sm font-normal text-muted-foreground">
                     {" "}
                     /ano
@@ -233,6 +234,8 @@ export default function AssinaturaPage() {
             </CardContent>
           </Card>
         </div>
+
+        <CartaoSkuboIaAssinatura />
       </div>
     </div>
   );

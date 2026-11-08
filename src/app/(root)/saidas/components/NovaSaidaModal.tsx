@@ -1,4 +1,3 @@
-// app/saidas/components/NovaSaidaModal.tsx
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { FaPlus, FaTrash, FaChevronDown } from "react-icons/fa";
@@ -66,7 +65,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
             (p) => p.produtoId === produtoToAdd.id && !p.isKit
           );
           if (existing) {
-            existing.quantidade += qty; // Soma a nova quantidade
+            existing.quantidade += qty;
             return [...prev];
           }
           return [
@@ -75,7 +74,7 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
               produtoId: produtoToAdd.id,
               quantidade: qty,
               sku: produtoToAdd.sku,
-              nome: produtoToAdd.nome, // Add the nome property
+              nome: produtoToAdd.nome,
               isKit: false,
             },
           ];
@@ -106,13 +105,13 @@ const NovaSaidaModal = ({ onClose, onSave }: NovaSaidaModalProps) => {
                 produtoId: kit.id,
                 quantidade: qty,
                 sku: kit.sku,
-                nome: kit.nome, // Add the nome property for the kit
+                nome: kit.nome,
                 isKit: true,
                 componentes: kit.componentes.map((c: KitComponente) => ({
                   produtoId: c.produto.id,
                   quantidade: c.quantidade * qty,
                   sku: c.produto.sku,
-                  nome: c.produto.nome, // Add the nome property for kit components
+                  nome: c.produto.nome,
                 })),
               },
             ];

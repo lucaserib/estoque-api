@@ -164,76 +164,82 @@ enum TipoValorFreteLogistica {
 }
 
 model User {
-  id                       String                     @id @default(uuid())
-  name                     String?
-  email                    String                     @unique
-  password                 String?
-  image                    String?
-  role                     UserRole                   @default(ADMIN)
-  contaId                  String?
-  createdAt                DateTime                   @default(now())
-  updatedAt                DateTime                   @updatedAt
-  conta                    User?                      @relation("MembrosDaConta", fields: [contaId], references: [id], onDelete: SetNull)
-  membros                  User[]                     @relation("MembrosDaConta")
-  accounts                 Account[]
-  armazens                 Armazem[]
-  Fornecedor               Fornecedor[]
-  pedidos                  PedidoCompra[]
-  produtos                 Produto[]
-  saidas                   Saida[]
-  sessions                 Session[]
-  BlingAccount             BlingAccount[]
-  MercadoLivreAccount      MercadoLivreAccount[]
-  StockReplenishmentConfig StockReplenishmentConfig[]
-  transferencias           TransferenciaEstoque[]
-  notifications            Notification[]
-  movimentacoesEstoque     EstoqueMovimentacao[]
-  subscription             Subscription?
-  invitationsSent          Invitation[]               @relation("InvitationsSent")
-  configuracaoGeral        ConfiguracaoGeral?
-  onboardingProgresso      OnboardingProgresso?
-  vendasCanal              VendaCanal[]
-  categoriasFinanceiras    CategoriaFinanceira[]
-  contasFinanceiras        ContaFinanceira[]
-  lancamentosFinanceiros   LancamentoFinanceiro[]
-  recorrenciasFinanceiras  RecorrenciaFinanceira[]
-  faturasCartao            FaturaCartao[]
-  gastosAdsCanal           GastoAdsCanal[]
-  cobrancasCanal           CobrancaCanal[]
-  resumosFinanceirosDiarios ResumoFinanceiroDiario[]
-  sincronizacoesFinanceiras SincronizacaoFinanceira[]
+  id                             String                          @id @default(uuid())
+  name                           String?
+  email                          String                          @unique
+  password                       String?
+  image                          String?
+  role                           UserRole                        @default(ADMIN)
+  contaId                        String?
+  createdAt                      DateTime                        @default(now())
+  updatedAt                      DateTime                        @updatedAt
+  conta                          User?                           @relation("MembrosDaConta", fields: [contaId], references: [id], onDelete: SetNull)
+  membros                        User[]                          @relation("MembrosDaConta")
+  accounts                       Account[]
+  armazens                       Armazem[]
+  Fornecedor                     Fornecedor[]
+  pedidos                        PedidoCompra[]
+  produtos                       Produto[]
+  saidas                         Saida[]
+  sessions                       Session[]
+  BlingAccount                   BlingAccount[]
+  MercadoLivreAccount            MercadoLivreAccount[]
+  StockReplenishmentConfig       StockReplenishmentConfig[]
+  transferencias                 TransferenciaEstoque[]
+  notifications                  Notification[]
+  movimentacoesEstoque           EstoqueMovimentacao[]
+  subscription                   Subscription?
+  invitationsSent                Invitation[]                    @relation("InvitationsSent")
+  configuracaoGeral              ConfiguracaoGeral?
+  onboardingProgresso            OnboardingProgresso?
+  vendasCanal                    VendaCanal[]
+  categoriasFinanceiras          CategoriaFinanceira[]
+  contasFinanceiras              ContaFinanceira[]
+  lancamentosFinanceiros         LancamentoFinanceiro[]
+  recorrenciasFinanceiras        RecorrenciaFinanceira[]
+  faturasCartao                  FaturaCartao[]
+  gastosAdsCanal                 GastoAdsCanal[]
+  cobrancasCanal                 CobrancaCanal[]
+  resumosFinanceirosDiarios      ResumoFinanceiroDiario[]
+  sincronizacoesFinanceiras      SincronizacaoFinanceira[]
   sincronizacoesFinanceirasErros SincronizacaoFinanceiraErro[]
   tarefasSincronizacaoFinanceira TarefaSincronizacaoFinanceira[]
-  mapeamentosCategoriaBling MapeamentoCategoriaBling[]
-  regrasFreteLogistica      RegraFreteLogistica[]
+  mapeamentosCategoriaBling      MapeamentoCategoriaBling[]
+  regrasFreteLogistica           RegraFreteLogistica[]
+  notasFiscaisVenda              NotaFiscalVenda[]
+  analisesIa                     AnaliseIa[]
+  receberResumoIa                Boolean                         @default(true)
+  conversasIaConta               ConversaIa[]                    @relation("ConversasIaConta")
+  conversasIaAutor               ConversaIa[]                    @relation("ConversasIaAutor")
+  usosIa                         UsoIa[]
 
   @@index([contaId])
 }
 
 model ConfiguracaoGeral {
-  id                               String   @id @default(uuid())
-  userId                           String   @unique
-  aliquotaImposto                  Float    @default(0)
-  avgDeliveryDaysPadrao            Int      @default(7)
-  ultimaContagemPendenciasCriticas Int      @default(0)
-  regimeTributario                 RegimeTributario         @default(SIMPLES)
-  cancelamentoNaCompetencia        CancelamentoCompetencia  @default(VENDA)
-  rateioCustoFixo                  RateioCustoFixo          @default(FATURAMENTO)
-  custoEnvioFlex                   Int?
-  usarImpostoEstimado              Boolean                  @default(true)
-  usarRelatorioLiberacaoMercadoPago Boolean                  @default(false)
-  diasLiberacaoPadrao              Int                      @default(14)
-  gerarContaAPagarAoConfirmarCompra Boolean                  @default(true)
-  prazoPagamentoPadraoDias          Int                      @default(30)
-  blingContasAtivo                  Boolean                  @default(false)
+  id                                String                  @id @default(uuid())
+  userId                            String                  @unique
+  aliquotaImposto                   Float                   @default(0)
+  avgDeliveryDaysPadrao             Int                     @default(7)
+  ultimaContagemPendenciasCriticas  Int                     @default(0)
+  regimeTributario                  RegimeTributario        @default(SIMPLES)
+  cancelamentoNaCompetencia         CancelamentoCompetencia @default(VENDA)
+  rateioCustoFixo                   RateioCustoFixo         @default(FATURAMENTO)
+  custoEnvioFlex                    Int?
+  usarImpostoEstimado               Boolean                 @default(true)
+  usarRelatorioLiberacaoMercadoPago Boolean                 @default(false)
+  diasLiberacaoPadrao               Int                     @default(14)
+  gerarContaAPagarAoConfirmarCompra Boolean                 @default(true)
+  prazoPagamentoPadraoDias          Int                     @default(30)
+  blingContasAtivo                  Boolean                 @default(false)
   metaFaturamentoMensal             Int?
-  modoFaturamento                   ModoFaturamento          @default(PRODUTOS)
+  modoFaturamento                   ModoFaturamento         @default(PRODUTOS)
   nomeLoja                          String?
   logoUrl                           String?
-  tema                              TemaPreferencia          @default(SISTEMA)
-  createdAt                        DateTime @default(now())
-  updatedAt                        DateTime @updatedAt
-  user                             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tema                              TemaPreferencia         @default(SISTEMA)
+  createdAt                         DateTime                @default(now())
+  updatedAt                         DateTime                @updatedAt
+  user                              User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("configuracoes_gerais")
 }
@@ -281,76 +287,76 @@ model Invitation {
 }
 
 model MercadoLivreAccount {
-  id            String                    @id @default(uuid())
-  userId        String
-  mlUserId      String                    @unique
-  accessToken   String
-  refreshToken  String
-  expiresAt     DateTime
-  nickname      String
-  siteId        String
-  isActive      Boolean                   @default(true)
+  id                              String                    @id @default(uuid())
+  userId                          String
+  mlUserId                        String                    @unique
+  accessToken                     String
+  refreshToken                    String
+  expiresAt                       DateTime
+  nickname                        String
+  siteId                          String
+  isActive                        Boolean                   @default(true)
   ultimaSincronizacaoFinanceiraEm DateTime?
   financeiroProcessandoAte        DateTime?
-  versaoDadosFinanceiros          Int       @default(0)
-  createdAt     DateTime                  @default(now())
-  updatedAt     DateTime                  @updatedAt
-  user          User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  syncHistories MercadoLivreSyncHistory[]
-  webhooks      MercadoLivreWebhook[]
-  produtos      ProdutoMercadoLivre[]
+  versaoDadosFinanceiros          Int                       @default(0)
+  createdAt                       DateTime                  @default(now())
+  updatedAt                       DateTime                  @updatedAt
+  user                            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  syncHistories                   MercadoLivreSyncHistory[]
+  webhooks                        MercadoLivreWebhook[]
+  produtos                        ProdutoMercadoLivre[]
 
   @@unique([userId, mlUserId])
   @@map("mercado_livre_accounts")
 }
 
 model ProdutoMercadoLivre {
-  id                    String              @id @default(uuid())
-  produtoId             String?
-  mercadoLivreAccountId String
-  mlItemId              String
-  mlTitle               String
-  mlPrice               Int
-  mlAvailableQuantity   Int
-  mlSoldQuantity        Int                 @default(0)
-  mlStatus              String
-  mlCondition           String              @default("new")
-  mlListingType         String              @default("gold_special")
-  mlPermalink           String?
-  mlThumbnail           String?
-  mlCategoryId          String?
-  mlCategoryName        String?
-  mlShippingMode        String?
-  mlAcceptsMercadoPago  Boolean             @default(true)
-  mlFreeShipping        Boolean             @default(false)
-  mlLastUpdated         DateTime?
-  lastSyncAt            DateTime            @default(now())
-  syncStatus            String              @default("synced")
-  syncError             String?
-  createdAt             DateTime            @default(now())
-  updatedAt             DateTime            @updatedAt
-  mlBasePrice           Int?
-  mlHasPromotion        Boolean             @default(false)
-  mlOriginalPrice       Int?
-  mlPromotionDiscount   Int?
-  mlSold90Days          Int?
-  mlTarifaVenda         Int?
-  mlCustoFrete          Int?
-  mlLogisticType        String?
-  mlInventoryId         String?
-  mlCustosAtualizadosEm DateTime?
-  mlFullDisponivel      Int?
-  mlFullEmTransito      Int?
-  mlFullIndisponivel    Int?
-  mlFullAtualizadoEm    DateTime?
+  id                     String                @id @default(uuid())
+  produtoId              String?
+  mercadoLivreAccountId  String
+  mlItemId               String
+  mlTitle                String
+  mlPrice                Int
+  mlAvailableQuantity    Int
+  mlSoldQuantity         Int                   @default(0)
+  mlStatus               String
+  mlCondition            String                @default("new")
+  mlListingType          String                @default("gold_special")
+  mlPermalink            String?
+  mlThumbnail            String?
+  mlCategoryId           String?
+  mlCategoryName         String?
+  mlShippingMode         String?
+  mlAcceptsMercadoPago   Boolean               @default(true)
+  mlFreeShipping         Boolean               @default(false)
+  mlLastUpdated          DateTime?
+  lastSyncAt             DateTime              @default(now())
+  syncStatus             String                @default("synced")
+  syncError              String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  mlBasePrice            Int?
+  mlHasPromotion         Boolean               @default(false)
+  mlOriginalPrice        Int?
+  mlPromotionDiscount    Int?
+  mlSold90Days           Int?
+  mlTarifaVenda          Int?
+  mlCustoFrete           Int?
+  mlLogisticType         String?
+  mlInventoryId          String?
+  mlCustosAtualizadosEm  DateTime?
+  mlFullDisponivel       Int?
+  mlFullEmTransito       Int?
+  mlFullIndisponivel     Int?
+  mlFullAtualizadoEm     DateTime?
   mlUltimoEnvioEstoqueEm DateTime?
-  mlAutoStockPausado    Boolean             @default(false)
-  mlVariationId         String?
-  mlSellerSku           String?
-  vinculoOrigem         OrigemVinculoProduto?
-  vinculoConfirmado     Boolean             @default(true)
-  mercadoLivreAccount   MercadoLivreAccount @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)
-  produto               Produto?            @relation(fields: [produtoId], references: [id], onDelete: Cascade)
+  mlAutoStockPausado     Boolean               @default(false)
+  mlVariationId          String?
+  mlSellerSku            String?
+  vinculoOrigem          OrigemVinculoProduto?
+  vinculoConfirmado      Boolean               @default(true)
+  mercadoLivreAccount    MercadoLivreAccount   @relation(fields: [mercadoLivreAccountId], references: [id], onDelete: Cascade)
+  produto                Produto?              @relation(fields: [produtoId], references: [id], onDelete: Cascade)
 
   @@unique([mlItemId, mercadoLivreAccountId])
   @@map("produtos_mercado_livre")
@@ -426,44 +432,44 @@ model Session {
 }
 
 model Produto {
-  id                   String                @id @default(uuid())
-  nome                 String
-  sku                  String
-  isKit                Boolean               @default(false)
-  ean                  BigInt?
-  userId               String
-  custoMedio           Int?
-  custoOrigem          CustoOrigem?
-  custoAtualizadoEm    DateTime?
-  precoVenda           Int?
-  precoOrigem          PrecoOrigem?
-  blingId              String?
-  imagemUrl            String?
-  imagemThumbUrl       String?
-  descricao            String?
-  marca                String?
-  categoria            String?
-  pesoGramas           Int?
-  alturaCm             Int?
-  larguraCm            Int?
-  comprimentoCm        Int?
-  custoFreteManual     Int?
-  custoEmbalagem       Int?
-  ativo                Boolean               @default(true)
-  componentes          Componente[]          @relation("KitToComponente")
-  kitsComponentes      Componente[]          @relation("ProdutoToComponente")
-  detalhesSaida        DetalhesSaida[]
-  estoques             Estoque[]
-  pedidos              PedidoProduto[]
-  user                 User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fornecedores         ProdutoFornecedor[]
-  saidas               Saida[]
-  ProdutoMercadoLivre  ProdutoMercadoLivre[]
-  transferenciaItens   TransferenciaItem[]
-  movimentacoesEstoque EstoqueMovimentacao[]
-  vendaCanalItens      VendaCanalItem[]
+  id                     String                 @id @default(uuid())
+  nome                   String
+  sku                    String
+  isKit                  Boolean                @default(false)
+  ean                    BigInt?
+  userId                 String
+  custoMedio             Int?
+  custoOrigem            CustoOrigem?
+  custoAtualizadoEm      DateTime?
+  precoVenda             Int?
+  precoOrigem            PrecoOrigem?
+  blingId                String?
+  imagemUrl              String?
+  imagemThumbUrl         String?
+  descricao              String?
+  marca                  String?
+  categoria              String?
+  pesoGramas             Int?
+  alturaCm               Int?
+  larguraCm              Int?
+  comprimentoCm          Int?
+  custoFreteManual       Int?
+  custoEmbalagem         Int?
+  ativo                  Boolean                @default(true)
+  componentes            Componente[]           @relation("KitToComponente")
+  kitsComponentes        Componente[]           @relation("ProdutoToComponente")
+  detalhesSaida          DetalhesSaida[]
+  estoques               Estoque[]
+  pedidos                PedidoProduto[]
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fornecedores           ProdutoFornecedor[]
+  saidas                 Saida[]
+  ProdutoMercadoLivre    ProdutoMercadoLivre[]
+  transferenciaItens     TransferenciaItem[]
+  movimentacoesEstoque   EstoqueMovimentacao[]
+  vendaCanalItens        VendaCanalItem[]
   lancamentosFinanceiros LancamentoFinanceiro[]
-  gastosAdsCanal       GastoAdsCanal[]
+  gastosAdsCanal         GastoAdsCanal[]
 
   @@unique([sku, userId])
   @@unique([userId, blingId])
@@ -558,35 +564,35 @@ model Armazem {
 }
 
 model Fornecedor {
-  id                String              @id @default(uuid())
-  nome              String
-  cnpj              String?
-  inscricaoEstadual String?
-  contato           String?
-  endereco          String?
-  userId            String
-  blingContatoId    String?
-  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pedidos           PedidoCompra[]
-  produtos          ProdutoFornecedor[]
-  lancamentosFinanceiros LancamentoFinanceiro[]
+  id                      String                  @id @default(uuid())
+  nome                    String
+  cnpj                    String?
+  inscricaoEstadual       String?
+  contato                 String?
+  endereco                String?
+  userId                  String
+  blingContatoId          String?
+  user                    User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pedidos                 PedidoCompra[]
+  produtos                ProdutoFornecedor[]
+  lancamentosFinanceiros  LancamentoFinanceiro[]
   recorrenciasFinanceiras RecorrenciaFinanceira[]
 
   @@unique([userId, blingContatoId])
 }
 
 model PedidoCompra {
-  id            Int             @id @default(autoincrement())
-  fornecedorId  String
-  comentarios   String?
-  status        String
-  armazemId     String?
-  dataPrevista  DateTime?
-  dataConclusao DateTime?
-  userId        String
-  fornecedor    Fornecedor      @relation(fields: [fornecedorId], references: [id])
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  produtos      PedidoProduto[]
+  id                     Int                    @id @default(autoincrement())
+  fornecedorId           String
+  comentarios            String?
+  status                 String
+  armazemId              String?
+  dataPrevista           DateTime?
+  dataConclusao          DateTime?
+  userId                 String
+  fornecedor             Fornecedor             @relation(fields: [fornecedorId], references: [id])
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  produtos               PedidoProduto[]
   lancamentosFinanceiros LancamentoFinanceiro[]
 
   @@index([userId])
@@ -669,14 +675,14 @@ model BlingAccount {
 }
 
 model BlingWebhookEvent {
-  id          String    @id @default(uuid())
-  eventId     String    @unique
-  event       String
-  companyId   String?
-  payload     Json
-  processado  Boolean   @default(false)
-  erro        String?
-  recebidoEm  DateTime  @default(now())
+  id           String    @id @default(uuid())
+  eventId      String    @unique
+  event        String
+  companyId    String?
+  payload      Json
+  processado   Boolean   @default(false)
+  erro         String?
+  recebidoEm   DateTime  @default(now())
   processadoEm DateTime?
 
   @@index([companyId])
@@ -731,6 +737,8 @@ enum NotificationType {
   CONTA_VENCIDA
   VENDA_COM_PREJUIZO
   DIVERGENCIA_CONCILIACAO
+  SOLICITACAO_PLATAFORMA
+  RESUMO_IA
 }
 
 model Notification {
@@ -760,6 +768,14 @@ enum SubscriptionPlan {
   ANNUAL
 }
 
+enum StatusIaAssinatura {
+  INATIVA
+  TESTE
+  ATIVA
+  PENDENTE
+  CANCELADA
+}
+
 model Subscription {
   id                     String             @id @default(uuid())
   userId                 String             @unique
@@ -771,6 +787,14 @@ model Subscription {
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
   billingCyclesCompleted Int                @default(0)
+  iaStatus               StatusIaAssinatura @default(INATIVA)
+  mpPreapprovalIaId      String?            @unique
+  iaAtivadaEm            DateTime?
+  iaPeriodoFim           DateTime?
+  iaTesteIniciadoEm      DateTime?
+  iaLiberadaManual       Boolean            @default(false)
+  iaOrcamentoCentavos    Int?
+  iaSolicitadaEm         DateTime?
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
   user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -779,50 +803,51 @@ model Subscription {
 }
 
 model VendaCanal {
-  id                  String           @id @default(uuid())
-  userId              String
-  canal               CanalVenda
-  contaCanalId        String
-  pedidoExternoId     String
-  pacoteExternoId     String?
-  dataVenda           DateTime
-  dataCancelamento    DateTime?
-  dataLiberacao       DateTime?
-  status              StatusVendaCanal
-  logistica           String?
-  envioExternoId      String?
-  faturamentoBruto    Int
-  descontoVendedor    Int
-  tarifaVenda         Int
-  freteVendedor       Int?
-  freteComprador      Int
-  impostoEstimado     Int
-  adsAtribuido        Int
-  cmv                 Int?
-  outrosCustos        Int              @default(0)
-  margemContribuicao  Int?
-  valorLiquidoReceber Int?
-  retencaoDividas     Int              @default(0)
-  statusLiberacao     String?
-  completo            Boolean          @default(true)
-  faltando            String[]         @default([])
-  freteConfianca      Confianca        @default(ESTIMADO)
-  freteOrigem           FreteOrigem    @default(DESCONHECIDO)
-  freteAjusteManual     Int?
-  freteAjusteManualMotivo String?
-  freteAjusteManualUserId String?
-  freteAjusteManualEm   DateTime?
-  valorEstornado        Int            @default(0)
-  enriquecidoEm         DateTime?
-  enriquecimentoTentativas Int         @default(0)
-  enriquecimentoErro    String?
-  atualizadoNoCanalEm DateTime
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  itens               VendaCanalItem[]
-  cobrancasPagamento  CobrancaPagamento[]
-  lancamentosFinanceiros LancamentoFinanceiro[]
+  id                       String                 @id @default(uuid())
+  userId                   String
+  canal                    CanalVenda
+  contaCanalId             String
+  pedidoExternoId          String
+  pacoteExternoId          String?
+  dataVenda                DateTime
+  dataCancelamento         DateTime?
+  dataLiberacao            DateTime?
+  status                   StatusVendaCanal
+  logistica                String?
+  envioExternoId           String?
+  faturamentoBruto         Int
+  descontoVendedor         Int
+  tarifaVenda              Int
+  freteVendedor            Int?
+  freteComprador           Int
+  impostoEstimado          Int
+  adsAtribuido             Int
+  cmv                      Int?
+  outrosCustos             Int                    @default(0)
+  margemContribuicao       Int?
+  valorLiquidoReceber      Int?
+  retencaoDividas          Int                    @default(0)
+  statusLiberacao          String?
+  completo                 Boolean                @default(true)
+  faltando                 String[]               @default([])
+  freteConfianca           Confianca              @default(ESTIMADO)
+  freteOrigem              FreteOrigem            @default(DESCONHECIDO)
+  freteAjusteManual        Int?
+  freteAjusteManualMotivo  String?
+  freteAjusteManualUserId  String?
+  freteAjusteManualEm      DateTime?
+  valorEstornado           Int                    @default(0)
+  enriquecidoEm            DateTime?
+  enriquecimentoTentativas Int                    @default(0)
+  enriquecimentoErro       String?
+  atualizadoNoCanalEm      DateTime
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+  user                     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itens                    VendaCanalItem[]
+  cobrancasPagamento       CobrancaPagamento[]
+  lancamentosFinanceiros   LancamentoFinanceiro[]
+  notasFiscais             NotaFiscalVenda[]
 
   @@unique([userId, canal, pedidoExternoId])
   @@index([userId, dataVenda])
@@ -859,21 +884,21 @@ model VendaCanalItem {
 }
 
 model CategoriaFinanceira {
-  id          String                 @id @default(uuid())
-  userId      String
-  nome        String
-  grupoDre    GrupoDre
-  paiId       String?
-  sistema     Boolean                @default(false)
-  ativo       Boolean                @default(true)
-  ordem       Int                    @default(0)
-  createdAt   DateTime               @default(now())
-  updatedAt   DateTime               @updatedAt
-  user        User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  pai         CategoriaFinanceira?   @relation("CategoriaFinanceiraHierarquia", fields: [paiId], references: [id], onDelete: SetNull)
-  filhas      CategoriaFinanceira[]  @relation("CategoriaFinanceiraHierarquia")
-  lancamentos LancamentoFinanceiro[]
-  recorrencias RecorrenciaFinanceira[]
+  id               String                     @id @default(uuid())
+  userId           String
+  nome             String
+  grupoDre         GrupoDre
+  paiId            String?
+  sistema          Boolean                    @default(false)
+  ativo            Boolean                    @default(true)
+  ordem            Int                        @default(0)
+  createdAt        DateTime                   @default(now())
+  updatedAt        DateTime                   @updatedAt
+  user             User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pai              CategoriaFinanceira?       @relation("CategoriaFinanceiraHierarquia", fields: [paiId], references: [id], onDelete: SetNull)
+  filhas           CategoriaFinanceira[]      @relation("CategoriaFinanceiraHierarquia")
+  lancamentos      LancamentoFinanceiro[]
+  recorrencias     RecorrenciaFinanceira[]
   mapeamentosBling MapeamentoCategoriaBling[]
 
   @@unique([userId, paiId, nome])
@@ -881,25 +906,25 @@ model CategoriaFinanceira {
 }
 
 model ContaFinanceira {
-  id                       String                 @id @default(uuid())
+  id                       String                  @id @default(uuid())
   userId                   String
   nome                     String
   tipo                     TipoContaFinanceira
-  saldoInicial             Int                    @default(0)
+  saldoInicial             Int                     @default(0)
   dataSaldoInicial         DateTime
   diaFechamento            Int?
   diaVencimento            Int?
   limite                   Int?
-  ativo                    Boolean                @default(true)
-  automatica               Boolean                @default(false)
+  ativo                    Boolean                 @default(true)
+  automatica               Boolean                 @default(false)
   contaCanalId             String?
   saldoAtualExterno        Int?
   saldoALiberarExterno     Int?
   saldoExternoAtualizadoEm DateTime?
   saldoExternoConfianca    Confianca?
-  createdAt                DateTime               @default(now())
-  updatedAt                DateTime               @updatedAt
-  user                     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  user                     User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
   lancamentos              LancamentoFinanceiro[]
   recorrencias             RecorrenciaFinanceira[]
   faturas                  FaturaCartao[]
@@ -911,33 +936,33 @@ model ContaFinanceira {
 
 model LancamentoFinanceiro {
   id                  String           @id @default(uuid())
-  userId               String
-  tipo                 TipoLancamento
-  descricao            String
-  valor                Int
-  categoriaId          String
-  contaFinanceiraId    String?
-  competencia          DateTime
-  vencimento           DateTime
-  pagamento            DateTime?
-  status               StatusLancamento @default(PREVISTO)
-  origem               OrigemLancamento @default(MANUAL)
-  confianca            Confianca        @default(CONFIRMADO)
-  fornecedorId         String?
-  produtoId            String?
-  pedidoCompraId       Int?
-  vendaId              String?
-  recorrenciaId        String?
-  faturaCartaoId       String?
-  grupoParcelamentoId  String?
-  parcelaNumero        Int?
-  parcelaTotal         Int?
-  chaveExterna         String?
-  anexoUrl             String?
-  observacao           String?
-  criadoPorId          String
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  userId              String
+  tipo                TipoLancamento
+  descricao           String
+  valor               Int
+  categoriaId         String
+  contaFinanceiraId   String?
+  competencia         DateTime
+  vencimento          DateTime
+  pagamento           DateTime?
+  status              StatusLancamento @default(PREVISTO)
+  origem              OrigemLancamento @default(MANUAL)
+  confianca           Confianca        @default(CONFIRMADO)
+  fornecedorId        String?
+  produtoId           String?
+  pedidoCompraId      Int?
+  vendaId             String?
+  recorrenciaId       String?
+  faturaCartaoId      String?
+  grupoParcelamentoId String?
+  parcelaNumero       Int?
+  parcelaTotal        Int?
+  chaveExterna        String?
+  anexoUrl            String?
+  observacao          String?
+  criadoPorId         String
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
 
   user            User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   categoria       CategoriaFinanceira    @relation(fields: [categoriaId], references: [id])
@@ -1118,15 +1143,15 @@ model CobrancaPagamento {
 }
 
 model MapeamentoCategoriaBling {
-  id                   String   @id @default(uuid())
-  userId               String
-  blingCategoriaId     String
-  blingDescricao       String
+  id                    String   @id @default(uuid())
+  userId                String
+  blingCategoriaId      String
+  blingDescricao        String
   categoriaFinanceiraId String
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
-  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   categoriaFinanceira CategoriaFinanceira @relation(fields: [categoriaFinanceiraId], references: [id], onDelete: Cascade)
 
   @@unique([userId, blingCategoriaId])
@@ -1171,7 +1196,7 @@ enum StatusTarefaSincronizacao {
 }
 
 model TarefaSincronizacaoFinanceira {
-  id           String                     @id @default(uuid())
+  id           String                    @id @default(uuid())
   userId       String
   canal        CanalVenda
   contaCanalId String
@@ -1179,16 +1204,16 @@ model TarefaSincronizacaoFinanceira {
   desde        DateTime?
   ate          DateTime?
   cursor       Json?
-  forcar       Boolean                    @default(false)
-  status       StatusTarefaSincronizacao  @default(PENDENTE)
-  prioridade   Int                        @default(0)
-  tentativas   Int                        @default(0)
-  processados  Int                        @default(0)
+  forcar       Boolean                   @default(false)
+  status       StatusTarefaSincronizacao @default(PENDENTE)
+  prioridade   Int                       @default(0)
+  tentativas   Int                       @default(0)
+  processados  Int                       @default(0)
   total        Int?
   erro         String?
   bloqueadaAte DateTime?
-  criadaEm     DateTime                   @default(now())
-  atualizadaEm DateTime                   @updatedAt
+  criadaEm     DateTime                  @default(now())
+  atualizadaEm DateTime                  @updatedAt
   concluidaEm  DateTime?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -1211,4 +1236,121 @@ model SincronizacaoCatalogo {
   updatedAt      DateTime  @updatedAt
 
   @@map("sincronizacoes_catalogo")
+}
+
+model NotaFiscalVenda {
+  id               String      @id @default(uuid())
+  userId           String
+  blingNotaId      String
+  numero           String?
+  serie            String?
+  chaveAcesso      String?
+  situacao         Int
+  dataEmissao      DateTime
+  valorNota        Int
+  valorFrete       Int         @default(0)
+  numeroPedidoLoja String?
+  vendaCanalId     String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vendaCanal       VendaCanal? @relation(fields: [vendaCanalId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, blingNotaId])
+  @@index([userId, dataEmissao])
+  @@index([userId, numeroPedidoLoja])
+  @@map("notas_fiscais_venda")
+}
+
+enum TipoAnaliseIa {
+  CONTROLE
+  SEMANAL
+}
+
+model AnaliseIa {
+  id              String        @id @default(uuid())
+  userId          String
+  solicitadoPorId String
+  tipo            TipoAnaliseIa @default(CONTROLE)
+  periodoInicio   DateTime?
+  periodoFim      DateTime?
+  modelo          String
+  notaDiagnostico Int
+  conteudo        Json
+  tokensEntrada   Int?
+  tokensSaida     Int?
+  createdAt       DateTime      @default(now())
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, tipo, periodoInicio])
+  @@map("analises_ia")
+}
+
+enum RecursoIa {
+  CHAT
+  ANALISE_CONTROLE
+  EXPLICACAO
+  RESUMO_SEMANAL
+  TITULO
+}
+
+enum PapelMensagemIa {
+  USUARIO
+  ASSISTENTE
+}
+
+model ConversaIa {
+  id          String       @id @default(uuid())
+  userId      String
+  autorId     String
+  titulo      String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  arquivadaEm DateTime?
+  conta       User         @relation("ConversasIaConta", fields: [userId], references: [id], onDelete: Cascade)
+  autor       User         @relation("ConversasIaAutor", fields: [autorId], references: [id], onDelete: Cascade)
+  mensagens   MensagemIa[]
+
+  @@index([autorId, updatedAt])
+  @@index([userId])
+  @@map("conversas_ia")
+}
+
+model MensagemIa {
+  id                 String          @id @default(uuid())
+  conversaId         String
+  papel              PapelMensagemIa
+  conteudo           String          @db.Text
+  ferramentas        Json?
+  util               Boolean?
+  comentarioFeedback String?
+  modelo             String?
+  createdAt          DateTime        @default(now())
+  conversa           ConversaIa      @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+
+  @@index([conversaId, createdAt])
+  @@map("mensagens_ia")
+}
+
+model UsoIa {
+  id                 String    @id @default(uuid())
+  userId             String
+  autorId            String?
+  recurso            RecursoIa
+  modelo             String
+  tokensEntrada      Int       @default(0)
+  tokensSaida        Int       @default(0)
+  tokensCacheLeitura Int       @default(0)
+  tokensCacheEscrita Int       @default(0)
+  custoCentavos      Int?
+  duracaoMs          Int
+  sucesso            Boolean
+  codigoErro         String?
+  createdAt          DateTime  @default(now())
+  conta              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@map("usos_ia")
 }

@@ -3,51 +3,39 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 
-/**
- * Sugestão inteligente de reposição
- * Separa a lógica de reposição Full (transferência) e Local (compra)
- */
 interface ReplenishmentSuggestion {
-  // Tipo de produto
   tipoAnuncio: "full" | "local" | "ambos";
 
-  // Estoques atuais
   estoqueLocal: number;
   estoqueFull: number;
   estoqueTotal: number;
 
-  // Vendas e consumo
   mediaVendas90d: number;
   mediaDiaria: number;
 
-  // Sugestão para REPOSIÇÃO FULL (transferir do local → Full)
-  // Tempo: fullReleaseDays (ex: 3 dias após coleta)
   reposicaoFull: {
     necessaria: boolean;
-    pontoReposicao: number; // Ponto ideal para manter no Full
-    diasRestantes: number; // Dias até acabar o Full
-    quantidadeSugerida: number; // Quanto transferir do local para Full
-    temEstoqueLocal: boolean; // Se tem estoque local suficiente para transferir
+    pontoReposicao: number;
+    diasRestantes: number;
+    quantidadeSugerida: number;
+    temEstoqueLocal: boolean;
     status: "ok" | "atencao" | "critico";
     mensagem: string;
-    acaoRecomendada: "transferir" | "aguardar_compra" | "nenhuma"; // Ação sugerida
+    acaoRecomendada: "transferir" | "aguardar_compra" | "nenhuma";
   } | null;
 
-  // Sugestão para REPOSIÇÃO LOCAL (comprar do fornecedor → Local)
-  // Tempo: avgDeliveryDays (ex: 7 dias)
   reposicaoLocal: {
     necessaria: boolean;
-    pontoReposicao: number; // Ponto ideal para manter no Local
-    diasRestantes: number; // Dias até acabar o local
-    quantidadeSugerida: number; // Quanto comprar do fornecedor
-    quantidadeParaFull: number; // Quanto dessa compra será para abastecer Full
-    quantidadeParaLocal: number; // Quanto ficará no local
+    pontoReposicao: number;
+    diasRestantes: number;
+    quantidadeSugerida: number;
+    quantidadeParaFull: number;
+    quantidadeParaLocal: number;
     status: "ok" | "atencao" | "critico";
     mensagem: string;
-    acaoRecomendada: "comprar" | "nenhuma"; // Ação sugerida
+    acaoRecomendada: "comprar" | "nenhuma";
   };
 
-  // Ações prioritárias (ordem de execução)
   acoesPrioritarias: Array<{
     tipo: "transferir_full" | "comprar_local";
     quantidade: number;
@@ -57,14 +45,9 @@ interface ReplenishmentSuggestion {
     prioridade: "alta" | "media" | "baixa";
   }>;
 
-  // Status geral (pior entre Full e Local)
   statusGeral: "ok" | "atencao" | "critico";
 }
 
-/**
- * GET /api/replenishment/suggestions/[produtoId]
- * Retorna sugestão de reposição para um produto específico
- */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ produtoId: string }> }
@@ -73,7 +56,6 @@ export async function GET(
     const user = await verifyUser(request);
     const { produtoId } = await params;
 
-    // 1. Buscar produto com estoques
     const produto = await prisma.produto.findFirst({
       where: {
         id: produtoId,
@@ -86,7 +68,7 @@ export async function GET(
             mlItemId: true,
             mlAvailableQuantity: true,
             mlSoldQuantity: true,
-            mlSold90Days: true, // Vendas dos últimos 90 dias (calculado)
+            mlSold90Days: true,
             mlShippingMode: true,
             mlStatus: true,
           },
@@ -101,7 +83,6 @@ export async function GET(
       );
     }
 
-    // 2. Buscar configuração do produto (ou usar padrão)
     const config = await prisma.stockReplenishmentConfig.findFirst({
       where: {
         userId: user.contaId,
@@ -113,11 +94,10 @@ export async function GET(
       avgDeliveryDays: config?.avgDeliveryDays || 7,
       fullReleaseDays: config?.fullReleaseDays || 3,
       safetyStock: config?.safetyStock || 10,
-      minCoverageDays: config?.minCoverageDays || 30, // Dias mínimos de cobertura
-      analysisPeriodDays: config?.analysisPeriodDays || 90, // Período de análise: 30, 60 ou 90 dias
+      minCoverageDays: config?.minCoverageDays || 30,
+      analysisPeriodDays: config?.analysisPeriodDays || 90,
     };
 
-    // 3. Buscar conta ativa do Mercado Livre
     const mlAccount = await prisma.mercadoLivreAccount.findFirst({
       where: {
         userId: user.contaId,
@@ -147,14 +127,12 @@ export async function GET(
       }
     }
 
-    // 4. Calcular estoques
     const estoqueLocal = produto.estoques.reduce(
       (sum, est) => sum + est.quantidade,
       0
     );
     let estoqueFull = 0;
 
-    // 5. Buscar estoque Full em tempo real
     if (mlAccount && accessToken) {
       const produtosML = await prisma.produtoMercadoLivre.findMany({
         where: {
@@ -184,13 +162,8 @@ export async function GET(
 
     const estoqueTotal = estoqueLocal + estoqueFull;
 
-    // 6. Buscar vendas do período configurado
-    // IMPORTANTE: Usamos os dados já calculados pelo endpoint /api/produtos/vendas-ml
-    // que é chamado quando o usuário clica em "Atualizar Dados"
     let totalVendasPeriodo = 0;
 
-    // Verificar se há dados de vendas armazenados no próprio produto
-    // Buscamos mlSold90Days que foi previamente calculado pelo endpoint /api/produtos/vendas-ml
     const produtosML = await prisma.produtoMercadoLivre.findMany({
       where: {
         produtoId: produto.id,
@@ -198,13 +171,11 @@ export async function GET(
       },
       select: {
         mlItemId: true,
-        mlSoldQuantity: true, // Total histórico (só para debug)
-        mlSold90Days: true, // Vendas dos últimos 90 dias (base para cálculos)
+        mlSoldQuantity: true,
+        mlSold90Days: true,
       },
     });
 
-    // Se temos mlSold90Days no banco, calcular proporcionalmente para o período escolhido
-    // Caso contrário, retornar 0 (usuário precisa clicar em "Atualizar Dados")
     if (produtosML.length > 0) {
 
       const totalVendas90d = produtosML.reduce(
@@ -212,21 +183,11 @@ export async function GET(
         0
       );
 
-
-      // Calcular vendas proporcionalmente ao período escolhido
-      // Se escolheu 30 dias: (vendas90d / 90) * 30
-      // Se escolheu 60 dias: (vendas90d / 90) * 60
-      // Se escolheu 90 dias: vendas90d (sem alteração)
       totalVendasPeriodo = Math.round(
         (totalVendas90d / 90) * params_config.analysisPeriodDays
       );
     }
 
-    // NOTA: Se totalVendasPeriodo for 0, significa que os dados ainda não foram atualizados
-    // O usuário deve clicar no botão "Atualizar Dados" na página principal
-    // Isso evita fazer 20+ requisições ao ML toda vez que abre o modal
-
-    // 7. Determinar tipo de anúncio (Full, Local ou Ambos)
     let tipoAnuncio: "full" | "local" | "ambos" = "local";
     if (estoqueFull > 0 && estoqueLocal > 0) {
       tipoAnuncio = "ambos";
@@ -234,31 +195,17 @@ export async function GET(
       tipoAnuncio = "full";
     }
 
-    // 8. Calcular média diária de vendas baseada no período escolhido
     const mediaDiaria = totalVendasPeriodo / params_config.analysisPeriodDays;
 
-    // ========================================
-    // NOVA LÓGICA INTELIGENTE DE REPOSIÇÃO
-    // ========================================
-
-    /**
-     * HELPER: Calcula status baseado em dias restantes
-     */
     const calcularStatus = (diasRestantes: number, diasLimite: number): "ok" | "atencao" | "critico" => {
       if (diasRestantes <= diasLimite * 0.3) return "critico";
       if (diasRestantes <= diasLimite * 0.6) return "atencao";
       return "ok";
     };
 
-    /**
-     * REPOSIÇÃO FULL (Transferir do Local → Full)
-     * - Tempo: fullReleaseDays (ex: 3 dias após confirmada a coleta)
-     * - Lógica: Manter Full sempre abastecido para vendas rápidas
-     */
     const reposicaoFull = tipoAnuncio !== "local" ? (() => {
-      // Ponto de reposição Full: consumo durante liberação + segurança
       const pontoReposicaoFull = Math.ceil(
-        (mediaDiaria * params_config.fullReleaseDays) + (params_config.safetyStock * 0.5) // 50% da segurança no Full
+        (mediaDiaria * params_config.fullReleaseDays) + (params_config.safetyStock * 0.5)
       );
 
       const diasRestantesFull = mediaDiaria > 0 ? Math.floor(estoqueFull / mediaDiaria) : 999;
@@ -267,7 +214,6 @@ export async function GET(
 
       const status = calcularStatus(diasRestantesFull, params_config.fullReleaseDays);
 
-      // Determinar ação recomendada
       let acaoRecomendada: "transferir" | "aguardar_compra" | "nenhuma" = "nenhuma";
       let mensagem = "";
 
@@ -294,56 +240,38 @@ export async function GET(
       };
     })() : null;
 
-    /**
-     * REPOSIÇÃO LOCAL (Comprar do Fornecedor → Local)
-     * - Tempo: avgDeliveryDays (ex: 7 dias)
-     * - Lógica: Manter estoque local suficiente para abastecer Full + vendas locais
-     */
     const reposicaoLocal = (() => {
-      // Para produtos "ambos": considerar que local precisa abastecer Full também
-      // Para produtos "local": considerar apenas vendas locais
-      // Para produtos "full": considerar o tempo total (entrega + liberação Full)
 
       let diasPrevisao = params_config.avgDeliveryDays;
 
       if (tipoAnuncio === "full") {
-        // Full-only: tempo total = entrega + liberação
         diasPrevisao = params_config.avgDeliveryDays + params_config.fullReleaseDays;
       } else if (tipoAnuncio === "ambos") {
-        // Ambos: local precisa aguentar o período de entrega
         diasPrevisao = params_config.avgDeliveryDays;
       }
 
-      // Ponto de reposição local considera:
-      // 1. Consumo durante o prazo de entrega
-      // 2. Estoque de segurança em unidades
-      // 3. Cobertura mínima em dias (ex: manter sempre 30 dias de vendas)
       const estoqueMinimo = Math.max(
         (mediaDiaria * diasPrevisao) + params_config.safetyStock,
-        mediaDiaria * params_config.minCoverageDays // Garante cobertura mínima
+        mediaDiaria * params_config.minCoverageDays
       );
 
       const pontoReposicaoLocal = Math.ceil(estoqueMinimo);
 
       const diasRestantesLocal = mediaDiaria > 0 ? Math.floor(estoqueLocal / mediaDiaria) : 999;
 
-      // Quantidade a comprar considera o que já está no local
       let quantidadeSugerida = Math.max(0, pontoReposicaoLocal - estoqueLocal);
 
-      // Se tem produto "ambos" e Full está baixo, pode precisar comprar extra para repor Full
       if (tipoAnuncio === "ambos" && reposicaoFull && !reposicaoFull.temEstoqueLocal) {
         quantidadeSugerida = Math.max(quantidadeSugerida, reposicaoFull.quantidadeSugerida - estoqueLocal);
       }
 
       const status = calcularStatus(diasRestantesLocal, diasPrevisao);
 
-      // Calcular quanto da compra vai para Full e quanto fica no Local
       const quantidadeParaFull = reposicaoFull && reposicaoFull.necessaria && !reposicaoFull.temEstoqueLocal
         ? Math.min(reposicaoFull.quantidadeSugerida, quantidadeSugerida)
         : 0;
       const quantidadeParaLocal = quantidadeSugerida - quantidadeParaFull;
 
-      // Determinar ação recomendada e mensagem
       let acaoRecomendada: "comprar" | "nenhuma" = "nenhuma";
       let mensagem = "";
 
@@ -351,7 +279,6 @@ export async function GET(
         mensagem = `Estoque Local adequado (${diasRestantesLocal} dias de cobertura)`;
         acaoRecomendada = "nenhuma";
       } else {
-        // Mensagem detalhada sobre o uso da compra
         if (quantidadeParaFull > 0 && quantidadeParaLocal > 0) {
           mensagem = `Comprar ${quantidadeSugerida} unidades: ${quantidadeParaFull} para Full + ${quantidadeParaLocal} para Local`;
         } else if (quantidadeParaFull > 0) {
@@ -375,7 +302,6 @@ export async function GET(
       };
     })();
 
-    // Status geral: pior status entre Full e Local
     let statusGeral: "ok" | "atencao" | "critico" = reposicaoLocal.status;
     if (reposicaoFull && reposicaoFull.status === "critico") {
       statusGeral = "critico";
@@ -383,9 +309,6 @@ export async function GET(
       statusGeral = "atencao";
     }
 
-    // ========================================
-    // AÇÕES PRIORITÁRIAS (ordem de execução)
-    // ========================================
     const acoesPrioritarias: Array<{
       tipo: "transferir_full" | "comprar_local";
       quantidade: number;
@@ -395,7 +318,6 @@ export async function GET(
       prioridade: "alta" | "media" | "baixa";
     }> = [];
 
-    // 1. TRANSFERÊNCIA FULL (mais rápida, prioridade se possível)
     if (reposicaoFull && reposicaoFull.acaoRecomendada === "transferir") {
       acoesPrioritarias.push({
         tipo: "transferir_full",
@@ -407,7 +329,6 @@ export async function GET(
       });
     }
 
-    // 2. COMPRA LOCAL (mais demorada, mas necessária)
     if (reposicaoLocal.acaoRecomendada === "comprar") {
       acoesPrioritarias.push({
         tipo: "comprar_local",
@@ -419,7 +340,6 @@ export async function GET(
       });
     }
 
-    // Ordenar por prioridade (alta → media → baixa)
     acoesPrioritarias.sort((a, b) => {
       const prioridadeOrdem = { alta: 1, media: 2, baixa: 3 };
       return prioridadeOrdem[a.prioridade] - prioridadeOrdem[b.prioridade];
@@ -430,7 +350,7 @@ export async function GET(
       estoqueLocal,
       estoqueFull,
       estoqueTotal,
-      mediaVendas90d: totalVendasPeriodo, // Vendas do período configurado (não fixo em 90)
+      mediaVendas90d: totalVendasPeriodo,
       mediaDiaria: parseFloat(mediaDiaria.toFixed(2)),
       reposicaoFull,
       reposicaoLocal,

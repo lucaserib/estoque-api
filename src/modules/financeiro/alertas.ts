@@ -15,16 +15,6 @@ export interface ResultadoAlertasFinanceiros {
   rupturasPrevistas: number;
 }
 
-/**
- * Roda uma vez por dia (cron `financeiro-diario`) por conta (dono), já que o
- * plano Hobby da Vercel só executa cron 1x/dia. Contas a vencer/vencidas não
- * dependem de nenhuma conta ML conectada; vendas com prejuízo olham só os
- * últimos 3 dias (mesma janela do reprocessamento) para não re-notificar
- * venda antiga; a conciliação olha o mês de competência atual. Dedup contra
- * notificação não lida do mesmo tipo+link já é feito pelo próprio
- * `NotificationService.create` — rodar todo dia não duplica nada enquanto o
- * problema não for resolvido (pago, corrigido) nem a notificação for lida.
- */
 export async function gerarAlertasFinanceiros(userId: string): Promise<ResultadoAlertasFinanceiros> {
   const agora = new Date();
   const amanha = new Date(agora.getTime() + 24 * 60 * 60 * 1000);

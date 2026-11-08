@@ -1,8 +1,3 @@
-/**
- * Banco em memória para os testes do financeiro. Implementa só o pedaço do
- * Prisma que o motor de cálculo, a ingestão e os relatórios usam — o
- * suficiente para testar as regras de ponta a ponta sem mockar cada consulta.
- */
 type Registro = Record<string, unknown>;
 
 function comparar(valor: unknown, condicao: unknown): boolean {

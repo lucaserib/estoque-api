@@ -18,12 +18,6 @@ interface SaldoBruto {
   total_amount?: number;
 }
 
-/**
- * Endpoint não confirmado (Fase 4) — testado só contra documentação
- * pública, nunca contra uma resposta real (api.mercadopago.com não é
- * alcançável deste ambiente de desenvolvimento). Qualquer falha devolve
- * valores nulos com confiança ESTIMADO em vez de inventar um saldo.
- */
 export async function obterSaldoMercadoPago(mlUserId: string, accessToken: string): Promise<SaldoMercadoPago> {
   try {
     const resposta = await fetchMlWithBackoff(

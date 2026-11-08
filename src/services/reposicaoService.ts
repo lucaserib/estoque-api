@@ -32,9 +32,7 @@ export interface DadosProdutoReposicao {
   temAnuncioFull: boolean;
   fornecedorPrincipal: FornecedorPrincipalInfo | null;
   config: ConfigReposicao;
-  /** Unidades deste produto que já estão dentro de kits no Full (kit × quantidade do componente). */
   estoqueEmKitsUnidades?: number;
-  /** Kit não se compra do fornecedor: só monta (do estoque dos componentes) e envia. */
   ehKit?: boolean;
 }
 
@@ -371,8 +369,6 @@ export async function calcularReposicaoConta(
     componentesPorKit
   );
 
-  // Full de TODOS os anúncios Full ativos do produto (antes só o primeiro
-  // encontrado entrava — produto com dois anúncios Full perdia metade).
   const fullPorProduto = new Map<string, { disponivel: number; emTransito: number; indisponivel: number }>();
   for (const produto of produtos) {
     const anunciosFull = produto.ProdutoMercadoLivre.filter(
@@ -390,8 +386,6 @@ export async function calcularReposicaoConta(
     produtos.map((p) => [p.id, p.estoques.reduce((sum, e) => sum + e.quantidade, 0)])
   );
 
-  // Kit parado no Full já é estoque do componente: 10 kits de 2 adaptadores
-  // no Full = 20 adaptadores que não precisam ser comprados.
   const unidadesEmKitsPorComponente = new Map<string, number>();
   for (const [kitId, componentes] of componentesPorKit) {
     const full = fullPorProduto.get(kitId);
@@ -411,7 +405,6 @@ export async function calcularReposicaoConta(
     const config = configPorProduto.get(produto.id);
     const analysisPeriodDays = config?.analysisPeriodDays ?? 90;
     const componentesKit = produto.isKit ? componentesPorKit.get(produto.id) ?? [] : [];
-    // Kit montado na hora: o "estoque local" do kit é quantos dá para montar com os componentes.
     const estoqueLocal =
       produto.isKit && componentesKit.length > 0
         ? Math.min(

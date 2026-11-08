@@ -16,7 +16,6 @@ export interface DadosRecorrencia {
   contaFinanceiraId?: string | null;
   fornecedorId?: string | null;
   frequencia: FrequenciaRecorrencia;
-  /** MENSAL/ANUAL: dia do mês (1-31, com piso no fim do mês). SEMANAL: dia da semana, 1=segunda..7=domingo. */
   diaVencimento: number;
   inicio: Date;
   fim?: Date | null;
@@ -104,11 +103,6 @@ function gerarDatasVencimento(
   return datas;
 }
 
-/**
- * Idempotente via chaveExterna (`recorrencia:<id>:<data>`) e via
- * `geradoAte` (nunca reconsidera datas já cobertas) — rodar duas vezes no
- * mesmo dia, ou todo dia do cron, não duplica nada.
- */
 export async function gerarLancamentosDaRecorrencia(
   recorrenciaId: string
 ): Promise<{ gerados: number }> {
@@ -118,14 +112,9 @@ export async function gerarLancamentosDaRecorrencia(
   if (!recorrencia.ativo) return { gerados: 0 };
 
   const hoje = new Date();
-  // Último dia do 3º mês contando o atual como o primeiro — por mês
-  // cheio, não por dia corrido, senão o corte varia conforme o dia do mês
-  // em que o cron roda (dia 28 gera 1 mês a menos que dia 1).
   const horizonte = new Date(
     Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth() + MESES_DE_HORIZONTE, 0)
   );
-  // Nunca gera pra trás: se `inicio` é antigo (recorrência cadastrada bem
-  // depois de já estar em vigor), a janela começa no mês atual, não lá atrás.
   const inicioDoMesAtual = new Date(Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), 1));
   const inicioEfetivo = recorrencia.inicio > inicioDoMesAtual ? recorrencia.inicio : inicioDoMesAtual;
   const janelaInicio = recorrencia.geradoAte

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
+import { BotaoExplicarIa, type PeriodoVariacaoIa } from "@/components/ia/BotaoExplicarIa";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowRight, RefreshCw } from "lucide-react";
+import { ArrowRight, Package, Receipt, RefreshCw, TrendingUp, Wallet, Warehouse } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
 import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
@@ -31,13 +32,14 @@ import { ProximoPassoCard } from "@/components/onboarding/ProximoPassoCard";
 import { HojeCard } from "@/components/dashboard/HojeCard";
 import dynamic from "next/dynamic";
 
-// Recharts só entra no bundle quando o gráfico realmente renderiza.
 const EvolutionChart = dynamic(
   () => import("@/components/dashboard/EvolutionChart"),
   { ssr: false, loading: () => <Skeleton className="h-[280px] rounded-md" /> }
 );
 import { formatBRL, formatNumberBR, formatRelativeTime } from "@/lib/format";
 import { OPCOES_PERIODO_RAPIDO } from "@/modules/financeiro/dominio/periodo";
+import { FaturamentoComFreteCard } from "@/components/financeiro/FaturamentoComFreteCard";
+import { podeVer } from "@/lib/permissoes";
 
 const PERIOD_OPTIONS = OPCOES_PERIODO_RAPIDO;
 
@@ -193,8 +195,8 @@ export default function DashboardPage() {
 
   if (status === "loading" || (loading && !resumo)) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
-        <PageHeader title="Visão Geral" subtitle="Carregando seu negócio…" />
+      <div className="mx-auto w-full max-w-[1400px] space-y-8">
+        <PageHeader title="Visão geral" subtitle="Carregando seu negócio…" />
         <Skeleton className="h-[124px] rounded-md" />
         <Skeleton className="h-16 rounded-md" />
         <Skeleton className="h-[340px] rounded-md" />
@@ -202,10 +204,12 @@ export default function DashboardPage() {
     );
   }
 
-  const statItems: StatCardItem[] = [
+  const statItems: StatCardItem[] = ([
     podeVerCusto && resumo?.metricas.margemContribuicao
       ? {
           label: "Margem de contribuição",
+          icon: TrendingUp,
+          status: (resumo.metricas.margemContribuicao.valor < 0 ? "destructive" : "success") as StatCardItem["status"],
           value: formatBRL(resumo.metricas.margemContribuicao.valor),
           note: [
             `${resumo.metricas.margemContribuicao.percentual.toFixed(1).replace(".", ",")}% do faturamento`,
@@ -219,15 +223,18 @@ export default function DashboardPage() {
       : null,
     {
       label: "Unidades vendidas",
+      icon: Package,
       value: formatNumberBR(resumo?.metricas.unidadesVendidas ?? 0),
     },
     {
       label: "Ticket médio",
+      icon: Receipt,
       value: formatBRL(resumo?.metricas.ticketMedio ?? 0),
     },
     podeVerCusto && resumo?.metricas.valorEstoqueCusto
       ? {
           label: "Valor em estoque (custo)",
+          icon: Warehouse,
           value: formatBRL(resumo.metricas.valorEstoqueCusto.valor),
           note:
             resumo.metricas.valorEstoqueCusto.produtosSemCusto > 0
@@ -238,15 +245,16 @@ export default function DashboardPage() {
     podeVerCusto && resumo?.caixa.saldoTotal != null
       ? {
           label: "Saldo em conta",
+          icon: Wallet,
           value: formatBRL(resumo.caixa.saldoTotal),
         }
       : null,
-  ].filter((item): item is StatCardItem => item !== null);
+  ] as Array<StatCardItem | null>).filter((item): item is StatCardItem => item !== null);
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-8">
       <PageHeader
-        title="Visão Geral"
+        title="Visão geral"
         subtitle={
           atualizadoEm
             ? `Atualizado às ${atualizadoEm.toLocaleTimeString("pt-BR", {
@@ -294,7 +302,6 @@ export default function DashboardPage() {
             <PartialDataAlert onRetry={carregar} retrying={loading} />
           )}
 
-          {/* Métricas principais */}
           <div className="space-y-2">
             <StatCard
               size="lg"
@@ -305,6 +312,14 @@ export default function DashboardPage() {
               deltaLabel={resumo.periodo.rotuloComparacao}
               note="Vendas pagas no Mercado Livre, menos tarifas de venda e frete pago pelo vendedor."
             />
+            {session?.user?.role && podeVer(session.user.role, "FINANCEIRO_VER") && resumo.metricas.faturamentoLiquido.deltaPercentual !== null && (
+              <BotaoExplicarIa
+                pedido={{ tipo: "variacao", periodo: periodo as PeriodoVariacaoIa }}
+                rotulo="Explicar variação"
+                alinhamento="start"
+                perguntaAssistente={`Por que meu faturamento e minha margem mudaram (${resumo.periodo.rotulo.toLowerCase()} ${resumo.periodo.rotuloComparacao})?`}
+              />
+            )}
             {podeVerCusto && resumo.metricas.margemContribuicao && !resumo.metricas.faturamentoLiquido.parcial && (
               resumo.metricas.margemContribuicao.produtosSemCustoNaVenda === 0 ? (
                 <StatusPill tone="success">Confere com o ML ✓</StatusPill>
@@ -322,7 +337,10 @@ export default function DashboardPage() {
 
           <HojeCard />
 
-          {/* Pendências que afetam seus números */}
+          {session?.user?.role && podeVer(session.user.role, "FINANCEIRO_VER") && (
+            <FaturamentoComFreteCard periodo={periodo} rotuloPeriodo={resumo.periodo.rotulo} className="mb-6" />
+          )}
+
           {podeVerCusto && (
             <SectionCard title="Pendências que afetam seus números">
               {Object.keys(resumo.pendencias.porCodigo).length === 0 ? (
@@ -352,7 +370,6 @@ export default function DashboardPage() {
             </SectionCard>
           )}
 
-          {/* Onde está o estoque */}
           <SectionCard
             title="Onde está o estoque"
             description="Top 10 produtos por estoque total"
@@ -401,7 +418,6 @@ export default function DashboardPage() {
             </DataTable>
           </SectionCard>
 
-          {/* Risco de ruptura */}
           <SectionCard
             title="Risco de ruptura"
             description={`${resumo.riscoRuptura.semEstoque} já sem estoque · ${resumo.riscoRuptura.rompeAntesDoProximoPedido} rompe antes do próximo pedido`}
@@ -476,7 +492,6 @@ export default function DashboardPage() {
             </DataTable>
           </SectionCard>
 
-          {/* Capital parado */}
           {podeVerCusto && resumo.capitalParado.itens.length > 0 && (
             <SectionCard
               title="Capital parado"
@@ -513,7 +528,6 @@ export default function DashboardPage() {
             </SectionCard>
           )}
 
-          {/* Vendas */}
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <SectionCard title="Evolução de vendas" className="lg:col-span-2">
               <EvolutionChart
@@ -552,7 +566,6 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Compras */}
           <SectionCard title="Compras">
             <StatCardGrid
               items={[
@@ -576,7 +589,6 @@ export default function DashboardPage() {
             />
           </SectionCard>
 
-          {/* Saúde das integrações */}
           <SectionCard title="Saúde das integrações">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-lg border border-border p-4">

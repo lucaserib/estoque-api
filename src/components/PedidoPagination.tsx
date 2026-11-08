@@ -21,44 +21,35 @@ export function PedidoPagination({
   currentFirstItem,
   currentLastItem,
 }: PedidoPaginationProps) {
-  // Função para gerar o array de páginas a exibir de forma eficiente
   const getPageNumbers = (): Array<number | "ellipsis"> => {
-    // Para um número baixo de páginas, mostramos todas
     if (totalPages <= 5) {
       return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
 
     const pageNumbers: Array<number | "ellipsis"> = [];
 
-    // Sempre mostrar a primeira página
     pageNumbers.push(1);
 
-    // Se a página atual estiver depois das primeiras 3 páginas, adicionar reticências
     if (currentPage > 3) {
       pageNumbers.push("ellipsis");
     }
 
-    // Mostrar uma página antes da atual (se não for a primeira)
     if (currentPage > 2) {
       pageNumbers.push(currentPage - 1);
     }
 
-    // Página atual (se não for a primeira ou última)
     if (currentPage !== 1 && currentPage !== totalPages) {
       pageNumbers.push(currentPage);
     }
 
-    // Mostrar uma página depois da atual (se não for a última)
     if (currentPage < totalPages - 1) {
       pageNumbers.push(currentPage + 1);
     }
 
-    // Se a página atual estiver antes das últimas 3 páginas, adicionar reticências
     if (currentPage < totalPages - 2) {
       pageNumbers.push("ellipsis");
     }
 
-    // Sempre mostrar a última página
     if (totalPages > 1) {
       pageNumbers.push(totalPages);
     }

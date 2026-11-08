@@ -7,11 +7,6 @@ import { normalizeSku } from "@/lib/sku";
 import { normalizeImageUrl } from "@/lib/imageUrl";
 import { BlingService } from "@/services/blingService";
 
-/**
- * GET /api/bling/produtos/buscar?q= — cadastro rápido: procura no Bling por
- * SKU exato ou nome e diz o que já está cadastrado aqui. EAN não é filtro da
- * API do Bling; quando o termo é um EAN, primeiro olhamos o cadastro local.
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);

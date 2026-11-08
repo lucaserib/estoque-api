@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, UserPlus, X } from "lucide-react";
+import { Copy, Loader2, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { UsuarioConviteDialog } from "@/components/UsuarioConviteDialog";
 
@@ -41,6 +41,7 @@ interface Convite {
   email: string;
   role: string;
   expiresAt: string;
+  caminho?: string;
   createdAt: string;
 }
 
@@ -142,7 +143,7 @@ export default function UsuariosPage() {
 
   if (status === "loading" || !isAdmin) {
     return (
-      <div className="container mx-auto max-w-[1400px] p-6">
+      <div className="mx-auto w-full max-w-[1400px]">
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -151,7 +152,7 @@ export default function UsuariosPage() {
   }
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-8">
       <PageHeader
         eyebrow="Sistema"
         title="Usuários e permissões"
@@ -268,6 +269,20 @@ export default function UsuariosPage() {
                   <DataTableCell className="pr-4">
                     <div className="flex items-center gap-2">
                       <StatusPill tone="warning">Convite pendente</StatusPill>
+                      {convite.caminho && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          aria-label={`Copiar link do convite de ${convite.email}`}
+                          onClick={async () => {
+                            await navigator.clipboard.writeText(`${window.location.origin}${convite.caminho}`);
+                            toast.success("Link do convite copiado");
+                          }}
+                          className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                        >
+                          <Copy className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"

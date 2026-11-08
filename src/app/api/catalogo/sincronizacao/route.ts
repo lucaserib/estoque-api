@@ -23,12 +23,6 @@ interface RequestBody {
   forcar?: boolean;
 }
 
-/**
- * Avança a sincronização de catálogo e estoque (Bling + Mercado Livre).
- * Sem `forcar`, só começa uma rodada nova se a última tiver mais de 6 h; com
- * uma rodada em andamento, continua de onde parou. A tela chama em sequência
- * enquanto `emAndamento` for true.
- */
 export async function POST(request: NextRequest) {
   try {
     const user = await verifyUser(request);

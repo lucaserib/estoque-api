@@ -72,8 +72,6 @@ const MATRIZ: Record<AcaoPermissao, Record<UserRole, NivelAcesso>> = {
     VENDAS: "NAO",
     LEITURA: "NAO",
   },
-  // COMPRAS é NAO por padrão, mas é o papel mais plausível de ganhar acesso
-  // configurável ao financeiro depois (spec Fase 1) — ainda não há tela para isso.
   FINANCEIRO_VER: {
     ADMIN: "SIM",
     COMPRAS: "NAO",

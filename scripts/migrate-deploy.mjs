@@ -1,10 +1,4 @@
 #!/usr/bin/env node
-// Roda antes de `next build` (ver script "build" no package.json).
-// Antes de `prisma migrate deploy`, tenta limpar o estado de falha de
-// migrações que sabemos que podem ter ficado marcadas como falhas por
-// bugs já corrigidos nos próprios arquivos de migração (ex.: índice
-// duplicado). `prisma migrate resolve --rolled-back` só apaga o registro
-// de falha em `_prisma_migrations` — nunca desfaz DDL já aplicado.
 import { spawnSync } from "node:child_process";
 
 const MIGRACOES_REAPLICAVEIS = ["20261008000000_integridade_schema_fase9"];
@@ -14,6 +8,7 @@ const PADROES_IGNORAVEIS = [
   "P3012",
   "not in a failed state",
   "never applied",
+  "without migrations table",
 ];
 
 function rodar(comando, args) {

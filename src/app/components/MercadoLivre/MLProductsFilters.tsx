@@ -50,7 +50,6 @@ export default function MLProductsFilters({
   );
   return (
     <div className="flex flex-wrap gap-4 mb-4">
-      {/* Busca */}
       <div className="flex-1 min-w-[300px]">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -63,7 +62,6 @@ export default function MLProductsFilters({
         </div>
       </div>
 
-      {/* Ordenação */}
       <div className="flex gap-2">
         <Select value={sortBy} onValueChange={setSortBy}>
           <SelectTrigger className="w-[140px]">
@@ -93,7 +91,6 @@ export default function MLProductsFilters({
         </Select>
       </div>
 
-      {/* Filtros */}
       <div className="flex gap-2">
         <Select value={statusFilter} onValueChange={setStatusFilter}>
           <SelectTrigger className="w-[130px]">
@@ -122,7 +119,6 @@ export default function MLProductsFilters({
         </Select>
       </div>
 
-      {/* Atualizar */}
       <Button
         onClick={onRefresh}
         disabled={loading}

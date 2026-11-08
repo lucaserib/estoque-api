@@ -94,7 +94,6 @@ export interface ColunaResponsiva<T> {
   cabecalho: string;
   renderizar: (linha: T) => React.ReactNode;
   numeric?: boolean;
-  /** Papel da coluna na visão em cartão (abaixo de 768px). Uma só coluna é "titulo". */
   papelMobile?: "titulo" | "subtitulo" | "valor" | "oculto";
 }
 
@@ -106,10 +105,6 @@ interface DataTableResponsiveProps<T> {
   className?: string;
 }
 
-/**
- * Tabela que vira lista de cartões abaixo de 768px — cada coluna diz, via
- * `papelMobile`, se vira título, subtítulo ou valor do cartão (ou some).
- */
 function DataTableResponsive<T>({
   colunas,
   linhas,
@@ -124,7 +119,6 @@ function DataTableResponsive<T>({
 
   return (
     <>
-      {/* Tabela: 768px e acima */}
       <div className={cn("hidden md:block", className)}>
         <DataTable>
           <DataTableHeader>
@@ -154,7 +148,6 @@ function DataTableResponsive<T>({
         </DataTable>
       </div>
 
-      {/* Lista de cartões: abaixo de 768px */}
       <div className="space-y-2 md:hidden">
         {linhas.map((linha) => (
           <div

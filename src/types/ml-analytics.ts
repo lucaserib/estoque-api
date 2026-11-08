@@ -1,5 +1,3 @@
-// Tipos TypeScript para as APIs do Mercado Livre
-
 export interface MLAccount {
   id: string;
   userId: string;
@@ -60,12 +58,12 @@ export interface DashboardMetrics {
   todaySales: number;
   weekSales: number;
   totalRevenue: number;
-  totalRevenueProducts?: number; // ✅ NOVO: Receita só de produtos
-  shippingRevenue?: number; // ✅ NOVO: Receita de frete
+  totalRevenueProducts?: number;
+  shippingRevenue?: number;
   averageTicket: number;
-  averageTicketProducts?: number; // ✅ NOVO: Ticket médio só produtos
-  averageTicketWithShipping?: number; // ✅ NOVO: Ticket médio com frete
-  shippingPercentage?: number; // ✅ NOVO: Percentual do frete
+  averageTicketProducts?: number;
+  averageTicketWithShipping?: number;
+  shippingPercentage?: number;
   pendingOrders: number;
   needsSync: boolean;
   lastSync: string | null;
@@ -110,7 +108,7 @@ export interface CancelledSalesData {
   totalCancelledRevenue: number;
   cancellationRate: number;
   orders: CancelledOrder[];
-  topCancelledProducts?: CancelledProduct[]; // Produtos com mais cancelamentos
+  topCancelledProducts?: CancelledProduct[];
 }
 
 export interface SalesAnalytics {
@@ -121,9 +119,9 @@ export interface SalesAnalytics {
   };
   summary: {
     totalSales: number;
-    totalRevenue: number; // Total incluindo frete
-    totalProductRevenue?: number; // Total só produtos (novo)
-    totalShippingRevenue?: number; // Total só frete (novo)
+    totalRevenue: number;
+    totalProductRevenue?: number;
+    totalShippingRevenue?: number;
     averageTicket: number;
     revenueGrowth: number;
     totalOrders: number;

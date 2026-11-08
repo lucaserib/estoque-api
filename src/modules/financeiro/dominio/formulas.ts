@@ -1,13 +1,6 @@
 import { RateioCustoFixo } from "@prisma/client";
 import { ratear } from "./dinheiro";
 
-/**
- * Entrada por item: quantidade já é a quantidade economicamente válida (ou
- * seja, líquida de qualquer devolução/cancelamento parcial já identificado
- * pela camada de ingestão). `tarifaTotal` e `descontoVendedorTotal` já são o
- * total da linha (não por unidade) — a ambiguidade "por unidade ou por linha"
- * do Mercado Livre é resolvida pelo adaptador de canal, não aqui.
- */
 export interface ItemVendaEntrada {
   produtoId: string | null;
   quantidade: number;
@@ -18,9 +11,7 @@ export interface ItemVendaEntrada {
 }
 
 export interface VendaEntrada {
-  /** Custo do frete pago pelo vendedor para o pedido inteiro. null = desconhecido; 0 = retirada/sem custo. */
   freteTotal: number | null;
-  /** Custo de ads já rateado para esta venda. 0 quando não houve ads (valor conhecido, não faltante). */
   adsAtribuido: number;
 }
 
@@ -57,7 +48,6 @@ export interface ResultadoVenda {
   itens: ItemVendaResultado[];
 }
 
-/** Divide um custo único do pedido (frete, ads) entre os itens, proporcional ao faturamento de cada um. */
 export function ratearCustoVendaPorItem(
   totalCentavos: number,
   itens: Array<{ precoUnitario: number; quantidade: number }>
@@ -87,7 +77,6 @@ export function calcularMargemContribuicao(componentes: ComponentesMargem): numb
   );
 }
 
-/** Receita líquida ÷ margem de contribuição % = ponto de equilíbrio. null quando a margem atual não cobre custo nenhum. */
 export function calcularPontoEquilibrio(
   despesasFixas: number,
   margemContribuicaoPercentual: number

@@ -14,11 +14,6 @@ function opcao<T extends string>(valor: string | null, permitidos: readonly T[],
   return valor && (permitidos as readonly string[]).includes(valor) ? (valor as T) : padrao;
 }
 
-/**
- * GET /api/produtos/lista — lista paginada da tela Produtos.
- * ?q=&status=ativos|inativos|todos&tipo=produtos|kits|todos&estoque=&ml=
- *  &fornecedorId=&pendencia=&ordem=relevancia|nome|estoque|vendas&pagina=&porPagina=
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);

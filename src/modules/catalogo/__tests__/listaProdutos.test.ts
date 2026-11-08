@@ -63,7 +63,6 @@ describe("listarProdutos", () => {
   it("ativos e mais vendidos primeiro — venda de kit conta para o componente", async () => {
     const { listarProdutos } = await import("../listaProdutos");
     const r = await listarProdutos("c1", {});
-    // adaptador: 10 kits × 2 = 20 > cabo 15 > parado (com estoque) > ...
     expect(r.itens.map((i) => i.id)).toEqual(["adaptador", "cabo", "parado"]);
     expect(r.itens[0].vendas90d).toBe(20);
     expect(r.contagens).toEqual({ produtos: 3, kits: 1, inativos: 1 });

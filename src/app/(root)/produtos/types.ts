@@ -80,17 +80,17 @@ export interface Pedido {
   id: number;
   fornecedor: Fornecedor;
   produtos: PedidoProduto[];
-  comentarios?: string; // Deve ser opcional conforme o schema
+  comentarios?: string;
   status: string;
   dataPrevista?: string;
   armazemId?: string;
-  dataConclusao?: string; // Deve ser opcional conforme o schema
+  dataConclusao?: string;
 }
 
 export interface PedidoProduto {
   produtoId: string;
   quantidade: number;
-  custo: number; // Garantir que seja sempre um número inteiro (centavos)
-  multiplicador: number; // Não opcional conforme o schema do Prisma
+  custo: number;
+  multiplicador: number;
   produto?: Produto;
 }

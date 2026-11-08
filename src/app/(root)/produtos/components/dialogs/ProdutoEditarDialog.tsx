@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Produto } from "../../types";
 
-// UI Components
 import {
   Dialog,
   DialogContent,
@@ -34,7 +33,6 @@ export function ProdutoEditarDialog({
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Reset form when product changes
   useEffect(() => {
     if (isOpen) {
       setNome(produto.nome);
@@ -44,7 +42,6 @@ export function ProdutoEditarDialog({
     }
   }, [produto, isOpen]);
 
-  // Effect for cleanup on unmounting to prevent focus issues
   useEffect(() => {
     return () => {
       if (!isOpen) {
@@ -56,7 +53,6 @@ export function ProdutoEditarDialog({
   }, [isOpen]);
 
   const handleSubmit = async () => {
-    // Validate form
     if (!nome.trim()) {
       setError("O nome do produto é obrigatório");
       return;
@@ -108,7 +104,6 @@ export function ProdutoEditarDialog({
       open={isOpen}
       onOpenChange={(open) => {
         if (!open) {
-          // Ensure focus on a neutral element before closing
           document.body.focus();
           setTimeout(() => {
             onClose();

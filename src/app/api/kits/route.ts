@@ -1,17 +1,14 @@
-// src/app/api/kits/route.ts
 import { verifyUser } from "@/helpers/verifyUser";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { prepareBigIntEAN } from "@/utils/api";
 import { prisma } from "@/lib/prisma";
 
-
 interface Componente {
   produtoId: string;
   quantidade: number;
 }
 
-// Função para serializar BigInt como string
 const serializeBigInt = (obj: unknown): unknown => {
   return JSON.parse(
     JSON.stringify(obj, (key, value) =>
@@ -20,15 +17,12 @@ const serializeBigInt = (obj: unknown): unknown => {
   );
 };
 
-// Função melhorada para converter EAN para BigInt de forma segura
 const safeEANConversion = (ean: string | null): bigint | null => {
   if (!ean) return null;
   if (ean === "") return null;
 
-  // Remove caracteres não numéricos
   const cleanEAN = String(ean).replace(/[^0-9]/g, "");
 
-  // Se não houver dígitos após a limpeza, retorna null
   if (!cleanEAN) return null;
 
   try {
@@ -39,7 +33,6 @@ const safeEANConversion = (ean: string | null): bigint | null => {
   }
 };
 
-// GET Handler - Busca kits
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const sku = url.searchParams.get("sku");
@@ -51,7 +44,6 @@ export async function GET(req: NextRequest) {
     let produtos = [];
 
     if (id) {
-      // Buscar um kit específico pelo ID
       const kit = await prisma.produto.findUnique({
         where: {
           id: id,
@@ -135,7 +127,6 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST Handler - Cria um novo kit
 export async function POST(req: NextRequest) {
   try {
     const user = await verifyUser(req);
@@ -150,7 +141,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificar se já existe um produto com o mesmo SKU
     const existingProduto = await prisma.produto.findFirst({
       where: { sku, userId: user.contaId },
     });
@@ -168,7 +158,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Verificação de componentes
     for (const componente of componentes) {
       if (
         !componente.produtoId ||
@@ -183,7 +172,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Verificar se o produto existe
       const produtoExiste = await prisma.produto.findUnique({
         where: { id: componente.produtoId },
       });
@@ -198,7 +186,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Criar o kit
     const novoKit = await prisma.produto.create({
       data: {
         userId: user.contaId,
@@ -222,15 +209,12 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Atualizar estoque dos componentes (opcional - dependendo da regra de negócio)
     for (const componente of componentes) {
       const estoques = await prisma.estoque.findMany({
         where: { produtoId: componente.produtoId },
       });
 
-      // Se existir estoque, decrementar a quantidade
       if (estoques.length > 0) {
-        // Distribuir a redução entre os armazéns disponíveis
         let quantidadeRestante = componente.quantidade;
 
         for (const estoque of estoques) {
@@ -268,7 +252,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// DELETE Handler
 export async function DELETE(req: NextRequest) {
   const url = new URL(req.url);
   const id = url.searchParams.get("id");
@@ -282,7 +265,6 @@ export async function DELETE(req: NextRequest) {
   try {
     const user = await verifyUser(req);
 
-    // Verificar se o kit pertence ao usuário
     const kit = await prisma.produto.findFirst({
       where: {
         id: id,
@@ -302,7 +284,6 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    // Remover o kit
     await prisma.produto.delete({
       where: { id: id },
     });

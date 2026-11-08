@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Testing
 - `npm test` - Run the Vitest suite (`vitest run`)
 - Tests live beside the code they cover, in `__tests__/` folders (services, lib, and API routes all have coverage)
-- `npm run test:e2e` - Run the Playwright suite (`e2e/*.spec.ts`) across three viewports (desktop 1440×900, desktop 1366×680, mobile 390×844). Requires `DATABASE_URL` pointed at a **throwaway** Postgres database — `e2e/global-setup.ts` runs `prisma migrate deploy` + `prisma db seed` against it before the suite starts (destructive, never point this at a real database). Playwright itself starts `next start` on `E2E_PORT` (default `3100`); also needs `NEXTAUTH_SECRET` set (any value) and, if not already configured, dummy `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`TOKEN_ENCRYPTION_KEY` (a random 32-byte base64 string) so the app doesn't throw on routes that read them — the seeded e2e account (`e2e@skubo.test`) never exercises real Google/ML/Bling calls. No Docker needed: a local `initdb`/`pg_ctl` Postgres with a short Unix-socket directory (the default macOS `/tmp` works; a long path like a sandboxed scratch dir can exceed the 103-byte socket-path limit) is enough.
+- `npm run test:e2e` - Run the Playwright suite (`e2e/*.spec.ts`; `07-assistente-ia` needs `IA_PROVEDOR_FALSO=1` and `IA_CONTAS_LIBERADAS=e2e@skubo.test`) across three viewports (desktop 1440×900, desktop 1366×680, mobile 390×844). Requires `DATABASE_URL` pointed at a **throwaway** Postgres database — `e2e/global-setup.ts` runs `prisma migrate deploy` + `prisma db seed` against it before the suite starts (destructive, never point this at a real database). Playwright itself starts `next start` on `E2E_PORT` (default `3100`); also needs `NEXTAUTH_SECRET` set (any value) and, if not already configured, dummy `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`/`TOKEN_ENCRYPTION_KEY` (a random 32-byte base64 string) so the app doesn't throw on routes that read them — the seeded e2e account (`e2e@skubo.test`) never exercises real Google/ML/Bling calls. No Docker needed: a local `initdb`/`pg_ctl` Postgres with a short Unix-socket directory (the default macOS `/tmp` works; a long path like a sandboxed scratch dir can exceed the 103-byte socket-path limit) is enough.
 
 ### Mercado Livre Integration
 - `npm run test:ml` - Test ML configuration
@@ -29,7 +29,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Architecture Overview
 
-This is a **Next.js 15** inventory management system (estoque-api / Leap Stock) with Bling and Mercado Livre integrations.
+This is a **Next.js 15** inventory management system (Skubo — repo `estoque-api`) with Bling and Mercado Livre integrations.
 
 ### Tech Stack
 - **Frontend**: Next.js 15 App Router, React 19, TypeScript, Tailwind CSS
@@ -46,7 +46,7 @@ This is a **Next.js 15** inventory management system (estoque-api / Leap Stock) 
 
 #### Authentication Flow
 - Route-based authentication using NextAuth.js
-- Middleware protection (`src/middleware.ts`) for all routes except `/login`, `/register`, and everything under `/api/*` (API routes authenticate themselves via `verifyUser`, not the middleware)
+- Middleware protection (`src/middleware.ts`) for all routes except `/login`, `/register`, static files (any path with an extension, so `/ML.png` and `/brand/*` load for `_next/image` too) and everything under `/api/*` (API routes authenticate themselves via `verifyUser`, not the middleware). On the admin host (`ADMIN_HOST`, or any `admin.*` host) the middleware rewrites every page to `/admin/*`.
 - Supports both Google OAuth and email/password authentication
 - User sessions managed through JWT tokens; the `jwt` callback in `src/lib/auth.ts` re-reads `role`/`contaId` from the database every 5 minutes so a role change or account-sharing change takes effect without forcing logout
 - Special handling for Mercado Livre OAuth callbacks via ngrok URLs
@@ -92,6 +92,10 @@ Quando um número parecer errado, confira primeiro **de onde ele vem** antes de 
 - **Todo número do Financeiro** (faturamento, margem, lucro, por produto, por logística, DRE, dashboard): `src/modules/financeiro/relatorios/motor.ts` (`calcularVenda`, `calcularIndicadores`, `agruparVendas`). Nenhuma tela ou rota calcula por conta própria. As definições estão em `docs/financeiro/definicoes.md`. A venda cai no dia da **criação** do pedido (fuso de SP), igual ao ML.
 - **Vínculo anúncio → produto (e "kit com N")**: só `src/modules/catalogo/vinculos.ts` grava `ProdutoMercadoLivre.produtoId` a partir da interface (rota `POST /api/catalogo/vinculos`; as rotas antigas delegam para ele). Anúncio que vende N unidades do mesmo SKU aponta para um produto-kit com um único componente × N (`obterOuCriarKitDeQuantidade`); reposição, custo, envio de estoque e Financeiro tratam como kit sem regra especial. Trocar o vínculo chama `revincularVendasDoAnuncio` (refaz custo/CMV das vendas já gravadas).
 - **Lista da tela Produtos**: `src/modules/catalogo/listaProdutos.ts` (`GET /api/produtos/lista`) — paginada no servidor, ordem ativos → vendidos em 90 dias (Financeiro; venda de kit conta no componente) → com estoque → nome. Estoque local nunca inclui o armazém Full.
+- **Faturamento com frete e notas fiscais**: `src/modules/financeiro/relatorios/faturamentoComFrete.ts` (`GET /api/financeiro/faturamento-com-frete`) — "com frete" = faturamento do motor + `freteComprador` + `freteVendedor` das vendas válidas, por dia de criação do pedido; "em nota" = soma de `NotaFiscalVenda.valorNota` (situação 5/6/7) por dia de emissão. As notas vêm do Bling por `sincronizarNotasFiscais` (`modules/financeiro/canais/erp/bling/notasFiscais.ts`), no cron diário e no botão do cartão; ligam à venda por `numeroPedidoLoja`.
+- **Central de controle** (`/controle`): `src/modules/controle/diagnostico.ts` só agrega — reaproveita `calcularReposicaoConta`, `calcularCapitalParadoConta`, `calcularTodasPendencias`, `calcularSaudeAnuncios` e contagens do Financeiro; não recalcula nenhuma regra. Nota geral = média das 5 áreas − 4 por item crítico. A análise com IA (`analiseIa.ts`) manda esse diagnóstico + totais do mês pelo núcleo do Skubo IA (abaixo), com saída estruturada (`output_config.format`), e grava em `AnaliseIa` (`tipo` `CONTROLE` ou `SEMANAL`).
+- **Skubo IA** (`src/modules/ia/`): toda chamada à Anthropic passa por `cliente.ts` (`ProvedorIa`; `IA_PROVEDOR_FALSO=1` troca por um provedor determinístico em e2e/dev). O assistente (`assistente.ts`, `POST /api/ia/chat` em SSE) e as explicações nas telas (`explicacoes.ts`, `POST /api/ia/explicar`) só leem dados por **ferramentas somente leitura** (`ferramentas/`), que reaproveitam as fontes da verdade acima (`calcularIndicadores`, `gerarLucroPorProduto`, `calcularFaturamentoComFrete`, `calcularReposicaoConta`, `calcularCapitalParadoConta`, `calcularTodasPendencias`, `calcularSaudeAnuncios`, `listarProdutos`, `gerarDiagnostico`) — nunca recalculam. O `contaId` vem sempre do servidor; a lista de ferramentas é filtrada por papel e a saída passa por `removerDadosPessoais` → `removerCustos` (sem `VER_CUSTO`) → `limitarTamanho` → `<dados_da_loja>`. Cada chamada grava `UsoIa` (tokens e custo estimado pelos preços `IA_PRECO_*`); o limite por conta é custo estimado no mês (`IA_ORCAMENTO_MENSAL_CENTAVOS`, sobrescrito por `Subscription.iaOrcamentoCentavos`) ou, sem preços, quantidade de mensagens. Liberação (`acesso.ts`): `IA_CONTAS_LIBERADAS` > `Subscription.iaLiberadaManual` > assinatura do add-on (`iaStatus`, cobrada pelo Mercado Pago com `external_reference: "ia:<contaId>"`, `cobranca.ts`) > teste grátis de 7 dias. Conversas (`ConversaIa`/`MensagemIa`) são do usuário que perguntou, dentro da conta; apagadas após `IA_RETENCAO_DIAS`.
+- **Painel admin da plataforma** (`/admin`, fora do grupo `(root)`): liberado só para `PLATFORM_ADMIN_EMAILS` (`src/lib/adminPlataforma.ts`; APIs usam `verifyAdminPlataforma`). Números em `src/modules/admin/metricas.ts`; MRR é estimado pelos preços de `src/lib/billing.ts`. É ali que se liga/desliga a IA de cada conta.
 - **Vendas do ML no Financeiro**: `VendaCanal`, gravada em duas etapas. Primeiro o lote rápido (`ingestao/lote.ts`), direto do `/orders/search`; depois o detalhamento (`ingestao/enriquecimento.ts`), com o pagamento do Mercado Pago (tarifa e frete reais, retenção, líquido, liberação). `enriquecidoEm = null` significa "ainda sem o detalhe do pagamento". A fila fica em `ingestao/fila.ts` e a prova contra o ML em `relatorios/conferencia.ts` (tela Financeiro → Conferência).
 
 ### Key Business Logic
@@ -153,6 +157,12 @@ All business data is scoped by **account** (`User.contaId`), not by individual u
 - `BLING_CLIENT_ID` & `BLING_CLIENT_SECRET` - For Bling integration
 - `CRON_SECRET` - Bearer token required by every `/api/cron/*` route
 - `TOKEN_ENCRYPTION_KEY` - 32-byte base64 key used to encrypt Bling/ML tokens at rest (see `src/lib/tokenCrypto.ts`)
+- `PLATFORM_ADMIN_EMAILS` - comma-separated e-mails allowed into `/admin`; `ADMIN_HOST` + `AUTH_COOKIE_DOMAIN` (e.g. `.skubo.com.br`) to serve it on a subdomain with the same session
+- `ANTHROPIC_API_KEY` (+ `ANTHROPIC_WORKSPACE_ID` se a chave for de usuário), `IA_MODELO` (default `claude-sonnet-5-5`), `IA_MODELO_RAPIDO` (default `claude-haiku-5-5`) - Skubo IA
+- `IA_DESLIGADA=1` (kill switch), `IA_PROVEDOR_FALSO=1` (só e2e/dev, nunca em produção)
+- `IA_PRECO_ENTRADA_MTOK`, `IA_PRECO_SAIDA_MTOK`, `IA_PRECO_CACHE_LEITURA_MTOK`, `IA_PRECO_CACHE_ESCRITA_MTOK` (+ opcionais `IA_PRECO_RAPIDO_*`), `IA_COTACAO_DOLAR` (default 5.5) - custo estimado em `UsoIa`
+- `IA_ORCAMENTO_MENSAL_CENTAVOS` (default 1000), `IA_MENSAGENS_MENSAIS` (default 300), `IA_TESTE_ORCAMENTO_CENTAVOS` (default 200), `IA_RETENCAO_DIAS` (default 90), `IA_CONTAS_LIBERADAS`
+- `NEXT_PUBLIC_SUPORTE_URL` - link do botão "Falar com o suporte"
 
 ### Important File Locations
 - Main layout: `src/app/layout.tsx`
@@ -167,6 +177,8 @@ All business data is scoped by **account** (`User.contaId`), not by individual u
 - User-facing help: `docs/MANUAL-DO-USUARIO.md` (source) mirrored at `/ajuda/manual`, linked from the Navbar user menu alongside `/ajuda/celular` (PWA install guide)
 
 ### Ciclo atual
-O histórico de auditorias e planos de execução por ciclo vive em `docs/` e `docs/historico/`. Ciclo em andamento: **Ciclo 13** — plano em `PROMPT-CICLO-13-PRODUTO-FINAL.md` (raiz, substitui as Fases 2–6 do Ciclo 12), diagnóstico em `docs/ANALISE-CRITICA-PRODUTO.md`. O plano mestre do produto é `PROMPT-DEFINITIVO-LEAP-STOCK.md` na raiz.
+O histórico de auditorias e planos de execução por ciclo vive em `docs/` e `docs/historico/`. Último ciclo: **Ciclo 15** (Skubo IA completo + go-live) — resumo, decisões e checklist de produção em `docs/AUDITORIA-CICLO-15.md`; guia de configuração ponta a ponta em `docs/GUIA-DE-CONFIGURACAO.md`. O plano mestre do produto é `PROMPT-DEFINITIVO-LEAP-STOCK.md` na raiz.
+
+O código não leva comentários: nomes de funções e variáveis carregam a intenção, e o porquê das decisões fica nos `docs/`. Fontes são locais (`src/app/fonts`, `next/font/local`) — o build não depende do Google Fonts.
 
 Período padrão das telas de resumo é o **mês atual** (`resolverPeriodoRapido` em `modules/financeiro/dominio/periodo.ts`). Datas mandadas ao Bling usam `formatarDataHoraBrasilia` (o Bling lê hora local, não UTC).

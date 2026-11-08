@@ -327,7 +327,6 @@ const PedidosTable = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Barra de ações para pedidos selecionados */}
       {status === "confirmado" && (
         <div className="flex justify-between items-center mb-4">
           <div className="flex items-center">

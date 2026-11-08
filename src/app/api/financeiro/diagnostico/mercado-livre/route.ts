@@ -175,13 +175,6 @@ async function diagnosticarPorTipo(
   }
 }
 
-/**
- * GET /api/financeiro/diagnostico/mercado-livre?pedido=<id>
- * Somente ADMIN. Devolve o pedido, os descontos, o custo do envio e os
- * pagamentos crus da API do ML (sem token, sem dado pessoal do comprador)
- * para confirmar em produção os campos reais que o adaptador financeiro
- * (Ciclo 7 Fase 3) vai consumir — ver docs/financeiro/fontes-mercado-livre.md.
- */
 export async function GET(request: NextRequest) {
   try {
     const user = await verifyUser(request);

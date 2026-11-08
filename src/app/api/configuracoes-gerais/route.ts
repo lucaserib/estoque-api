@@ -44,8 +44,6 @@ export async function PATCH(request: NextRequest) {
       avgDeliveryDaysPadrao?: number;
     } = {};
 
-    // aliquotaImposto afeta margem/custo exibidos no app inteiro — exige VER_CUSTO.
-    // nome/logo da loja e tema são personalização visual, qualquer usuário da conta pode ajustar.
     if (aliquotaImposto !== undefined) {
       exigirPermissao(user.role, "VER_CUSTO");
 

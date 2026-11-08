@@ -5,11 +5,6 @@ import { sincronizarCatalogoSeNecessario } from "@/modules/catalogo/sincronizaca
 
 export const maxDuration = 60;
 
-/**
- * Uma vez por dia: começa (ou continua) a sincronização de catálogo e estoque
- * de cada conta com Bling ou Mercado Livre conectado. O que não couber no
- * tempo continua quando alguém abrir Produtos, Estoque ou o Dashboard.
- */
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
   if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {

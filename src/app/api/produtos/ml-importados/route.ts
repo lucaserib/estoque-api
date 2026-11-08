@@ -8,14 +8,13 @@ export async function GET(request: NextRequest) {
     const user = await verifyUser(request);
     exigirVisualizacao(user.role, "VER_CUSTO");
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status"); // 'pending', 'configured', 'all'
+    const status = searchParams.get("status");
 
-    // Buscar produtos importados do ML
     const products = await prisma.produto.findMany({
       where: {
         userId: user.contaId,
         ProdutoMercadoLivre: {
-          some: {}, // Tem vinculação com ML
+          some: {},
         },
       },
       include: {
@@ -52,7 +51,6 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Classificar produtos por status de configuração
     const processedProducts = products.map((product) => {
       const mlProduct = product.ProdutoMercadoLivre[0];
       const hasCost = product.custoMedio && product.custoMedio > 0;
@@ -74,7 +72,7 @@ export async function GET(request: NextRequest) {
           ? {
               mlItemId: mlProduct.mlItemId,
               mlTitle: mlProduct.mlTitle,
-              mlPrice: mlProduct.mlPrice / 100, // Converter de centavos
+              mlPrice: mlProduct.mlPrice / 100,
               mlStatus: mlProduct.mlStatus,
               mlThumbnail: mlProduct.mlThumbnail,
               mlPermalink: mlProduct.mlPermalink,
@@ -91,13 +89,11 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Filtrar por status se especificado
     const filteredProducts =
       status && status !== "all"
         ? processedProducts.filter((p) => p.configurationStatus === status)
         : processedProducts;
 
-    // Estatísticas
     const stats = {
       total: processedProducts.length,
       pending: processedProducts.filter(
@@ -142,7 +138,6 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Verificar se o produto pertence ao usuário
     const existingProduct = await prisma.produto.findFirst({
       where: {
         id: productId,
@@ -157,18 +152,16 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Preparar dados para atualização
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- objeto de update dinâmico do Prisma
     const updateData: any = {};
 
     if (updates.nome !== undefined) updateData.nome = updates.nome;
     if (updates.sku !== undefined) updateData.sku = updates.sku;
     if (updates.custoMedio !== undefined) {
-      updateData.custoMedio = Math.round(updates.custoMedio * 100); // Converter para centavos
+      updateData.custoMedio = Math.round(updates.custoMedio * 100);
     }
     if (updates.ean !== undefined) updateData.ean = updates.ean;
 
-    // Atualizar produto
     const updatedProduct = await prisma.produto.update({
       where: { id: productId },
       data: updateData,

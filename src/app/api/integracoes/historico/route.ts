@@ -10,7 +10,6 @@ const STATUS_LABELS: Record<string, string> = {
   interrompida: "Interrompida (tempo esgotado)",
 };
 
-/** Sincronização "em andamento" há mais de 15 min morreu no meio (tempo da função esgotou); não está rodando. */
 const LIMITE_EM_ANDAMENTO_MS = 15 * 60 * 1000;
 function statusReal(status: string, inicio: Date): string {
   return status === "processing" && Date.now() - inicio.getTime() > LIMITE_EM_ANDAMENTO_MS ? "interrompida" : status;

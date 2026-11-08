@@ -16,7 +16,6 @@ function jaInstalado(): boolean {
   );
 }
 
-/** Convite discreto pra instalar o Skubo — só na primeira visita pelo celular, nunca se já estiver instalado. */
 export function InstalarCelularBanner() {
   const pathname = usePathname();
   const [visivel, setVisivel] = useState(false);
@@ -32,7 +31,6 @@ export function InstalarCelularBanner() {
       if (localStorage.getItem(CHAVE_STORAGE)) return;
       setVisivel(true);
     } catch {
-      // modo privado / storage bloqueado: não mostra, não quebra a tela
     }
   }, [pathname]);
 
@@ -41,7 +39,6 @@ export function InstalarCelularBanner() {
     try {
       localStorage.setItem(CHAVE_STORAGE, "1");
     } catch {
-      // ignora
     }
   };
 

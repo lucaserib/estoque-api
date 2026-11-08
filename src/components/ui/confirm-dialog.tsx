@@ -21,12 +21,10 @@ interface ConfirmDialogProps {
   description?: React.ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** false (padrão) usa o botão vermelho de ação destrutiva; true usa o botão padrão da marca. */
   destructive?: boolean;
   onConfirm: () => void | Promise<void>;
 }
 
-/** Diálogo único para ações destrutivas/irreversíveis — evita reimplementar o mesmo AlertDialog em cada tela. */
 export function ConfirmDialog({
   open,
   onOpenChange,

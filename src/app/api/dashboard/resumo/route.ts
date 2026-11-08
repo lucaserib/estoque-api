@@ -34,8 +34,6 @@ async function montarResumo(userId: string, periodo: PeriodoComparado, verCusto:
   const inicioPeriodo = periodo.desde;
   const fimPeriodo = periodo.ate;
 
-  // Mesmos números do Financeiro: tudo vem do motor único
-  // (modules/financeiro/relatorios/motor.ts).
   const vendasBloco = await comFallback(
     async () => {
       const [periodoAtual, periodoAnterior, serieDiariaFinanceiro, lucroPorProduto, vendasIncompletas] =

@@ -10,7 +10,6 @@ import { SLIDES_TOUR } from "@/modules/onboarding/tourSlides";
 interface TourSlidesProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Chamado quando o tour termina ou é pulado — grava que já foi visto. */
   onConcluido: () => void;
 }
 

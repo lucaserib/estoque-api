@@ -156,7 +156,7 @@ describe("gerarSaldoProjetado", () => {
         automatica: false, saldoAtualExterno: null, saldoALiberarExterno: null, saldoExternoAtualizadoEm: null, saldoExternoConfianca: null,
       },
       {
-        id: "conta-2", userId: "user-1", ativo: true, tipo: "CARTAO_CREDITO", nome: "Cartão", // nunca deve entrar
+        id: "conta-2", userId: "user-1", ativo: true, tipo: "CARTAO_CREDITO", nome: "Cartão",
         saldoInicial: 99999, dataSaldoInicial: new Date("2026-01-01"),
         automatica: false, saldoAtualExterno: null, saldoALiberarExterno: null, saldoExternoAtualizadoEm: null, saldoExternoConfianca: null,
       }
@@ -169,7 +169,7 @@ describe("gerarSaldoProjetado", () => {
 
     const resultado = await gerarSaldoProjetado("user-1", 30);
 
-    expect(resultado.saldoAtual).toBe(10000); // cartão de crédito excluído, sem lançamentos pagos
+    expect(resultado.saldoAtual).toBe(10000);
     expect(resultado.liberacoesFuturas).toBe(2000);
     expect(resultado.lancamentosPrevistos).toBe(-500);
     expect(resultado.saldoProjetado).toBe(10000 + 2000 - 500);

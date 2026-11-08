@@ -34,6 +34,7 @@ import {
 import { formatBRL, formatDateBR } from "@/lib/format";
 import { podeEditar } from "@/lib/permissoes";
 import { useAcessoFinanceiro } from "../components/useAcessoFinanceiro";
+import { BotaoAtualizarFinanceiro } from "../components/BotaoAtualizarFinanceiro";
 
 interface ContaFinanceira {
   id: string;
@@ -258,19 +259,24 @@ export default function CartoesPage() {
 
   if (carregandoSessao || !podeVerFinanceiro) {
     return (
-      <div className="container mx-auto max-w-[1400px] space-y-8 p-6">
+      <div className="mx-auto w-full max-w-[1400px] space-y-8">
         <Skeleton className="h-[80px] rounded-md" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto max-w-[1400px] space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1400px] space-y-6">
       <PageHeader
         eyebrow="Financeiro"
         title="Cartões"
         subtitle="Cartões de crédito, faturas e pagamentos."
-        actions={podeEditarFinanceiro ? <Button onClick={abrirNovoCartao}>Novo cartão</Button> : undefined}
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <BotaoAtualizarFinanceiro modo="INCREMENTAL" onConcluido={carregarTudo} />
+            {podeEditarFinanceiro && <Button onClick={abrirNovoCartao}>Novo cartão</Button>}
+          </div>
+        }
       />
 
       {carregando ? (

@@ -18,7 +18,7 @@ export default function RootGroupError({
   }, [error]);
 
   return (
-    <div className="container mx-auto flex min-h-[60vh] max-w-2xl items-center justify-center p-6">
+    <div className="mx-auto w-full flex min-h-[60vh] max-w-2xl items-center justify-center">
       <ErrorState
         title="Essa tela não carregou"
         description="Nossa equipe já foi notificada — tente de novo ou volte para o início."
