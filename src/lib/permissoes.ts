@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
-import { AssinaturaInativaError, UsuarioBloqueadoError } from "@/modules/conta/erros";
+import { AssinaturaInativaError, NaoAutenticadoError, UsuarioBloqueadoError } from "@/modules/conta/erros";
 
 export type AcaoPermissao =
   | "VER_CUSTO"
@@ -155,7 +155,7 @@ export function permissaoErrorResponse(error: unknown): NextResponse<RespostaErr
       { status: 402 }
     );
   }
-  if (error instanceof UsuarioBloqueadoError) {
+  if (error instanceof UsuarioBloqueadoError || error instanceof NaoAutenticadoError) {
     return NextResponse.json({ error: error.message, code: error.code }, { status: 401 });
   }
   return null;

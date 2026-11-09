@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 import { User } from "@prisma/client";
 import { obterSegredoAuth } from "@/lib/authSecret";
-import { UsuarioBloqueadoError } from "@/modules/conta/erros";
+import { NaoAutenticadoError, UsuarioBloqueadoError } from "@/modules/conta/erros";
 
 export interface VerifiedUser extends User {
   contaId: string;
@@ -34,17 +34,17 @@ export async function verifyUser(req: NextRequest): Promise<VerifiedUser> {
   }
 
   if (!token) {
-    throw new Error("Acesso não autorizado. Token ausente.");
+    throw new NaoAutenticadoError("Acesso não autorizado. Token ausente.");
   }
 
   if (!token.id) {
-    throw new Error("Acesso não autorizado. Token inválido (sem ID).");
+    throw new NaoAutenticadoError("Acesso não autorizado. Token inválido (sem ID).");
   }
 
   const usuario = await prisma.user.findUnique({ where: { id: token.id as string } });
 
   if (!usuario) {
-    throw new Error("Usuário não encontrado.");
+    throw new NaoAutenticadoError("Usuário não encontrado.");
   }
 
   if (usuario.bloqueadoEm || !sessaoAindaValida(token.emitidoEm, usuario.sessaoValidaDesde)) {

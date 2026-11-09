@@ -13,6 +13,15 @@ export class AssinaturaInativaError extends Error {
   }
 }
 
+export class NaoAutenticadoError extends Error {
+  readonly code = "NAO_AUTENTICADO";
+
+  constructor(mensagem = "Acesso não autorizado. Faça login de novo.") {
+    super(mensagem);
+    this.name = "NaoAutenticadoError";
+  }
+}
+
 export class UsuarioBloqueadoError extends Error {
   readonly code = "USUARIO_BLOQUEADO";
 
