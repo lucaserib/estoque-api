@@ -115,3 +115,10 @@ Testes: `fluxo.test.ts` (+2), `cadastro.test.ts` (+1), `convite.test.ts` (novo, 
 - **Ações em lote** (selecionar várias e concluir/atribuir): não entraram; a Lista já filtra e conclui em um toque.
 - **Tempo real** (WebSocket): na Vercel não há conexão persistente; o quadro atualiza a cada 20 s e ao voltar para a aba, e o mover é otimista.
 - **Reordenar itens do checklist pela tela**: a API aceita (`anteriorId`/`seguinteId`), a tela ainda só adiciona, marca e apaga.
+
+## Produção (2026-11-09)
+
+- Enviado a pedido do usuário junto com o Ciclo 16: commit `4ef3304` (Ciclos 16 e 17) e `573a2dc` (correção abaixo). Deploy da Vercel pronto; o build aplicou as 9 migrações (`20261108090100` a `20261108100100`) no banco de produção sem erro.
+- Variáveis de produção hoje: **sem** `MP_ACCESS_TOKEN` (ninguém é bloqueado por assinatura; as contas antigas ficam em "teste" sem trava) e **sem** `RESEND_API_KEY` (e-mails só no log). Ligar cada um segue o checklist de `docs/AUDITORIA-CICLO-16.md` e `docs/GUIA-DE-CONFIGURACAO.md`.
+- Teste de fumaça em produção: páginas públicas (`/login`, `/planos`, `/register`, `/termos`, `/privacidade`, `/indique/regulamento`, `/esqueci-senha`) 200; `/api/planos` 200; convite com código inexistente devolve `valido: false`; `/r/<código>` leva ao cadastro com o código; `/operacao` sem sessão vai para o login; cron sem token 401; Mercado Pago simulado desligado (404).
+- **Correção feita na ida ao ar:** chamada de API sem sessão respondia 500 (e registrava erro interno) em quase todas as rotas — defeito antigo, de antes destes ciclos. `verifyUser` agora lança `NaoAutenticadoError` e `permissaoErrorResponse` devolve 401 (`NAO_AUTENTICADO`), mantendo as mensagens. Teste `src/lib/__tests__/naoAutenticado.test.ts`; bateria 185 arquivos / 1120 testes.
