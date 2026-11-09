@@ -19,10 +19,22 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
 const consumo = { base: "MENSAGENS", percentual: 10, esgotado: false };
 const acessoMock = {
-  garantirAcessoIa: vi.fn(async () => ({ liberada: true })),
-  obterAcessoIa: vi.fn(async () => ({ consumo })),
+  garantirAcessoIa: vi.fn(async () => ({ liberada: true, ilimitada: false })),
+  obterAcessoIa: vi.fn(async () => ({ consumo, saldo: 4, ilimitada: false })),
 };
 vi.mock("../acesso", () => acessoMock);
+
+const consumoMock = {
+  cobrarUsoIa: vi.fn(async () => ({ debitado: 1, saldoAntes: 5, saldoApos: 4, repetido: false, custo: 1 })),
+  registrarPrimeiraPergunta: vi.fn(async () => undefined),
+};
+vi.mock("../consumo", () => consumoMock);
+
+const creditosMock = { estornarCreditos: vi.fn(async () => 1) };
+vi.mock("../creditos", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../creditos")>()),
+  ...creditosMock,
+}));
 
 const registrarUsoIa = vi.fn(async () => undefined);
 vi.mock("../uso", () => ({ registrarUsoIa }));
@@ -108,7 +120,7 @@ describe("responderPergunta", () => {
     expect(segunda.at(-1)).toMatchObject({ role: "user", content: [{ type: "tool_result", tool_use_id: "t1" }] });
     expect(String(chamadas[0].sistemaVariavel)).toContain("Loja: Loja Teste");
     expect(String(chamadas[0].sistemaVariavel)).toContain("Tela aberta agora: Reposição");
-    expect((chamadas[0].ferramentas as unknown[]).length).toBe(12);
+    expect((chamadas[0].ferramentas as unknown[]).length).toBe(13);
 
     const salvas = prismaMock.mensagemIa.create.mock.calls.map((c) => (c as unknown as [{ data: Record<string, unknown> }])[0].data);
     expect(salvas[0]).toMatchObject({ papel: "USUARIO", conteudo: "O que comprar?" });
@@ -207,6 +219,30 @@ describe("responderPergunta", () => {
     expect(prismaMock.mensagemIa.delete).toHaveBeenCalledWith({ where: { id: "msg-u" } });
     expect(prismaMock.conversaIa.delete).toHaveBeenCalledWith({ where: { id: "conv-1" } });
     expect(registrarUsoIa).toHaveBeenCalledWith(expect.objectContaining({ sucesso: false, codigoErro: "HTTP_529" }));
+    expect(creditosMock.estornarCreditos).toHaveBeenCalledWith("chat:msg-u");
+  });
+
+  it("cobra a pergunta depois de gravá-la e devolve o saldo no fim", async () => {
+    const { provedor } = provedorRoteirizado([{ texto: "Tudo certo." }]);
+    const { eventos, emitir } = coletar();
+    await responderPergunta({ usuario, mensagem: "Oi", emitir, provedor: provedor as never });
+    expect(consumoMock.cobrarUsoIa).toHaveBeenCalledWith(
+      expect.objectContaining({ contaId: "conta-1", autorId: "user-1", recurso: "CHAT", chave: "chat:msg-u", ilimitada: false })
+    );
+    expect(creditosMock.estornarCreditos).not.toHaveBeenCalled();
+    expect(eventos.at(-1)).toMatchObject({ tipo: "fim", creditos: { saldo: 4, ilimitada: false } });
+  });
+
+  it("sem saldo na hora de cobrar: descarta a pergunta e avisa SEM_CREDITOS", async () => {
+    const { SemCreditosIaError } = await import("../creditos");
+    consumoMock.cobrarUsoIa.mockRejectedValueOnce(new SemCreditosIaError(0, 1));
+    const { provedor } = provedorRoteirizado([]);
+    const { eventos, emitir } = coletar();
+    await responderPergunta({ usuario, mensagem: "Oi", emitir, provedor: provedor as never });
+    expect(eventos.at(-1)).toMatchObject({ tipo: "erro", codigo: "SEM_CREDITOS", conversaDescartada: true });
+    expect(provedor.transmitirMensagem).not.toHaveBeenCalled();
+    expect(creditosMock.estornarCreditos).not.toHaveBeenCalled();
+    expect(prismaMock.mensagemIa.delete).toHaveBeenCalledWith({ where: { id: "msg-u" } });
   });
 
   it("sem acesso não cria conversa e devolve o código do bloqueio", async () => {

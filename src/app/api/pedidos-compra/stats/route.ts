@@ -1,13 +1,13 @@
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { NextRequest, NextResponse } from "next/server";
 import { subDays } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { podeVer } from "@/lib/permissoes";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const thirtyDaysAgo = subDays(new Date(), 30);
 
@@ -56,6 +56,8 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar estatísticas de pedidos:", error);
     return NextResponse.json(
       { error: "Erro ao buscar estatísticas de pedidos" },

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ produtoId: string }> }
 ) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { produtoId } = await params;
 
     if (!produtoId) {
@@ -47,6 +48,8 @@ export async function GET(
 
     return NextResponse.json(serializedEstoque);
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     if (error instanceof Error && error.message.includes("não autorizado")) {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }

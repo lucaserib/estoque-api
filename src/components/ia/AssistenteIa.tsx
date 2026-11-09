@@ -46,7 +46,7 @@ export function AssistenteIa() {
 
   if (!visivel || pathname === "/ia") return null;
 
-  const comFabDaPagina = PAGINAS_COM_FAB.has(pathname);
+  const comFabDaPagina = PAGINAS_COM_FAB.has(pathname) || pathname === "/operacao" || pathname.startsWith("/operacao/");
 
   return (
     <DialogPrimitive.Root open={aberto} onOpenChange={setAberto}>

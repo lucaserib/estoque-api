@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import {
@@ -10,7 +10,7 @@ import {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
 
     const recorrencias = await prisma.recorrenciaFinanceira.findMany({
@@ -36,7 +36,7 @@ interface RequestBody extends Omit<DadosRecorrencia, "inicio" | "fim"> {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "FINANCEIRO_EDITAR");
 
     const body: RequestBody = await request.json();

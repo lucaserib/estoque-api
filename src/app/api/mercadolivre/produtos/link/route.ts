@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { mlCache, createCacheKey } from "@/lib/cache";
 import { definirVinculoAnuncio, VinculoErro } from "@/modules/catalogo/vinculos";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "EDITAR_PRODUTO");
     const { accountId, mlItemId, localProductId, unidadesPorVenda } = await request.json();
 

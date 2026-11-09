@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { BlingReconnectError, BlingService } from "@/services/blingService";
 import { criarStateBling } from "@/lib/blingOAuthState";
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get("action");
 
     if (action === "accounts") {
-      const user = await verifyUser(request);
+      const user = await verifyUserAtivo(request);
       exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
 
       const accounts = await prisma.blingAccount.findMany({
@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "diagnostico") {
-      const user = await verifyUser(request);
+      const user = await verifyUserAtivo(request);
       exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
 
       return NextResponse.json(
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (action === "connect") {
-      const user = await verifyUser(request);
+      const user = await verifyUserAtivo(request);
       exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
 
       const origem = origemDaRequisicao(request.url, request.headers);
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Ação inválida" }, { status: 400 });
     }
 
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
 
     const conta = await prisma.blingAccount.findFirst({
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");

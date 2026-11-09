@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { obterDetalheVenda, VendaNaoEncontradaError } from "@/modules/financeiro/relatorios/lucroPorVenda";
 
@@ -8,7 +8,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
     const { id } = await params;
 

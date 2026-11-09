@@ -234,11 +234,14 @@ describe("registro por papel", () => {
     expect(nomesEstoque).not.toContain("capital_parado");
     expect(ferramentasDoPapel("VENDAS").map((f) => f.nome)).not.toContain("sugestao_reposicao");
     expect(ferramentasDoPapel("COMPRAS").map((f) => f.nome)).toContain("capital_parado");
+    for (const papel of ["ADMIN", "COMPRAS", "ESTOQUE", "VENDAS", "LEITURA"] as const) {
+      expect(ferramentasDoPapel(papel).map((f) => f.nome)).toContain("tarefas_da_equipe");
+    }
   });
 
   it("gera JSON Schema válido para a API a partir do zod", () => {
     const defs = definicoesParaApi(TODAS_AS_FERRAMENTAS);
-    expect(defs).toHaveLength(12);
+    expect(defs).toHaveLength(13);
     const reposicaoDef = defs.find((d) => d.name === "sugestao_reposicao")!;
     expect(reposicaoDef.input_schema).toMatchObject({
       type: "object",

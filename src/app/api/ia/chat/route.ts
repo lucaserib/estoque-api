@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { rateLimitResponse } from "@/lib/rateLimit";
 import { formatarEventoSse } from "@/lib/sse";
 import { type EventoAssistente, gerarTituloConversa, responderPergunta } from "@/modules/ia/assistente";
@@ -18,9 +18,9 @@ const corpoSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
-  let usuario: Awaited<ReturnType<typeof verifyUser>>;
+  let usuario: Awaited<ReturnType<typeof verifyUserAtivo>>;
   try {
-    usuario = await verifyUser(request);
+    usuario = await verifyUserAtivo(request);
   } catch (error) {
     return respostaErroRotaIa(error, "Falha ao autenticar o chat");
   }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { prisma } from "@/lib/prisma";
@@ -12,7 +12,7 @@ export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
     const [acesso, historico] = await Promise.all([
       obterAcessoIa(user.contaId),
@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
     const limite = await checkRateLimit("analise-ia", user.contaId, 3, 60);
     if (!limite.allowed) return rateLimitResponse(limite);

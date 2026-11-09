@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "VER_CUSTO");
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "EDITAR_PRODUTO");
     const body = await request.json();
     const { productId, updates } = body;

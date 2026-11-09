@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CanalVenda } from "@prisma/client";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { mapearEnvio } from "@/modules/financeiro/canais/mercadoLivre/mapeador";
 import { obterAdaptador } from "@/modules/financeiro/canais/registro";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 const BASE_URL = "https://api.mercadolibre.com";
 
@@ -177,7 +178,7 @@ async function diagnosticarPorTipo(
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     if (user.role !== "ADMIN") {
       return NextResponse.json(
         { error: "Apenas administradores podem usar este diagnóstico" },
@@ -260,6 +261,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(diagnostico);
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[DIAGNOSTICO_ML_FINANCEIRO] Erro:", error);
     return NextResponse.json(
       {

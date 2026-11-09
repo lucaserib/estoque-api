@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { rateLimitResponse } from "@/lib/rateLimit";
 import { explicarReposicao, explicarVariacao, planejarAnuncios, resumirProduto } from "@/modules/ia/explicacoes";
 import { ErroFerramenta } from "@/modules/ia/ferramentas/tipos";
@@ -19,7 +19,7 @@ const corpoSchema = z.discriminatedUnion("tipo", [
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const corpo = corpoSchema.safeParse(await request.json().catch(() => null));
     if (!corpo.success) return NextResponse.json({ error: "Pedido inválido" }, { status: 400 });
 

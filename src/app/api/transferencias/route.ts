@@ -1,4 +1,4 @@
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { prisma } from "@/lib/prisma";
@@ -19,7 +19,7 @@ interface RequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "ESTOQUE_AJUSTAR");
     const body: RequestBody = await request.json();
 
@@ -179,7 +179,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const transferencias = await prisma.transferenciaEstoque.findMany({
       where: { userId: user.contaId },
@@ -199,6 +199,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(serializeWithEAN(transferencias), { status: 200 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar transferências:", error);
     return NextResponse.json(
       { error: "Erro ao buscar transferências" },

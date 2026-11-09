@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const produtoId = searchParams.get("produtoId");
     const armazemId = searchParams.get("armazemId");
@@ -57,6 +58,8 @@ export async function GET(request: NextRequest) {
       periodo: 90,
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao calcular consumo diário:", error);
     return NextResponse.json(
       { error: "Erro ao calcular consumo diário" },

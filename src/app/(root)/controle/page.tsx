@@ -12,6 +12,7 @@ import {
   Plug,
   RefreshCw,
   Sparkles,
+  ListPlus,
   Store,
   Tags,
 } from "lucide-react";
@@ -21,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusPill } from "@/components/ui/status-pill";
 import { AnaliseIaCard } from "@/components/controle/AnaliseIaCard";
 import { abrirAssistente, perguntaSobreItemDiagnostico } from "@/components/ia/eventos";
+import { abrirNovaTarefa } from "@/components/operacao/eventos";
 import { useAcessoIa } from "@/components/ia/useAcessoIa";
 import { formatBRL, formatNumberBR, formatRelativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -120,6 +122,25 @@ function CartaoProblema({ item }: { item: ItemDiagnostico }) {
             Perguntar sobre isto
           </Button>
         )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="gap-1.5 text-fg2"
+          onClick={() =>
+            abrirNovaTarefa({
+              titulo: item.quantidade > 1 ? `${item.titulo} (${item.quantidade})` : item.titulo,
+              descricao: [item.descricao, item.exemplos.length ? `Ex.: ${item.exemplos.join(", ")}` : ""].filter(Boolean).join("\n\n"),
+              origem: "CENTRAL_CONTROLE",
+              chaveOrigem: `controle:${item.id}`,
+              prioridade: item.gravidade === "critica" ? "ALTA" : "MEDIA",
+              vinculo: { tipo: "TELA", rotulo: item.acao.rotulo, href: item.acao.href },
+            })
+          }
+        >
+          <ListPlus className="h-3.5 w-3.5" />
+          Criar tarefa
+        </Button>
         <Button asChild variant={item.gravidade === "critica" ? "default" : "outline"} size="sm" className="gap-1.5">
           <Link href={item.acao.href}>
             {item.acao.rotulo}

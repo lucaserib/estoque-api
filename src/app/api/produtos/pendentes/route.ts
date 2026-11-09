@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const mlAccountId = searchParams.get("mlAccountId");
 
@@ -89,6 +90,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar produtos pendentes:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

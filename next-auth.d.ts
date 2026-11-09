@@ -12,6 +12,6 @@ declare module "next-auth" {
   }
 
   interface Session {
-    user: User & { role: UserRole; contaId: string };
+    user: User & { role: UserRole; contaId: string; emailVerificado: boolean };
   }
 }

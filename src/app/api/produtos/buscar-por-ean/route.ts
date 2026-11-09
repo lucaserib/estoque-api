@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
-import { podeVer } from "@/lib/permissoes";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const eanParam = searchParams.get("ean");
 
@@ -51,6 +51,8 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[BUSCAR_POR_EAN] Erro:", error);
     return NextResponse.json(
       { error: "Erro ao buscar produto por EAN" },

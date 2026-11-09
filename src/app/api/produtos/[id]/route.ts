@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { normalizeImageUrl } from "@/lib/imageUrl";
 import { serializeWithEAN } from "@/utils/api";
-import { podeVer } from "@/lib/permissoes";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 import { calcularCustoKit } from "@/lib/custo";
 
 export async function GET(
@@ -11,7 +11,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { id } = await params;
 
     if (!id) {
@@ -202,6 +202,8 @@ export async function GET(
       produto: serializeWithEAN(produtoSerialized),
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar produto:", error);
     return NextResponse.json(
       { error: "Erro ao buscar produto" },

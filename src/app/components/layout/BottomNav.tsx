@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { Layout, Package, Megaphone, Wallet, Menu } from "lucide-react";
+import { KanbanSquare, Layout, Package, Megaphone, Wallet, Menu } from "lucide-react";
 import { useLayout } from "../../context/LayoutContext";
 import { podeVer } from "@/lib/permissoes";
 
@@ -20,6 +20,7 @@ const BottomNav = () => {
 
   const itens = [
     { href: "/", icon: Layout, label: "Início" },
+    { href: "/operacao", icon: KanbanSquare, label: "Tarefas" },
     { href: podeVerFinanceiro ? "/financeiro" : "/mercado-livre", icon: Wallet, label: "Vendas" },
     { href: "/produtos", icon: Package, label: "Estoque" },
     { href: "/mercado-livre/produtos", icon: Megaphone, label: "Anúncios" },
@@ -37,7 +38,7 @@ const BottomNav = () => {
           <Link
             key={item.href}
             href={item.href}
-            className={`flex flex-1 flex-col items-center justify-center gap-1 text-[11px] ${
+            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] ${
               ativo ? "text-primary" : "text-fg2"
             }`}
           >
@@ -49,7 +50,7 @@ const BottomNav = () => {
       <button
         type="button"
         onClick={toggleSidebar}
-        className="flex flex-1 flex-col items-center justify-center gap-1 text-[11px] text-fg2"
+        className="flex min-w-0 flex-1 flex-col items-center justify-center gap-1 text-[11px] text-fg2"
       >
         <Menu className="h-5 w-5" strokeWidth={1.75} />
         Mais

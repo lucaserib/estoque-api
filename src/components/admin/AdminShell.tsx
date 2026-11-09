@@ -2,7 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowUpRight, Building2, LayoutDashboard, LogOut, MessageSquareWarning } from "lucide-react";
+import {
+  ArrowUpRight,
+  Building2,
+  CreditCard,
+  Gift,
+  LayoutDashboard,
+  LogOut,
+  Mail,
+  ScrollText,
+  Sparkles,
+  Tags,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 import { signOut } from "next-auth/react";
 import { Logo } from "@/components/brand/Logo";
 import { cn } from "@/lib/utils";
@@ -10,7 +23,14 @@ import { cn } from "@/lib/utils";
 const NAVEGACAO = [
   { href: "/admin", rotulo: "Visão geral", icone: LayoutDashboard },
   { href: "/admin/contas", rotulo: "Contas", icone: Building2 },
-  { href: "/admin/ia/feedback", rotulo: "Feedback da IA", icone: MessageSquareWarning },
+  { href: "/admin/usuarios", rotulo: "Usuários", icone: UserRound },
+  { href: "/admin/pagamentos", rotulo: "Assinaturas e pagamentos", icone: CreditCard },
+  { href: "/admin/creditos", rotulo: "Créditos de IA", icone: Wallet },
+  { href: "/admin/indicacoes", rotulo: "Indicações", icone: Gift },
+  { href: "/admin/emails", rotulo: "E-mails e campanhas", icone: Mail },
+  { href: "/admin/precos", rotulo: "Preços e ofertas", icone: Tags },
+  { href: "/admin/auditoria", rotulo: "Auditoria", icone: ScrollText },
+  { href: "/admin/ia/feedback", rotulo: "IA", icone: Sparkles },
 ];
 
 export function AdminShell({ email, children }: { email: string; children: React.ReactNode }) {
@@ -27,21 +47,6 @@ export function AdminShell({ email, children }: { email: string; children: React
               Admin
             </span>
           </Link>
-          <nav className="ml-2 flex items-center gap-1 overflow-x-auto">
-            {NAVEGACAO.map(({ href, rotulo, icone: Icone }) => (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition-colors",
-                  ativo(href) ? "bg-primary/10 font-semibold text-primary" : "text-fg2 hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icone className="h-4 w-4" />
-                <span className="hidden sm:inline">{rotulo}</span>
-              </Link>
-            ))}
-          </nav>
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-xs text-muted-foreground md:inline">{email}</span>
             <a
@@ -60,6 +65,23 @@ export function AdminShell({ email, children }: { email: string; children: React
             </button>
           </div>
         </div>
+        <nav className="mx-auto flex max-w-[1440px] items-center gap-1 overflow-x-auto px-4 pb-2 sm:px-6" aria-label="Seções do admin">
+          {NAVEGACAO.map(({ href, rotulo, icone: Icone }) => (
+            <Link
+              key={href}
+              href={href}
+              title={rotulo}
+              aria-label={rotulo}
+              className={cn(
+                "flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm transition-colors",
+                ativo(href) ? "bg-primary/10 font-semibold text-primary" : "text-fg2 hover:bg-muted hover:text-foreground"
+              )}
+            >
+              <Icone className="h-4 w-4" />
+              <span className="hidden md:inline">{rotulo}</span>
+            </Link>
+          ))}
+        </nav>
       </header>
       <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 sm:py-8">{children}</main>
     </div>

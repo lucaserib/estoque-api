@@ -1,4 +1,4 @@
-import { PRICING } from "@/lib/billing";
+import { responderMercadoPagoFalso, usarMercadoPagoFalso } from "./mercadoPagoFalso";
 
 const MP_API_BASE = "https://api.mercadopago.com";
 
@@ -18,6 +18,7 @@ interface CreatePreapprovalParams {
   frequencyType: "days" | "months";
   backUrl: string;
   externalReference: string;
+  startDate?: Date | null;
 }
 
 export interface MercadoPagoPreapproval {
@@ -30,7 +31,9 @@ export interface MercadoPagoPreapproval {
     transaction_amount: number;
     frequency: number;
     frequency_type: string;
+    start_date?: string | null;
   };
+  next_payment_date?: string | null;
 }
 
 function getAccessToken(): string {
@@ -40,10 +43,14 @@ function getAccessToken(): string {
 }
 
 export function isMercadoPagoConfigured(): boolean {
-  return Boolean(process.env.MP_ACCESS_TOKEN);
+  return Boolean(process.env.MP_ACCESS_TOKEN) || usarMercadoPagoFalso();
 }
 
 async function mpFetch<T>(path: string, init: RequestInit): Promise<T> {
+  if (usarMercadoPagoFalso()) {
+    const corpo = typeof init.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : null;
+    return responderMercadoPagoFalso(path, init.method ?? "GET", corpo) as T;
+  }
   const response = await fetch(`${MP_API_BASE}${path}`, {
     ...init,
     headers: {
@@ -80,6 +87,7 @@ export const MercadoPagoService = {
           frequency_type: params.frequencyType,
           transaction_amount: params.transactionAmount,
           currency_id: "BRL",
+          ...(params.startDate ? { start_date: params.startDate.toISOString() } : {}),
         },
       }),
     });
@@ -110,28 +118,77 @@ export const MercadoPagoService = {
     });
   },
 
-  async getPayment(id: string): Promise<{
-    id: number;
-    status: string;
-    external_reference: string | null;
-    date_approved?: string | null;
-  }> {
+  async getPayment(id: string): Promise<PagamentoMercadoPago> {
     return mpFetch(`/v1/payments/${id}`, { method: "GET" });
+  },
+
+  async criarPreferencia(preferencia: PreferenciaMercadoPago): Promise<{ id: string; init_point: string; sandbox_init_point?: string }> {
+    return mpFetch("/checkout/preferences", { method: "POST", body: JSON.stringify(preferencia) });
+  },
+
+  async reembolsarPagamento(id: string, chaveIdempotencia: string): Promise<{ id: number; status: string }> {
+    return mpFetch(`/v1/payments/${id}/refunds`, {
+      method: "POST",
+      body: JSON.stringify({}),
+      headers: { "X-Idempotency-Key": chaveIdempotencia },
+    });
+  },
+
+  async pausarPreapproval(id: string): Promise<MercadoPagoPreapproval> {
+    return mpFetch<MercadoPagoPreapproval>(`/preapproval/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ status: "paused" }),
+    });
+  },
+
+  async reativarPreapproval(id: string): Promise<MercadoPagoPreapproval> {
+    return mpFetch<MercadoPagoPreapproval>(`/preapproval/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ status: "authorized" }),
+    });
   },
 };
 
-export function planToRecurringConfig(plan: "MONTHLY" | "ANNUAL") {
-  if (plan === "ANNUAL") {
-    return {
-      frequency: 12,
-      frequencyType: "months" as const,
-      transactionAmount: PRICING.ANNUAL,
-    };
-  }
+export interface PagamentoMercadoPago {
+  id: number;
+  status: string;
+  status_detail?: string | null;
+  external_reference: string | null;
+  date_approved?: string | null;
+  date_created?: string | null;
+  transaction_amount?: number | null;
+  payment_method_id?: string | null;
+  payment_type_id?: string | null;
+  payer?: { email?: string | null } | null;
+  metadata?: Record<string, unknown> | null;
+}
 
-  return {
-    frequency: 1,
-    frequencyType: "months" as const,
-    transactionAmount: PRICING.MONTHLY_FIRST_CYCLE,
+export interface PreferenciaMercadoPago {
+  items: Array<{ id: string; title: string; quantity: number; unit_price: number; currency_id: "BRL" }>;
+  external_reference: string;
+  notification_url?: string;
+  back_urls: { success: string; pending: string; failure: string };
+  auto_return?: "approved" | "all";
+  payer?: { email: string };
+  payment_methods?: {
+    excluded_payment_types?: Array<{ id: string }>;
+    installments?: number;
   };
+  expires?: boolean;
+  expiration_date_to?: string;
+  date_of_expiration?: string;
+  statement_descriptor?: string;
+  metadata?: Record<string, string>;
+}
+
+export function planToRecurringConfig(plan: "MONTHLY" | "ANNUAL", primeiraCobrancaCentavos: number) {
+  return {
+    frequency: plan === "ANNUAL" ? 12 : 1,
+    frequencyType: "months" as const,
+    transactionAmount: centavosParaReais(primeiraCobrancaCentavos),
+  };
+}
+
+export function centavosParaReais(centavos: number): number {
+  return Math.round(centavos) / 100;
 }

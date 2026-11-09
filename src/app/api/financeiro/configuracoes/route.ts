@@ -5,14 +5,14 @@ import {
   RateioCustoFixo,
   RegimeTributario,
 } from "@prisma/client";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { invalidarCacheFinanceiro } from "@/modules/financeiro/relatorios/cache";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
 
     const config = await prisma.configuracaoGeral.findUnique({ where: { userId: user.contaId } });
@@ -59,7 +59,7 @@ interface RequestBody {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "FINANCEIRO_EDITAR");
 
     const body: RequestBody = await request.json();

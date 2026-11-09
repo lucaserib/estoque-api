@@ -1,4 +1,5 @@
 import { Prisma } from "@prisma/client";
+import { registrarEvento } from "@/modules/clientes/eventos";
 import { prisma } from "@/lib/prisma";
 import { mlCache } from "@/lib/cache";
 import { BlingService } from "@/services/blingService";
@@ -312,7 +313,10 @@ export async function processarSincronizacaoCatalogo(userId: string, orcamentoMs
         ...(etapa ? {} : { concluidoEm: new Date() }),
       },
     });
-    if (!etapa) await mlCache.invalidatePattern(`user:${userId}:`);
+    if (!etapa) {
+      await mlCache.invalidatePattern(`user:${userId}:`);
+      await registrarEvento(userId, "PRIMEIRA_SINCRONIZACAO");
+    }
   } finally {
     await prisma.sincronizacaoCatalogo.update({ where: { userId }, data: { processandoAte: null } });
   }

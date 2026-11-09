@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { withCache, createCacheKey } from "@/lib/cache";
-import { podeVer } from "@/lib/permissoes";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 import { calcularTodasPendencias } from "@/services/pendenciasService";
 import { calcularReposicaoConta, calcularCapitalParadoConta } from "@/services/reposicaoService";
 import { gerarResumoPeriodo, gerarSerieDiaria } from "@/modules/financeiro/relatorios/resumoDia";
@@ -321,7 +321,7 @@ async function montarResumo(userId: string, periodo: PeriodoComparado, verCusto:
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const periodo = resolverPeriodoRapido(searchParams.get("periodo"));
     const verCusto = podeVer(user.role, "VER_CUSTO");
@@ -336,6 +336,8 @@ export async function GET(request: NextRequest) {
       headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=120" },
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[DASHBOARD_RESUMO] Erro:", error);
     return NextResponse.json(
       { error: "Erro ao montar resumo do dashboard" },

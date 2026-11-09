@@ -1,6 +1,12 @@
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig = {
+  outputFileTracingIncludes: {
+    "/termos": ["./docs/juridico/**/*"],
+    "/privacidade": ["./docs/juridico/**/*"],
+    "/indique/regulamento": ["./docs/juridico/**/*"],
+    "/api/admin/email/gerar": ["./docs/marketing/**/*"],
+  },
   async redirects() {
     return [
       { source: "/produtos/vincular", destination: "/mercado-livre/produtos", permanent: false },

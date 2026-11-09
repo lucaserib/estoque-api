@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { gerarDiagnostico } from "@/modules/controle/diagnostico";
 import { respostaErroRotaIa } from "@/modules/ia/respostas";
 import { sugestoesParaPagina } from "@/modules/ia/sugestoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const pagina = request.nextUrl.searchParams.get("pagina");
     const diagnostico = await gerarDiagnostico(user.contaId).catch(() => null);
     return NextResponse.json(

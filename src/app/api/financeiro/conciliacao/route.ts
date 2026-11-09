@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CanalVenda } from "@prisma/client";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { gerarRelatorioConciliacao } from "@/modules/financeiro/relatorios/conciliacao";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
 
     const { searchParams } = new URL(request.url);

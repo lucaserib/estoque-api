@@ -29,6 +29,8 @@ import { formatBRL, formatBRLReais, formatNumberBR, formatPercent, formatRelativ
 import { chartColor } from "@/lib/chart-colors";
 import { cn } from "@/lib/utils";
 import type { MetricasPlataforma, PontoSerie } from "@/modules/admin/metricas";
+import type { MetricasComerciais } from "@/modules/admin/comercial";
+import { PainelComercial } from "@/components/admin/PainelComercial";
 import { TesteConexaoIa } from "@/components/admin/TesteConexaoIa";
 
 function rotuloDia(iso: string) {
@@ -87,7 +89,7 @@ function GraficoArea({ dados, cor, formatar }: { dados: PontoSerie[]; cor: strin
 }
 
 export default function AdminVisaoGeralPage() {
-  const [dados, setDados] = useState<MetricasPlataforma | null>(null);
+  const [dados, setDados] = useState<(MetricasPlataforma & { comercial: MetricasComerciais }) | null>(null);
   const [carregando, setCarregando] = useState(true);
 
   const carregar = useCallback(async () => {
@@ -126,14 +128,16 @@ export default function AdminVisaoGeralPage() {
         </div>
       ) : (
         <>
+          <PainelComercial comercial={dados.comercial} />
+          <h2 className="pt-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Plataforma</h2>
           <div className="grid gap-4 lg:grid-cols-[1.3fr_1fr_1fr]">
             <StatCard
               highlight
               size="lg"
               icon={TrendingUp}
-              label="Receita recorrente mensal (MRR)"
+              label="MRR estimado (preço contratado)"
               value={formatBRLReais(dados.assinaturas.mrr)}
-              note={`${dados.assinaturas.mensais} mensais · ${dados.assinaturas.anuais} anuais · ${formatBRLReais(dados.ia.receitaMensal)} de IA`}
+              note={`${dados.assinaturas.mensais} mensais · ${dados.assinaturas.anuais} anuais · ${formatBRLReais(dados.ia.receitaMensal)} de perguntas da IA`}
             />
             <StatCard
               icon={Building2}
@@ -156,7 +160,7 @@ export default function AdminVisaoGeralPage() {
               note={`${dados.assinaturas.testesVencendo7d} vencem em 7 dias`} status={dados.assinaturas.testesVencendo7d > 0 ? "warning" : "neutral"} />
             <StatCard icon={AlertTriangle} label="Inadimplentes" value={formatNumberBR(dados.assinaturas.inadimplentes)}
               status={dados.assinaturas.inadimplentes > 0 ? "destructive" : "neutral"} note={`${dados.assinaturas.canceladas} canceladas`} />
-            <StatCard icon={Sparkles} label="Skubo IA (assinantes)" value={formatNumberBR(dados.ia.assinantes)}
+            <StatCard icon={Sparkles} label="Compraram perguntas (30 dias)" value={formatNumberBR(dados.ia.assinantes)}
               note={`${dados.ia.emTeste} em teste · ${dados.ia.liberadasManual} liberadas à mão`}
               href="/admin/contas?filtro=ia" />
           </div>
@@ -191,16 +195,16 @@ export default function AdminVisaoGeralPage() {
               </Button>
             </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <StatCard icon={Wallet} label="Receita do add-on (mês)" value={formatBRLReais(dados.ia.receitaMensal)}
-                note={`${dados.ia.assinantes} assinante(s) pagando`} />
+              <StatCard icon={Wallet} label="Receita de perguntas (mês)" value={formatBRLReais(dados.ia.receitaMensal)}
+                note={`${dados.ia.assinantes} conta(s) compraram em 30 dias`} />
               <StatCard icon={Activity} label="Custo estimado da IA (mês)" value={formatBRL(dados.ia.custoMesCentavos)}
                 note={dados.ia.custoSemPreco > 0 ? `${dados.ia.custoSemPreco} chamada(s) sem preço configurado` : "Pelos preços IA_PRECO_*"}
                 status={dados.ia.custoSemPreco > 0 ? "warning" : "neutral"} />
-              <StatCard icon={TrendingUp} label="Margem do add-on (mês)" value={formatBRLReais(dados.ia.margemMensal)}
+              <StatCard icon={TrendingUp} label="Margem das perguntas (mês)" value={formatBRLReais(dados.ia.margemMensal)}
                 status={dados.ia.margemMensal < 0 ? "destructive" : "success"} note="Receita − custo estimado" />
-              <StatCard icon={Users} label="Conversão teste → assinatura"
+              <StatCard icon={Users} label="Teste da IA → compra"
                 value={dados.ia.conversaoTeste !== null ? formatPercent(dados.ia.conversaoTeste * 100, 0) : "—"}
-                note={`${dados.ia.testesIniciados} teste(s) iniciados`} />
+                note={`${dados.ia.testesIniciados} conta(s) com perguntas de teste`} />
             </div>
             <div className="grid gap-4 xl:grid-cols-[1.4fr_1fr]">
               <Painel titulo="Perguntas ao assistente por dia (30 dias)"

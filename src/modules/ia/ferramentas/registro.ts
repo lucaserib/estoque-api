@@ -11,6 +11,7 @@ import {
 } from "./catalogo";
 import { zodParaJsonSchema } from "./esquema";
 import { capitalParado, sugestaoReposicao } from "./estoque";
+import { tarefasDaEquipe } from "./operacao";
 import {
   compararPeriodos,
   faturamentoComFrete,
@@ -33,6 +34,7 @@ export const TODAS_AS_FERRAMENTAS: DefinicaoFerramenta[] = [
   saudeAnuncios,
   buscarProdutos,
   detalheProduto,
+  tarefasDaEquipe,
 ];
 
 export function ferramentasDoPapel(papel: UserRole): DefinicaoFerramenta[] {

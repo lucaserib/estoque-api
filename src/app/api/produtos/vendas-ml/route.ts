@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
 import { atualizarEstoqueFullDosAnuncios } from "@/modules/catalogo/anunciosMl";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const rateLimit = await checkRateLimit("ml-vendas-sync", user.id, 6, 300);
     if (!rateLimit.allowed) {
@@ -134,6 +135,8 @@ export async function GET(request: NextRequest) {
       estoqueFullPorProduto,
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     if (error instanceof PartialOrdersError) {
       return NextResponse.json(
         {

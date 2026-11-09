@@ -16,3 +16,5 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+export type ClienteTransacao = Omit<PrismaClientSingleton, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;

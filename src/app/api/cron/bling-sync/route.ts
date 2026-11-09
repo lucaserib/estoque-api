@@ -4,10 +4,12 @@ import { prisma } from "@/lib/prisma";
 import { BlingReconnectError, BlingTransientError } from "@/services/blingService";
 import { processarEventoWebhookBling } from "@/services/blingWebhookProcessor";
 import { sincronizarContasFinanceirasBling } from "@/modules/financeiro/canais/erp/bling/contasFinanceiras";
+import { contasSuspensasHaMaisDe } from "@/modules/conta/situacao";
 
 export const maxDuration = 60;
 
 const MAX_EVENTOS_POR_EXECUCAO = 200;
+const DIAS_TOLERANCIA_SUSPENSA = 3;
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -31,10 +33,12 @@ export async function GET(request: NextRequest) {
     eventosReprocessados++;
   }
 
-  const contasAtivas = await prisma.blingAccount.findMany({
+  const contasBling = await prisma.blingAccount.findMany({
     where: { isActive: true },
     select: { id: true, userId: true },
   });
+  const suspensas = await contasSuspensasHaMaisDe(contasBling.map((c) => c.userId), DIAS_TOLERANCIA_SUSPENSA);
+  const contasAtivas = contasBling.filter((c) => !suspensas.has(c.userId));
 
   let contasSincronizadas = 0;
   let errosSincronizacao = 0;
@@ -57,6 +61,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     eventosReprocessados,
     contasElegiveis: contasAtivas.length,
+    contasSuspensas: suspensas.size,
     contasSincronizadas,
     errosSincronizacao,
   });

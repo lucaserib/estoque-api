@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { NotificationService } from "@/services/notificationService";
@@ -13,6 +13,7 @@ import {
   sincronizarAnuncioMl,
 } from "@/modules/catalogo/anunciosMl";
 import { iniciarSincronizacaoCatalogo } from "@/modules/catalogo/sincronizacao";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export const maxDuration = 60;
 
@@ -21,7 +22,7 @@ const TEMPO_MAXIMO_MS = 45000;
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
     const action = searchParams.get("action");
@@ -60,6 +61,8 @@ export async function GET(request: NextRequest) {
     });
     return NextResponse.json(serializeWithEAN(produtos));
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[SYNC][GET] Erro:", error);
     return NextResponse.json(
       { error: "Erro ao carregar dados de sincronização" },
@@ -71,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   let notifyUserId: string | null = null;
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     notifyUserId = user.id;
 
     const rateLimit = await checkRateLimit("ml-sync", user.id, 5, 300);
@@ -146,6 +149,8 @@ export async function POST(request: NextRequest) {
       duration: Math.round((Date.now() - startTime) / 1000),
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro na sincronização:", error);
     if (notifyUserId) {
       await NotificationService.notifySyncError(

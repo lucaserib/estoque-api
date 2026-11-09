@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
 import { MLOrder } from "@/types/mercadolivre";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
     const period = parseInt(searchParams.get("period") || "30");
@@ -166,6 +167,8 @@ export async function GET(request: NextRequest) {
       );
     }
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     if (error instanceof PartialOrdersError) {
       return NextResponse.json(
         {

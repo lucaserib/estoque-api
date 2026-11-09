@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { listarMovimentosCarteira } from "@/modules/financeiro/canais/mercadoPago/movimentosCarteira";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
 
     const { searchParams } = new URL(request.url);

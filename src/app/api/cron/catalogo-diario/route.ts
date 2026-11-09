@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import { sincronizarCatalogoSeNecessario } from "@/modules/catalogo/sincronizacao";
+import { contasSuspensasHaMaisDe } from "@/modules/conta/situacao";
 
 export const maxDuration = 60;
+
+const DIAS_TOLERANCIA_SUSPENSA = 3;
 
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
@@ -15,7 +18,9 @@ export async function GET(request: NextRequest) {
     prisma.blingAccount.findMany({ where: { isActive: true }, select: { userId: true } }),
     prisma.mercadoLivreAccount.findMany({ where: { isActive: true }, select: { userId: true } }),
   ]);
-  const donos = [...new Set([...bling, ...ml].map((c) => c.userId))];
+  const candidatas = [...new Set([...bling, ...ml].map((c) => c.userId))];
+  const suspensas = await contasSuspensasHaMaisDe(candidatas, DIAS_TOLERANCIA_SUSPENSA);
+  const donos = candidatas.filter((id) => !suspensas.has(id));
   const orcamentoPorConta = Math.max(10000, Math.floor(50000 / Math.max(1, donos.length)));
 
   const resultados: Array<{ userId: string; etapa: string | null; erro: string | null }> = [];
@@ -29,5 +34,5 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ contas: resultados.length, resultados });
+  return NextResponse.json({ contas: resultados.length, contasSuspensas: suspensas.size, resultados });
 }

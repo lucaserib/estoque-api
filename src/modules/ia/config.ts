@@ -1,7 +1,7 @@
 export const MODELO_PADRAO = "claude-sonnet-5-5";
 export const MODELO_RAPIDO_PADRAO = "claude-haiku-5-5";
 export const COTACAO_DOLAR_PADRAO = 5.5;
-export const ORCAMENTO_MENSAL_PADRAO_CENTAVOS = 1000;
+export const ORCAMENTO_MENSAL_PADRAO_CENTAVOS = 5000;
 export const MENSAGENS_MENSAIS_PADRAO = 300;
 export const TESTE_ORCAMENTO_PADRAO_CENTAVOS = 200;
 export const TESTE_MENSAGENS_SEM_PRECO = 30;

@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { fetchMlWithBackoff } from "@/lib/mlFetch";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { accountId, forceUpdate = false } = await request.json();
 
     if (!accountId) {
@@ -180,6 +181,8 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[PRECOS_BATCH] Erro:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

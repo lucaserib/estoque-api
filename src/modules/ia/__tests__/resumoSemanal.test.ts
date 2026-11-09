@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const prismaMock = {
   subscription: { findMany: vi.fn() },
   user: { findMany: vi.fn() },
+  loteCreditoIa: { findMany: vi.fn(async () => [] as Array<{ contaId: string }>) },
   analiseIa: { findFirst: vi.fn(), create: vi.fn(async () => ({})) },
   notification: { createMany: vi.fn(async () => ({ count: 1 })) },
 };
@@ -34,9 +35,24 @@ vi.mock("@/modules/financeiro/relatorios/motor", () => ({
   obterConfigRelatorio: vi.fn(),
   totalizarVendas: vi.fn(),
 }));
-const obterAcessoIa = vi.fn<(contaId: string) => Promise<{ consumo: { esgotado: boolean } }>>(async () => ({
+const obterAcessoIa = vi.fn<
+  (contaId: string) => Promise<{ consumo: { esgotado: boolean }; ilimitada: boolean; statusConta: string }>
+>(async () => ({
   consumo: { esgotado: false },
+  ilimitada: false,
+  statusConta: "ATIVA",
 }));
+const configuracao = vi.hoisted(() => ({ soAssinantes: true }));
+vi.mock("@/modules/comercial/configuracao", async (importOriginal) => {
+  const original = await importOriginal<typeof import("@/modules/comercial/configuracao")>();
+  return {
+    ...original,
+    obterConfiguracaoComercial: vi.fn(async () => ({ ...original.CONFIGURACAO_PADRAO, iaResumoSemanalSoAssinantes: configuracao.soAssinantes })),
+  };
+});
+vi.mock("@/modules/conta/situacao", () => ({ contasSuspensasHaMaisDe: vi.fn(async () => new Set<string>()) }));
+const cobrarUsoIa = vi.fn(async () => ({ debitado: 0, saldoAntes: 0, saldoApos: 0, repetido: false, custo: 0 }));
+vi.mock("../consumo", () => ({ cobrarUsoIa }));
 vi.mock("../acesso", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../acesso")>()),
   obterAcessoIa,
@@ -88,23 +104,30 @@ describe("semanaAnterior", () => {
 });
 
 describe("contasElegiveisResumo", () => {
-  it("entra assinatura e liberação manual (e por env), teste grátis não entra", async () => {
-    prismaMock.subscription.findMany.mockResolvedValue([
-      { userId: "assinante", iaStatus: "ATIVA", iaLiberadaManual: false, iaPeriodoFim: null, iaTesteIniciadoEm: null },
-      { userId: "manual", iaStatus: "INATIVA", iaLiberadaManual: true, iaPeriodoFim: null, iaTesteIniciadoEm: null },
-      { userId: "em-teste-e-cancelada", iaStatus: "CANCELADA", iaLiberadaManual: false, iaPeriodoFim: new Date("2026-11-22T00:00:00Z"), iaTesteIniciadoEm: new Date("2026-11-20T00:00:00Z") },
-    ]);
+  it("entra assinante pagante, liberação manual e env; teste grátis não entra", async () => {
+    configuracao.soAssinantes = true;
+    prismaMock.subscription.findMany.mockResolvedValue([{ userId: "assinante" }, { userId: "manual" }]);
     process.env.IA_CONTAS_LIBERADAS = "env@loja.com";
     prismaMock.user.findMany.mockResolvedValue([{ id: "por-env" }]);
     expect(await contasElegiveisResumo(agora)).toEqual(["assinante", "manual", "por-env"]);
+    expect(prismaMock.subscription.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { OR: [{ iaLiberadaManual: true }, { status: "ACTIVE" }] } })
+    );
+    expect(prismaMock.loteCreditoIa.findMany).not.toHaveBeenCalled();
+  });
+
+  it("se o admin liberar para todos, contas com perguntas também recebem", async () => {
+    configuracao.soAssinantes = false;
+    prismaMock.subscription.findMany.mockResolvedValue([{ userId: "assinante" }]);
+    prismaMock.loteCreditoIa.findMany.mockResolvedValue([{ contaId: "em-teste-com-saldo" }]);
+    expect(await contasElegiveisResumo(agora)).toEqual(["assinante", "em-teste-com-saldo"]);
+    configuracao.soAssinantes = true;
   });
 });
 
 describe("executarResumoSemanal", () => {
   it("gera o resumo com 3 prioridades, grava como SEMANAL e notifica só os ADMINs que querem receber", async () => {
-    prismaMock.subscription.findMany.mockResolvedValue([
-      { userId: "conta-1", iaStatus: "ATIVA", iaLiberadaManual: false, iaPeriodoFim: null, iaTesteIniciadoEm: null },
-    ]);
+    prismaMock.subscription.findMany.mockResolvedValue([{ userId: "conta-1" }]);
     prismaMock.user.findMany.mockImplementation(async ({ where }: { where: Record<string, unknown> }) =>
       where.role ? [{ id: "conta-1" }] : []
     );
@@ -124,9 +147,7 @@ describe("executarResumoSemanal", () => {
   });
 
   it("é idempotente: a semana já resumida não é gerada de novo", async () => {
-    prismaMock.subscription.findMany.mockResolvedValue([
-      { userId: "conta-1", iaStatus: "ATIVA", iaLiberadaManual: false, iaPeriodoFim: null, iaTesteIniciadoEm: null },
-    ]);
+    prismaMock.subscription.findMany.mockResolvedValue([{ userId: "conta-1" }]);
     prismaMock.analiseIa.findFirst.mockResolvedValue({ id: "ja" });
     const p = provedor();
     const r = await executarResumoSemanal({ agora, provedor: p as never });
@@ -155,13 +176,13 @@ describe("executarResumoSemanal", () => {
     );
     obterAcessoIa.mockImplementation(async (contaId: string) => {
       if (contaId === "a") throw new Error("db");
-      return { consumo: { esgotado: contaId === "b" } };
+      return { consumo: { esgotado: contaId === "b" }, ilimitada: false, statusConta: "ATIVA" };
     });
     const silencio = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const r = await executarResumoSemanal({ agora, provedor: provedor() as never });
     silencio.mockRestore();
     expect(r).toMatchObject({ falhas: 1, semOrcamento: 1, gerados: 1 });
-    obterAcessoIa.mockImplementation(async () => ({ consumo: { esgotado: false } }));
+    obterAcessoIa.mockImplementation(async () => ({ consumo: { esgotado: false }, ilimitada: false, statusConta: "ATIVA" }));
   });
 
   it("não faz nada com a IA desligada", async () => {

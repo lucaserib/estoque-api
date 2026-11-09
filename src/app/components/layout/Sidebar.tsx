@@ -28,6 +28,8 @@ import {
   Megaphone,
   Compass,
   Sparkles,
+  Gift,
+  KanbanSquare,
 } from "lucide-react";
 import { MercadoLivreIcon } from "@/components/ui/mercado-livre-icon";
 import Link from "next/link";
@@ -45,6 +47,7 @@ interface ItemMenu {
   label: string;
   visivel?: boolean;
   dataTour?: string;
+  selo?: string;
 }
 
 interface ClusterMenu {
@@ -101,6 +104,11 @@ const SidebarLink = ({
       <div className={classeItem(ativo, recolhida)}>
         <Icon className="h-[17px] w-[17px] shrink-0 opacity-90" />
         {!recolhida && <span className="truncate text-[13.5px]">{item.label}</span>}
+        {!recolhida && item.selo && (
+          <span className="ml-auto shrink-0 rounded-full bg-success/[0.14] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-success-text">
+            {item.selo}
+          </span>
+        )}
       </div>
     </Link>
   );
@@ -275,6 +283,7 @@ const Sidebar = () => {
           <SectionLabel recolhida={recolhida}>Início</SectionLabel>
           <SidebarLink item={{ href: "/", icon: Layout, label: "Visão geral" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/controle", icon: ShieldCheck, label: "Central de controle" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
+          <SidebarLink item={{ href: "/operacao", icon: KanbanSquare, label: "Tarefas e ideias" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/ia", icon: Sparkles, label: "Assistente IA" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           <SidebarLink item={{ href: "/comecar", icon: Compass, label: "Configurar minha loja", dataTour: "comecar" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
 
@@ -336,6 +345,11 @@ const Sidebar = () => {
           {isAdmin && (
             <SidebarLink item={{ href: "/usuarios", icon: Users, label: "Usuários" }} recolhida={recolhida} onNavegar={closeSidebarOnMobile} />
           )}
+          <SidebarLink
+            item={{ href: "/indique", icon: Gift, label: "Indique e ganhe", selo: "Ganhe semanas grátis" }}
+            recolhida={recolhida}
+            onNavegar={closeSidebarOnMobile}
+          />
         </nav>
 
         <div className="hidden shrink-0 border-t border-border p-2 md:block">

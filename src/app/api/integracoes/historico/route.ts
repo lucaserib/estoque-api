@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 const STATUS_LABELS: Record<string, string> = {
   processing: "Em andamento",
@@ -17,7 +18,7 @@ function statusReal(status: string, inicio: Date): string {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
 
     const [mlHistory, blingHistory] = await Promise.all([
       prisma.mercadoLivreSyncHistory.findMany({
@@ -71,6 +72,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ historico: combined });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar histórico de sincronização:", error);
     return NextResponse.json({ error: "Erro ao buscar histórico" }, { status: 500 });
   }

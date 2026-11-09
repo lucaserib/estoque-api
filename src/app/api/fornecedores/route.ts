@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
     const { nome, cnpj, inscricaoEstadual, contato, endereco } =
       await req.json();
 
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(fornecedor, { status: 201 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     return NextResponse.json(
       { error: "Erro ao criar fonecedor" },
       { status: 500 }
@@ -36,20 +39,22 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
 
     const fornecedores = await prisma.fornecedor.findMany({
       where: { userId: user.contaId },
     });
     return NextResponse.json(fornecedores, { status: 200 });
-  } catch {
-    NextResponse.json({ error: "Erro ao buscar Fornecedor" }, { status: 500 });
+  } catch (erroAcesso) {
+    const respostaAcesso = permissaoErrorResponse(erroAcesso);
+    if (respostaAcesso) return respostaAcesso;
+    return NextResponse.json({ error: "Erro ao buscar Fornecedor" }, { status: 500 });
   }
 }
 
 export async function DELETE(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
 
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
@@ -124,6 +129,8 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao deletar fornecedor:", error);
     return NextResponse.json(
       {
@@ -137,7 +144,7 @@ export async function DELETE(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const { nome, cnpj, inscricaoEstadual, contato, endereco } =
@@ -184,6 +191,8 @@ export async function PUT(req: NextRequest) {
 
     return NextResponse.json(updatedFornecedor, { status: 200 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao atualizar fornecedor:", error);
     return NextResponse.json(
       { error: "Erro ao atualizar fornecedor" },

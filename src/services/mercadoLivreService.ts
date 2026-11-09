@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { registrarEvento } from "@/modules/clientes/eventos";
+import { aoConectarMercadoLivre } from "@/modules/indicacao/fluxo";
 import { NotificationService } from "@/services/notificationService";
 import { JsonValue } from "@prisma/client/runtime/library";
 import { pickMlImageUrl } from "@/lib/imageUrl";
@@ -1271,6 +1273,9 @@ export class MercadoLivreService {
         },
         create: accountData,
       });
+
+      await registrarEvento(userId, "ML_CONECTADO", { propriedades: { mlUserId: account.mlUserId, nickname: account.nickname } });
+      await aoConectarMercadoLivre(userId);
 
       return account;
     } catch (error) {

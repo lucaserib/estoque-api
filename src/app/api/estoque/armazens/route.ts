@@ -1,16 +1,18 @@
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { podeVer } from "@/lib/permissoes";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
     const armazens = await prisma.armazem.findMany({
       where: { userId: user.contaId },
     });
     return NextResponse.json(armazens, { status: 200 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar armazéns:", error);
     return NextResponse.json(
       { error: "Erro ao buscar armazéns" },
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const body = await request.json();
     const {
       armazemId,
@@ -68,6 +70,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(estoque, { status: 201 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao criar estoque:", error);
     return NextResponse.json(
       { message: "Erro ao criar estoque" },
@@ -78,7 +82,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const body = await request.json();
     const {
@@ -151,6 +155,8 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(serializedEstoque, { status: 200 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao atualizar estoque:", error);
     return NextResponse.json(
       { message: "Erro ao atualizar estoque" },
@@ -161,7 +167,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const body = await request.json();
     const { armazemId, produtoId }: { armazemId: string; produtoId?: string } =
@@ -215,6 +221,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao deletar armazém ou estoque:", error);
     return NextResponse.json(
       { message: "Erro ao deletar armazém ou estoque" },

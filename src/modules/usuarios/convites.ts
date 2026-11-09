@@ -29,6 +29,7 @@ export async function buscarConviteValido(email: string) {
 }
 
 export interface ConviteAplicado {
+  conviteId: string;
   contaId: string;
   role: UserRole;
 }
@@ -50,5 +51,5 @@ export async function aplicarConvitePendente(userId: string, email: string | nul
     prisma.invitation.update({ where: { id: convite.id }, data: { status: "ACCEPTED", acceptedAt: new Date() } }),
   ]);
 
-  return { contaId, role: convite.role };
+  return { conviteId: convite.id, contaId, role: convite.role };
 }

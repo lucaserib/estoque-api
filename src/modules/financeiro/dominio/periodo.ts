@@ -201,3 +201,22 @@ export function formatarDataHoraBrasilia(data: Date): string {
   const dois = (n: number) => String(n).padStart(2, "0");
   return `${p.ano}-${dois(p.mes)}-${dois(p.dia)} ${dois(p.hora)}:${dois(p.minuto)}:${dois(p.segundo)}`;
 }
+
+export type DiaCalendario = DataCalendario;
+
+export function diaEmBrasilia(data: Date): DiaCalendario {
+  return dataCalendarioNoFuso(data);
+}
+
+export function horaEmBrasilia(data: Date): { hora: number; minuto: number } {
+  const p = partesNoFuso(data);
+  return { hora: p.hora, minuto: p.minuto };
+}
+
+export function instanteEmBrasilia(dia: DiaCalendario, hora = 0, minuto = 0): Date {
+  return instanteNoFuso(dia, hora, minuto, 0, 0);
+}
+
+export function somarDiasAoDia(dia: DiaCalendario, dias: number): DiaCalendario {
+  return somarDiasCalendario(dia, dias);
+}

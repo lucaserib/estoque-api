@@ -1,4 +1,7 @@
 import { type Prisma, RecursoIa, TipoAnaliseIa } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { cobrarUsoIa } from "@/modules/ia/consumo";
+import { SemCreditosIaError, estornarCreditos } from "@/modules/ia/creditos";
 import { prisma } from "@/lib/prisma";
 import { formatarDataHoraBrasilia, inicioDoMes } from "@/modules/financeiro/dominio/periodo";
 import { buscarVendasParaCalculo, obterConfigRelatorio, totalizarVendas } from "@/modules/financeiro/relatorios/motor";
@@ -201,20 +204,42 @@ export async function executarAnaliseEstruturada(parametros: ParametrosAnaliseEs
 }
 
 export async function gerarAnaliseIa(contaId: string, solicitadoPorId: string, provedor?: ProvedorIa) {
-  await garantirAcessoIa(contaId);
+  const { ilimitada } = await garantirAcessoIa(contaId);
 
   const diagnostico = await gerarDiagnostico(contaId, true);
   const dados = await montarContextoMensal(contaId, diagnostico);
-  const { conteudo, modelo, uso } = await executarAnaliseEstruturada({
-    contaId,
-    autorId: solicitadoPorId,
-    recurso: RecursoIa.ANALISE_CONTROLE,
-    instrucoes: INSTRUCOES_ANALISE,
-    pedido: "Analise o mês da loja e devolva até 5 prioridades.",
-    dados,
-    maxPrioridades: 5,
-    provedor,
-  });
+  const chaveCobranca = `analise-controle:${randomUUID()}`;
+  try {
+    await cobrarUsoIa({
+      contaId,
+      autorId: solicitadoPorId,
+      recurso: RecursoIa.ANALISE_CONTROLE,
+      chave: chaveCobranca,
+      ilimitada,
+      descricao: "Análise da Central de controle",
+    });
+  } catch (error) {
+    if (error instanceof SemCreditosIaError) throw new IaIndisponivelError(error.message, "SEM_CREDITOS");
+    throw error;
+  }
+
+  let resultado: Awaited<ReturnType<typeof executarAnaliseEstruturada>>;
+  try {
+    resultado = await executarAnaliseEstruturada({
+      contaId,
+      autorId: solicitadoPorId,
+      recurso: RecursoIa.ANALISE_CONTROLE,
+      instrucoes: INSTRUCOES_ANALISE,
+      pedido: "Analise o mês da loja e devolva até 5 prioridades.",
+      dados,
+      maxPrioridades: 5,
+      provedor,
+    });
+  } catch (error) {
+    await estornarCreditos(chaveCobranca).catch(() => 0);
+    throw error;
+  }
+  const { conteudo, modelo, uso } = resultado;
 
   return prisma.analiseIa.create({
     data: {

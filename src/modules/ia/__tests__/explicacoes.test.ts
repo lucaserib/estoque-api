@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
-vi.mock("../acesso", () => ({ garantirAcessoIa: vi.fn(async () => ({ liberada: true })) }));
+vi.mock("../acesso", () => ({ garantirAcessoIa: vi.fn(async () => ({ liberada: true, ilimitada: false })) }));
 const registrarUsoIa = vi.fn(async () => undefined);
 vi.mock("../uso", () => ({ registrarUsoIa }));
+const cobrarUsoIa = vi.fn(async () => ({ debitado: 0, saldoAntes: 5, saldoApos: 5, repetido: false, custo: 0 }));
+vi.mock("../consumo", () => ({ cobrarUsoIa }));
+const estornarCreditos = vi.fn(async () => 0);
+vi.mock("../creditos", async (importOriginal) => ({ ...(await importOriginal<typeof import("../creditos")>()), estornarCreditos }));
 
 const sugestao = {
   produtoId: "p1",

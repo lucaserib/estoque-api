@@ -2,9 +2,10 @@ import { atualizarCustoDasVendasAposMudanca } from "@/modules/financeiro/ingesta
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { normalizeSku } from "@/lib/sku";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 const linhaSchema = z.object({
   sku: z.string().min(1),
@@ -23,7 +24,7 @@ interface LinhaRejeitada {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const rateLimit = await checkRateLimit(
       "produtos-importar-custos",
@@ -93,6 +94,8 @@ export async function POST(request: NextRequest) {
     if (produtosAtualizados.length > 0) await atualizarCustoDasVendasAposMudanca(user.contaId, produtosAtualizados);
     return NextResponse.json({ success: true, aceitas, rejeitadas });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao importar planilha de custos:", error);
     return NextResponse.json(
       { error: "Erro ao importar planilha de custos" },

@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { itemIds, accountId } = await request.json();
 
     if (!itemIds || !Array.isArray(itemIds) || !accountId) {
@@ -99,6 +100,8 @@ export async function POST(request: NextRequest) {
       precos,
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[PRECOS_API] Erro:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

@@ -1,8 +1,7 @@
 import { PapelMensagemIa, StatusIaAssinatura, StatusVendaCanal, SubscriptionPlan, SubscriptionStatus } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { PRICING } from "@/lib/billing";
+import { obterConfiguracaoComercial } from "@/modules/comercial/configuracao";
 import { fimDoDia, inicioDoDia, inicioDoMes } from "@/modules/financeiro/dominio/periodo";
-import { DIAS_TESTE } from "@/modules/ia/config";
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const STATUS_VENDA_VALIDA = [StatusVendaCanal.PAGA, StatusVendaCanal.DEVOLVIDA_PARCIAL, StatusVendaCanal.EM_MEDIACAO];
@@ -93,20 +92,19 @@ function seriePorDia(desde: Date, ate: Date, registros: Array<{ data: Date; valo
 }
 
 export function mrrEstimado(
-  assinaturas: Array<{ status: SubscriptionStatus; plan: SubscriptionPlan | null; iaStatus: StatusIaAssinatura }>
+  assinaturas: Array<{ status: SubscriptionStatus; plan: SubscriptionPlan | null; precoContratadoCentavos?: number | null }>,
+  precos: { mensalCentavos: number; anualCentavos: number }
 ): {
   mrr: number;
   receitaIa: number;
 } {
-  let mrr = 0;
-  let receitaIa = 0;
+  let mrrCentavos = 0;
   for (const a of assinaturas) {
-    if (a.iaStatus === StatusIaAssinatura.ATIVA) receitaIa += PRICING.IA_MENSAL;
     if (a.status !== SubscriptionStatus.ACTIVE) continue;
-    if (a.plan === SubscriptionPlan.ANNUAL) mrr += PRICING.ANNUAL / 12;
-    else if (a.plan === SubscriptionPlan.MONTHLY) mrr += PRICING.MONTHLY_RENEWAL;
+    if (a.plan === SubscriptionPlan.ANNUAL) mrrCentavos += (a.precoContratadoCentavos ?? precos.anualCentavos) / 12;
+    else if (a.plan === SubscriptionPlan.MONTHLY) mrrCentavos += a.precoContratadoCentavos ?? precos.mensalCentavos;
   }
-  return { mrr: Math.round((mrr + receitaIa) * 100) / 100, receitaIa: Math.round(receitaIa * 100) / 100 };
+  return { mrr: Math.round(mrrCentavos) / 100, receitaIa: 0 };
 }
 
 export async function calcularMetricasPlataforma(agora: Date = new Date()): Promise<MetricasPlataforma> {
@@ -150,6 +148,7 @@ export async function calcularMetricasPlataforma(agora: Date = new Date()): Prom
       select: {
         status: true,
         plan: true,
+        precoContratadoCentavos: true,
         iaStatus: true,
         iaLiberadaManual: true,
         iaTesteIniciadoEm: true,
@@ -181,8 +180,12 @@ export async function calcularMetricasPlataforma(agora: Date = new Date()): Prom
   const contar = (status: SubscriptionStatus) => assinaturas.filter((a) => a.status === status).length;
   const ativas = contar(SubscriptionStatus.ACTIVE);
   const canceladas = contar(SubscriptionStatus.CANCELED);
-  const { mrr, receitaIa } = mrrEstimado(assinaturas);
-  const ia = await calcularMetricasIa(agora, assinaturas, receitaIa, analises30d);
+  const configuracao = await obterConfiguracaoComercial();
+  const { mrr } = mrrEstimado(assinaturas, {
+    mensalCentavos: configuracao.precoMensalCentavos,
+    anualCentavos: configuracao.precoAnualCentavos,
+  });
+  const ia = await calcularMetricasIa(agora, assinaturas, analises30d);
 
   const donosMl = new Set(contasMl.map((c) => c.userId));
   const donosBling = new Set(contasBling.map((c) => c.userId));
@@ -249,12 +252,10 @@ async function calcularMetricasIa(
     iaTesteIniciadoEm: Date | null;
     iaSolicitadaEm: Date | null;
   }>,
-  receitaIa: number,
   analises30d: number
 ): Promise<MetricasIa> {
   const ha30 = new Date(agora.getTime() - 30 * DIA_MS);
   const ha24h = new Date(agora.getTime() - DIA_MS);
-  const inicioTesteVigente = new Date(agora.getTime() - DIAS_TESTE * DIA_MS);
   const inicioMes = inicioDoMes(agora);
 
   const [custoMes, semPreco, custoPorContaBruto, perguntas30d, feedbacks, positivos, chamadas24h, erros24h] =
@@ -285,30 +286,45 @@ async function calcularMetricasIa(
   });
   const donoPorId = new Map(donos.map((d) => [d.id, d]));
 
-  const testesIniciados = assinaturas.filter((a) => a.iaTesteIniciadoEm).length;
-  const convertidos = assinaturas.filter((a) => a.iaTesteIniciadoEm && a.iaStatus === StatusIaAssinatura.ATIVA).length;
+  const [contasComTesteVigente, testesIniciados, compradoras30d, comprasPendentes, receitaCreditos] = await Promise.all([
+    prisma.loteCreditoIa.findMany({
+      where: { origem: "TESTE", validoAte: { gt: agora } },
+      select: { contaId: true },
+      distinct: ["contaId"],
+    }),
+    prisma.loteCreditoIa.findMany({ where: { origem: "TESTE" }, select: { contaId: true }, distinct: ["contaId"] }),
+    prisma.compraCreditoIa.findMany({
+      where: { status: "APROVADA", aprovadaEm: { gte: ha30 } },
+      select: { contaId: true },
+      distinct: ["contaId"],
+    }),
+    prisma.compraCreditoIa.count({ where: { status: "PENDENTE", expiraEm: { gt: agora } } }),
+    prisma.pagamentoPlataforma.aggregate({
+      where: { tipo: "CREDITO_IA", status: "approved", aprovadoEm: { gte: inicioMes } },
+      _sum: { valorCentavos: true },
+    }),
+  ]);
+  const jaCompraram = new Set(
+    (await prisma.compraCreditoIa.findMany({ where: { status: "APROVADA" }, select: { contaId: true }, distinct: ["contaId"] })).map(
+      (c) => c.contaId
+    )
+  );
+  const convertidos = testesIniciados.filter((t) => jaCompraram.has(t.contaId)).length;
   const custoMesCentavos = custoMes._sum.custoCentavos ?? 0;
+  const receitaMesReais = (receitaCreditos._sum.valorCentavos ?? 0) / 100;
 
   return {
-    assinantes: assinaturas.filter((a) => a.iaStatus === StatusIaAssinatura.ATIVA).length,
-    emTeste: assinaturas.filter(
-      (a) =>
-        a.iaStatus !== StatusIaAssinatura.ATIVA &&
-        !a.iaLiberadaManual &&
-        a.iaTesteIniciadoEm &&
-        a.iaTesteIniciadoEm > inicioTesteVigente
-    ).length,
+    assinantes: compradoras30d.length,
+    emTeste: contasComTesteVigente.length,
     liberadasManual: assinaturas.filter((a) => a.iaLiberadaManual).length,
-    testesIniciados,
-    conversaoTeste: testesIniciados > 0 ? convertidos / testesIniciados : null,
-    pedidosPendentes: assinaturas.filter(
-      (a) => a.iaSolicitadaEm && !a.iaLiberadaManual && a.iaStatus !== StatusIaAssinatura.ATIVA
-    ).length,
+    testesIniciados: testesIniciados.length,
+    conversaoTeste: testesIniciados.length > 0 ? convertidos / testesIniciados.length : null,
+    pedidosPendentes: comprasPendentes,
     analises30d,
-    receitaMensal: receitaIa,
+    receitaMensal: receitaMesReais,
     custoMesCentavos,
     custoSemPreco: semPreco,
-    margemMensal: Math.round((receitaIa - custoMesCentavos / 100) * 100) / 100,
+    margemMensal: Math.round((receitaMesReais - custoMesCentavos / 100) * 100) / 100,
     custoPorConta: custoPorContaBruto.map((c) => ({
       contaId: c.userId,
       nome: donoPorId.get(c.userId)?.name ?? null,
@@ -324,119 +340,3 @@ async function calcularMetricasIa(
   };
 }
 
-export interface LinhaContaAdmin {
-  id: string;
-  nome: string | null;
-  email: string;
-  criadoEm: string;
-  membros: number;
-  assinatura: {
-    status: SubscriptionStatus;
-    plano: SubscriptionPlan | null;
-    testeAte: string;
-    iaStatus: StatusIaAssinatura;
-    iaLiberadaManual: boolean;
-    iaOrcamentoCentavos: number | null;
-    iaTesteIniciadoEm: string | null;
-    iaSolicitadaEm: string | null;
-  } | null;
-  iaCustoMesCentavos: number;
-  iaChamadasMes: number;
-  mlConectado: boolean;
-  blingConectado: boolean;
-  produtos: number;
-  pedidos30d: number;
-  gmv30d: number;
-  ultimaVenda: string | null;
-}
-
-export async function listarContasAdmin(busca: string | null, agora: Date = new Date()): Promise<LinhaContaAdmin[]> {
-  const ha30 = new Date(agora.getTime() - 30 * DIA_MS);
-  const termo = busca?.trim();
-  const donos = await prisma.user.findMany({
-    where: {
-      contaId: null,
-      ...(termo
-        ? { OR: [{ email: { contains: termo, mode: "insensitive" } }, { name: { contains: termo, mode: "insensitive" } }] }
-        : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      createdAt: true,
-      subscription: {
-        select: {
-          status: true,
-          plan: true,
-          trialEndsAt: true,
-          iaStatus: true,
-          iaLiberadaManual: true,
-          iaOrcamentoCentavos: true,
-          iaTesteIniciadoEm: true,
-          iaSolicitadaEm: true,
-        },
-      },
-      _count: { select: { membros: true, produtos: true } },
-    },
-  });
-  const ids = donos.map((d) => d.id);
-  if (ids.length === 0) return [];
-
-  const [ml, bling, vendas, ultimas, usosIa] = await Promise.all([
-    prisma.mercadoLivreAccount.findMany({ where: { userId: { in: ids }, isActive: true }, select: { userId: true } }),
-    prisma.blingAccount.findMany({ where: { userId: { in: ids }, isActive: true }, select: { userId: true } }),
-    prisma.vendaCanal.groupBy({
-      by: ["userId"],
-      where: { userId: { in: ids }, dataVenda: { gte: ha30 }, status: { in: STATUS_VENDA_VALIDA } },
-      _count: { _all: true },
-      _sum: { faturamentoBruto: true, valorEstornado: true },
-    }),
-    prisma.vendaCanal.groupBy({ by: ["userId"], where: { userId: { in: ids } }, _max: { dataVenda: true } }),
-    prisma.usoIa.groupBy({
-      by: ["userId"],
-      where: { userId: { in: ids }, createdAt: { gte: inicioDoMes(agora) } },
-      _sum: { custoCentavos: true },
-      _count: { _all: true },
-    }),
-  ]);
-  const usoPorConta = new Map(usosIa.map((u) => [u.userId, u]));
-  const comMl = new Set(ml.map((m) => m.userId));
-  const comBling = new Set(bling.map((b) => b.userId));
-  const porConta = new Map(vendas.map((v) => [v.userId, v]));
-  const ultimaPorConta = new Map(ultimas.map((u) => [u.userId, u._max.dataVenda]));
-
-  return donos.map((d) => {
-    const v = porConta.get(d.id);
-    const ultima = ultimaPorConta.get(d.id);
-    return {
-      id: d.id,
-      nome: d.name,
-      email: d.email,
-      criadoEm: d.createdAt.toISOString(),
-      membros: d._count.membros,
-      assinatura: d.subscription
-        ? {
-            status: d.subscription.status,
-            plano: d.subscription.plan,
-            testeAte: d.subscription.trialEndsAt.toISOString(),
-            iaStatus: d.subscription.iaStatus,
-            iaLiberadaManual: d.subscription.iaLiberadaManual,
-            iaOrcamentoCentavos: d.subscription.iaOrcamentoCentavos,
-            iaTesteIniciadoEm: d.subscription.iaTesteIniciadoEm?.toISOString() ?? null,
-            iaSolicitadaEm: d.subscription.iaSolicitadaEm?.toISOString() ?? null,
-          }
-        : null,
-      iaCustoMesCentavos: usoPorConta.get(d.id)?._sum.custoCentavos ?? 0,
-      iaChamadasMes: usoPorConta.get(d.id)?._count._all ?? 0,
-      mlConectado: comMl.has(d.id),
-      blingConectado: comBling.has(d.id),
-      produtos: d._count.produtos,
-      pedidos30d: v?._count._all ?? 0,
-      gmv30d: (v?._sum.faturamentoBruto ?? 0) - (v?._sum.valorEstornado ?? 0),
-      ultimaVenda: ultima ? ultima.toISOString() : null,
-    };
-  });
-}

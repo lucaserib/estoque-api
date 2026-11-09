@@ -113,8 +113,9 @@ export function UsuarioConviteDialog({
                 </>
               ) : (
                 <>
-                  Convite criado. Envie o link para <span className="font-medium text-foreground">{email}</span>. A
-                  pessoa cria a senha ou entra com o Google usando esse e-mail e já acessa a sua loja.
+                  Mandamos o convite por e-mail para <span className="font-medium text-foreground">{email}</span>. Se
+                  preferir, copie o link ou mande pelo WhatsApp. A pessoa cria a senha ou entra com o Google usando esse
+                  e-mail e já acessa a sua loja.
                 </>
               )}
             </p>

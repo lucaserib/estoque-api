@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { produtoMercadoLivreId, pausado } = await request.json();
 
     if (!produtoMercadoLivreId || typeof pausado !== "boolean") {
@@ -35,6 +36,8 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ success: true, pausado });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao atualizar pausa de envio automático:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

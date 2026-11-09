@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const produtoId = searchParams.get("produtoId");
     const dias = Math.max(1, parseInt(searchParams.get("dias") || "90", 10));
@@ -46,6 +47,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ mediaDiaria, totalSaidas, dias });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[CALCULAR_MEDIA_SAIDAS] Erro:", error);
     return NextResponse.json(
       { error: "Erro ao calcular média de saídas" },

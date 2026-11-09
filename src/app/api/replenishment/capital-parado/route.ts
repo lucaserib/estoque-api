@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
-import { podeVer } from "@/lib/permissoes";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 import { calcularCapitalParadoConta } from "@/services/reposicaoService";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const limiteDias = Number(searchParams.get("limiteDias") ?? "60");
     const verCusto = podeVer(user.role, "VER_CUSTO");
@@ -24,6 +24,8 @@ export async function GET(request: NextRequest) {
       limiteDias,
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao calcular capital parado:", error);
     return NextResponse.json(
       { error: "Erro ao calcular capital parado" },

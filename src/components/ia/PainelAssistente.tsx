@@ -29,7 +29,15 @@ import { lerEventosSse } from "@/lib/sse";
 import { cn } from "@/lib/utils";
 import { CartaoVendaIa } from "./CartaoVendaIa";
 import { MarkdownSeguro } from "./MarkdownSeguro";
-import { type AcessoIaCliente, type ConsumoIaCliente, atualizarConsumoIa, useAcessoIa } from "./useAcessoIa";
+import {
+  type AcessoIaCliente,
+  type ConsumoIaCliente,
+  atualizarConsumoIa,
+  atualizarCreditosIa,
+  recarregarAcessoIa,
+  useAcessoIa,
+} from "./useAcessoIa";
+import { PacotesIa } from "./PacotesIa";
 
 interface ChipFerramenta {
   id: string;
@@ -69,25 +77,31 @@ function novaChave() {
   return `m${Date.now()}-${contadorChave}`;
 }
 
-function textoConsumo(acesso: AcessoIaCliente) {
-  const { consumo } = acesso;
-  if (acesso.origem === "TESTE" && acesso.testeAteEm) {
-    return `${consumo.percentual}% do teste grátis · até ${formatDateBR(acesso.testeAteEm)}`;
+function SaldoIa({ acesso }: { acesso: AcessoIaCliente }) {
+  if (acesso.ilimitada) {
+    return <span className="text-[11px] text-muted-foreground">Uso liberado pela equipe Skubo</span>;
   }
-  return `${consumo.percentual}% do uso do mês`;
+  const baixo = acesso.saldo <= 3;
+  return (
+    <span
+      data-testid="saldo-ia"
+      className={cn("text-[11px] tabular-nums", baixo ? "font-medium text-warning-text" : "text-muted-foreground")}
+      aria-label="Perguntas disponíveis"
+    >
+      {acesso.saldo} {acesso.saldo === 1 ? "pergunta" : "perguntas"}
+    </span>
+  );
 }
 
-function BarraConsumo({ acesso }: { acesso: AcessoIaCliente }) {
-  const percentual = Math.min(100, acesso.consumo.percentual);
+function AvisoSaldoBaixo({ acesso }: { acesso: AcessoIaCliente }) {
+  if (acesso.ilimitada || acesso.saldo > 3 || acesso.saldo === 0) return null;
   return (
-    <div className="flex items-center gap-2 text-[11px] text-muted-foreground" aria-label="Consumo de IA">
-      <div className="h-1 w-16 overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn("h-full rounded-full", percentual >= 90 ? "bg-destructive" : percentual >= 70 ? "bg-warning" : "bg-primary")}
-          style={{ width: `${percentual}%` }}
-        />
-      </div>
-      <span>{textoConsumo(acesso)}</span>
+    <div className="mx-4 mt-3 space-y-2 rounded-xl border border-warning/30 bg-warning/[0.06] px-3 py-2 text-xs text-fg2">
+      <p>
+        Restam <strong className="text-foreground">{acesso.saldo}</strong> {acesso.saldo === 1 ? "pergunta" : "perguntas"}. Garanta mais
+        para não ficar sem resposta.
+      </p>
+      <PacotesIa pacotes={acesso.pacotes.filter((p) => p.destaque).slice(0, 1)} emailVerificado={acesso.emailVerificado} />
     </div>
   );
 }
@@ -134,10 +148,10 @@ function EstadoIndisponivel({ acesso }: { acesso: AcessoIaCliente }) {
 function EstadoLimite({ acesso }: { acesso: AcessoIaCliente }) {
   return (
     <div className="m-4 space-y-3 rounded-card border border-warning/30 bg-warning/5 p-4">
-      <p className="text-sm font-semibold text-foreground">Limite de IA do período atingido</p>
+      <p className="text-sm font-semibold text-foreground">Limite de segurança da IA atingido</p>
       <p className="text-sm text-fg2">
-        Você usou todo o limite do Skubo IA {acesso.origem === "TESTE" ? "do teste grátis" : "deste mês"}. Ele renova em{" "}
-        {formatDateBR(acesso.consumo.renovaEm)}.
+        Sua loja usou muito a IA neste mês e atingiu o limite de segurança. Ele renova em {formatDateBR(acesso.consumo.renovaEm)}.
+        Se precisar antes, fale com o suporte.
       </p>
       <Button asChild variant="outline" size="sm">
         <a href={URL_SUPORTE} target={URL_SUPORTE.startsWith("/") ? undefined : "_blank"} rel="noreferrer">
@@ -263,6 +277,7 @@ export function PainelAssistente({
             } else if (evento === "fim") {
               atualizarAssistente(chaveAssistente, (m) => ({ ...m, id: String(d.mensagemId), emAndamento: false }));
               if (d.consumo) atualizarConsumoIa(d.consumo as ConsumoIaCliente);
+              if (d.creditos) atualizarCreditosIa(d.creditos as { saldo: number; ilimitada: boolean });
             } else if (evento === "titulo") {
               setConversas((lista) =>
                 lista?.map((c) => (c.id === d.conversaId ? { ...c, titulo: String(d.titulo) } : c)) ?? lista
@@ -277,6 +292,7 @@ export function PainelAssistente({
                 emAndamento: false,
                 erro: { codigo: String(d.codigo), mensagem: String(d.mensagem) },
               }));
+              if (d.codigo === "SEM_CREDITOS") recarregarAcessoIa();
             }
           },
           controlador.signal
@@ -538,7 +554,7 @@ export function PainelAssistente({
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold text-foreground">Skubo IA</p>
-            {acesso?.liberada && acesso.configurada && <BarraConsumo acesso={acesso} />}
+            {acesso?.configurada && acesso.contaAtiva && <SaldoIa acesso={acesso} />}
           </div>
         </div>
         {utilizavel && (
@@ -612,7 +628,10 @@ export function PainelAssistente({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : (
-          conteudoPrincipal()
+          <>
+            {acesso?.liberada && <AvisoSaldoBaixo acesso={acesso} />}
+            {conteudoPrincipal()}
+          </>
         )}
       </div>
 

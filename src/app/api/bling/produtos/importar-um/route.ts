@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { blingErrorResponse } from "@/lib/blingApi";
@@ -12,7 +12,7 @@ const corpoSchema = z.object({ blingIds: z.array(z.number().int().positive()).mi
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "EDITAR_PRODUTO");
 
     const parsed = corpoSchema.safeParse(await request.json());

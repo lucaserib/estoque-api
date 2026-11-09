@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { CartaoCreditosIa } from "@/components/ia/CartaoCreditosIa";
 import { signOut, useSession } from "next-auth/react";
 import {
   Card,
@@ -538,6 +539,7 @@ export default function AjustesPage() {
               <CardDescription>Assistente, explicações nas telas e resumo semanal</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              <CartaoCreditosIa />
               <ul className="space-y-1.5 text-sm text-fg2">
                 <li>Cada conversa é de quem perguntou: ninguém da equipe vê a conversa do outro.</li>
                 <li>As conversas ficam guardadas por 90 dias e depois são apagadas sozinhas. Você pode apagar qualquer uma antes.</li>
@@ -553,11 +555,6 @@ export default function AjustesPage() {
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </Button>
-                {isAdmin && (
-                  <Button asChild variant="outline" size="sm">
-                    <Link href="/assinatura?recurso=ia">Contratar ou gerenciar</Link>
-                  </Button>
-                )}
                 {donoDaConta && (
                   <Button
                     variant="outline"

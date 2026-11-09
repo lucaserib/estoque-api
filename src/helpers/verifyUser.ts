@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
 import { User } from "@prisma/client";
 import { obterSegredoAuth } from "@/lib/authSecret";
+import { UsuarioBloqueadoError } from "@/modules/conta/erros";
 
 export interface VerifiedUser extends User {
   contaId: string;
@@ -46,5 +47,14 @@ export async function verifyUser(req: NextRequest): Promise<VerifiedUser> {
     throw new Error("Usuário não encontrado.");
   }
 
+  if (usuario.bloqueadoEm || !sessaoAindaValida(token.emitidoEm, usuario.sessaoValidaDesde)) {
+    throw new UsuarioBloqueadoError();
+  }
+
   return { ...usuario, contaId: usuario.contaId ?? usuario.id };
+}
+
+export function sessaoAindaValida(emitidoEm: unknown, sessaoValidaDesde: Date | null): boolean {
+  if (!sessaoValidaDesde) return true;
+  return typeof emitidoEm === "number" && emitidoEm >= sessaoValidaDesde.getTime();
 }

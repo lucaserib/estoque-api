@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 const LIMITE_POR_TIPO = 8;
 
 interface ResultadoBusca {
-  tipo: "produto" | "pedido" | "anuncio";
+  tipo: "produto" | "pedido" | "anuncio" | "tarefa";
   id: string;
   titulo: string;
   subtitulo: string;
@@ -14,7 +15,7 @@ interface ResultadoBusca {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const q = request.nextUrl.searchParams.get("q")?.trim() ?? "";
 
     if (q.length < 2) {
@@ -23,8 +24,9 @@ export async function GET(request: NextRequest) {
 
     const comoNumero = Number(q);
     const ehNumero = Number.isInteger(comoNumero) && q === String(comoNumero);
+    const numeroTarefa = /^#(\d{1,9})$/.exec(q);
 
-    const [produtos, pedidos, anuncios] = await Promise.all([
+    const [produtos, pedidos, anuncios, tarefas] = await Promise.all([
       prisma.produto.findMany({
         where: {
           userId: user.contaId,
@@ -57,6 +59,16 @@ export async function GET(request: NextRequest) {
         take: LIMITE_POR_TIPO,
         orderBy: { mlTitle: "asc" },
       }),
+      prisma.tarefa.findMany({
+        where: {
+          contaId: user.contaId,
+          arquivadaEm: null,
+          OR: numeroTarefa ? [{ numero: Number(numeroTarefa[1]) }] : [{ titulo: { contains: q, mode: "insensitive" } }],
+        },
+        select: { id: true, numero: true, titulo: true, concluidaEm: true },
+        orderBy: [{ concluidaEm: { sort: "asc", nulls: "first" } }, { updatedAt: "desc" }],
+        take: LIMITE_POR_TIPO,
+      }),
     ]);
 
     const resultados: ResultadoBusca[] = [
@@ -81,10 +93,19 @@ export async function GET(request: NextRequest) {
         subtitulo: a.mlItemId,
         href: `/mercado-livre/produtos?q=${encodeURIComponent(a.mlItemId)}`,
       })),
+      ...tarefas.map((t): ResultadoBusca => ({
+        tipo: "tarefa",
+        id: t.id,
+        titulo: t.titulo,
+        subtitulo: `Tarefa #${t.numero}${t.concluidaEm ? " · concluída" : ""}`,
+        href: `/operacao?tarefa=${t.id}`,
+      })),
     ];
 
     return NextResponse.json({ resultados });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }

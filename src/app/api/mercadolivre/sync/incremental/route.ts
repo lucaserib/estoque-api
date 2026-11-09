@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { prisma } from "@/lib/prisma";
 import { withCache, createCacheKey } from "@/lib/cache";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rateLimit";
 import { pickMlImageUrl } from "@/lib/imageUrl";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const rateLimit = await checkRateLimit("ml-sync-incremental", user.id, 10, 300);
     if (!rateLimit.allowed) {
@@ -76,6 +77,8 @@ export async function POST(request: NextRequest) {
       );
     }
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[INCREMENTAL_SYNC] Erro na requisição:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

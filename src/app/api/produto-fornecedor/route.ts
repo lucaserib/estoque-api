@@ -1,6 +1,7 @@
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 const serializeBigInt = (obj: unknown): unknown => {
   if (obj === null || obj === undefined) return obj;
@@ -51,7 +52,7 @@ async function definirComoPrincipal(
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const body: RequestBody = await request.json();
 
     const {
@@ -171,6 +172,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(vinculo, { status: 201 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao vincular fornecedor:", error);
     return NextResponse.json(
       { error: "Erro ao vincular fornecedor" },
@@ -181,7 +184,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const { searchParams } = new URL(request.url);
     const fornecedorId = searchParams.get("fornecedorId");
@@ -263,6 +266,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json([], { status: 200 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar produtos ou fornecedores:", error);
     return NextResponse.json(
       { error: "Erro ao buscar produtos ou fornecedores" },
@@ -272,15 +277,15 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const user = await verifyUser(request);
-  const { searchParams } = new URL(request.url);
-  const id = searchParams.get("id");
-
-  if (!id) {
-    return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
-  }
-
   try {
+    const user = await verifyUserAtivo(request);
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 });
+    }
+
     const vinculoExistente = await prisma.produtoFornecedor.findUnique({
       where: { id: Number(id) },
       include: {
@@ -308,6 +313,8 @@ export async function DELETE(request: NextRequest) {
     });
     return new NextResponse(null, { status: 204 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao deletar fornecedor:", error);
     return NextResponse.json(
       { error: "Erro ao deletar fornecedor" },
@@ -318,7 +325,7 @@ export async function DELETE(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const body: RequestBody = await request.json();
 
     const {
@@ -404,6 +411,8 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(serializeBigInt(vinculo), { status: 200 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao atualizar fornecedor:", error);
     return NextResponse.json(
       { error: "Erro ao atualizar fornecedor" },

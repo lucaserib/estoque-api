@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { TipoValorFreteLogistica } from "@prisma/client";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
 
     const regras = await prisma.regraFreteLogistica.findMany({
@@ -33,7 +33,7 @@ interface RequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "FINANCEIRO_EDITAR");
 
     const body: RequestBody = await request.json();
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "FINANCEIRO_EDITAR");
 
     const logistica = request.nextUrl.searchParams.get("logistica");

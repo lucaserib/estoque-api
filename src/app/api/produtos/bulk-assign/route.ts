@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 interface FornecedorAssignment {
   fornecedorId: string;
@@ -35,7 +36,7 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<BulkAssignResponse | BulkAssignError>> {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const body: BulkAssignBody = await request.json();
     const { produtoIds, custoMedio, fornecedor } = body;
 
@@ -162,6 +163,8 @@ export async function POST(
 
     return NextResponse.json({ success: true, updated, skipped });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao processar atribuição em lote:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },

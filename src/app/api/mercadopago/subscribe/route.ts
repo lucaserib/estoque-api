@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
-import { getOrCreateSubscription } from "@/lib/subscription";
 import {
   MercadoPagoService,
   MercadoPagoNotConfiguredError,
@@ -10,9 +9,13 @@ import {
   planToRecurringConfig,
 } from "@/services/mercadoPagoService";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
+import { criarAssinaturaDaConta, invalidarSituacaoConta } from "@/modules/conta/situacao";
+import { obterConfiguracaoComercial, precoDoPlano } from "@/modules/comercial/configuracao";
+import { CupomInvalidoError, registrarUsoCupom, validarCupom } from "@/modules/comercial/cupons";
 
 const subscribeSchema = z.object({
   plan: z.enum(["MONTHLY", "ANNUAL"]),
+  cupom: z.string().trim().max(40).optional().nullable(),
 });
 
 export async function POST(request: NextRequest) {
@@ -27,7 +30,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const parsed = subscribeSchema.safeParse(await request.json());
+    const parsed = subscribeSchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
@@ -36,7 +39,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { plan } = parsed.data;
-    const subscription = await getOrCreateSubscription(user.contaId);
+    const subscription = await criarAssinaturaDaConta(user.contaId);
 
     if (subscription.status === "ACTIVE") {
       return NextResponse.json(
@@ -45,7 +48,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const recurring = planToRecurringConfig(plan);
+    const configuracao = await obterConfiguracaoComercial();
+    const precos = precoDoPlano(configuracao, plan);
+    let primeiraCobrancaCentavos = precos.primeiraCobrancaCentavos;
+    let cupomId: string | null = null;
+
+    const cupomDoAdmin =
+      !parsed.data.cupom && subscription.cupomPrimeiraCobrancaId
+        ? (await prisma.cupom.findUnique({ where: { id: subscription.cupomPrimeiraCobrancaId }, select: { codigo: true } }))?.codigo ?? null
+        : null;
+    const codigoCupom = parsed.data.cupom || cupomDoAdmin;
+
+    if (codigoCupom) {
+      const aplicavel = await validarCupom(
+        codigoCupom,
+        plan === "ANNUAL" ? "ANUAL" : "PRIMEIRA_COBRANCA_MENSAL",
+        user.contaId,
+        primeiraCobrancaCentavos,
+        { referencia: subscription.id }
+      );
+      primeiraCobrancaCentavos = aplicavel.precoFinalCentavos;
+      cupomId = aplicavel.cupom.id;
+    }
+
+    const agora = new Date();
+    const inicioDaCobranca =
+      subscription.status === "TRIALING" && subscription.trialEndsAt.getTime() > agora.getTime()
+        ? subscription.trialEndsAt
+        : null;
+    const recurring = planToRecurringConfig(plan, primeiraCobrancaCentavos);
     const origin = request.nextUrl.origin;
 
     const preapproval = await MercadoPagoService.createPreapproval({
@@ -56,7 +87,10 @@ export async function POST(request: NextRequest) {
       frequencyType: recurring.frequencyType,
       backUrl: `${origin}/assinatura`,
       externalReference: user.contaId,
+      startDate: inicioDaCobranca,
     });
+
+    if (cupomId) await registrarUsoCupom(cupomId, user.contaId, subscription.id);
 
     await prisma.subscription.update({
       where: { userId: user.contaId },
@@ -64,13 +98,25 @@ export async function POST(request: NextRequest) {
         plan,
         mpPreapprovalId: preapproval.id,
         mpPayerEmail: user.email,
+        precoContratadoCentavos: precos.recorrenteCentavos,
+        configuracaoVersao: configuracao.versao,
+        cupomPrimeiraCobrancaId: cupomId,
       },
     });
 
-    return NextResponse.json({ checkoutUrl: preapproval.init_point });
+    invalidarSituacaoConta(user.contaId);
+    return NextResponse.json({
+      checkoutUrl: preapproval.init_point,
+      cobrancaComecaEm: inicioDaCobranca,
+      primeiraCobrancaCentavos,
+    });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
     if (permissaoResponse) return permissaoResponse;
+
+    if (error instanceof CupomInvalidoError) {
+      return NextResponse.json({ error: error.message, code: error.code }, { status: 400 });
+    }
 
     if (error instanceof MercadoPagoNotConfiguredError) {
       return NextResponse.json({ error: error.message }, { status: 503 });

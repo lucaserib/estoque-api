@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { normalizeSku } from "@/lib/sku";
@@ -16,7 +16,7 @@ type MotivoPendencia = "NAO_CONFIRMADO" | "SKU_DIVERGENTE";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "EDITAR_PRODUTO");
 
     const vinculos = await prisma.produtoMercadoLivre.findMany({
@@ -81,7 +81,7 @@ interface RequestBody {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "EDITAR_PRODUTO");
 
     const body: RequestBody = await request.json();

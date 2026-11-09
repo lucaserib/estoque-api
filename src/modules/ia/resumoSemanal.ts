@@ -1,10 +1,14 @@
 import { NotificationType, type Prisma, RecursoIa, TipoAnaliseIa, UserRole } from "@prisma/client";
+import { contasSuspensasHaMaisDe } from "@/modules/conta/situacao";
 import { prisma } from "@/lib/prisma";
 import { gerarDiagnostico } from "@/modules/controle/diagnostico";
 import { INSTRUCOES_ANALISE, executarAnaliseEstruturada, problemasDoDiagnostico } from "@/modules/controle/analiseIa";
 import { fimDaSemana, formatarDataHoraBrasilia, inicioDaSemana } from "@/modules/financeiro/dominio/periodo";
 import { calcularIndicadores } from "@/modules/financeiro/relatorios/motor";
-import { determinarOrigem, obterAcessoIa } from "./acesso";
+import { obterAcessoIa } from "./acesso";
+import { cobrarUsoIa } from "./consumo";
+import { SemCreditosIaError } from "./creditos";
+import { obterConfiguracaoComercial } from "@/modules/comercial/configuracao";
 import type { ProvedorIa } from "./cliente";
 import { contasLiberadasPorEnv, iaConfigurada, iaDesligada } from "./config";
 import { resumirIndicadores } from "./ferramentas/financeiro";
@@ -25,23 +29,11 @@ export function semanaAnterior(agora: Date): SemanaResumo {
 
 export async function contasElegiveisResumo(agora: Date): Promise<string[]> {
   const liberadasEnv = contasLiberadasPorEnv();
-  const [assinaturas, porEnv] = await Promise.all([
+  const configuracao = await obterConfiguracaoComercial();
+  const [assinaturas, porEnv, comSaldo] = await Promise.all([
     prisma.subscription.findMany({
-      where: {
-        OR: [
-          { iaLiberadaManual: true },
-          { iaStatus: "ATIVA" },
-          { iaStatus: { in: ["CANCELADA", "PENDENTE"] }, iaPeriodoFim: { gt: agora } },
-        ],
-      },
-      select: {
-        userId: true,
-        iaStatus: true,
-        iaLiberadaManual: true,
-        iaPeriodoFim: true,
-        iaTesteIniciadoEm: true,
-        iaOrcamentoCentavos: true,
-      },
+      where: { OR: [{ iaLiberadaManual: true }, { status: "ACTIVE" }] },
+      select: { userId: true },
     }),
     liberadasEnv.size > 0
       ? prisma.user.findMany({
@@ -52,14 +44,18 @@ export async function contasElegiveisResumo(agora: Date): Promise<string[]> {
           select: { id: true },
         })
       : Promise.resolve([] as Array<{ id: string }>),
+    configuracao.iaResumoSemanalSoAssinantes
+      ? Promise.resolve([] as Array<{ contaId: string }>)
+      : prisma.loteCreditoIa.findMany({
+          where: { validoAte: { gt: agora }, quantidadeRestante: { gt: 0 } },
+          select: { contaId: true },
+          distinct: ["contaId"],
+        }),
   ]);
 
-  const elegiveis = new Set(porEnv.map((u) => u.id));
-  for (const a of assinaturas) {
-    const origem = determinarOrigem(a, false, agora);
-    if (origem === "MANUAL" || origem === "ASSINATURA") elegiveis.add(a.userId);
-  }
-  return [...elegiveis].sort();
+  const elegiveis = new Set([...porEnv.map((u) => u.id), ...assinaturas.map((a) => a.userId), ...comSaldo.map((l) => l.contaId)]);
+  const suspensas = await contasSuspensasHaMaisDe([...elegiveis], 3, agora);
+  return [...elegiveis].filter((id) => !suspensas.has(id)).sort();
 }
 
 async function montarDadosDaSemana(contaId: string, semana: SemanaResumo) {
@@ -98,6 +94,20 @@ export async function gerarResumoSemanalConta(
 
   const acesso = await obterAcessoIa(contaId);
   if (acesso.consumo.esgotado) return "SEM_ORCAMENTO";
+  const pagante = acesso.ilimitada || acesso.statusConta === "ATIVA";
+  try {
+    await cobrarUsoIa({
+      contaId,
+      autorId: null,
+      recurso: RecursoIa.RESUMO_SEMANAL,
+      chave: `resumo-semanal:${contaId}:${semana.inicio.toISOString()}`,
+      ilimitada: pagante,
+      descricao: "Resumo semanal",
+    });
+  } catch (error) {
+    if (error instanceof SemCreditosIaError) return "SEM_ORCAMENTO";
+    throw error;
+  }
 
   const { diagnostico, dados } = await montarDadosDaSemana(contaId, semana);
   const { conteudo, modelo, uso } = await executarAnaliseEstruturada({

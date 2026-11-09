@@ -1,8 +1,12 @@
+import Link from "next/link";
 import { Logo } from "@/components/brand/Logo";
+import { CapturaOrigem } from "@/components/publico/CapturaOrigem";
+import { ConsentimentoCookies } from "@/components/publico/ConsentimentoCookies";
 
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex min-h-screen w-full flex-wrap bg-background">
+      <CapturaOrigem />
       <div className="flex min-w-0 flex-1 basis-[400px] flex-col justify-between gap-14 bg-primary px-8 py-14 text-white sm:px-12">
         <Logo size="md" onBrand className="text-white" />
         <div className="max-w-[46ch]">
@@ -33,7 +37,10 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </div>
         <p className="text-xs text-white/70">
-          © {new Date().getFullYear()} Skubo · Todos os direitos reservados
+          © {new Date().getFullYear()} Skubo ·{" "}
+          <Link href="/termos" className="hover:text-white">Termos</Link> ·{" "}
+          <Link href="/privacidade" className="hover:text-white">Privacidade</Link> ·{" "}
+          <Link href="/planos" className="hover:text-white">Planos</Link>
         </p>
       </div>
 
@@ -42,6 +49,7 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
           {children}
         </div>
       </div>
+      <ConsentimentoCookies />
     </div>
   );
 };

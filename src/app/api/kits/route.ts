@@ -1,8 +1,9 @@
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { prepareBigIntEAN } from "@/utils/api";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 interface Componente {
   produtoId: string;
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
   const id = url.searchParams.get("id");
 
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
     let produtos = [];
 
     if (id) {
@@ -120,6 +121,8 @@ export async function GET(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar kits:", error);
     return new Response(JSON.stringify({ error: "Erro ao buscar kits" }), {
       status: 500,
@@ -129,7 +132,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
     const body = await req.json();
 
     const { nome, sku, ean, componentes } = body;
@@ -245,6 +248,8 @@ export async function POST(req: NextRequest) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao criar kit:", error);
     return new Response(JSON.stringify({ error: "Erro ao criar kit" }), {
       status: 500,
@@ -263,7 +268,7 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
 
     const kit = await prisma.produto.findFirst({
       where: {
@@ -290,6 +295,8 @@ export async function DELETE(req: NextRequest) {
 
     return new Response(null, { status: 204 });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao deletar kit:", error);
     return new Response(JSON.stringify({ error: "Erro ao deletar kit" }), {
       status: 500,

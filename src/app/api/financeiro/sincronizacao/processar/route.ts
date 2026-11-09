@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { executarFila } from "@/modules/financeiro/ingestao/fila";
@@ -11,7 +11,7 @@ const ORCAMENTO_MS = 45000;
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
 
     const conta = await prisma.mercadoLivreAccount.findFirst({

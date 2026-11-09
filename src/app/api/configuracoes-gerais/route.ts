@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { TemaPreferencia } from "@prisma/client";
@@ -8,7 +8,7 @@ const TEMAS_VALIDOS = Object.values(TemaPreferencia);
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const config = await prisma.configuracaoGeral.findUnique({
       where: { userId: user.contaId },
@@ -22,6 +22,8 @@ export async function GET(request: NextRequest) {
       avgDeliveryDaysPadrao: config?.avgDeliveryDaysPadrao ?? 7,
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar configurações gerais:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
@@ -32,7 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const body = await request.json();
     const { aliquotaImposto, nomeLoja, logoUrl, tema, avgDeliveryDaysPadrao } = body;
 

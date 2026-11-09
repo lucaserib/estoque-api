@@ -4,13 +4,13 @@ import {
   StatusLancamento,
   TipoLancamento,
 } from "@prisma/client";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { exigirPermissao, exigirVisualizacao, permissaoErrorResponse } from "@/lib/permissoes";
 import { criarLancamento, listarLancamentos, type DadosLancamento } from "@/modules/financeiro/lancamentos/servico";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirVisualizacao(user.role, "FINANCEIRO_VER");
 
     const { searchParams } = new URL(request.url);
@@ -46,7 +46,7 @@ interface RequestBody extends Omit<DadosLancamento, "competencia" | "vencimento"
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "FINANCEIRO_EDITAR");
 
     const body: RequestBody = await request.json();

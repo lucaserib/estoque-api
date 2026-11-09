@@ -31,6 +31,34 @@
     {
       "path": "/api/cron/ia-resumo-semanal",
       "schedule": "*/10 11-12 * * 1"
+    },
+    {
+      "path": "/api/cron/email-fila",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/ciclo-de-vida",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron/indicacoes",
+      "schedule": "0 10 * * *"
+    },
+    {
+      "path": "/api/cron/ia-creditos-expiracao",
+      "schedule": "10 3 * * *"
+    },
+    {
+      "path": "/api/cron/reajustes",
+      "schedule": "30 10 * * *"
+    },
+    {
+      "path": "/api/cron/assinaturas-recompensas",
+      "schedule": "0 11 * * *"
+    },
+    {
+      "path": "/api/cron/tarefas-diario",
+      "schedule": "0 11 * * *"
     }
   ]
 }

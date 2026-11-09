@@ -27,7 +27,7 @@ describe("cron ia-limpeza", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-11-20T12:00:00Z"));
     const r = await GET(new NextRequest("https://app/api/cron/ia-limpeza", { headers: { authorization: "Bearer segredo" } }));
-    expect(await r.json()).toEqual({ apagadas: 7, retencaoDias: 90 });
+    expect(await r.json()).toMatchObject({ apagadas: 7, retencaoDias: 90 });
     expect(prismaMock.conversaIa.deleteMany).toHaveBeenCalledWith({
       where: { updatedAt: { lt: new Date("2026-08-22T12:00:00Z") } },
     });

@@ -3,7 +3,8 @@ import { verifyUser } from "@/helpers/verifyUser";
 import { prisma } from "@/lib/prisma";
 import { MercadoPagoService } from "@/services/mercadoPagoService";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
-import { cancelarIaJuntoComPrincipal } from "@/modules/ia/cobranca";
+import { aoCancelar } from "@/modules/cobranca/webhookMercadoPago";
+import { invalidarSituacaoConta } from "@/modules/conta/situacao";
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,9 +28,10 @@ export async function POST(request: NextRequest) {
       where: { id: subscription.id },
       data: { status: "CANCELED" },
     });
-    const iaCancelada = await cancelarIaJuntoComPrincipal(user.contaId);
+    invalidarSituacaoConta(user.contaId);
+    await aoCancelar(subscription);
 
-    return NextResponse.json({ success: true, iaCancelada });
+    return NextResponse.json({ success: true });
   } catch (error) {
     const permissaoResponse = permissaoErrorResponse(error);
     if (permissaoResponse) return permissaoResponse;

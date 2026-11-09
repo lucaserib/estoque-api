@@ -9,6 +9,8 @@ import {
   Package,
   Plus,
   ShoppingCart,
+  KanbanSquare,
+  Lightbulb,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -21,7 +23,7 @@ import {
 import BarcodeReaderButton from "@/components/BarcodeReaderButton";
 
 interface ResultadoBusca {
-  tipo: "produto" | "pedido" | "anuncio";
+  tipo: "produto" | "pedido" | "anuncio" | "tarefa";
   id: string;
   titulo: string;
   subtitulo: string;
@@ -32,9 +34,12 @@ const ROTULO_TIPO: Record<ResultadoBusca["tipo"], string> = {
   produto: "Produtos",
   pedido: "Pedidos de compra",
   anuncio: "Anúncios",
+  tarefa: "Tarefas",
 };
 
 const ACOES = [
+  { label: "Nova tarefa", icon: KanbanSquare, href: "/operacao?nova=1" },
+  { label: "Anotar uma ideia", icon: Lightbulb, href: "/operacao/ideias?nova=1" },
   { label: "Nova compra", icon: ShoppingCart, href: "/gestao-pedidos?nova=1" },
   { label: "Vincular anúncios", icon: Link2, href: "/mercado-livre/produtos" },
   { label: "Ir para DRE", icon: FileBarChart, href: "/financeiro/dre" },
@@ -143,7 +148,7 @@ export function CommandPalette() {
 
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput
-          placeholder="Buscar produto, SKU, pedido, anúncio ou uma ação..."
+          placeholder="Buscar produto, SKU, pedido, anúncio, tarefa ou uma ação..."
           value={busca}
           onValueChange={setBusca}
         />
@@ -152,14 +157,14 @@ export function CommandPalette() {
             <CommandEmpty>Nada encontrado para &quot;{busca}&quot;.</CommandEmpty>
           )}
 
-          {(["produto", "anuncio", "pedido"] as const).map((tipo) => {
+          {(["tarefa", "produto", "anuncio", "pedido"] as const).map((tipo) => {
             const itens = grupos.get(tipo);
             if (!itens || itens.length === 0) return null;
             return (
               <CommandGroup key={tipo} heading={ROTULO_TIPO[tipo]}>
                 {itens.map((item) => (
                   <CommandItem key={`${item.tipo}-${item.id}`} onSelect={() => irPara(item.href)}>
-                    <Package className="h-4 w-4" />
+                    {tipo === "tarefa" ? <KanbanSquare className="h-4 w-4" /> : <Package className="h-4 w-4" />}
                     <div className="flex min-w-0 flex-col">
                       <span className="truncate">{item.titulo}</span>
                       <span className="truncate text-xs text-muted-foreground">{item.subtitulo}</span>

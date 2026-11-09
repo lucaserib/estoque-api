@@ -94,7 +94,7 @@ describe("obterConsumoDoMes", () => {
     prismaMock.usoIa.count.mockResolvedValue(3);
 
     const padrao = await obterConsumoDoMes("c1", { agora });
-    expect(padrao).toMatchObject({ base: "CUSTO", custoCentavos: 750, orcamentoCentavos: 1000, percentual: 75, esgotado: false, mensagens: 15 });
+    expect(padrao).toMatchObject({ base: "CUSTO", custoCentavos: 750, orcamentoCentavos: 5000, percentual: 15, esgotado: false, mensagens: 15 });
 
     const sobrescrito = await obterConsumoDoMes("c1", { agora, orcamentoCentavos: 500 });
     expect(sobrescrito).toMatchObject({ orcamentoCentavos: 500, percentual: 100, esgotado: true });

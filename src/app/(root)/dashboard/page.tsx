@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/select";
 import { ArrowRight, Package, Receipt, RefreshCw, TrendingUp, Wallet, Warehouse } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { CartaoPedirIndicacao } from "@/components/indicacao/CartaoPedirIndicacao";
+import { CartaoMinhasTarefas } from "@/components/operacao/CartaoMinhasTarefas";
 import { SincronizacaoCatalogo } from "@/components/sincronizacao/SincronizacaoCatalogo";
 import { StatCard, StatCardGrid, type StatCardItem } from "@/components/ui/stat-card";
 import { SectionCard } from "@/components/ui/section-card";
@@ -291,6 +293,10 @@ export default function DashboardPage() {
           </div>
         }
       />
+
+      <CartaoPedirIndicacao />
+
+      <CartaoMinhasTarefas />
 
       <ProximoPassoCard />
 

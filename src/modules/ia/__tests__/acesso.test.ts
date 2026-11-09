@@ -1,131 +1,112 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const prismaMock = {
+const prismaMock = vi.hoisted(() => ({
   subscription: { findUnique: vi.fn() },
   user: { findUnique: vi.fn() },
-  usoIa: { aggregate: vi.fn(), count: vi.fn() },
-  mensagemIa: { count: vi.fn() },
-};
+}));
+const situacao = vi.hoisted(() => ({ obterSituacaoConta: vi.fn() }));
+const creditos = vi.hoisted(() => ({ resumoCreditos: vi.fn() }));
+const uso = vi.hoisted(() => ({
+  obterConsumoDoMes: vi.fn(async () => ({ esgotado: false, percentual: 10, renovaEm: "2026-12-01T03:00:00.000Z" })),
+}));
+
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
+vi.mock("@/modules/conta/situacao", () => situacao);
+vi.mock("../creditos", () => creditos);
+vi.mock("../uso", async (importar) => ({ ...(await importar<typeof import("../uso")>()), ...uso }));
+vi.mock("@/modules/comercial/configuracao", async (importar) => ({
+  ...(await importar<typeof import("@/modules/comercial/configuracao")>()),
+  obterConfiguracaoComercial: vi.fn(async () => (await importar<typeof import("@/modules/comercial/configuracao")>()).CONFIGURACAO_PADRAO),
+}));
 
-const { obterAcessoIa, garantirAcessoIa, garantirOrcamento, determinarOrigem } = await import("../acesso");
+import { determinarOrigem, garantirAcessoIa, obterAcessoIa } from "../acesso";
+import { AssinaturaInativaError } from "@/modules/conta/erros";
+import { IaIndisponivelError } from "../erros";
 
-const agora = new Date("2026-11-20T15:00:00Z");
-const AMBIENTE_ORIGINAL = { ...process.env };
-
-function assinatura(campos: Record<string, unknown> = {}) {
-  return {
-    iaStatus: "INATIVA",
-    iaLiberadaManual: false,
-    iaPeriodoFim: null,
-    iaTesteIniciadoEm: null,
-    iaOrcamentoCentavos: null,
-    ...campos,
-  };
-}
+const ORIGINAL = { ...process.env };
 
 beforeEach(() => {
   vi.clearAllMocks();
-  for (const chave of Object.keys(process.env)) if (chave.startsWith("IA_")) delete process.env[chave];
   process.env.ANTHROPIC_API_KEY = "sk-teste";
+  delete process.env.IA_DESLIGADA;
+  delete process.env.IA_CONTAS_LIBERADAS;
+  prismaMock.subscription.findUnique.mockResolvedValue({ iaLiberadaManual: false, iaOrcamentoCentavos: null });
   prismaMock.user.findUnique.mockResolvedValue({ email: "dono@loja.com" });
-  prismaMock.usoIa.aggregate.mockResolvedValue({ _sum: { custoCentavos: null } });
-  prismaMock.usoIa.count.mockResolvedValue(0);
-  prismaMock.mensagemIa.count.mockResolvedValue(0);
+  situacao.obterSituacaoConta.mockResolvedValue({ podeUsar: true, status: "TESTE" });
+  creditos.resumoCreditos.mockResolvedValue({ saldo: 5, proximoVencimento: null, lotes: [] });
 });
 
 afterEach(() => {
-  process.env = { ...AMBIENTE_ORIGINAL };
+  process.env = { ...ORIGINAL };
+});
+
+describe("origem do acesso à IA", () => {
+  it("env e liberação manual valem como ilimitado; senão, precisa de saldo", () => {
+    expect(determinarOrigem(true, false, 0)).toBe("ENV");
+    expect(determinarOrigem(false, true, 0)).toBe("MANUAL");
+    expect(determinarOrigem(false, false, 3)).toBe("CREDITOS");
+    expect(determinarOrigem(false, false, 0)).toBeNull();
+  });
 });
 
 describe("obterAcessoIa", () => {
-  it("libera por assinatura ativa", async () => {
-    prismaMock.subscription.findUnique.mockResolvedValue(assinatura({ iaStatus: "ATIVA" }));
-    const acesso = await obterAcessoIa("c1", agora);
-    expect(acesso).toMatchObject({ liberada: true, origem: "ASSINATURA", configurada: true, desligada: false });
+  it("libera com saldo e conta ativa, e devolve os pacotes à venda", async () => {
+    const acesso = await obterAcessoIa("conta-1");
+    expect(acesso).toMatchObject({ liberada: true, ilimitada: false, origem: "CREDITOS", saldo: 5, contaAtiva: true });
+    expect(acesso.pacotes).toEqual([{ id: "pacote-25", nome: "25 perguntas", perguntas: 25, precoCentavos: 2970, destaque: true }]);
   });
 
-  it("mantém o acesso de assinatura cancelada até o fim do período pago", async () => {
-    prismaMock.subscription.findUnique.mockResolvedValue(
-      assinatura({ iaStatus: "CANCELADA", iaPeriodoFim: new Date("2026-11-30T00:00:00Z") })
-    );
-    expect((await obterAcessoIa("c1", agora)).origem).toBe("ASSINATURA");
+  it("saldo zero bloqueia, mas liberação manual continua ilimitada", async () => {
+    creditos.resumoCreditos.mockResolvedValue({ saldo: 0, proximoVencimento: null, lotes: [] });
+    expect(await obterAcessoIa("conta-1")).toMatchObject({ liberada: false, origem: null });
 
-    prismaMock.subscription.findUnique.mockResolvedValue(
-      assinatura({ iaStatus: "CANCELADA", iaPeriodoFim: new Date("2026-11-10T00:00:00Z") })
-    );
-    expect((await obterAcessoIa("c1", agora)).liberada).toBe(false);
+    prismaMock.subscription.findUnique.mockResolvedValue({ iaLiberadaManual: true, iaOrcamentoCentavos: null });
+    expect(await obterAcessoIa("conta-1")).toMatchObject({ liberada: true, ilimitada: true, origem: "MANUAL" });
   });
 
-  it("libera teste grátis por 7 dias e bloqueia depois", async () => {
-    prismaMock.subscription.findUnique.mockResolvedValue(
-      assinatura({ iaStatus: "TESTE", iaTesteIniciadoEm: new Date("2026-11-15T15:00:00Z") })
-    );
-    const vigente = await obterAcessoIa("c1", agora);
-    expect(vigente).toMatchObject({ liberada: true, origem: "TESTE", testeDisponivel: false });
-    expect(vigente.testeAteEm).toBe("2026-11-22T15:00:00.000Z");
-
-    prismaMock.subscription.findUnique.mockResolvedValue(
-      assinatura({ iaStatus: "TESTE", iaTesteIniciadoEm: new Date("2026-11-10T15:00:00Z") })
-    );
-    const expirado = await obterAcessoIa("c1", agora);
-    expect(expirado).toMatchObject({ liberada: false, origem: null, testeDisponivel: false });
+  it("conta liberada pelo env, pelo e-mail do dono", async () => {
+    process.env.IA_CONTAS_LIBERADAS = "Dono@Loja.com";
+    creditos.resumoCreditos.mockResolvedValue({ saldo: 0, proximoVencimento: null, lotes: [] });
+    expect(await obterAcessoIa("conta-1")).toMatchObject({ liberada: true, ilimitada: true, origem: "ENV" });
   });
 
-  it("libera manualmente pelo admin e por e-mail ou id em IA_CONTAS_LIBERADAS", async () => {
-    prismaMock.subscription.findUnique.mockResolvedValue(assinatura({ iaLiberadaManual: true }));
-    expect((await obterAcessoIa("c1", agora)).origem).toBe("MANUAL");
-
-    prismaMock.subscription.findUnique.mockResolvedValue(null);
-    process.env.IA_CONTAS_LIBERADAS = "Outra@x.com, DONO@loja.com";
-    expect((await obterAcessoIa("c1", agora)).origem).toBe("ENV");
-
-    process.env.IA_CONTAS_LIBERADAS = "c1";
-    prismaMock.user.findUnique.mockResolvedValue({ email: "x@y.com" });
-    expect((await obterAcessoIa("c1", agora)).origem).toBe("ENV");
+  it("conta sem assinatura ativa não usa a IA mesmo com saldo", async () => {
+    situacao.obterSituacaoConta.mockResolvedValue({ podeUsar: false, status: "VENCIDA" });
+    expect(await obterAcessoIa("conta-1")).toMatchObject({ liberada: false, contaAtiva: false, saldo: 5 });
   });
 
-  it("sem nada, oferece o teste grátis", async () => {
-    prismaMock.subscription.findUnique.mockResolvedValue(null);
-    expect(await obterAcessoIa("c1", agora)).toMatchObject({ liberada: false, testeDisponivel: true, status: "INATIVA" });
-  });
-});
-
-describe("determinarOrigem", () => {
-  it("prioriza env, depois manual, assinatura e teste", () => {
-    const tudo = assinatura({
-      iaLiberadaManual: true,
-      iaStatus: "ATIVA",
-      iaTesteIniciadoEm: new Date("2026-11-19T00:00:00Z"),
-    }) as never;
-    expect(determinarOrigem(tudo, true, agora)).toBe("ENV");
-    expect(determinarOrigem(tudo, false, agora)).toBe("MANUAL");
+  it("usa o orçamento de segurança da assinatura, não o do teste", async () => {
+    prismaMock.subscription.findUnique.mockResolvedValue({ iaLiberadaManual: false, iaOrcamentoCentavos: 9000 });
+    await obterAcessoIa("conta-1");
+    expect(uso.obterConsumoDoMes).toHaveBeenCalledWith("conta-1", expect.objectContaining({ orcamentoCentavos: 9000 }));
   });
 });
 
 describe("garantirAcessoIa", () => {
-  it("IA_DESLIGADA bloqueia todo mundo, mesmo liberado", async () => {
+  it("sem saldo responde SEM_CREDITOS", async () => {
+    creditos.resumoCreditos.mockResolvedValue({ saldo: 0, proximoVencimento: null, lotes: [] });
+    const erro = await garantirAcessoIa("conta-1").catch((e: unknown) => e);
+    expect(erro).toBeInstanceOf(IaIndisponivelError);
+    expect((erro as IaIndisponivelError).codigo).toBe("SEM_CREDITOS");
+  });
+
+  it("conta vencida vira assinatura inativa (402 no cliente)", async () => {
+    situacao.obterSituacaoConta.mockResolvedValue({ podeUsar: false, status: "VENCIDA" });
+    await expect(garantirAcessoIa("conta-1")).rejects.toBeInstanceOf(AssinaturaInativaError);
+  });
+
+  it("limite de segurança estourado bloqueia mesmo com saldo", async () => {
+    uso.obterConsumoDoMes.mockResolvedValueOnce({ esgotado: true, percentual: 100, renovaEm: "2026-12-01T03:00:00.000Z" });
+    const erro = await garantirAcessoIa("conta-1").catch((e: unknown) => e);
+    expect((erro as IaIndisponivelError).codigo).toBe("LIMITE");
+  });
+
+  it("IA desligada e não configurada vêm antes de tudo", async () => {
     process.env.IA_DESLIGADA = "1";
-    prismaMock.subscription.findUnique.mockResolvedValue(assinatura({ iaLiberadaManual: true }));
-    await expect(garantirAcessoIa("c1", agora)).rejects.toMatchObject({ codigo: "DESLIGADA" });
-  });
-
-  it("sem chave nem provedor falso a IA não está configurada", async () => {
+    expect(((await garantirAcessoIa("conta-1").catch((e: unknown) => e)) as IaIndisponivelError).codigo).toBe("DESLIGADA");
+    delete process.env.IA_DESLIGADA;
     delete process.env.ANTHROPIC_API_KEY;
-    prismaMock.subscription.findUnique.mockResolvedValue(assinatura({ iaLiberadaManual: true }));
-    await expect(garantirAcessoIa("c1", agora)).rejects.toMatchObject({ codigo: "NAO_CONFIGURADA" });
-
-    process.env.IA_PROVEDOR_FALSO = "1";
-    await expect(garantirAcessoIa("c1", agora)).resolves.toMatchObject({ liberada: true });
-  });
-
-  it("conta sem acesso recebe NAO_CONTRATADA e conta estourada recebe LIMITE", async () => {
-    prismaMock.subscription.findUnique.mockResolvedValue(null);
-    await expect(garantirAcessoIa("c1", agora)).rejects.toMatchObject({ codigo: "NAO_CONTRATADA" });
-
-    prismaMock.subscription.findUnique.mockResolvedValue(assinatura({ iaLiberadaManual: true }));
-    prismaMock.mensagemIa.count.mockResolvedValue(300);
-    await expect(garantirAcessoIa("c1", agora)).rejects.toMatchObject({ codigo: "LIMITE" });
-    await expect(garantirOrcamento("c1", agora)).rejects.toMatchObject({ codigo: "LIMITE" });
+    delete process.env.IA_PROVEDOR_FALSO;
+    expect(((await garantirAcessoIa("conta-1").catch((e: unknown) => e)) as IaIndisponivelError).codigo).toBe("NAO_CONFIGURADA");
   });
 });

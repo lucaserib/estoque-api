@@ -9,20 +9,28 @@ export interface ConsumoIaCliente {
   renovaEm: string;
 }
 
+export interface PacoteIaCliente {
+  id: string;
+  nome: string;
+  perguntas: number;
+  precoCentavos: number;
+  destaque: boolean;
+}
+
 export interface AcessoIaCliente {
   configurada: boolean;
   desligada: boolean;
+  contaAtiva: boolean;
   liberada: boolean;
-  origem: "ASSINATURA" | "TESTE" | "MANUAL" | "ENV" | null;
-  status: "INATIVA" | "TESTE" | "ATIVA" | "PENDENTE" | "CANCELADA";
-  testeAteEm: string | null;
-  testeDisponivel: boolean;
-  periodoFim: string | null;
+  ilimitada: boolean;
+  origem: "CREDITOS" | "MANUAL" | "ENV" | null;
+  saldo: number;
+  proximoVencimento: { quantidade: number; validoAte: string } | null;
+  pacotes: PacoteIaCliente[];
   consumo: ConsumoIaCliente;
   adminPlataforma: boolean;
-  podeAssinar: boolean;
+  emailVerificado: boolean;
   pagamentoConfigurado: boolean;
-  precoMensal: number;
 }
 
 interface Estado {
@@ -58,6 +66,14 @@ async function buscar(): Promise<void> {
 
 export function atualizarConsumoIa(consumo: ConsumoIaCliente) {
   if (estado.acesso) publicar({ acesso: { ...estado.acesso, consumo } });
+}
+
+export function atualizarCreditosIa(creditos: { saldo: number; ilimitada: boolean }) {
+  if (estado.acesso) {
+    publicar({
+      acesso: { ...estado.acesso, ...creditos, liberada: estado.acesso.contaAtiva && (creditos.ilimitada || creditos.saldo > 0) },
+    });
+  }
 }
 
 export function recarregarAcessoIa() {

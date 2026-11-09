@@ -1,5 +1,5 @@
 import { atualizarCustoDasVendasAposMudanca } from "@/modules/financeiro/ingestao/sincronizador";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { NextRequest, NextResponse } from "next/server";
 import { serializeWithEAN } from "@/utils/api";
 import { prepareBigIntEAN } from "@/utils/api";
@@ -132,7 +132,7 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search");
 
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
     const verCusto = podeVer(user.role, "VER_CUSTO");
 
     if (id) {
@@ -178,6 +178,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(serializeWithEAN(produtosComDados));
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao buscar produtos:", error);
     return NextResponse.json(
       { error: "Erro ao buscar produtos" },
@@ -188,7 +190,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
     exigirPermissao(user.role, "EDITAR_PRODUTO");
 
     const body = await req.json();
@@ -307,7 +309,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   try {
-    const user = await verifyUser(req);
+    const user = await verifyUserAtivo(req);
     exigirPermissao(user.role, "EDITAR_PRODUTO");
     const body = await req.json();
 
@@ -414,7 +416,7 @@ export async function PUT(req: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "EDITAR_PRODUTO");
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");

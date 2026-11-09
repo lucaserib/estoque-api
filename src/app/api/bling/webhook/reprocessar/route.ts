@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { prisma } from "@/lib/prisma";
 import { processarEventoWebhookBling } from "@/services/blingWebhookProcessor";
@@ -8,7 +8,7 @@ export const maxDuration = 45;
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "INTEGRACOES_USUARIOS_ASSINATURA");
 
     const contas = await prisma.blingAccount.findMany({

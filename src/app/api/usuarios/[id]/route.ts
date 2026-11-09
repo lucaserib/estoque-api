@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { UserRole } from "@prisma/client";
+import { permissaoErrorResponse } from "@/lib/permissoes";
+import { auditarConta, ipDe } from "@/modules/conta/auditoria";
+import { EquipeError, removerMembro } from "@/modules/usuarios/equipe";
 
 const VALID_ROLES: UserRole[] = ["ADMIN", "COMPRAS", "ESTOQUE", "VENDAS", "LEITURA"];
 
@@ -10,7 +13,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const currentUser = await verifyUser(req);
+    const currentUser = await verifyUserAtivo(req);
     if (currentUser.role !== "ADMIN") {
       return NextResponse.json({ error: "Acesso restrito a administradores" }, { status: 403 });
     }
@@ -51,10 +54,45 @@ export async function PATCH(
       data: { role },
       select: { id: true, name: true, email: true, image: true, role: true, createdAt: true },
     });
+    await auditarConta({
+      contaId: currentUser.contaId,
+      autorId: currentUser.id,
+      acao: "PAPEL_ALTERADO",
+      alvoTipo: "USUARIO",
+      alvoId: id,
+      detalhe: { de: targetUser.role, para: role },
+      ip: ipDe(req.headers),
+    });
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao atualizar papel do usuário:", error);
     return NextResponse.json({ error: "Erro ao atualizar usuário" }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const currentUser = await verifyUserAtivo(req);
+    const { id } = await params;
+    await removerMembro(
+      { id: currentUser.id, contaId: currentUser.contaId, name: currentUser.name, email: currentUser.email, role: currentUser.role },
+      id,
+      { ip: ipDe(req.headers) }
+    );
+    return NextResponse.json({ removido: true });
+  } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
+    if (error instanceof EquipeError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    console.error("Erro ao remover membro da equipe:", error);
+    return NextResponse.json({ error: "Erro ao remover da equipe" }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -88,7 +88,7 @@ interface RequestBodyDelete {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "PEDIDOS_COMPRA_EDITAR");
     const body: RequestBodyPost = await request.json();
     const { fornecedorId, produtos, comentarios, dataPrevista } = body;
@@ -291,7 +291,7 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "PEDIDOS_COMPRA_EDITAR");
     const body: RequestBodyPut = await request.json();
     const { pedidoId, armazemId, produtosRecebidos, comentarios } = body;
@@ -509,7 +509,7 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "PEDIDOS_COMPRA_EDITAR");
     const body: RequestBodyDelete = await request.json();
     const { pedidoId } = body;

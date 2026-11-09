@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const action = searchParams.get("action");
 
@@ -106,6 +107,8 @@ export async function GET(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro na autenticação ML:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
@@ -149,7 +152,7 @@ export async function POST(request: NextRequest) {
       }
       contaId = user.contaId ?? user.id;
     } else {
-      const user = await verifyUser(request);
+      const user = await verifyUserAtivo(request);
       userId = user.id;
       contaId = user.contaId;
 
@@ -219,6 +222,8 @@ export async function POST(request: NextRequest) {
       throw mlError;
     }
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao processar callback ML:", error);
     return NextResponse.json(
       {
@@ -233,7 +238,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
 
@@ -248,6 +253,8 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao desconectar conta ML:", error);
     return NextResponse.json(
       {

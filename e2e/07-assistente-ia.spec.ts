@@ -4,17 +4,19 @@ import { login } from "./helpers";
 const ACESSO_SEM_IA = {
   configurada: true,
   desligada: false,
+  contaAtiva: true,
+  statusConta: "ATIVA",
   liberada: false,
+  ilimitada: false,
   origem: null,
-  status: "INATIVA",
-  testeAteEm: null,
-  testeDisponivel: true,
-  periodoFim: null,
+  saldo: 0,
+  proximoVencimento: null,
+  pacotes: [{ id: "pacote-25", nome: "25 perguntas", perguntas: 25, precoCentavos: 2970, destaque: true }],
   consumo: {
     base: "MENSAGENS",
     custoCentavos: null,
     mensagens: 0,
-    orcamentoCentavos: 1000,
+    orcamentoCentavos: 5000,
     limiteMensagens: 300,
     percentual: 0,
     esgotado: false,
@@ -22,9 +24,8 @@ const ACESSO_SEM_IA = {
     renovaEm: new Date(Date.now() + 86_400_000).toISOString(),
   },
   adminPlataforma: false,
-  podeAssinar: true,
-  pagamentoConfigurado: false,
-  precoMensal: 29.9,
+  emailVerificado: true,
+  pagamentoConfigurado: true,
 };
 
 async function abrirAssistente(page: Page) {
@@ -88,14 +89,15 @@ test("assistente no celular abre em tela cheia com campo e botões acessíveis",
   await expect(painel).toBeHidden();
 });
 
-test("conta sem acesso à IA vê o cartão de venda do módulo", async ({ page }, testInfo) => {
+test("conta sem perguntas vê os pacotes à venda", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-1366x680", "Um viewport basta");
   await page.route("**/api/ia/acesso", (rota) => rota.fulfill({ json: ACESSO_SEM_IA }));
   await page.goto("/controle");
 
   const painel = await abrirAssistente(page);
-  await expect(painel.getByRole("button", { name: "Testar grátis por 7 dias" })).toBeVisible();
-  await expect(painel.getByRole("button", { name: /Assinar por R\$\s?29,90\/mês/ })).toBeVisible();
+  await expect(painel.getByTestId("sem-perguntas-ia")).toBeVisible();
+  await expect(painel.getByTestId("pacote-ia").first()).toContainText(/25 perguntas/);
+  await expect(painel.getByRole("button", { name: "Comprar" }).first()).toBeEnabled();
   await expect(painel.getByRole("textbox", { name: "Pergunta para o Skubo IA" })).toHaveCount(0);
 });
 

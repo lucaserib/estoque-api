@@ -1,4 +1,7 @@
 import { RecursoIa, type UserRole } from "@prisma/client";
+import { randomUUID } from "node:crypto";
+import { cobrarUsoIa } from "./consumo";
+import { SemCreditosIaError, estornarCreditos } from "./creditos";
 import { withUserCache } from "@/lib/cache";
 import { exigirVisualizacao } from "@/lib/permissoes";
 import { formatarDataHoraBrasilia } from "@/modules/financeiro/dominio/periodo";
@@ -102,8 +105,22 @@ interface Chamada {
   formato?: Record<string, unknown>;
 }
 
-async function chamar(usuario: UsuarioExplicacao, chamada: Chamada, provedor: ProvedorIa) {
+async function chamar(usuario: UsuarioExplicacao, chamada: Chamada, provedor: ProvedorIa, ilimitada: boolean) {
   const modelo = chamada.rapido ? modeloRapido() : modeloPrincipal();
+  const chaveCobranca = `explicacao:${randomUUID()}`;
+  try {
+    await cobrarUsoIa({
+      contaId: usuario.contaId,
+      autorId: usuario.id,
+      recurso: RecursoIa.EXPLICACAO,
+      chave: chaveCobranca,
+      ilimitada,
+      descricao: "Explicação rápida",
+    });
+  } catch (error) {
+    if (error instanceof SemCreditosIaError) throw new IaIndisponivelError(error.message, "SEM_CREDITOS");
+    throw error;
+  }
   const inicio = Date.now();
   try {
     const resposta = await provedor.criarMensagem({
@@ -136,6 +153,7 @@ async function chamar(usuario: UsuarioExplicacao, chamada: Chamada, provedor: Pr
       sucesso: false,
       codigoErro: error instanceof IaIndisponivelError ? error.detalhe ?? error.codigo : "ERRO_INTERNO",
     });
+    await estornarCreditos(chaveCobranca).catch(() => 0);
     throw error;
   }
 }
@@ -165,7 +183,7 @@ export async function explicarReposicao(
   agora: Date = new Date()
 ): Promise<ResultadoExplicacao> {
   exigirVisualizacao(usuario.role, "PEDIDOS_COMPRA_VER");
-  await garantirAcessoIa(usuario.contaId, agora);
+  const { ilimitada } = await garantirAcessoIa(usuario.contaId, agora);
   const contexto = montarContextoFerramenta(usuario, agora);
   const chave = `ia:explicar-reposicao:${produtoId}:${hojeSp(agora)}:${perfil(usuario, contexto.podeVerCusto)}`;
 
@@ -184,7 +202,8 @@ export async function explicarReposicao(
           pedido: "Por que essa sugestão?",
           dados: prepararSaidaFerramenta({ fonte: "Reposição", ...linhaReposicao(sugestao) }, contexto.podeVerCusto),
         },
-        provedor
+        provedor,
+        ilimitada
       );
       return { tipo: "reposicao" as const, texto: textoLimpo(resposta), geradoEm: agora.toISOString() };
     },
@@ -198,7 +217,7 @@ export async function resumirProduto(
   provedor: ProvedorIa = obterProvedorIa(),
   agora: Date = new Date()
 ): Promise<ResultadoExplicacao> {
-  await garantirAcessoIa(usuario.contaId, agora);
+  const { ilimitada } = await garantirAcessoIa(usuario.contaId, agora);
   const contexto = montarContextoFerramenta(usuario, agora);
   const chave = `ia:resumo-produto:${produtoId}:${hojeSp(agora)}:${perfil(usuario, contexto.podeVerCusto)}`;
 
@@ -211,7 +230,8 @@ export async function resumirProduto(
       const resposta = await chamar(
         usuario,
         { rapido: true, sistema: PROMPT_PRODUTO, pedido: "Resuma este produto.", dados: resultado.conteudo },
-        provedor
+        provedor,
+        ilimitada
       );
       return { tipo: "produto" as const, texto: textoLimpo(resposta), geradoEm: agora.toISOString() };
     },
@@ -236,7 +256,7 @@ export async function explicarVariacao(
   agora: Date = new Date()
 ): Promise<ResultadoExplicacao> {
   exigirVisualizacao(usuario.role, "FINANCEIRO_VER");
-  await garantirAcessoIa(usuario.contaId, agora);
+  const { ilimitada } = await garantirAcessoIa(usuario.contaId, agora);
   const contexto = montarContextoFerramenta(usuario, agora);
   const chave = `ia:explicar-variacao:${periodo}:${horaSp(agora)}:${perfil(usuario, contexto.podeVerCusto)}`;
 
@@ -255,7 +275,8 @@ export async function explicarVariacao(
           dados: resultado.conteudo,
           formato: ESQUEMA_VARIACAO,
         },
-        provedor
+        provedor,
+        ilimitada
       );
       const json = lerJsonDaResposta<{ resumo?: unknown; motivos?: unknown }>(resposta);
       const motivos = Array.isArray(json?.motivos)
@@ -282,7 +303,7 @@ export async function planejarAnuncios(
   agora: Date = new Date()
 ): Promise<ResultadoExplicacao> {
   exigirVisualizacao(usuario.role, "VENDAS_ML_VER");
-  await garantirAcessoIa(usuario.contaId, agora);
+  const { ilimitada } = await garantirAcessoIa(usuario.contaId, agora);
   const contexto = montarContextoFerramenta(usuario, agora);
   const chave = `ia:plano-anuncios:${hojeSp(agora)}:${perfil(usuario, contexto.podeVerCusto)}`;
 
@@ -301,7 +322,8 @@ export async function planejarAnuncios(
           dados: resultado.conteudo,
           formato: ESQUEMA_ANUNCIOS,
         },
-        provedor
+        provedor,
+        ilimitada
       );
       const json = lerJsonDaResposta<{ resumo?: unknown; acoes?: unknown }>(resposta);
       const acoes = Array.isArray(json?.acoes)

@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
 import { DataTableCell, DataTableRow } from "@/components/ui/data-table";
 import { BotaoExplicarIa } from "@/components/ia/BotaoExplicarIa";
+import { ListPlus } from "lucide-react";
+import { abrirNovaTarefa } from "@/components/operacao/eventos";
 import {
   AlertCircle,
   AlertTriangle,
@@ -251,6 +253,31 @@ export const ReplenishmentTableRow = memo<ReplenishmentTableRowProps>(
               tamanho="xs"
               perguntaAssistente={`Por que o Skubo sugere isso para ${item.produtoNome} (SKU ${item.sku}) na Reposição?`}
             />
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label={`Criar tarefa para ${item.produtoNome}`}
+              title="Criar tarefa"
+              className="h-8 w-8 p-0 text-fg2"
+              onClick={() => {
+                const full = item.reposicaoFull?.necessaria ? item.reposicaoFull : null;
+                const local = item.reposicaoLocal.necessaria ? item.reposicaoLocal : null;
+                abrirNovaTarefa({
+                  titulo: full
+                    ? `Enviar ${full.quantidadeSugerida} un. de ${item.produtoNome} para o Full`
+                    : local
+                      ? `Comprar ${local.quantidadeSugerida} un. de ${item.produtoNome}`
+                      : `Revisar a reposição de ${item.produtoNome}`,
+                  descricao: `SKU ${item.sku} · estoque local ${item.estoqueLocal} · Full ${item.estoqueFull} · vende ${item.mediaDiaria.toFixed(1)}/dia${item.dataRupturaPrevista ? ` · ruptura prevista em ${new Date(item.dataRupturaPrevista).toLocaleDateString("pt-BR")}` : ""}`,
+                  origem: "REPOSICAO",
+                  chaveOrigem: `reposicao:${item.produtoId}`,
+                  prioridade: item.statusGeral === "critico" ? "ALTA" : "MEDIA",
+                  vinculo: { tipo: "PRODUTO", id: item.produtoId, rotulo: `${item.produtoNome} (${item.sku})`.slice(0, 120), href: `/produtos/${item.produtoId}` },
+                });
+              }}
+            >
+              <ListPlus className="h-4 w-4" />
+            </Button>
             <Button
               variant="outline"
               size="sm"

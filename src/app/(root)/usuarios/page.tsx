@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Copy, Loader2, UserPlus, X } from "lucide-react";
+import { Copy, Loader2, RefreshCw, Send, UserMinus, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { UsuarioConviteDialog } from "@/components/UsuarioConviteDialog";
 
@@ -34,6 +34,7 @@ interface Usuario {
   image: string | null;
   role: string;
   createdAt: string;
+  dono?: boolean;
 }
 
 interface Convite {
@@ -43,6 +44,7 @@ interface Convite {
   expiresAt: string;
   caminho?: string;
   createdAt: string;
+  expirado?: boolean;
 }
 
 const ROLE_LABELS: Record<string, string> = {
@@ -78,6 +80,7 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [acaoConvite, setAcaoConvite] = useState<string | null>(null);
 
   const isAdmin = session?.user?.role === "ADMIN";
 
@@ -124,6 +127,49 @@ export default function UsuariosPage() {
       toast.error(error instanceof Error ? error.message : "Erro ao atualizar papel");
     } finally {
       setUpdatingId(null);
+    }
+  };
+
+  const handleRemoverMembro = async (usuario: Usuario) => {
+    if (
+      !window.confirm(
+        `Remover ${usuario.name || usuario.email} da equipe? A pessoa perde o acesso aos dados da loja na hora e recebe um aviso por e-mail.`
+      )
+    ) {
+      return;
+    }
+    setUpdatingId(usuario.id);
+    try {
+      const response = await fetch(`/api/usuarios/${usuario.id}`, { method: "DELETE" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || "Erro ao remover da equipe");
+      setUsuarios((prev) => prev.filter((u) => u.id !== usuario.id));
+      toast.success("Pessoa removida da equipe");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao remover da equipe");
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const handleReenviarConvite = async (convite: Convite) => {
+    setAcaoConvite(convite.id);
+    try {
+      const response = await fetch(`/api/usuarios/convites/${convite.id}`, { method: "POST" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.error || "Erro ao reenviar convite");
+      setConvites((prev) =>
+        prev.map((c) =>
+          c.id === convite.id
+            ? { ...c, expiresAt: data.convite.expiresAt, caminho: data.convite.caminho, expirado: false }
+            : c
+        )
+      );
+      toast.success(convite.expirado ? "Convite renovado e enviado por e-mail" : "Convite reenviado por e-mail");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao reenviar convite");
+    } finally {
+      setAcaoConvite(null);
     }
   };
 
@@ -203,7 +249,7 @@ export default function UsuariosPage() {
                       </div>
                     </DataTableCell>
                     <DataTableCell>
-                      {isSelf ? (
+                      {isSelf || usuario.dono ? (
                         <StatusPill tone={usuario.role === "ADMIN" ? "primary" : "neutral"}>
                           {ROLE_LABELS[usuario.role] || usuario.role}
                         </StatusPill>
@@ -233,7 +279,22 @@ export default function UsuariosPage() {
                       {new Date(usuario.createdAt).toLocaleDateString("pt-BR")}
                     </DataTableCell>
                     <DataTableCell className="pr-4">
-                      <StatusPill tone="success">Ativo</StatusPill>
+                      <div className="flex items-center gap-2">
+                        <StatusPill tone={usuario.dono ? "primary" : "success"}>{usuario.dono ? "Dono" : "Ativo"}</StatusPill>
+                        {!isSelf && !usuario.dono && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            aria-label={`Remover ${usuario.email} da equipe`}
+                            title="Remover da equipe"
+                            disabled={updatingId === usuario.id}
+                            onClick={() => handleRemoverMembro(usuario)}
+                            className="h-7 w-7 p-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive-text"
+                          >
+                            <UserMinus className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </DataTableCell>
                   </DataTableRow>
                 );
@@ -249,7 +310,7 @@ export default function UsuariosPage() {
                           {convite.email}
                         </p>
                         <p className="text-xs text-faint">
-                          Convite expira em{" "}
+                          {convite.expirado ? "Convite expirou em " : "Convite expira em "}
                           {new Date(convite.expiresAt).toLocaleDateString("pt-BR")}
                         </p>
                       </div>
@@ -268,8 +329,28 @@ export default function UsuariosPage() {
                   </DataTableCell>
                   <DataTableCell className="pr-4">
                     <div className="flex items-center gap-2">
-                      <StatusPill tone="warning">Convite pendente</StatusPill>
-                      {convite.caminho && (
+                      <StatusPill tone={convite.expirado ? "neutral" : "warning"}>
+                        {convite.expirado ? "Convite expirado" : "Convite pendente"}
+                      </StatusPill>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        aria-label={`${convite.expirado ? "Renovar" : "Reenviar"} o convite de ${convite.email}`}
+                        title={convite.expirado ? "Renovar e enviar de novo" : "Reenviar por e-mail"}
+                        disabled={acaoConvite === convite.id}
+                        onClick={() => handleReenviarConvite(convite)}
+                        className="h-7 gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        {acaoConvite === convite.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : convite.expirado ? (
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        ) : (
+                          <Send className="h-3.5 w-3.5" />
+                        )}
+                        <span className="hidden sm:inline">{convite.expirado ? "Renovar" : "Reenviar"}</span>
+                      </Button>
+                      {convite.caminho && !convite.expirado && (
                         <Button
                           variant="ghost"
                           size="sm"

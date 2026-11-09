@@ -12,6 +12,7 @@ interface PerfilResponse {
   provider: string;
   hasPassword: boolean;
   receberResumoIa: boolean;
+  emailTarefas: boolean;
 }
 
 interface PerfilError {
@@ -39,6 +40,7 @@ export async function GET(
       provider: account?.provider ?? "credentials",
       hasPassword: user.password !== null,
       receberResumoIa: user.receberResumoIa,
+      emailTarefas: user.emailTarefas,
     });
   } catch (error) {
     console.error("Erro ao buscar perfil:", error);
@@ -58,14 +60,15 @@ const patchSchema = z
       .optional(),
     image: z.string().url().nullable().optional(),
     receberResumoIa: z.boolean().optional(),
+    emailTarefas: z.boolean().optional(),
   })
-  .refine((d) => d.name !== undefined || d.image !== undefined || d.receberResumoIa !== undefined, {
+  .refine((d) => d.name !== undefined || d.image !== undefined || d.receberResumoIa !== undefined || d.emailTarefas !== undefined, {
     message: "Nada para atualizar",
   });
 
 export async function PATCH(
   request: NextRequest
-): Promise<NextResponse<Pick<PerfilResponse, "id" | "name" | "email" | "image" | "receberResumoIa"> | PerfilError>> {
+): Promise<NextResponse<Pick<PerfilResponse, "id" | "name" | "email" | "image" | "receberResumoIa" | "emailTarefas"> | PerfilError>> {
   try {
     const user = await verifyUser(request);
     const parsed = patchSchema.safeParse(await request.json());
@@ -77,7 +80,7 @@ export async function PATCH(
       );
     }
 
-    const { name, image, receberResumoIa } = parsed.data;
+    const { name, image, receberResumoIa, emailTarefas } = parsed.data;
 
     const updated = await prisma.user.update({
       where: { id: user.id },
@@ -85,6 +88,7 @@ export async function PATCH(
         ...(name !== undefined ? { name } : {}),
         ...(image !== undefined ? { image } : {}),
         ...(receberResumoIa !== undefined ? { receberResumoIa } : {}),
+        ...(emailTarefas !== undefined ? { emailTarefas } : {}),
       },
     });
 
@@ -94,6 +98,7 @@ export async function PATCH(
       email: updated.email,
       image: updated.image,
       receberResumoIa: updated.receberResumoIa,
+      emailTarefas: updated.emailTarefas,
     });
   } catch (error) {
     console.error("Erro ao atualizar perfil:", error);

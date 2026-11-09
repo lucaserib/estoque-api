@@ -1,14 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
-import { podeVer } from "@/lib/permissoes";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 import { calcularReposicaoConta } from "@/services/reposicaoService";
+import { registrarEvento } from "@/modules/clientes/eventos";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const verCusto = podeVer(user.role, "VER_CUSTO");
 
     const { sugestoes, parcial } = await calcularReposicaoConta(user.contaId);
+    await registrarEvento(user.contaId, "PRIMEIRA_REPOSICAO_VISTA", { userId: user.id });
 
     const results = sugestoes
       .filter((s) => s.status === "critico" || s.status === "atencao")
@@ -118,6 +120,8 @@ export async function GET(request: NextRequest) {
       parcial,
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[BATCH_ANALYSIS] Erro na análise em lote:", error);
     return NextResponse.json(
       {

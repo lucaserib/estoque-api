@@ -28,6 +28,8 @@ import {
   montarContextoDaSessao,
 } from "./prompts/assistente";
 import { type ConsumoIa, registrarUsoIa } from "./uso";
+import { cobrarUsoIa, registrarPrimeiraPergunta } from "./consumo";
+import { SemCreditosIaError, estornarCreditos } from "./creditos";
 
 export const MAX_ITERACOES = 6;
 const LIMITE_HISTORICO = 20;
@@ -39,7 +41,7 @@ export type EventoAssistente =
   | { tipo: "conversa"; id: string; nova: boolean }
   | { tipo: "texto"; delta: string }
   | { tipo: "ferramenta"; id: string; nome: string; rotulo: string; estado: "inicio" | "fim" | "erro" }
-  | { tipo: "fim"; mensagemId: string; consumo: ConsumoIa }
+  | { tipo: "fim"; mensagemId: string; consumo: ConsumoIa; creditos?: { saldo: number; ilimitada: boolean } }
   | { tipo: "titulo"; conversaId: string; titulo: string }
   | { tipo: "erro"; codigo: string; mensagem: string; conversaDescartada?: boolean };
 
@@ -213,8 +215,11 @@ export async function responderPergunta(parametros: ParametrosPergunta): Promise
     return salva.id;
   };
 
+  let chaveCobranca: string | null = null;
+  let acessoIlimitado = false;
+
   try {
-    await garantirAcessoIa(usuario.contaId, agora);
+    acessoIlimitado = (await garantirAcessoIa(usuario.contaId, agora)).ilimitada;
 
     if (parametros.conversaId) {
       const existente = await prisma.conversaIa.findFirst({
@@ -243,6 +248,25 @@ export async function responderPergunta(parametros: ParametrosPergunta): Promise
         select: { id: true },
       })
     ).id;
+    chaveCobranca = `chat:${mensagemUsuarioId}`;
+    try {
+      await cobrarUsoIa({
+        contaId: usuario.contaId,
+        autorId: usuario.id,
+        recurso: RecursoIa.CHAT,
+        chave: chaveCobranca,
+        ilimitada: acessoIlimitado,
+        descricao: "Pergunta ao assistente",
+        agora,
+      });
+    } catch (error) {
+      chaveCobranca = null;
+      if (error instanceof SemCreditosIaError) {
+        throw new IaIndisponivelError(error.message, "SEM_CREDITOS");
+      }
+      throw error;
+    }
+    await registrarPrimeiraPergunta(usuario.contaId, usuario.id);
 
     const mensagens: MensagemParam[] = [...historico, { role: "user", content: pergunta }];
     const definicoes = ferramentasDoPapel(usuario.role);
@@ -346,8 +370,8 @@ export async function responderPergunta(parametros: ParametrosPergunta): Promise
 
     if (!textoFinal.trim()) emitirTexto("Não consegui montar uma resposta agora. Tente perguntar de outro jeito.");
     const mensagemId = await salvarResposta(textoFinal.trim());
-    const { consumo } = await obterAcessoIa(usuario.contaId);
-    emitir({ tipo: "fim", mensagemId, consumo });
+    const { consumo, saldo, ilimitada } = await obterAcessoIa(usuario.contaId);
+    emitir({ tipo: "fim", mensagemId, consumo, creditos: { saldo, ilimitada } });
     return { conversaId, mensagemId, novaConversa, pergunta, resposta: textoFinal.trim() };
   } catch (error) {
     const cancelado = error instanceof IaCanceladaError || Boolean(sinal?.aborted);
@@ -360,6 +384,11 @@ export async function responderPergunta(parametros: ParametrosPergunta): Promise
       return { conversaId, mensagemId, novaConversa, pergunta, resposta: textoFinal.trim() };
     }
 
+    if (chaveCobranca) {
+      await estornarCreditos(chaveCobranca).catch((erroEstorno: unknown) =>
+        console.error("[IA_CHAT] Falha ao devolver a pergunta", { conta: usuario.contaId, erro: erroEstorno })
+      );
+    }
     if (mensagemUsuarioId) await prisma.mensagemIa.delete({ where: { id: mensagemUsuarioId } }).catch(() => null);
     if (novaConversa && conversaId) await prisma.conversaIa.delete({ where: { id: conversaId } }).catch(() => null);
 

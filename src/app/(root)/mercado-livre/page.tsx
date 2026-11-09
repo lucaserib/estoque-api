@@ -9,7 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { StatusPill } from "@/components/ui/status-pill";
 import { ProductImage } from "@/components/ui/product-image";
-import { Store, CheckCircle2 } from "lucide-react";
+import { Store, CheckCircle2, ListPlus } from "lucide-react";
+import { abrirNovaTarefa } from "@/components/operacao/eventos";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotaoExplicarIa } from "@/components/ia/BotaoExplicarIa";
@@ -165,6 +166,31 @@ export default function MercadoLivrePage() {
                 <StatusPill tone={TONE_POR_CATEGORIA[grupo.categoria]}>
                   {grupo.anuncios.length}
                 </StatusPill>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-fg2"
+                  onClick={() =>
+                    abrirNovaTarefa({
+                      titulo: `${grupo.titulo} (${grupo.anuncios.length})`,
+                      descricao: [
+                        grupo.descricao,
+                        grupo.anuncios
+                          .slice(0, 10)
+                          .map((anuncio) => `- ${anuncio.mlTitle}${anuncio.produtoSku ? ` (${anuncio.produtoSku})` : ""}`)
+                          .join("\n"),
+                      ]
+                        .filter(Boolean)
+                        .join("\n\n"),
+                      origem: "SAUDE_ANUNCIOS",
+                      chaveOrigem: `anuncios:${String(grupo.categoria).toLowerCase()}`,
+                      vinculo: { tipo: "TELA", rotulo: grupo.titulo.slice(0, 120), href: grupo.linkFiltro },
+                    })
+                  }
+                >
+                  <ListPlus className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Criar tarefa</span>
+                </Button>
                 <Link href={grupo.linkFiltro}>
                   <Button variant="outline" size="sm">
                     {grupo.acao}

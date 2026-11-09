@@ -1,7 +1,9 @@
+import path from "node:path";
 import { defineConfig, devices } from "@playwright/test";
 
 const porta = process.env.E2E_PORT ?? "3100";
 const baseURL = process.env.E2E_BASE_URL ?? `http://localhost:${porta}`;
+process.env.EMAIL_CONSOLE_ARQUIVO ??= path.resolve("playwright/.cache/emails-e2e.jsonl");
 
 export default defineConfig({
   testDir: "./e2e",
@@ -24,6 +26,11 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       NEXTAUTH_URL: baseURL,
+      EMAIL_PROVEDOR: "console",
+      EMAIL_CONSOLE_ARQUIVO: process.env.EMAIL_CONSOLE_ARQUIVO,
+      MP_PROVEDOR_FALSO: "1",
+      RATE_LIMIT_BANCO: "0",
+      PLATFORM_ADMIN_EMAILS: process.env.PLATFORM_ADMIN_EMAILS ?? "e2e-admin@skubo.test",
     },
   },
   projects: [

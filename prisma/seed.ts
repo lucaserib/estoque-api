@@ -427,6 +427,11 @@ async function seedE2E() {
     create: { userId: usuario.id, tourVisto: true },
   });
 
+  await prisma.notaOperacao.deleteMany({ where: { contaId: usuario.id } });
+  await prisma.quadroTarefas.deleteMany({ where: { contaId: usuario.id } });
+  await prisma.etiquetaTarefa.deleteMany({ where: { contaId: usuario.id } });
+  await prisma.sequenciaConta.deleteMany({ where: { contaId: usuario.id } });
+
   await prisma.vendaCanal.deleteMany({ where: { userId: usuario.id } });
   await prisma.cobrancaCanal.deleteMany({ where: { userId: usuario.id } });
   await prisma.produtoMercadoLivre.deleteMany({
@@ -708,6 +713,87 @@ async function seedE2E() {
 
   console.log(`  ✓ Usuário e2e: ${email} / senha: e2eteste123`);
   console.log(`  ✓ ${produtosSimples.length} produtos, ${kits.length} kits, 60 vendas, cobranças de 2 meses`);
+
+  await prepararContaCiclo16(usuario.id, { codigo: "SKU-E2E1", assinatura: "ATIVA" });
+  await seedContasCiclo16();
+}
+
+const PREFERENCIAS_ACEITAS = {
+  termosVersao: "2026-11-08",
+  privacidadeVersao: "2026-11-08",
+  cicloDeVida: true,
+  marketingEmail: false,
+  marketingWhatsapp: false,
+};
+const DIA_MS = 24 * 60 * 60 * 1000;
+
+async function prepararContaCiclo16(contaId: string, opcoes: { codigo: string; assinatura: "ATIVA" | "VENCIDA" }) {
+  const agora = new Date();
+  await prisma.user.update({
+    where: { id: contaId },
+    data: { emailVerificadoEm: agora, preferencias: PREFERENCIAS_ACEITAS, bloqueadoEm: null, sessaoValidaDesde: null },
+  });
+  const assinatura =
+    opcoes.assinatura === "ATIVA"
+      ? {
+          status: "ACTIVE" as const,
+          plan: "MONTHLY" as const,
+          trialEndsAt: new Date(agora.getTime() - 30 * DIA_MS),
+          currentPeriodStart: agora,
+          currentPeriodEnd: new Date(agora.getTime() + 30 * DIA_MS),
+          precoContratadoCentavos: 3790,
+          configuracaoVersao: 1,
+        }
+      : {
+          status: "TRIALING" as const,
+          plan: null,
+          trialEndsAt: new Date(agora.getTime() - 5 * DIA_MS),
+          currentPeriodStart: null,
+          currentPeriodEnd: null,
+          precoContratadoCentavos: null,
+          configuracaoVersao: null,
+        };
+  await prisma.subscription.upsert({ where: { userId: contaId }, update: assinatura, create: { userId: contaId, ...assinatura } });
+  await prisma.perfilCliente.upsert({
+    where: { contaId },
+    update: { codigoIndicacao: opcoes.codigo, nomeLoja: "Loja E2E", perfilCompletoEm: agora },
+    create: { contaId, codigoIndicacao: opcoes.codigo, nomeLoja: "Loja E2E", perfilCompletoEm: agora, canais: ["MERCADO_LIVRE"] },
+  });
+}
+
+async function usuarioDeTeste(email: string, nome: string, contaId: string | null = null, role: "ADMIN" | "ESTOQUE" = "ADMIN") {
+  const senha = await hash("e2eteste123", 10);
+  const usuario = await prisma.user.upsert({
+    where: { email },
+    update: { password: senha, name: nome, contaId, role },
+    create: { email, name: nome, password: senha, contaId, role },
+  });
+  await prisma.onboardingProgresso.upsert({
+    where: { userId: usuario.id },
+    update: { tourVisto: true },
+    create: { userId: usuario.id, tourVisto: true },
+  });
+  return usuario;
+}
+
+async function seedContasCiclo16() {
+  const semIa = await usuarioDeTeste("e2e-sem-ia@skubo.test", "Sem IA E2E");
+  await prepararContaCiclo16(semIa.id, { codigo: "SKU-E2E2", assinatura: "ATIVA" });
+  await prisma.movimentoCreditoIa.deleteMany({ where: { contaId: semIa.id } });
+  await prisma.loteCreditoIa.deleteMany({ where: { contaId: semIa.id } });
+  await prisma.compraCreditoIa.deleteMany({ where: { contaId: semIa.id } });
+
+  const vencida = await usuarioDeTeste("e2e-vencida@skubo.test", "Dona Vencida");
+  await prepararContaCiclo16(vencida.id, { codigo: "SKU-E2E3", assinatura: "VENCIDA" });
+  const membro = await usuarioDeTeste("e2e-membro-vencida@skubo.test", "Membro Vencida", vencida.id, "ESTOQUE");
+  await prisma.user.update({ where: { id: membro.id }, data: { emailVerificadoEm: new Date(), preferencias: PREFERENCIAS_ACEITAS } });
+  await prisma.subscription.deleteMany({ where: { userId: membro.id } });
+
+  const admin = await usuarioDeTeste("e2e-admin@skubo.test", "Admin E2E");
+  await prepararContaCiclo16(admin.id, { codigo: "SKU-E2E4", assinatura: "ATIVA" });
+
+  await prisma.emailEnviado.deleteMany({ where: { chaveIdempotencia: { startsWith: "aviso-responsavel:" } } });
+  console.log("  ✓ Contas do Ciclo 16: sem IA, vencida (+ membro) e admin");
 }
 
 function shuffleArray<T>(array: T[]): T[] {

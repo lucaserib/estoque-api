@@ -34,7 +34,9 @@ import {
   X,
   FileDown,
   Loader2,
+  ListPlus,
 } from "lucide-react";
+import { abrirNovaTarefa } from "@/components/operacao/eventos";
 import { Pedido } from "@/app/(root)/gestao-pedidos/types";
 
 interface PedidoDetalhesDialogProps {
@@ -127,6 +129,25 @@ export function PedidoDetalhesDialog({
                         <span>Baixar PDF</span>
                       </>
                     )}
+                  </Button>
+                )}
+                {pedido.status !== "confirmado" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1"
+                    onClick={() => {
+                      onClose();
+                      abrirNovaTarefa({
+                        titulo: `Acompanhar o pedido de compra #${pedido.id} (${pedido.fornecedor.nome})`,
+                        origem: "PEDIDO_COMPRA",
+                        chaveOrigem: `pedido:${pedido.id}`,
+                        vinculo: { tipo: "PEDIDO_COMPRA", id: String(pedido.id), rotulo: `Pedido #${pedido.id} · ${pedido.fornecedor.nome}`.slice(0, 120), href: `/gestao-pedidos?pedido=${pedido.id}` },
+                      });
+                    }}
+                  >
+                    <ListPlus className="h-4 w-4" />
+                    <span>Criar tarefa</span>
                   </Button>
                 )}
                 <Button

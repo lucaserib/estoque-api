@@ -1,15 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { prisma } from "@/lib/prisma";
 import { MercadoPagoService } from "@/services/mercadoPagoService";
-import { PRICING } from "@/lib/billing";
-import {
-  cancelarIaJuntoComPrincipal,
-  contaDaReferenciaIa,
-  ehPreapprovalIa,
-  processarPagamentoIa,
-  processarPreapprovalIa,
-} from "@/modules/ia/cobranca";
+import { webhookSemSegredoEmProducao } from "@/modules/cobranca/periodo";
+import { tratarPagamento, tratarPreapproval } from "@/modules/cobranca/webhookMercadoPago";
 
 function isValidSignature(request: NextRequest, dataId: string): boolean {
   const secret = process.env.MP_WEBHOOK_SECRET;
@@ -31,103 +24,23 @@ function isValidSignature(request: NextRequest, dataId: string): boolean {
   if (!ts || !receivedHash) return false;
 
   const manifest = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`;
-  const expectedHash = crypto
-    .createHmac("sha256", secret)
-    .update(manifest)
-    .digest("hex");
+  const expectedHash = crypto.createHmac("sha256", secret).update(manifest).digest("hex");
 
-  return crypto.timingSafeEqual(
-    Buffer.from(expectedHash),
-    Buffer.from(receivedHash)
-  );
-}
-
-async function handlePreapprovalNotification(preapprovalId: string) {
-  const preapproval = await MercadoPagoService.getPreapproval(preapprovalId);
-
-  const assinaturaIa = await prisma.subscription.findUnique({
-    where: { mpPreapprovalIaId: preapprovalId },
-    select: { id: true },
-  });
-  if (assinaturaIa || ehPreapprovalIa(preapproval)) {
-    await processarPreapprovalIa(preapproval);
-    return;
-  }
-
-  const subscription = await prisma.subscription.findUnique({
-    where: { mpPreapprovalId: preapprovalId },
-  });
-  if (!subscription) return;
-
-  if (preapproval.status === "authorized") {
-    const now = new Date();
-    const currentPeriodEnd = new Date(now);
-    if (subscription.plan === "ANNUAL") {
-      currentPeriodEnd.setFullYear(currentPeriodEnd.getFullYear() + 1);
-    } else {
-      currentPeriodEnd.setMonth(currentPeriodEnd.getMonth() + 1);
-    }
-
-    await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: {
-        status: "ACTIVE",
-        currentPeriodStart: now,
-        currentPeriodEnd,
-      },
-    });
-  } else if (preapproval.status === "cancelled") {
-    await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: { status: "CANCELED" },
-    });
-    await cancelarIaJuntoComPrincipal(subscription.userId);
-  }
-}
-
-async function handlePaymentNotification(paymentId: string) {
-  const payment = await MercadoPagoService.getPayment(paymentId);
-  if (!payment.external_reference) return;
-  if (contaDaReferenciaIa(payment.external_reference)) {
-    await processarPagamentoIa(payment);
-    return;
-  }
-
-  const subscription = await prisma.subscription.findUnique({
-    where: { userId: payment.external_reference },
-  });
-  if (!subscription || !subscription.mpPreapprovalId) return;
-
-  if (payment.status === "rejected" || payment.status === "cancelled") {
-    await prisma.subscription.update({
-      where: { id: subscription.id },
-      data: { status: "PAST_DUE" },
-    });
-    return;
-  }
-
-  if (payment.status !== "approved") return;
-
-  const billingCyclesCompleted = subscription.billingCyclesCompleted + 1;
-
-  await prisma.subscription.update({
-    where: { id: subscription.id },
-    data: { status: "ACTIVE", billingCyclesCompleted },
-  });
-
-  if (subscription.plan === "MONTHLY" && billingCyclesCompleted === 1) {
-    await MercadoPagoService.updatePreapprovalAmount(
-      subscription.mpPreapprovalId,
-      PRICING.MONTHLY_RENEWAL
-    );
-  }
+  const esperado = Buffer.from(expectedHash);
+  const recebido = Buffer.from(receivedHash);
+  return esperado.length === recebido.length && crypto.timingSafeEqual(esperado, recebido);
 }
 
 export async function POST(request: NextRequest) {
+  if (webhookSemSegredoEmProducao()) {
+    console.error("[MP_WEBHOOK] MP_WEBHOOK_SECRET ausente em produção; notificação recusada.");
+    return NextResponse.json({ error: "Webhook do Mercado Pago sem segredo configurado" }, { status: 503 });
+  }
+
   const body = await request.json().catch(() => null);
   const { searchParams } = new URL(request.url);
-  const type = body?.type || searchParams.get("type");
-  const dataId = body?.data?.id || searchParams.get("data.id");
+  const type = body?.type || searchParams.get("type") || searchParams.get("topic");
+  const dataId = body?.data?.id || searchParams.get("data.id") || searchParams.get("id");
 
   if (!type || !dataId) {
     return NextResponse.json({ received: true });
@@ -138,18 +51,15 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    let resultado = "IGNORADO";
     if (type === "subscription_preapproval" || type === "preapproval") {
-      await handlePreapprovalNotification(String(dataId));
+      resultado = await tratarPreapproval(await MercadoPagoService.getPreapproval(String(dataId)));
     } else if (type === "payment") {
-      await handlePaymentNotification(String(dataId));
+      resultado = await tratarPagamento(await MercadoPagoService.getPayment(String(dataId)));
     }
+    return NextResponse.json({ received: true, resultado });
   } catch (error) {
     console.error("Erro ao processar webhook do Mercado Pago:", error);
-    return NextResponse.json(
-      { error: "Erro ao processar notificação" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao processar notificação" }, { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }

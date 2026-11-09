@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { registrarEvento } from "@/modules/clientes/eventos";
 import { prisma } from "@/lib/prisma";
 import { BlingOAuthError, BlingService } from "@/services/blingService";
 import { verifyUser } from "@/helpers/verifyUser";
@@ -119,6 +120,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       .update({ where: { id: accountId }, data: { blingCompanyId } })
       .catch((error: unknown) => console.error("[BLING_CALLBACK] Falha ao gravar o companyId:", error));
   }
+
+  await registrarEvento(contaId, "BLING_CONECTADO", { propriedades: { blingCompanyId: blingCompanyId ?? null } });
 
   const params: Record<string, string> = { bling: "conectado" };
   if (!blingCompanyId) params.bling_aviso = "empresa_nao_identificada";

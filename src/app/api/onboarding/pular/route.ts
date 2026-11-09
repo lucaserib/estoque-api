@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { mlCache, createCacheKey } from "@/lib/cache";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const body = await request.json().catch(() => ({}));
     const marcador = typeof body.marcador === "string" ? body.marcador : String(body.etapaId ?? "");
 
@@ -26,6 +27,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ etapasPuladas });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao pular etapa do onboarding:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }

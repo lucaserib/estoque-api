@@ -10,7 +10,9 @@ import { useSession } from "next-auth/react";
 import { TourSlides } from "@/components/onboarding/TourSlides";
 import { InstalarCelularBanner } from "@/components/InstalarCelularBanner";
 import { AssistenteIa } from "@/components/ia/AssistenteIa";
+import { NovaTarefaGlobal } from "@/components/operacao/NovaTarefa";
 import { EVENTO_ABRIR_TOUR } from "@/lib/eventosCliente";
+import { BannerConfirmarEmail } from "@/components/conta/BannerConfirmarEmail";
 
 const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
   const { isSidebarCollapsed, isDarkMode } = useLayout();
@@ -60,12 +62,16 @@ const DashboardLayout = ({ children }: { children: React.ReactNode }) => {
         }`}
       >
         <Navbar />
-        <div className="mx-auto w-full min-w-0 max-w-[1440px]">{children}</div>
+        <div className="mx-auto w-full min-w-0 max-w-[1440px]">
+          <BannerConfirmarEmail />
+          {children}
+        </div>
       </main>
 
       <BottomNav />
       <InstalarCelularBanner />
       {status === "authenticated" && <AssistenteIa />}
+      {status === "authenticated" && <NovaTarefaGlobal />}
 
       <TourSlides open={tourAberto} onOpenChange={setTourAberto} onConcluido={marcarTourVisto} />
     </div>

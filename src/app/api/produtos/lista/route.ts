@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
-import { podeVer } from "@/lib/permissoes";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 import {
   listarProdutos,
   type FiltroEstoque,
@@ -16,7 +16,7 @@ function opcao<T extends string>(valor: string | null, permitidos: readonly T[],
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const sp = new URL(request.url).searchParams;
 
     const resultado = await listarProdutos(user.contaId, {
@@ -38,6 +38,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(resultado);
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[PRODUTOS_LISTA] Erro:", error);
     return NextResponse.json({ error: "Erro ao listar produtos" }, { status: 500 });
   }

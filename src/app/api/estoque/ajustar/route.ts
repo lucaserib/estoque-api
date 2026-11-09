@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { FULL_ARMAZEM_NOME } from "@/lib/estoque";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 
@@ -14,7 +14,7 @@ const ajustarSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "ESTOQUE_AJUSTAR");
     const parsed = ajustarSchema.safeParse(await request.json());
 

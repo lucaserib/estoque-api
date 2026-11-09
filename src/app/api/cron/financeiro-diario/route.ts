@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { contasSuspensasHaMaisDe } from "@/modules/conta/situacao";
 import * as Sentry from "@sentry/nextjs";
 import { prisma } from "@/lib/prisma";
 import { enfileirarCobrancas, enfileirarIncremental, executarFila } from "@/modules/financeiro/ingestao/fila";
@@ -23,6 +24,8 @@ function competenciaAnteriorA(competencia: { ano: number; mes: number }) {
     : { ano: competencia.ano, mes: competencia.mes - 1 };
 }
 
+const DIAS_TOLERANCIA_SUSPENSA = 3;
+
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get("authorization");
 
@@ -30,14 +33,17 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
   }
 
-  const contasAtivas = await prisma.mercadoLivreAccount.findMany({
+  const contasMl = await prisma.mercadoLivreAccount.findMany({
     where: { isActive: true },
     select: { id: true, userId: true },
   });
-  const donosDeConta = await prisma.user.findMany({
+  const todosOsDonos = await prisma.user.findMany({
     where: { contaId: null },
     select: { id: true },
   });
+  const suspensas = await contasSuspensasHaMaisDe(todosOsDonos.map((d) => d.id), DIAS_TOLERANCIA_SUSPENSA);
+  const contasAtivas = contasMl.filter((c) => !suspensas.has(c.userId));
+  const donosDeConta = todosOsDonos.filter((d) => !suspensas.has(d.id));
 
   const agora = new Date();
   const competenciaAtual = competenciaDe(agora);
@@ -109,11 +115,13 @@ export async function GET(request: NextRequest) {
   }
 
   let notasGravadas = 0;
-  const contasBling = await prisma.blingAccount.findMany({
-    where: { isActive: true },
-    select: { userId: true },
-    distinct: ["userId"],
-  });
+  const contasBling = (
+    await prisma.blingAccount.findMany({
+      where: { isActive: true },
+      select: { userId: true },
+      distinct: ["userId"],
+    })
+  ).filter((c) => !suspensas.has(c.userId));
   for (const contaBling of contasBling) {
     try {
       const resultado = await sincronizarNotasFiscais(

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { registrarFeedback } from "@/modules/ia/conversas";
 import { respostaErroRotaIa } from "@/modules/ia/respostas";
 
@@ -11,7 +11,7 @@ const corpoSchema = z.object({
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { id } = await params;
     const corpo = corpoSchema.safeParse(await request.json().catch(() => null));
     if (!corpo.success) return NextResponse.json({ error: "Informe util: true ou false" }, { status: 400 });

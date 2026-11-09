@@ -212,8 +212,75 @@ model User {
   conversasIaConta               ConversaIa[]                    @relation("ConversasIaConta")
   conversasIaAutor               ConversaIa[]                    @relation("ConversasIaAutor")
   usosIa                         UsoIa[]
+  emailVerificadoEm              DateTime?
+  sessaoValidaDesde              DateTime?
+  bloqueadoEm                    DateTime?
+  motivoBloqueio                 String?
+  tokensSenha                    TokenSenha[]
+  preferencias                   Json?
+  perfilCliente                  PerfilCliente?
+  consentimentos                 ConsentimentoRegistro[]
+  eventosProduto                 EventoProduto[]
+  ultimoLoginEm                  DateTime?
+  emailTarefas                   Boolean                         @default(true)
+  quadrosTarefas                 QuadroTarefas[]                 @relation("QuadrosDaConta")
+  tarefasDaConta                 Tarefa[]                        @relation("TarefasDaConta")
+  tarefasResponsavel             Tarefa[]                        @relation("TarefasResponsavel")
+  tarefasCriadas                 Tarefa[]                        @relation("TarefasCriadas")
+  tarefasConcluidas              Tarefa[]                        @relation("TarefasConcluidas")
+  etiquetasTarefas               EtiquetaTarefa[]
+  comentariosTarefas             ComentarioTarefa[]
+  atividadesTarefas              AtividadeTarefa[]
+  itensChecklistConcluidos       ItemChecklistTarefa[]
+  notasOperacaoConta             NotaOperacao[]                  @relation("NotasDaConta")
+  notasOperacaoAutor             NotaOperacao[]                  @relation("NotasDoAutor")
+  sequenciasConta                SequenciaConta[]
 
   @@index([contaId])
+}
+
+enum FinalidadeToken {
+  REDEFINIR_SENHA
+  CONFIRMAR_EMAIL
+}
+
+model TokenSenha {
+  id         String          @id @default(uuid())
+  userId     String
+  finalidade FinalidadeToken
+  tokenHash  String          @unique
+  expiraEm   DateTime
+  usadoEm    DateTime?
+  ip         String?
+  createdAt  DateTime        @default(now())
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, finalidade])
+  @@map("tokens_senha")
+}
+
+model ContadorLimite {
+  chave    String   @id
+  contagem Int      @default(0)
+  expiraEm DateTime
+
+  @@index([expiraEm])
+  @@map("contadores_limite")
+}
+
+model AuditoriaConta {
+  id        String   @id @default(uuid())
+  contaId   String
+  autorId   String?
+  acao      String
+  alvoTipo  String?
+  alvoId    String?
+  detalhe   Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([contaId, createdAt])
+  @@map("auditoria_conta")
 }
 
 model ConfiguracaoGeral {
@@ -739,6 +806,11 @@ enum NotificationType {
   DIVERGENCIA_CONCILIACAO
   SOLICITACAO_PLATAFORMA
   RESUMO_IA
+  ASSINATURA
+  EQUIPE
+  CREDITOS_IA
+  INDICACAO
+  TAREFA
 }
 
 model Notification {
@@ -777,27 +849,33 @@ enum StatusIaAssinatura {
 }
 
 model Subscription {
-  id                     String             @id @default(uuid())
-  userId                 String             @unique
-  status                 SubscriptionStatus @default(TRIALING)
-  plan                   SubscriptionPlan?
-  mpPreapprovalId        String?            @unique
-  mpPayerEmail           String?
-  trialEndsAt            DateTime
-  currentPeriodStart     DateTime?
-  currentPeriodEnd       DateTime?
-  billingCyclesCompleted Int                @default(0)
-  iaStatus               StatusIaAssinatura @default(INATIVA)
-  mpPreapprovalIaId      String?            @unique
-  iaAtivadaEm            DateTime?
-  iaPeriodoFim           DateTime?
-  iaTesteIniciadoEm      DateTime?
-  iaLiberadaManual       Boolean            @default(false)
-  iaOrcamentoCentavos    Int?
-  iaSolicitadaEm         DateTime?
-  createdAt              DateTime           @default(now())
-  updatedAt              DateTime           @updatedAt
-  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                       String             @id @default(uuid())
+  userId                   String             @unique
+  status                   SubscriptionStatus @default(TRIALING)
+  plan                     SubscriptionPlan?
+  mpPreapprovalId          String?            @unique
+  mpPayerEmail             String?
+  trialEndsAt              DateTime
+  currentPeriodStart       DateTime?
+  currentPeriodEnd         DateTime?
+  billingCyclesCompleted   Int                @default(0)
+  iaStatus                 StatusIaAssinatura @default(INATIVA)
+  mpPreapprovalIaId        String?            @unique
+  iaAtivadaEm              DateTime?
+  iaPeriodoFim             DateTime?
+  iaTesteIniciadoEm        DateTime?
+  iaLiberadaManual         Boolean            @default(false)
+  iaOrcamentoCentavos      Int?
+  iaSolicitadaEm           DateTime?
+  precoContratadoCentavos  Int?
+  configuracaoVersao       Int?
+  cupomPrimeiraCobrancaId  String?
+  descontoAplicadoCentavos Int?
+  pausadaAte               DateTime?
+  proximaCobrancaEm        DateTime?
+  createdAt                DateTime           @default(now())
+  updatedAt                DateTime           @updatedAt
+  user                     User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
 }
@@ -1293,6 +1371,7 @@ enum RecursoIa {
   EXPLICACAO
   RESUMO_SEMANAL
   TITULO
+  MARKETING_ADMIN
 }
 
 enum PapelMensagemIa {
@@ -1353,4 +1432,767 @@ model UsoIa {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@map("usos_ia")
+}
+
+model ConfiguracaoComercial {
+  id                          String   @id @default(uuid())
+  versao                      Int      @unique
+  vigenteDesde                DateTime @default(now())
+  criadaPor                   String
+  observacao                  String?
+  diasTeste                   Int
+  precoMensalCentavos         Int
+  precoPrimeiroMesCentavos    Int?
+  precoAnualCentavos          Int
+  iaPerguntasTeste            Int
+  iaValidadeDiasTeste         Int
+  iaValidadeDiasCompra        Int
+  iaPacotes                   Json
+  iaPesoPorRecurso            Json
+  iaExplicacoesGratisPorDia   Int
+  iaResumoSemanalSoAssinantes Boolean
+  indicacao                   Json
+  limiteUsuariosPorConta      Int?
+  textosOferta                Json
+  createdAt                   DateTime @default(now())
+
+  @@map("configuracoes_comerciais")
+}
+
+enum TipoCupom {
+  PERCENTUAL
+  FIXO
+}
+
+enum AlvoCupom {
+  PRIMEIRA_COBRANCA_MENSAL
+  ANUAL
+  PACOTE_IA
+}
+
+model Cupom {
+  id          String     @id @default(uuid())
+  codigo      String     @unique
+  descricao   String?
+  tipo        TipoCupom
+  valor       Int
+  alvo        AlvoCupom
+  usosMaximos Int?
+  usos        Int        @default(0)
+  validoAte   DateTime?
+  ativo       Boolean    @default(true)
+  criadoPor   String
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  usosConta   UsoCupom[]
+
+  @@map("cupons")
+}
+
+model UsoCupom {
+  id         String   @id @default(uuid())
+  cupomId    String
+  contaId    String
+  referencia String?
+  createdAt  DateTime @default(now())
+  cupom      Cupom    @relation(fields: [cupomId], references: [id], onDelete: Cascade)
+
+  @@unique([cupomId, contaId])
+  @@index([contaId])
+  @@map("usos_cupom")
+}
+
+enum StatusReajuste {
+  AGENDADO
+  APLICADO
+  CANCELADO
+}
+
+model ReajusteAssinatura {
+  id                String           @id @default(uuid())
+  plano             SubscriptionPlan
+  novoPrecoCentavos Int
+  aplicarEm         DateTime
+  status            StatusReajuste   @default(AGENDADO)
+  motivo            String
+  criadoPor         String
+  afetados          Int              @default(0)
+  avisados          Int              @default(0)
+  aplicados         Int              @default(0)
+  falhas            Int              @default(0)
+  aplicadoEm        DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  @@index([status, aplicarEm])
+  @@map("reajustes_assinatura")
+}
+
+enum CategoriaEmail {
+  TRANSACIONAL
+  CICLO_DE_VIDA
+  MARKETING
+}
+
+enum StatusEmail {
+  ENFILEIRADO
+  ENVIADO
+  ENTREGUE
+  ABERTO
+  CLICADO
+  DEVOLVIDO
+  RECLAMACAO
+  FALHOU
+  SUPRIMIDO
+}
+
+model EmailEnviado {
+  id                String         @id @default(uuid())
+  userId            String?
+  contaId           String?
+  para              String
+  modelo            String
+  categoria         CategoriaEmail
+  campanhaId        String?
+  chaveIdempotencia String         @unique
+  assunto           String?
+  dados             Json?
+  provedorId        String?        @unique
+  status            StatusEmail    @default(ENFILEIRADO)
+  tentativas        Int            @default(0)
+  erro              String?
+  enviadoEm         DateTime?
+  entregueEm        DateTime?
+  abertoEm          DateTime?
+  clicadoEm         DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([contaId, createdAt])
+  @@index([campanhaId, status])
+  @@map("emails_enviados")
+}
+
+enum MotivoSupressao {
+  DEVOLUCAO
+  RECLAMACAO
+  DESCADASTRO_TOTAL
+  MANUAL
+}
+
+model SupressaoEmail {
+  id        String          @id @default(uuid())
+  email     String          @unique
+  motivo    MotivoSupressao
+  detalhe   String?
+  createdAt DateTime        @default(now())
+
+  @@map("supressoes_email")
+}
+
+model PerfilCliente {
+  id               String    @id @default(uuid())
+  contaId          String    @unique
+  nomeLoja         String?
+  whatsapp         String?
+  faixaPedidosMes  String?
+  canais           String[]  @default([])
+  comoConheceu     String?
+  utmSource        String?
+  utmMedium        String?
+  utmCampaign      String?
+  utmContent       String?
+  utmTerm          String?
+  paginaEntrada    String?
+  referrer         String?
+  primeiroToqueEm  DateTime?
+  codigoIndicacao  String    @unique
+  testeInterno     Boolean   @default(false)
+  perfilCompletoEm DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  conta            User      @relation(fields: [contaId], references: [id], onDelete: Cascade)
+
+  @@index([utmSource])
+  @@index([comoConheceu])
+  @@map("perfis_cliente")
+}
+
+enum TipoConsentimento {
+  TERMOS
+  PRIVACIDADE
+  MARKETING_EMAIL
+  MARKETING_WHATSAPP
+  CICLO_DE_VIDA
+}
+
+model ConsentimentoRegistro {
+  id          String            @id @default(uuid())
+  userId      String
+  tipo        TipoConsentimento
+  concedido   Boolean
+  versaoTexto String
+  origem      String
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime          @default(now())
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, tipo, createdAt])
+  @@index([tipo, concedido])
+  @@map("consentimentos")
+}
+
+model EventoProduto {
+  id           String   @id @default(uuid())
+  contaId      String
+  userId       String?
+  nome         String
+  propriedades Json?
+  createdAt    DateTime @default(now())
+  conta        User     @relation(fields: [contaId], references: [id], onDelete: Cascade)
+
+  @@index([contaId, nome])
+  @@index([nome, createdAt])
+  @@map("eventos_produto")
+}
+
+enum StatusSolicitacaoExclusao {
+  PENDENTE
+  EXECUTADA
+  CANCELADA
+}
+
+model SolicitacaoExclusao {
+  id           String                    @id @default(uuid())
+  contaId      String
+  userId       String
+  email        String
+  motivo       String?
+  status       StatusSolicitacaoExclusao @default(PENDENTE)
+  executadaEm  DateTime?
+  executadaPor String?
+  createdAt    DateTime                  @default(now())
+
+  @@index([status, createdAt])
+  @@map("solicitacoes_exclusao")
+}
+
+enum OrigemLoteCreditoIa {
+  TESTE
+  COMPRA
+  INDICACAO
+  BONUS_ADMIN
+  MIGRACAO
+}
+
+model LoteCreditoIa {
+  id                 String              @id @default(uuid())
+  contaId            String
+  origem             OrigemLoteCreditoIa
+  quantidadeInicial  Int
+  quantidadeRestante Int
+  validoAte          DateTime
+  compraId           String?             @unique
+  indicacaoId        String?
+  descricao          String?
+  chaveIdempotencia  String              @unique
+  createdAt          DateTime            @default(now())
+
+  @@index([contaId, validoAte])
+  @@index([validoAte, quantidadeRestante])
+  @@map("lotes_credito_ia")
+}
+
+enum TipoMovimentoCreditoIa {
+  ENTRADA
+  CONSUMO
+  ESTORNO
+  EXPIRACAO
+  AJUSTE
+}
+
+model MovimentoCreditoIa {
+  id                String                 @id @default(uuid())
+  contaId           String
+  autorId           String?
+  loteId            String?
+  tipo              TipoMovimentoCreditoIa
+  quantidade        Int
+  saldoApos         Int
+  recurso           RecursoIa?
+  usoIaId           String?
+  descricao         String
+  chaveIdempotencia String                 @unique
+  createdAt         DateTime               @default(now())
+
+  @@index([contaId, createdAt])
+  @@index([tipo, createdAt])
+  @@map("movimentos_credito_ia")
+}
+
+enum StatusCompraCreditoIa {
+  PENDENTE
+  APROVADA
+  RECUSADA
+  ESTORNADA
+  EXPIRADA
+}
+
+model CompraCreditoIa {
+  id               String                @id @default(uuid())
+  contaId          String
+  autorId          String
+  pacoteId         String
+  pacoteNome       String
+  perguntas        Int
+  precoCentavos    Int
+  descontoCentavos Int                   @default(0)
+  cupomId          String?
+  status           StatusCompraCreditoIa @default(PENDENTE)
+  mpPreferenceId   String?
+  mpPaymentId      String?               @unique
+  expiraEm         DateTime
+  createdAt        DateTime              @default(now())
+  aprovadaEm       DateTime?
+  updatedAt        DateTime              @updatedAt
+
+  @@index([contaId, createdAt])
+  @@index([status, createdAt])
+  @@map("compras_credito_ia")
+}
+
+enum StatusIndicacao {
+  CADASTRADO
+  ATIVADO
+  PAGOU
+  EM_CARENCIA
+  RECOMPENSADA
+  INVALIDADA
+}
+
+model Indicacao {
+  id                     String          @id @default(uuid())
+  indicadorContaId       String
+  indicadoContaId        String          @unique
+  codigo                 String
+  status                 StatusIndicacao @default(CADASTRADO)
+  motivoInvalidacao      String?
+  pagamentoId            String?
+  diasRecompensa         Int
+  carenciaAte            DateTime?
+  aprovadaManualmentePor String?
+  createdAt              DateTime        @default(now())
+  ativadoEm              DateTime?
+  pagouEm                DateTime?
+  recompensadaEm         DateTime?
+  updatedAt              DateTime        @updatedAt
+
+  @@index([indicadorContaId, status])
+  @@index([status, carenciaAte])
+  @@map("indicacoes")
+}
+
+enum OrigemCreditoDias {
+  INDICACAO
+  ADMIN
+  CUPOM
+}
+
+enum FormaCreditoDias {
+  EXTENSAO_TESTE
+  DESCONTO_PROXIMA_COBRANCA
+  CICLO_PAUSADO
+  EXTENSAO_ANUAL
+  PENDENTE
+}
+
+model CreditoDiasAssinatura {
+  id          String            @id @default(uuid())
+  contaId     String
+  dias        Int
+  origem      OrigemCreditoDias
+  indicacaoId String?           @unique
+  forma       FormaCreditoDias  @default(PENDENTE)
+  aplicadoEm  DateTime?
+  descricao   String?
+  detalhe     Json?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([contaId, forma])
+  @@map("creditos_dias_assinatura")
+}
+
+model AutomacaoEmail {
+  id            String         @id @default(uuid())
+  chave         String         @unique
+  nome          String
+  descricao     String?
+  ativo         Boolean        @default(true)
+  atrasoHoras   Int            @default(0)
+  assunto       String
+  preCabecalho  String
+  corpoMarkdown String
+  rotuloBotao   String?
+  urlBotao      String?
+  categoria     CategoriaEmail @default(CICLO_DE_VIDA)
+  cupomCodigo   String?
+  atualizadoPor String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("automacoes_email")
+}
+
+enum TipoMotivoCancelamento {
+  PRECO
+  FALTOU_RECURSO
+  DIFICIL
+  PAROU_DE_VENDER
+  OUTRA_FERRAMENTA
+  OUTRO
+}
+
+model MotivoCancelamento {
+  id         String                 @id @default(uuid())
+  contaId    String
+  userId     String?
+  motivo     TipoMotivoCancelamento
+  comentario String?
+  createdAt  DateTime               @default(now())
+
+  @@index([contaId, createdAt])
+  @@index([motivo, createdAt])
+  @@map("motivos_cancelamento")
+}
+
+model AuditoriaAdmin {
+  id         String   @id @default(uuid())
+  adminEmail String
+  acao       String
+  alvoTipo   String
+  alvoId     String?
+  antes      Json?
+  depois     Json?
+  motivo     String?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([alvoTipo, alvoId])
+  @@index([adminEmail, createdAt])
+  @@map("auditoria_admin")
+}
+
+enum TipoPagamentoPlataforma {
+  ASSINATURA
+  CREDITO_IA
+}
+
+model PagamentoPlataforma {
+  id            String                  @id @default(uuid())
+  mpPaymentId   String                  @unique
+  contaId       String
+  tipo          TipoPagamentoPlataforma
+  valorCentavos Int
+  status        String
+  metodo        String?
+  aprovadoEm    DateTime?
+  referencia    String?
+  compraId      String?
+  emailPagador  String?
+  bruto         Json
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
+
+  @@index([contaId, createdAt])
+  @@index([tipo, status, aprovadoEm])
+  @@map("pagamentos_plataforma")
+}
+
+enum StatusCampanha {
+  RASCUNHO
+  AGENDADA
+  ENVIANDO
+  ENVIADA
+  CANCELADA
+}
+
+model Campanha {
+  id            String         @id @default(uuid())
+  nome          String
+  assunto       String
+  preCabecalho  String
+  corpoMarkdown String
+  rotuloBotao   String?
+  urlBotao      String?
+  segmento      Json
+  categoria     CategoriaEmail @default(MARKETING)
+  status        StatusCampanha @default(RASCUNHO)
+  agendadaPara  DateTime?
+  iniciadaEm    DateTime?
+  concluidaEm   DateTime?
+  publicoTotal  Int            @default(0)
+  enfileirados  Int            @default(0)
+  criadaPor     String
+  atualizadaPor String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([status, agendadaPara])
+  @@map("campanhas")
+}
+
+enum PrioridadeTarefa {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum PapelColunaTarefa {
+  A_FAZER
+  EM_ANDAMENTO
+  CONCLUIDA
+}
+
+enum OrigemTarefa {
+  MANUAL
+  CAPTURA_RAPIDA
+  NOTA
+  RECORRENCIA
+  ROTINA_SUGERIDA
+  CENTRAL_CONTROLE
+  REPOSICAO
+  SAUDE_ANUNCIOS
+  PRODUTO
+  PEDIDO_COMPRA
+}
+
+enum TipoVinculoTarefa {
+  PRODUTO
+  ANUNCIO_ML
+  PEDIDO_COMPRA
+  FORNECEDOR
+  TELA
+}
+
+enum TipoAtividadeTarefa {
+  CRIADA
+  EDITADA
+  MOVIDA
+  ATRIBUIDA
+  PRAZO
+  PRIORIDADE
+  ETIQUETAS
+  CONCLUIDA
+  REABERTA
+  ARQUIVADA
+  RESTAURADA
+  COMENTARIO
+  CHECKLIST
+  RECORRENCIA
+}
+
+enum TipoNotaOperacao {
+  NOTA
+  IDEIA
+}
+
+enum VisibilidadeNota {
+  EQUIPE
+  PRIVADA
+}
+
+model QuadroTarefas {
+  id          String          @id @default(uuid())
+  contaId     String
+  nome        String
+  descricao   String?
+  cor         String          @default("azul")
+  posicao     Float
+  padrao      Boolean         @default(false)
+  arquivadoEm DateTime?
+  criadoPorId String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  conta       User            @relation("QuadrosDaConta", fields: [contaId], references: [id], onDelete: Cascade)
+  colunas     ColunaTarefas[]
+  tarefas     Tarefa[]
+
+  @@index([contaId, arquivadoEm])
+  @@map("quadros_tarefas")
+}
+
+model ColunaTarefas {
+  id        String            @id @default(uuid())
+  quadroId  String
+  nome      String
+  papel     PapelColunaTarefa @default(A_FAZER)
+  posicao   Float
+  limite    Int?
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  quadro    QuadroTarefas     @relation(fields: [quadroId], references: [id], onDelete: Cascade)
+  tarefas   Tarefa[]
+
+  @@index([quadroId, posicao])
+  @@map("colunas_tarefas")
+}
+
+model Tarefa {
+  id             String                @id @default(uuid())
+  contaId        String
+  numero         Int
+  quadroId       String
+  colunaId       String
+  titulo         String
+  descricao      String?
+  prioridade     PrioridadeTarefa      @default(MEDIA)
+  posicao        Float
+  responsavelId  String?
+  criadoPorId    String?
+  prazo          DateTime?
+  prazoComHora   Boolean               @default(false)
+  concluidaEm    DateTime?
+  concluidaPorId String?
+  arquivadaEm    DateTime?
+  origem         OrigemTarefa          @default(MANUAL)
+  chaveOrigem    String?
+  vinculoTipo    TipoVinculoTarefa?
+  vinculoId      String?
+  vinculoRotulo  String?
+  vinculoHref    String?
+  recorrencia    Json?
+  serieId        String?
+  versao         Int                   @default(1)
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+  conta          User                  @relation("TarefasDaConta", fields: [contaId], references: [id], onDelete: Cascade)
+  quadro         QuadroTarefas         @relation(fields: [quadroId], references: [id], onDelete: Cascade)
+  coluna         ColunaTarefas         @relation(fields: [colunaId], references: [id], onDelete: NoAction)
+  responsavel    User?                 @relation("TarefasResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+  criadoPor      User?                 @relation("TarefasCriadas", fields: [criadoPorId], references: [id], onDelete: SetNull)
+  concluidaPor   User?                 @relation("TarefasConcluidas", fields: [concluidaPorId], references: [id], onDelete: SetNull)
+  etiquetas      TarefaEtiqueta[]
+  checklist      ItemChecklistTarefa[]
+  comentarios    ComentarioTarefa[]
+  atividades     AtividadeTarefa[]
+  notas          NotaOperacao[]
+
+  @@unique([contaId, numero])
+  @@unique([contaId, chaveOrigem])
+  @@unique([serieId, prazo])
+  @@index([contaId, arquivadaEm, concluidaEm])
+  @@index([contaId, responsavelId, concluidaEm])
+  @@index([contaId, prazo])
+  @@index([colunaId, posicao])
+  @@map("tarefas")
+}
+
+model EtiquetaTarefa {
+  id        String           @id @default(uuid())
+  contaId   String
+  nome      String
+  cor       String
+  createdAt DateTime         @default(now())
+  conta     User             @relation(fields: [contaId], references: [id], onDelete: Cascade)
+  tarefas   TarefaEtiqueta[]
+
+  @@unique([contaId, nome])
+  @@map("etiquetas_tarefas")
+}
+
+model TarefaEtiqueta {
+  tarefaId   String
+  etiquetaId String
+  tarefa     Tarefa         @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  etiqueta   EtiquetaTarefa @relation(fields: [etiquetaId], references: [id], onDelete: Cascade)
+
+  @@id([tarefaId, etiquetaId])
+  @@index([etiquetaId])
+  @@map("tarefas_etiquetas")
+}
+
+model ItemChecklistTarefa {
+  id             String    @id @default(uuid())
+  tarefaId       String
+  texto          String
+  concluido      Boolean   @default(false)
+  posicao        Float
+  concluidoPorId String?
+  concluidoEm    DateTime?
+  createdAt      DateTime  @default(now())
+  tarefa         Tarefa    @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  concluidoPor   User?     @relation(fields: [concluidoPorId], references: [id], onDelete: SetNull)
+
+  @@index([tarefaId, posicao])
+  @@map("itens_checklist_tarefa")
+}
+
+model ComentarioTarefa {
+  id        String    @id @default(uuid())
+  tarefaId  String
+  autorId   String?
+  corpo     String
+  mencoes   String[]  @default([])
+  editadoEm DateTime?
+  createdAt DateTime  @default(now())
+  tarefa    Tarefa    @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  autor     User?     @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([tarefaId, createdAt])
+  @@map("comentarios_tarefa")
+}
+
+model AtividadeTarefa {
+  id        String              @id @default(uuid())
+  tarefaId  String
+  autorId   String?
+  tipo      TipoAtividadeTarefa
+  dados     Json?
+  createdAt DateTime            @default(now())
+  tarefa    Tarefa              @relation(fields: [tarefaId], references: [id], onDelete: Cascade)
+  autor     User?               @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([tarefaId, createdAt])
+  @@map("atividades_tarefa")
+}
+
+model NotaOperacao {
+  id           String           @id @default(uuid())
+  contaId      String
+  autorId      String?
+  tipo         TipoNotaOperacao @default(NOTA)
+  titulo       String?
+  conteudo     String
+  cor          String           @default("amarelo")
+  fixada       Boolean          @default(false)
+  visibilidade VisibilidadeNota @default(EQUIPE)
+  posicao      Float
+  apoios       String[]         @default([])
+  tarefaId     String?
+  arquivadaEm  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  conta        User             @relation("NotasDaConta", fields: [contaId], references: [id], onDelete: Cascade)
+  autor        User?            @relation("NotasDoAutor", fields: [autorId], references: [id], onDelete: SetNull)
+  tarefa       Tarefa?          @relation(fields: [tarefaId], references: [id], onDelete: SetNull)
+
+  @@index([contaId, arquivadaEm])
+  @@index([autorId])
+  @@map("notas_operacao")
+}
+
+model SequenciaConta {
+  contaId String
+  chave   String
+  valor   Int
+  conta   User   @relation(fields: [contaId], references: [id], onDelete: Cascade)
+
+  @@id([contaId, chave])
+  @@map("sequencias_conta")
 }

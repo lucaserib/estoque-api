@@ -20,6 +20,7 @@ import { Bell, Camera, KeyRound, Loader2, Save, ShieldAlert, User } from "lucide
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { formatDateBR } from "@/lib/format";
+import { SecoesDaConta } from "@/components/perfil/SecoesDaConta";
 
 interface Perfil {
   id: string;
@@ -30,6 +31,7 @@ interface Perfil {
   provider: string;
   hasPassword: boolean;
   receberResumoIa: boolean;
+  emailTarefas: boolean;
 }
 
 export default function PerfilPage() {
@@ -47,6 +49,27 @@ export default function PerfilPage() {
   const [confirmarSenha, setConfirmarSenha] = useState("");
   const [savingSenha, setSavingSenha] = useState(false);
   const [salvandoResumoIa, setSalvandoResumoIa] = useState(false);
+  const [salvandoEmailTarefas, setSalvandoEmailTarefas] = useState(false);
+
+  const alterarEmailTarefas = async (emailTarefas: boolean) => {
+    if (!perfil) return;
+    setSalvandoEmailTarefas(true);
+    setPerfil({ ...perfil, emailTarefas });
+    try {
+      const response = await fetch("/api/perfil", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailTarefas }),
+      });
+      if (!response.ok) throw new Error();
+      toast.success(emailTarefas ? "Você vai receber os avisos de tarefas por e-mail." : "Avisos de tarefas por e-mail desligados.");
+    } catch {
+      setPerfil({ ...perfil, emailTarefas: !emailTarefas });
+      toast.error("Não foi possível salvar a preferência.");
+    } finally {
+      setSalvandoEmailTarefas(false);
+    }
+  };
 
   const alterarResumoIa = async (receberResumoIa: boolean) => {
     if (!perfil) return;
@@ -280,6 +303,29 @@ export default function PerfilPage() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Tarefas
+          </CardTitle>
+          <CardDescription>Avisos da operação da loja</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="email-tarefas" className="font-medium">
+                Avisos de tarefas por e-mail
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Quando passarem uma tarefa para você ou te mencionarem, e o resumo do dia às 8h com o que está atrasado ou vence hoje. No app, os avisos chegam sempre.
+              </p>
+            </div>
+            <Switch id="email-tarefas" checked={perfil.emailTarefas} onCheckedChange={alterarEmailTarefas} disabled={salvandoEmailTarefas} />
+          </div>
+        </CardContent>
+      </Card>
+
       {session?.user?.role === "ADMIN" && (
         <Card>
           <CardHeader>
@@ -323,8 +369,8 @@ export default function PerfilPage() {
             <Alert>
               <ShieldAlert className="h-4 w-4" />
               <AlertDescription>
-                Esta conta entra apenas com o Google e não tem senha para
-                alterar.
+                Esta conta entra com o Google. Para criar uma senha também, use
+                &quot;Esqueci minha senha&quot; na tela de login.
               </AlertDescription>
             </Alert>
           ) : (
@@ -385,6 +431,8 @@ export default function PerfilPage() {
           )}
         </CardContent>
       </Card>
+
+      <SecoesDaConta />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { exigirPermissao, permissaoErrorResponse } from "@/lib/permissoes";
 import { invalidarCacheFinanceiro } from "@/modules/financeiro/relatorios/cache";
 import { ajustarSaldoConta, ContaParaAjusteNaoEncontradaError } from "@/modules/financeiro/relatorios/saldoContas";
@@ -10,7 +10,7 @@ interface RequestBody {
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     exigirPermissao(user.role, "FINANCEIRO_EDITAR");
     const { id } = await params;
 

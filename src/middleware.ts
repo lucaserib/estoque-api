@@ -3,7 +3,20 @@ import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { obterSegredoAuth } from "@/lib/authSecret";
 
-const ROTAS_PUBLICAS = ["/login", "/register"];
+const ROTAS_PUBLICAS = [
+  "/login",
+  "/register",
+  "/esqueci-senha",
+  "/redefinir-senha",
+  "/confirmar-email",
+  "/descadastro",
+  "/planos",
+  "/termos",
+  "/privacidade",
+  "/indique/regulamento",
+  "/r/",
+  "/pesquisa/",
+];
 
 function hostDoAdmin(host: string | null): boolean {
   if (!host) return false;
@@ -41,7 +54,7 @@ export async function middleware(req: NextRequest) {
 
   const token = await lerToken(req);
 
-  if (!token) {
+  if (!token?.id) {
     const destino = new URL("/login", req.url);
     if (pathname !== "/") destino.searchParams.set("callbackUrl", req.nextUrl.pathname + req.nextUrl.search);
     return NextResponse.redirect(destino);

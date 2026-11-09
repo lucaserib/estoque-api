@@ -12,7 +12,9 @@ import {
   Link2,
   Check,
   X,
+  ListPlus,
 } from "lucide-react";
+import { abrirNovaTarefa } from "@/components/operacao/eventos";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/ui/page-header";
 import { BotaoExplicarIa } from "@/components/ia/BotaoExplicarIa";
@@ -369,6 +371,20 @@ export default function ProdutoFichaPage() {
               rotulo="Resumo do produto"
               perguntaAssistente={`O que devo fazer com o produto ${produto.nome} (SKU ${produto.sku})?`}
             />
+            <Button
+              variant="outline"
+              className="gap-2"
+              onClick={() =>
+                abrirNovaTarefa({
+                  titulo: `${produto.nome}: `,
+                  origem: "PRODUTO",
+                  vinculo: { tipo: "PRODUTO", id: produto.id, rotulo: `${produto.nome} (${produto.sku})`.slice(0, 120), href: `/produtos/${produto.id}` },
+                })
+              }
+            >
+              <ListPlus className="h-4 w-4" />
+              Criar tarefa
+            </Button>
             <Button variant="outline" onClick={() => router.push("/produtos")}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Voltar

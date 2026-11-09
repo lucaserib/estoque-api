@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 interface ReplenishmentSuggestion {
   tipoAnuncio: "full" | "local" | "ambos";
@@ -53,7 +54,7 @@ export async function GET(
   { params }: { params: Promise<{ produtoId: string }> }
 ) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { produtoId } = await params;
 
     const produto = await prisma.produto.findFirst({
@@ -364,6 +365,8 @@ export async function GET(
       config: params_config,
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao calcular sugestão de reposição:", error);
     return NextResponse.json(
       {

@@ -37,7 +37,14 @@ vi.mock("@/modules/financeiro/relatorios/motor", () => ({
     vendasSemCusto: 0,
   })),
 }));
-vi.mock("@/modules/ia/acesso", () => ({ garantirAcessoIa: vi.fn(async () => ({ liberada: true })) }));
+vi.mock("@/modules/ia/acesso", () => ({ garantirAcessoIa: vi.fn(async () => ({ liberada: true, ilimitada: false })) }));
+const cobrarUsoIa = vi.fn(async () => ({ debitado: 1, saldoAntes: 5, saldoApos: 4, repetido: false, custo: 1 }));
+vi.mock("@/modules/ia/consumo", () => ({ cobrarUsoIa }));
+const estornarCreditos = vi.fn(async () => 1);
+vi.mock("@/modules/ia/creditos", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/ia/creditos")>()),
+  estornarCreditos,
+}));
 const registrarUsoIa = vi.fn(async () => undefined);
 vi.mock("@/modules/ia/uso", () => ({ registrarUsoIa }));
 
@@ -129,5 +136,8 @@ describe("gerarAnaliseIa (saída estruturada)", () => {
     await expect(gerarAnaliseIa("conta-1", "user-1", provedor as never)).rejects.toMatchObject({ codigo: "FALHA_PROVEDOR" });
     expect(registrarUsoIa).toHaveBeenCalledWith(expect.objectContaining({ sucesso: false, codigoErro: "HTTP_529" }));
     expect(prismaMock.analiseIa.create).not.toHaveBeenCalled();
+    const chave = (cobrarUsoIa.mock.calls.at(-1) as unknown as [{ chave: string; recurso: string }])[0];
+    expect(chave.recurso).toBe("ANALISE_CONTROLE");
+    expect(estornarCreditos).toHaveBeenCalledWith(chave.chave);
   });
 });

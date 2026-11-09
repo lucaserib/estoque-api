@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolverPeriodoRapido, inicioDoDia, fimDoDia } from "@/modules/financeiro/dominio/periodo";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
 import { withCache, createCacheKey } from "@/lib/cache";
 import { fetchOrdersWithFallback, PartialOrdersError } from "@/lib/mlOrders";
-import { podeVer } from "@/lib/permissoes";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 
 interface SalesProduct {
   mlItemId: string;
@@ -112,7 +112,7 @@ interface SalesAnalytics {
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
     const periodParam = searchParams.get("period") || "mes-atual";
@@ -721,6 +721,8 @@ export async function GET(request: NextRequest) {
       );
     }
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     if (error instanceof PartialOrdersError) {
       return NextResponse.json(
         {

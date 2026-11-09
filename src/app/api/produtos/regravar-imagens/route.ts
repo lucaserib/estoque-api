@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
 import { BlingService } from "@/services/blingService";
 import { rehostTemporaryImage } from "@/lib/blingImageHost";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export const maxDuration = 45;
 
@@ -14,7 +15,7 @@ interface RequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     if (user.role !== "ADMIN") {
       return NextResponse.json({ error: "Apenas administradores podem regravar imagens" }, { status: 403 });
     }
@@ -54,6 +55,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ examinados, regravados, erros, proximoCursor, concluido });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao regravar imagens do Bling no Vercel Blob:", error);
     return NextResponse.json({ error: "Erro ao regravar imagens" }, { status: 500 });
   }

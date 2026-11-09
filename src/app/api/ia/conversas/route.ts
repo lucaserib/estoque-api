@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { apagarConversasDaConta, listarConversas } from "@/modules/ia/conversas";
 import { respostaErroRotaIa } from "@/modules/ia/respostas";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const pagina = Math.max(1, Number(request.nextUrl.searchParams.get("pagina")) || 1);
     return NextResponse.json(await listarConversas({ id: user.id, contaId: user.contaId }, pagina));
   } catch (error) {
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     if (request.nextUrl.searchParams.get("escopo") !== "conta") {
       return NextResponse.json({ error: "Informe escopo=conta para apagar todas as conversas da conta." }, { status: 400 });
     }

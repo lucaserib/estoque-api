@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put, del } from "@vercel/blob";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 interface LogoResponse {
   logoUrl: string;
@@ -60,7 +61,7 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<LogoResponse | LogoError>> {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     const formData = await request.formData();
     const file = formData.get("file");
@@ -114,6 +115,8 @@ export async function POST(
 
     return NextResponse.json({ logoUrl: blob.url });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao enviar logo da loja:", error);
     return NextResponse.json({ error: "Erro interno do servidor" }, { status: 500 });
   }

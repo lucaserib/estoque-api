@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { MercadoLivreService } from "@/services/mercadoLivreService";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
     const type = searchParams.get("type");
@@ -331,6 +332,8 @@ export async function GET(request: NextRequest) {
       );
     }
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[API] Analytics request failed:", error);
 
     return NextResponse.json(

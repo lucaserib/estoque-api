@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { prisma } from "@/lib/prisma";
+import { permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const page = Math.max(1, Number(searchParams.get("page")) || 1);
     const limit = Math.min(50, Number(searchParams.get("limit")) || 10);
@@ -26,6 +27,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ notifications, unreadCount, total, page });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[NOTIF] Erro ao listar notificações:", error);
     return NextResponse.json(
       { error: "Erro ao carregar notificações" },
@@ -36,7 +39,7 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
 
     await prisma.notification.updateMany({
       where: { userId: user.id, readAt: null },
@@ -45,6 +48,8 @@ export async function PATCH(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("[NOTIF] Erro ao marcar notificações:", error);
     return NextResponse.json(
       { error: "Erro ao marcar notificações como lidas" },

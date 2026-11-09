@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { UserRole } from "@prisma/client";
+import { AssinaturaInativaError, UsuarioBloqueadoError } from "@/modules/conta/erros";
 
 export type AcaoPermissao =
   | "VER_CUSTO"
@@ -11,7 +12,9 @@ export type AcaoPermissao =
   | "VENDAS_ML_VER"
   | "INTEGRACOES_USUARIOS_ASSINATURA"
   | "FINANCEIRO_VER"
-  | "FINANCEIRO_EDITAR";
+  | "FINANCEIRO_EDITAR"
+  | "TAREFAS_EDITAR"
+  | "TAREFAS_ADMINISTRAR";
 
 type NivelAcesso = "SIM" | "VER" | "NAO";
 
@@ -86,6 +89,20 @@ const MATRIZ: Record<AcaoPermissao, Record<UserRole, NivelAcesso>> = {
     VENDAS: "NAO",
     LEITURA: "NAO",
   },
+  TAREFAS_EDITAR: {
+    ADMIN: "SIM",
+    COMPRAS: "SIM",
+    ESTOQUE: "SIM",
+    VENDAS: "SIM",
+    LEITURA: "VER",
+  },
+  TAREFAS_ADMINISTRAR: {
+    ADMIN: "SIM",
+    COMPRAS: "NAO",
+    ESTOQUE: "NAO",
+    VENDAS: "NAO",
+    LEITURA: "NAO",
+  },
 };
 
 export class SemPermissaoError extends Error {
@@ -118,12 +135,28 @@ export function exigirVisualizacao(papel: UserRole, acao: AcaoPermissao): void {
   }
 }
 
-export function permissaoErrorResponse(error: unknown): NextResponse | null {
+export interface RespostaErroAcesso {
+  error: string;
+  code: string;
+  codigo?: string;
+  status?: string;
+}
+
+export function permissaoErrorResponse(error: unknown): NextResponse<RespostaErroAcesso> | null {
   if (error instanceof SemPermissaoError) {
     return NextResponse.json(
       { error: error.message, code: error.code },
       { status: 403 }
     );
+  }
+  if (error instanceof AssinaturaInativaError) {
+    return NextResponse.json(
+      { error: error.message, codigo: error.code, code: error.code, status: error.status },
+      { status: 402 }
+    );
+  }
+  if (error instanceof UsuarioBloqueadoError) {
+    return NextResponse.json({ error: error.message, code: error.code }, { status: 401 });
   }
   return null;
 }

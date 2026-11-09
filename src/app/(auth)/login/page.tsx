@@ -12,9 +12,15 @@ function destinoAposLogin(): string {
   return destino;
 }
 
+function mensagemDeErro(codigo: string | undefined): string {
+  if (codigo && /muitas tentativas|bloquead/i.test(codigo)) return codigo;
+  return "E-mail ou senha inválidos";
+}
+
 const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [falhas, setFalhas] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -33,7 +39,8 @@ const LoginPage = () => {
       });
 
       if (result?.error) {
-        setError("Email ou senha inválidos");
+        setError(mensagemDeErro(result.error));
+        setFalhas((atual) => atual + 1);
         return;
       }
 
@@ -81,8 +88,20 @@ const LoginPage = () => {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-text text-sm mb-6">
+        <div
+          role="alert"
+          className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive-text text-sm mb-6"
+        >
           {error}
+          {falhas >= 2 && (
+            <p className="mt-2 text-foreground/80">
+              Se você criou a conta com o Google, use o botão &quot;Entrar com o Google&quot;. Esqueceu a senha?{" "}
+              <Link href="/esqueci-senha" className="font-medium text-primary hover:underline">
+                Crie uma nova
+              </Link>
+              .
+            </p>
+          )}
         </div>
       )}
 
@@ -92,26 +111,28 @@ const LoginPage = () => {
             htmlFor="email"
             className="block text-sm font-medium text-foreground mb-1"
           >
-            Email
+            E-mail
           </label>
           <input
             id="email"
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="Seu email"
+            placeholder="Seu e-mail"
             required
             className="auth-input w-full h-11 pl-3 rounded-lg border"
           />
         </div>
 
         <div className="space-y-1">
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-foreground mb-1"
-          >
-            Senha
-          </label>
+          <div className="mb-1 flex items-center justify-between">
+            <label htmlFor="password" className="block text-sm font-medium text-foreground">
+              Senha
+            </label>
+            <Link href="/esqueci-senha" className="text-xs font-medium text-primary hover:underline">
+              Esqueci minha senha
+            </Link>
+          </div>
           <input
             id="password"
             name="password"

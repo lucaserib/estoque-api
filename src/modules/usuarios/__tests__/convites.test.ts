@@ -53,7 +53,7 @@ describe("convites", () => {
 
   it("coloca na conta de quem convidou quem ainda não tem dados próprios", async () => {
     const resultado = await aplicarConvitePendente("novo-1", "maria@loja.com");
-    expect(resultado).toEqual({ contaId: "dono-1", role: "COMPRAS" });
+    expect(resultado).toMatchObject({ contaId: "dono-1", role: "COMPRAS" });
     expect(atualizacoes).toHaveLength(2);
   });
 

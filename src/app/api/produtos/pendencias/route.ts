@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyUser } from "@/helpers/verifyUser";
+import { verifyUserAtivo } from "@/helpers/verifyUserAtivo";
 import { withCache, createCacheKey } from "@/lib/cache";
 import { calcularTodasPendencias } from "@/services/pendenciasService";
-import { podeVer } from "@/lib/permissoes";
+import { podeVer, permissaoErrorResponse } from "@/lib/permissoes";
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await verifyUser(request);
+    const user = await verifyUserAtivo(request);
     const { searchParams } = new URL(request.url);
     const codigoFiltro = searchParams.get("codigo");
     const produtoIdFiltro = searchParams.get("produtoId");
@@ -78,6 +78,8 @@ export async function GET(request: NextRequest) {
       itens: pagina,
     });
   } catch (error) {
+    const respostaAcesso = permissaoErrorResponse(error);
+    if (respostaAcesso) return respostaAcesso;
     console.error("Erro ao calcular pendências:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor" },
